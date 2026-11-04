@@ -1,0 +1,789 @@
+{
+  "catalog": {
+    "finance": {
+      "income_expense": {
+        "title": "Income and expenses",
+        "description": "Income and expenses by category, with period comparison"
+      },
+      "monthly_result": {
+        "title": "Monthly result",
+        "description": "Income, expenses and net result for each month"
+      },
+      "cashflow": {
+        "title": "Cash flow (actual)",
+        "description": "Actual money in and out by month"
+      },
+      "cashflow_forecast": {
+        "title": "Cash flow forecast",
+        "description": "Expected inflow, outflow and balance for the coming months"
+      },
+      "cost_per_head": {
+        "title": "Cost per head",
+        "description": "Purchase price and accumulated costs by herd"
+      },
+      "cost_per_ton": {
+        "title": "Cost per ton",
+        "description": "Costs, harvest and cost per ton by field"
+      },
+      "cost_per_kg": {
+        "title": "Cost per kg of live weight",
+        "description": "Weight gained and its cost by herd"
+      },
+      "profitability": {
+        "title": "Profitability",
+        "description": "Costs, income and profit by cost center"
+      },
+      "budget_execution": {
+        "title": "Budget execution",
+        "description": "Plan, actual and deviation by category"
+      },
+      "debts": {
+        "title": "Debts",
+        "description": "Receivables and payables by counterparty"
+      },
+      "loans": {
+        "title": "Loans",
+        "description": "Loan status: paid, outstanding and next payment"
+      },
+      "loan_schedule": {
+        "title": "Loan schedule",
+        "description": "Loan instalments in the period"
+      },
+      "accounts": {
+        "title": "Cash and bank balances",
+        "description": "Current balance by account"
+      },
+      "transactions": {
+        "title": "Transaction journal",
+        "description": "All financial transactions in the period"
+      },
+      "kpi": {
+        "title": "Financial KPIs",
+        "description": "Profitability, profit per ewe, cost ratio and cash flow"
+      }
+    },
+    "livestock": {
+      "herd_movement": {
+        "title": "Herd movement",
+        "description": "Births, purchases and exits by month"
+      },
+      "herd_structure": {
+        "title": "Herd structure",
+        "description": "Current head count by category and status"
+      },
+      "animal_register": {
+        "title": "Animal register",
+        "description": "List of animals on the farm"
+      },
+      "lambing": {
+        "title": "Lambing",
+        "description": "Lambing records in the period"
+      },
+      "lambing_calendar": {
+        "title": "Lambing calendar",
+        "description": "Expected lambings by day"
+      },
+      "mortality": {
+        "title": "Mortality",
+        "description": "Dead and lost animals, with reasons"
+      },
+      "exits": {
+        "title": "Animal exits",
+        "description": "Sales, slaughter, deaths and losses"
+      },
+      "weight_gain": {
+        "title": "Weight gain",
+        "description": "Growth and feed conversion by herd"
+      },
+      "vaccination": {
+        "title": "Vaccination",
+        "description": "Vaccinations done in the period"
+      },
+      "vaccination_due": {
+        "title": "Vaccinations due",
+        "description": "Upcoming and overdue vaccinations"
+      },
+      "treatments": {
+        "title": "Treatment journal",
+        "description": "Treatments, prevention and examinations"
+      },
+      "ram_rating": {
+        "title": "Ram rating",
+        "description": "Rating by growth of progeny"
+      },
+      "daily_logs": {
+        "title": "Daily logs",
+        "description": "Daily condition and water by herd"
+      },
+      "kpi": {
+        "title": "Livestock KPIs",
+        "description": "Lambing, survival, growth and mortality"
+      }
+    },
+    "feed": {
+      "days_remaining": {
+        "title": "Feed days remaining",
+        "description": "Days of stock by actual use and by plan"
+      },
+      "consumption_by_herd": {
+        "title": "Feed use by herd",
+        "description": "Planned and actual use, with period comparison"
+      },
+      "daily_consumption": {
+        "title": "Daily feed use",
+        "description": "Total feed used per day"
+      },
+      "ration_cost": {
+        "title": "Ration cost",
+        "description": "Feed cost per head per day and per season"
+      },
+      "winter_plan": {
+        "title": "Winter feed plan",
+        "description": "Requirement, stock, shortage and area needed"
+      }
+    },
+    "inventory": {
+      "balances": {
+        "title": "Stock balances",
+        "description": "Stock by item and warehouse"
+      },
+      "movements": {
+        "title": "Stock movements",
+        "description": "Receipts, issues, transfers and adjustments"
+      },
+      "expiring": {
+        "title": "Expiring batches",
+        "description": "Batches expiring soon or already expired"
+      },
+      "low_stock": {
+        "title": "Low stock",
+        "description": "Items below their set minimum"
+      },
+      "count_differences": {
+        "title": "Stock count differences",
+        "description": "Differences in approved stock counts"
+      }
+    },
+    "crops": {
+      "field_costs": {
+        "title": "Field costs",
+        "description": "Cost structure and plan vs actual, with season comparison"
+      },
+      "yield": {
+        "title": "Yield",
+        "description": "Planned and actual harvest by field"
+      },
+      "operations": {
+        "title": "Field operations",
+        "description": "Field work in the period"
+      },
+      "rotation": {
+        "title": "Crop rotation",
+        "description": "Crops by field and season"
+      },
+      "water_use": {
+        "title": "Water use",
+        "description": "Water by field, m³/ha and m³/t"
+      },
+      "harvests": {
+        "title": "Harvests",
+        "description": "Harvest records in the period"
+      },
+      "soil": {
+        "title": "Soil analysis",
+        "description": "Laboratory results: NPK, humus, salinity"
+      },
+      "kpi": {
+        "title": "Crop KPIs",
+        "description": "Yield, on-time work and water use"
+      }
+    },
+    "hr": {
+      "timesheet": {
+        "title": "Timesheet",
+        "description": "Attendance and hours for the month"
+      },
+      "payroll": {
+        "title": "Payroll",
+        "description": "Monthly pay sheet by employee"
+      },
+      "work_done": {
+        "title": "Work done",
+        "description": "Hectares and head handled by each person"
+      },
+      "staff": {
+        "title": "Staff list",
+        "description": "Position, division and pay type"
+      },
+      "productivity": {
+        "title": "Labour productivity",
+        "description": "Head and hectares per employee"
+      }
+    },
+    "assets": {
+      "register": {
+        "title": "Machinery register",
+        "description": "Status of machinery and equipment"
+      },
+      "usage": {
+        "title": "Machinery usage",
+        "description": "Motor-hours, volume and fuel by shift"
+      },
+      "fuel": {
+        "title": "Fuel use",
+        "description": "Norm and actual use, with deviation"
+      },
+      "maintenance": {
+        "title": "Maintenance",
+        "description": "Service and repair history"
+      },
+      "cost_per_hour": {
+        "title": "Cost per hour and hectare",
+        "description": "Fuel, labour, repairs and depreciation"
+      },
+      "depreciation": {
+        "title": "Depreciation",
+        "description": "Depreciation charged by month and machine"
+      }
+    },
+    "sales": {
+      "by_product": {
+        "title": "Sales by product",
+        "description": "Volume, average price and comparison with cost"
+      },
+      "by_buyer": {
+        "title": "Sales by buyer",
+        "description": "Amount and margin by buyer"
+      },
+      "by_month": {
+        "title": "Sales by month",
+        "description": "Monthly sales and margin"
+      },
+      "documents": {
+        "title": "Sales documents",
+        "description": "Sales documents in the period"
+      },
+      "prices": {
+        "title": "Price history",
+        "description": "Product prices by date"
+      },
+      "purchases": {
+        "title": "Purchase requests",
+        "description": "Request status and quantity received"
+      }
+    }
+  },
+  "columns": {
+    "absent": "Absent",
+    "account": "Account",
+    "accumulated": "Accumulated cost",
+    "actual": "Actual",
+    "actualCost": "Actual cost",
+    "actualDaily": "Actual daily use",
+    "actualQty": "Actual quantity",
+    "actualYieldTHa": "Actual yield, t/ha",
+    "adgG": "Average daily gain, g",
+    "advance": "Advance",
+    "ageMonths": "Age, months",
+    "amount": "Amount",
+    "amountBase": "Amount in base currency",
+    "animals": "Animals",
+    "annualRate": "Annual rate",
+    "areaDoneHa": "Area done, ha",
+    "areaHa": "Area, ha",
+    "asset": "Machine",
+    "attendancePercent": "Attendance",
+    "avgCost": "Average cost",
+    "avgGainGrams": "Average gain, g/day",
+    "avgPrice": "Average price",
+    "avgWeight100Kg": "Average 100-day weight, kg",
+    "balance": "Balance",
+    "balanceBase": "Balance in base currency",
+    "base": "Base pay",
+    "baseRate": "Base rate",
+    "basis": "Basis",
+    "batchNo": "Batch",
+    "belowMinimum": "Below minimum",
+    "birthDate": "Birth date",
+    "bonus": "Bonus",
+    "born": "Born",
+    "breed": "Breed",
+    "buyer": "Buyer",
+    "carcassWeightKg": "Carcass weight, kg",
+    "category": "Category",
+    "closing": "Closing",
+    "complications": "Complications",
+    "condition": "Condition",
+    "cost": "Cost",
+    "costCenter": "Cost center",
+    "costPerHead": "Cost per head",
+    "costPerHeadDay": "Cost per head per day",
+    "costPerHectare": "Cost per hectare",
+    "costPerHour": "Cost per motor-hour",
+    "costPerKg": "Cost per kg live weight",
+    "costPerSeason": "Cost per season",
+    "costPerTon": "Cost per ton",
+    "count": "Count",
+    "counterparty": "Counterparty",
+    "coverageDays": "Days covered",
+    "crop": "Crop",
+    "currency": "Currency",
+    "currentWeightKg": "Current weight, kg",
+    "dailyLogs": "Daily logs",
+    "date": "Date",
+    "dayOff": "Day off",
+    "days": "Days remaining",
+    "daysByActual": "Days by actual",
+    "daysByPlan": "Days by plan",
+    "daysOverdue": "Days overdue",
+    "daysWorked": "Days worked",
+    "dead": "Dead",
+    "deductions": "Deductions",
+    "deliveryDate": "Delivery date",
+    "depreciation": "Depreciation",
+    "description": "Description",
+    "deviation": "Deviation",
+    "deviationPercent": "Deviation, %",
+    "diagnosis": "Diagnosis",
+    "diffCost": "Difference value",
+    "diffQty": "Difference",
+    "direct": "Direct cost",
+    "direction": "Direction",
+    "division": "Division",
+    "docNo": "Document no.",
+    "documents": "Documents",
+    "downtimeHours": "Downtime, h",
+    "drug": "Drug",
+    "dryMatterKg": "Dry matter, kg",
+    "dueDate": "Due date",
+    "employee": "Employee",
+    "ewe": "Ewe",
+    "expected": "Expected",
+    "expectedHarvestT": "Planned harvest, t",
+    "expectedPrice": "Expected price",
+    "expectedYieldTHa": "Planned yield, t/ha",
+    "expense": "Expense",
+    "expired": "Expired",
+    "expiryDate": "Expiry date",
+    "feed": "Feed",
+    "feedConversion": "Feed conversion",
+    "fertilizer": "Fertilizer",
+    "field": "Field",
+    "financeCategory": "Category",
+    "fuel": "Fuel",
+    "fuelCost": "Fuel cost",
+    "fuelL": "Fuel, L",
+    "gainKg": "Weight gain, kg",
+    "grossT": "Gross harvest, t",
+    "group": "Group",
+    "harvestT": "Harvest, t",
+    "harvestedT": "Harvested, t",
+    "head": "Head",
+    "headCount": "Head count",
+    "headDays": "Head-days",
+    "headTreated": "Head treated",
+    "hectares": "Hectares",
+    "herd": "Herd",
+    "hireDate": "Hire date",
+    "hours": "Hours",
+    "humus": "Humus",
+    "income": "Income",
+    "index": "Index",
+    "indicator": "Indicator",
+    "inflow": "Inflow",
+    "interest": "Interest",
+    "inventoryNo": "Inventory no.",
+    "item": "Item",
+    "itemCategory": "Category",
+    "k": "K",
+    "kind": "Kind",
+    "lab": "Laboratory",
+    "labor": "Labour",
+    "lambsAlive": "Lambs alive",
+    "lambsBorn": "Lambs born",
+    "litersPerHour": "L/hour",
+    "liveWeightKg": "Live weight, kg",
+    "loan": "Loan",
+    "lossAmount": "Loss",
+    "lost": "Lost",
+    "lowConfidence": "Low sample",
+    "machinery": "Machinery",
+    "margin": "Margin",
+    "marginPercent": "Margin, %",
+    "materials": "Materials",
+    "minDays": "Minimum days",
+    "minQty": "Minimum quantity",
+    "moisturePct": "Moisture, %",
+    "month": "Month",
+    "motoHours": "Motor-hours",
+    "n": "N",
+    "nearestExpiry": "Nearest expiry",
+    "net": "Net",
+    "nextDueDate": "Next due date",
+    "nextPayment": "Next payment",
+    "normLPerHour": "Norm, L/hour",
+    "notes": "Notes",
+    "number": "Number",
+    "opening": "Opening",
+    "operatingExpense": "Operating expense",
+    "operations": "Operations",
+    "operator": "Operator",
+    "origin": "Origin",
+    "outflow": "Outflow",
+    "outstanding": "Outstanding",
+    "overdue": "Overdue",
+    "overhead": "Overhead",
+    "overheadShare": "Overhead share",
+    "p": "P",
+    "paid": "Paid",
+    "paidDate": "Paid on",
+    "paidInterest": "Interest paid",
+    "paidPrincipal": "Principal paid",
+    "payType": "Pay type",
+    "payment": "Payment",
+    "paymentMethod": "Payment method",
+    "percent": "Execution, %",
+    "ph": "pH",
+    "phone": "Phone",
+    "piecework": "Piecework",
+    "plan": "Vaccination",
+    "planned": "Planned",
+    "plannedDaily": "Planned daily use",
+    "plannedQty": "Planned quantity",
+    "position": "Position",
+    "present": "Present",
+    "price": "Price",
+    "principal": "Principal",
+    "product": "Product",
+    "profit": "Profit",
+    "profitabilityPercent": "Profitability, %",
+    "progeny": "Progeny",
+    "purchaseCost": "Purchase cost",
+    "purchaseDate": "Purchase date",
+    "purchasePrice": "Purchase price",
+    "purchased": "Purchased",
+    "qty": "Quantity",
+    "qtyKg": "Quantity, kg",
+    "qtyRemaining": "Remaining",
+    "qtyUsed": "Used",
+    "quality": "Quality",
+    "rank": "Rank",
+    "ration": "Ration",
+    "reason": "Reason",
+    "receivedQty": "Received",
+    "rented": "Rented",
+    "repairs": "Repairs",
+    "requiredKg": "Required, kg",
+    "result": "Result",
+    "runsOutOn": "Runs out on",
+    "salinity": "Salinity",
+    "season": "Season",
+    "seasonDays": "Season days",
+    "seed": "Seed",
+    "seller": "Seller",
+    "sex": "Sex",
+    "shortageKg": "Shortage, kg",
+    "sick": "Sick",
+    "slaughtered": "Slaughtered",
+    "sold": "Sold",
+    "source": "Source",
+    "startDate": "Start date",
+    "state": "State",
+    "status": "Status",
+    "stockKg": "Stock, kg",
+    "stockQty": "Stock",
+    "stockValue": "Stock value",
+    "supplier": "Supplier",
+    "surplusKg": "Surplus, kg",
+    "systemQty": "Recorded quantity",
+    "tag": "Tag",
+    "termMonths": "Term, months",
+    "tons": "Tons",
+    "total": "Total cost",
+    "totalAmount": "Total amount",
+    "totalCost": "Cost",
+    "totalKgPerHeadDay": "kg/head/day",
+    "treatments": "Treatments",
+    "type": "Type",
+    "unit": "Unit",
+    "unitCost": "Unit cost",
+    "vacation": "Vacation",
+    "value": "Value",
+    "variety": "Variety",
+    "vet": "Veterinarian",
+    "vetConclusion": "Vet conclusion",
+    "vetCost": "Veterinary cost",
+    "volumeHa": "Volume, ha",
+    "warehouse": "Warehouse",
+    "water": "Water",
+    "waterL": "Water, L",
+    "waterM3": "Water, m³",
+    "waterM3PerHa": "m³/ha",
+    "waterM3PerTon": "m³/t",
+    "weighed": "Weighed",
+    "weightGainKg": "Weight gain, kg",
+    "withdrawalUntil": "Withdrawal until",
+    "workType": "Work type",
+    "yieldDeviationPercent": "Yield deviation, %",
+    "yieldTHa": "Yield, t/ha"
+  },
+  "filters": {
+    "period": "Period",
+    "month": "Month",
+    "days": "Days",
+    "months": "Months",
+    "seasonId": "Season",
+    "herdId": "Herd",
+    "fieldId": "Field",
+    "warehouseId": "Warehouse",
+    "assetId": "Machine",
+    "category": "Category",
+    "status": "Status",
+    "type": "Type",
+    "direction": "Direction",
+    "itemCategory": "Category"
+  },
+  "presets": {
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "last_7_days": "Last 7 days",
+    "last_30_days": "Last 30 days",
+    "this_month": "This month",
+    "last_month": "Last month",
+    "this_quarter": "This quarter",
+    "this_year": "This year",
+    "last_year": "Last year",
+    "custom": "Custom range"
+  },
+  "modules": {
+    "finance": "Finance",
+    "livestock": "Livestock",
+    "feed": "Feed",
+    "inventory": "Inventory",
+    "crops": "Crops",
+    "hr": "Staff",
+    "assets": "Machinery",
+    "sales": "Sales and purchasing"
+  },
+  "export": {
+    "period": "Period",
+    "compareWith": "Compared with",
+    "generated": "Generated",
+    "total": "Total",
+    "pdfTruncated": "This PDF shows the first {{shown}} of {{total}} rows. Download Excel for the full list."
+  },
+  "common": {
+    "yes": "Yes",
+    "no": "No"
+  },
+  "compare": {
+    "difference": "difference"
+  },
+  "notes": {
+    "cost_per_kg_needs_weighing": "Cost per kg appears once at least half of the herd has been weighed twice.",
+    "forecast_statistical": "This is a statistical estimate, not a promise. It is based on the budget, average spending and scheduled payments.",
+    "forecast_negative": "Warning: a cash shortfall is expected in {{month}}.",
+    "internal_transfers": "Cost centers can pass their own produce to each other at an internal price, so their sum can exceed the farm's total cost.",
+    "lambing_percent": "Lambing rate: {{percent}}% (across {{ewes}} ewes).",
+    "mortality_percent": "Mortality in the period: {{percent}}% ({{dead}} head)."
+  },
+  "delivery": {
+    "more": "… {{count}} more rows",
+    "empty": "No data for this period."
+  },
+  "debtDirection": {
+    "payable": "We owe",
+    "receivable": "Owed to us"
+  },
+  "dueState": {
+    "overdue": "Overdue",
+    "today": "Today",
+    "upcoming": "Upcoming"
+  },
+  "feedBasis": {
+    "actual": "Actual use",
+    "plan": "Ration plan"
+  },
+  "lowStockReason": {
+    "qty": "Low quantity",
+    "days": "Too few days"
+  },
+  "operationStatus": {
+    "planned": "Planned",
+    "done": "Done"
+  },
+  "structureGroup": {
+    "category": "Category",
+    "status": "Status"
+  },
+  "kpiUnit": {
+    "money": "UZS",
+    "percent": "%",
+    "tons_per_ha": "t/ha",
+    "m3_per_ton": "m³/t",
+    "ha": "ha",
+    "head": "head",
+    "people": "people",
+    "grams": "g",
+    "ratio": "kg/kg"
+  },
+  "kpi": {
+    "income": "Income",
+    "operating_expense": "Operating expense",
+    "profitability": "Profitability",
+    "profit_per_ewe": "Profit per ewe",
+    "cost_to_income": "Cost to income",
+    "net_cash_flow": "Net cash flow",
+    "budget_deviation": "Budget deviation",
+    "head_total": "Total head",
+    "lambing_percent": "Lambing rate",
+    "survival_percent": "Survival",
+    "adg": "Average daily gain",
+    "feed_conversion": "Feed conversion",
+    "mortality_30d": "Mortality, 30 days",
+    "cost_per_kg": "Cost per kg live weight",
+    "yield": "Yield",
+    "on_time": "On-time work",
+    "water_per_ton": "Water use",
+    "cost_per_ton": "Cost per ton",
+    "staff": "Staff",
+    "head_per_employee": "Head per employee",
+    "ha_per_employee": "Hectares per employee"
+  },
+  "investor": {
+    "title": "Investor report",
+    "finance": "Finance",
+    "income": "Income",
+    "expense": "Expenses",
+    "net": "Net result",
+    "profitability": "Profitability",
+    "budget": "Budget execution",
+    "cash": "Cash and bank",
+    "receivable": "Owed to us",
+    "payable": "We owe",
+    "loans": "Loans outstanding",
+    "costPerHead": "Cost per head",
+    "forecast": "Cash forecast, month end",
+    "livestock": "Livestock",
+    "head": "Head",
+    "pregnant": "Pregnant ewes",
+    "born": "Born",
+    "sold": "Sold",
+    "dead": "Dead",
+    "mortality": "Mortality, 30 days",
+    "lambingExpected": "Lambings expected",
+    "avgWeight": "Average weight, kg",
+    "crops": "Crops",
+    "sown": "Fields sown",
+    "harvestPlanned": "Planned harvest, t",
+    "harvestActual": "Harvested, t",
+    "feed": "Feed stock, days",
+    "noData": "No data",
+    "asOf": "as of {{date}}",
+    "currency": "Amounts are in the base currency.",
+    "disclaimer": "This report holds aggregate figures only, with no personal data."
+  },
+  "page": {
+    "title": "Reports",
+    "description": "Ready-made reports, your own reports and the investor report"
+  },
+  "tabs": {
+    "catalog": "Reports",
+    "saved": "Saved",
+    "investor": "Investor report"
+  },
+  "catalogPage": {
+    "search": "Search reports",
+    "empty": "No reports found",
+    "emptyHint": "Try a different word",
+    "noAccess": "No reports are available to you",
+    "moneyBadge": "Financial"
+  },
+  "viewer": {
+    "back": "Reports",
+    "notFound": "This report does not exist or is not available to you",
+    "from": "From",
+    "to": "To",
+    "all": "All",
+    "empty": "No data for these filters",
+    "emptyHint": "Try changing the period or filters",
+    "totalRow": "Total",
+    "rowCount": "{{count}} rows",
+    "truncated": "Showing the first {{shown}} of {{total}} rows. The downloaded file has them all.",
+    "hiddenMoney": "Financial columns are hidden by your permissions.",
+    "hiddenPii": "Personal data columns are hidden by your permissions.",
+    "took": "Built in {{ms}} ms",
+    "chart": "Chart",
+    "table": "Table",
+    "compare": "Compare",
+    "compareFrom": "Period B: from",
+    "compareTo": "Period B: to",
+    "compareSeason": "Season B",
+    "compareHint": "Column A is the chosen period, column B the one compared with.",
+    "customize": "Customize",
+    "download": "Download",
+    "downloadXlsx": "Excel",
+    "downloadPdf": "PDF",
+    "downloadCsv": "CSV"
+  },
+  "builder": {
+    "title": "Customize report",
+    "description": "Pick the columns you need, group them and save.",
+    "columns": "Columns",
+    "selectAll": "All",
+    "groupBy": "Group by",
+    "noGrouping": "No grouping",
+    "groupHint": "Grouping keeps only the columns that can be added up.",
+    "apply": "Apply",
+    "saveAs": "Save as a report",
+    "name": "Name",
+    "schedule": "Automatic delivery",
+    "telegram": "Send through Telegram",
+    "recipients": "Recipients",
+    "recipientsHint": "Each recipient only gets the columns their permissions allow.",
+    "selfOnly": "The report will be sent to you.",
+    "saved": "Report saved"
+  },
+  "schedule": {
+    "none": "Do not send",
+    "daily": "Daily",
+    "weekly": "Every Monday",
+    "monthly": "On the 1st of each month"
+  },
+  "saved": {
+    "empty": "No saved reports",
+    "emptyHint": "Open a report, choose Customize and save it.",
+    "name": "Name",
+    "report": "Report",
+    "schedule": "Delivery",
+    "lastSent": "Last sent",
+    "open": "Open",
+    "edit": "Edit",
+    "send": "Send now",
+    "sent": "Sent to {{count}} people",
+    "delete": "Delete",
+    "deleteConfirm": "Delete this report?",
+    "deleted": "Report deleted",
+    "updated": "Report updated"
+  },
+  "investorPage": {
+    "month": "Report month",
+    "downloadPdf": "Download PDF",
+    "archive": "Monthly report archive",
+    "archiveEmpty": "No reports in the archive yet",
+    "noAccess": "This report contains financial figures and is not available to you.",
+    "open": "Open"
+  },
+  "errors": {
+    "NOT_REPORT_OWNER": "Only the owner can change this report",
+    "INVALID_RANGE": "The end date cannot be before the start date",
+    "INVESTOR_REPORT_FORBIDDEN": "This report contains financial figures and is not available to you",
+    "UNKNOWN_COLUMN": "A chosen column does not exist",
+    "INVALID_GROUPING": "This column cannot be used for grouping",
+    "COMPARE_WITH_GROUPING": "Comparison and grouping cannot be used together",
+    "INVALID_FORMAT": "Choose Excel, CSV or PDF",
+    "UNKNOWN_REPORT": "This report does not exist",
+    "UNKNOWN_RECIPIENT": "A recipient does not work on this farm",
+    "RECIPIENTS_FORBIDDEN": "You can only send this report to yourself"
+  }
+}

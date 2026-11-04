@@ -1,0 +1,123 @@
+{
+  "errors": {
+    "NOT_A_FEED_ITEM": "Ratsionga faqat ozuqa qo'shish mumkin",
+    "DUPLICATE_RATION_ITEM": "Har bir ozuqa ratsionda bir marta bo'lishi kerak",
+    "RATION_IN_USE": "Bu ratsion \"{{herd}}\" podasiga biriktirilgan",
+    "SCENARIO_INCOMPLETE": "Ratsion va bosh sonini kiriting"
+  },
+  "rations": {
+    "title": "Ozuqa ratsionlari",
+    "description": "Fiziologik holat bo'yicha bir boshga kunlik ozuqa me'yorlari va ularning tannarxi.",
+    "add": "Ratsion qo'shish",
+    "edit": "Ratsionni tahrirlash",
+    "dialogHint": "Har bir ozuqa uchun bir boshga kunlik miqdorni kiriting.",
+    "addLine": "Ozuqa qo'shish",
+    "noFeeds": "Ozuqa topilmadi. Avval nomenklaturaga qo'shing",
+    "perHeadDay": "kg/bosh/kun",
+    "total": "Jami: {{kg}} kg/bosh/kun",
+    "totalLabel": "Jami",
+    "amount": "{{kg}} kg",
+    "costPerDay": "1 boshga kunlik",
+    "costPerSeason": "1 boshga {{days}} kunlik",
+    "emptyTitle": "Ratsion tuzilmagan",
+    "emptyBody": "Bo'g'oz, emizikli va boshqa guruhlar uchun ratsion yarating.",
+    "deleteTitle": "Ratsionni o'chirasizmi?",
+    "deleteBody": "\"{{name}}\" ro'yxatdan olinadi.",
+    "fields": {
+      "name": "Nomi",
+      "state": "Fiziologik holat",
+      "stateHint": "Qaysi guruh uchun",
+      "feed": "Ozuqa",
+      "amount": "Kunlik miqdor",
+      "notes": "Izoh"
+    }
+  },
+  "balance": {
+    "title": "Ozuqa balansi",
+    "description": "Mavjud zaxira necha kunga yetadi: haqiqiy sarf va reja bo'yicha.",
+    "days": "{{days}} kunga yetadi",
+    "daysLabel": "{{name}}: zaxira kunlari",
+    "noData": "Ma'lumot yetarli emas",
+    "stock": "Qoldiq: {{qty}}",
+    "byActual": "Haqiqiy sarf bo'yicha",
+    "byPlan": "Reja bo'yicha",
+    "planned": "Reja: {{qty}}/kun",
+    "actual": "Haqiqiy: {{qty}}/kun",
+    "covered": "oxirgi {{days}} kun",
+    "belowMinimum": "Minimumdan kam ({{days}} kun)",
+    "shortest": "Eng kam zaxira",
+    "belowCount": "Minimumdan kam ozuqalar",
+    "allFine": "Hammasi yetarli",
+    "dailyPlan": "Kunlik reja",
+    "dailyPlanHint": "Barcha podalar bo'yicha",
+    "emptyTitle": "Ozuqa kiritilmagan",
+    "emptyBody": "Balans ko'rinishi uchun nomenklaturaga ozuqa qo'shing va kirim qiling.",
+    "emptyAction": "Nomenklaturani ochish"
+  },
+  "plan": {
+    "title": "Kunlik ozuqa rejasi",
+    "summary": "{{head}} bosh, ratsion: {{ration}}",
+    "perDay": "Jami kuniga",
+    "costPerDay": "Kunlik xarajat",
+    "withoutRationTitle": "Ratsioni yo'q podalar bor",
+    "withoutRationBody": "Bu podalar hisobga kirmagan: {{herds}}. Reja to'g'ri bo'lishi uchun ularga ratsion biriktiring."
+  },
+  "consumption": {
+    "title": "Kunlik ozuqa sarfi",
+    "description": "Oxirgi 30 kun, barcha ozuqalar",
+    "series": "Sarf",
+    "empty": "Hali ozuqa chiqimi qayd etilmagan"
+  },
+  "winter": {
+    "title": "Qishlov rejasi",
+    "description": "Qish uchun qancha ozuqa kerak, nima yetishmaydi va uni qancha yerda yetishtirish mumkin.",
+    "modeHerds": "Mavjud podalar",
+    "modeScenario": "Reja hisobi",
+    "days": "Qishlov kunlari",
+    "daysUnit": "kun",
+    "ration": "Ratsion",
+    "head": "Bosh soni",
+    "headUnit": "bosh",
+    "headValue": "{{head}} bosh",
+    "columns": {
+      "feed": "Ozuqa",
+      "balance": "Natija",
+      "required": "Kerak",
+      "stock": "Zaxira",
+      "daily": "Kuniga",
+      "coverage": "Yetadi",
+      "cost": "Xarid summasi"
+    },
+    "unknown": "Noma'lum",
+    "shortage": "{{qty}} yetishmaydi",
+    "surplus": "{{qty}} ortiqcha",
+    "coverage": "{{days}} kun, {{date}} gacha",
+    "scenarioPromptTitle": "Ratsion va bosh sonini tanlang",
+    "scenarioPromptBody": "Masalan, 500 sovliq uchun bo'g'ozlik ratsioni bilan hisoblang.",
+    "emptyTitle": "Hisoblash uchun ma'lumot yo'q",
+    "emptyBody": "Podalarga ratsion biriktiring yoki \"Reja hisobi\"dan foydalaning.",
+    "enoughTitle": "Zaxira butun qishlovga yetadi",
+    "enoughBody": "{{head}} bosh uchun {{days}} kunlik ozuqa bor.",
+    "shortTitle": "Yetishmaydigan ozuqalar: {{count}}",
+    "shortLine": "{{name}}: {{qty}} yetishmaydi, zaxira {{date}} da tugaydi",
+    "purchaseTotal": "Xarid uchun taxminan: {{amount}}",
+    "stats": {
+      "herd": "Hisobdagi poda",
+      "days": "{{days}} kunlik qishlov",
+      "required": "Jami ehtiyoj",
+      "shortage": "Jami yetishmovchilik",
+      "shortItems": "Yetishmaydigan ozuqalar: {{count}}",
+      "purchase": "Xarid summasi"
+    },
+    "sowing": {
+      "title": "Yetishtirish uchun yer",
+      "description": "Yetishmagan ozuqani o'zingiz ekib olsangiz, qancha maydon kerak bo'ladi.",
+      "short": "{{name}}: {{qty}} yetishmaydi",
+      "yield": "Kutilayotgan hosil",
+      "yieldUnit": "t/ga",
+      "hectares": "{{ha}} ga kerak",
+      "enterYield": "Hosildorlikni kiriting",
+      "noCrop": "Yetishmagan ozuqalar ekinga bog'lanmagan. Nomenklaturada \"Qaysi ekindan olinadi\"ni belgilang."
+    }
+  }
+}

@@ -1,0 +1,181 @@
+{
+  "title": "Bugun",
+  "sections": {
+    "herds": "Kunlik qayd",
+    "actions": "Tezkor amallar",
+    "tasks": "Vazifalar"
+  },
+  "common": {
+    "back": "Orqaga",
+    "less": "{{label}}: kamaytirish",
+    "more": "{{label}}: ko'paytirish"
+  },
+  "data": {
+    "stale": "Internet yo'q. Ma'lumot {{time}} holatiga ko'ra. Yozuvlaringiz saqlanadi.",
+    "firstTimeTitle": "Birinchi marta internet kerak",
+    "firstTimeBody": "Ma'lumotlar telefonga bir marta yuklanishi kerak. Internetga ulaning."
+  },
+  "herd": {
+    "head": "{{n}} bosh",
+    "todo": "Qayd kiritilmagan",
+    "queued": "Saqlandi, yuborilishini kutmoqda",
+    "failed": "Xatolik, tekshiring",
+    "conflict": "Ikki xil yozuv, tanlang",
+    "logged": "Qayd kiritilgan"
+  },
+  "actions": {
+    "report_sick": "Kasal hayvon",
+    "record_death": "Nobud bo'ldi",
+    "weight": "Vazn",
+    "lambing": "Qo'zilash",
+    "animals": "Hayvonlar",
+    "health": "Veterinariya",
+    "field_operation": "Dala ishi",
+    "field_map": "Dala xaritasi",
+    "machinery": "Texnika",
+    "stock": "Ombor",
+    "rations": "Ratsion"
+  },
+  "tasks": {
+    "none": "Bugun vazifa yo'q",
+    "overdue": "Muddati o'tgan",
+    "open": "Ochish",
+    "done": "Bajarildi",
+    "markDone": "Bajarildi: {{title}}",
+    "photoDone": "Foto bilan yopish: {{title}}"
+  },
+  "attendance": {
+    "since": "Ishga kelgansiz: {{time}}"
+  },
+  "saved": {
+    "sending": "Saqlandi",
+    "queued": "Saqlandi. Internet bo'lganda yuboriladi.",
+    "failed": "Telefonga saqlab bo'lmadi. Qayta urinib ko'ring."
+  },
+  "bar": {
+    "waiting": "{{n}} ta yozuv yuborilishini kutmoqda",
+    "syncing": "{{n}} ta yozuv yuborilmoqda",
+    "attention": "{{n}} ta yozuv e'tibor talab qiladi",
+    "retry": "Qayta urinish"
+  },
+  "log": {
+    "title": "Kunlik qayd",
+    "norm": "Me'yor: {{qty}}",
+    "overNorm": "Me'yordan {{percent}}% ko'p",
+    "underNorm": "Me'yordan {{percent}}% kam",
+    "short": "Omborda faqat {{qty}} bor",
+    "qtyRequired": "Miqdorni kiriting",
+    "water": "Suv",
+    "waterUnit": "litr",
+    "condition": "Poda holati",
+    "normal": "Yaxshi",
+    "deviation": "Og'ish bor",
+    "notes": "Izoh",
+    "save": "Saqlash",
+    "saveCorrection": "Tuzatishni saqlash",
+    "correcting": "Bugungi qayd kiritilgan. O'zgartirsangiz, ombor qayta hisoblanadi.",
+    "noRation": "Bu podaga ratsion biriktirilmagan. Berilgan ozuqani qo'shing.",
+    "addFeed": "Boshqa ozuqa qo'shish",
+    "herdMissing": "Poda topilmadi",
+    "herdMissingBody": "Internetga ulanib, ma'lumotni yangilang.",
+    "waitingToSend": "Bu yozuv yuborilmoqda. U yetib borgach, tuzatish mumkin bo'ladi.",
+    "loggedByOther": "Bugungi qaydni boshqa xodim kiritgan. Uni zootexnik o'zgartira oladi."
+  },
+  "animal": {
+    "label": "Hayvon birkasi",
+    "placeholder": "Birka raqami",
+    "change": "O'zgartirish",
+    "notFound": "Bu telefonda topilmadi",
+    "noList": "Hayvonlar ro'yxati telefonda yo'q. Internetga ulanib, «Bugun» sahifasini oching."
+  },
+  "photo": {
+    "take": "Rasmga olish",
+    "remove": "Rasmni olib tashlash",
+    "failed": "Rasmni saqlab bo'lmadi"
+  },
+  "sick": {
+    "note": "Nima bo'ldi?",
+    "save": "Veterinarga xabar berish",
+    "recordTitle": "Kasal: {{tag}}",
+    "symptoms": {
+      "notEating": "Ovqat yemayapti",
+      "limping": "Oqsayapti",
+      "coughing": "Yo'talyapti",
+      "diarrhea": "Ichi ketyapti",
+      "lyingDown": "Turolmayapti"
+    }
+  },
+  "death": {
+    "reason": "Sababi",
+    "save": "Saqlash",
+    "recordTitle": "Nobud bo'ldi: {{tag}}",
+    "reasons": {
+      "disease": "Kasallik",
+      "predator": "Yirtqich",
+      "accident": "Baxtsiz hodisa",
+      "unknown": "Noma'lum"
+    }
+  },
+  "weight": {
+    "kg": "Vazn",
+    "save": "Saqlash va keyingisi",
+    "recordTitle": "Vazn: {{tag}}, {{kg}} kg",
+    "count": "Saqlandi: {{n}} ta"
+  },
+  "lambing": {
+    "ewe": "Sovliq birkasi",
+    "count": "Qo'zilar soni",
+    "lamb": "{{n}}-qo'zi",
+    "sex": "Jinsi",
+    "female": "Urg'ochi",
+    "male": "Erkak",
+    "state": "Holati",
+    "alive": "Tirik",
+    "dead": "O'lik tug'ildi",
+    "weight": "Tug'ilgandagi vazn",
+    "save": "Saqlash",
+    "recordTitle": "Qo'zilash: {{tag}}, {{n}} ta qo'zi"
+  },
+  "kinds": {
+    "daily_log": "Kunlik qayd",
+    "sick_report": "Kasal hayvon",
+    "death": "Nobud bo'lish",
+    "weight": "Vazn",
+    "lambing": "Qo'zilash",
+    "task_complete": "Vazifa"
+  },
+  "sync": {
+    "title": "Yuborish navbati",
+    "online": "Internet bor",
+    "offline": "Internet yo'q. Yozuvlar telefonda saqlanadi.",
+    "lastSync": "Oxirgi yuborish: {{time}}",
+    "sendNow": "Hozir yuborish ({{n}})",
+    "retry": "Qayta yuborish",
+    "edit": "Tuzatish",
+    "discard": "O'chirish",
+    "discardTitle": "Yozuv o'chirilsinmi?",
+    "discardBody": "Bu yozuv hech qayerda qolmaydi.",
+    "conflicts": "Tanlash kerak",
+    "failed": "Qabul qilinmadi",
+    "waiting": "Kutmoqda",
+    "sent": "Yuborildi",
+    "emptyTitle": "Hammasi yuborilgan",
+    "emptyBody": "Telefonda yuborilmagan yozuv yo'q.",
+    "others": "Boshqa foydalanuvchi yoki ferma yozuvlari: {{n}} ta. U kirganda yuboriladi.",
+    "conflictBody": "Bu poda uchun shu kunga boshqa yozuv saqlangan. Qaysi biri to'g'ri?",
+    "mine": "Mening yozuvim",
+    "server": "Saqlangan yozuv",
+    "serverUnknown": "Saqlangan yozuvni ko'rish uchun internet kerak.",
+    "keepMine": "Meniki to'g'ri",
+    "keepServer": "Saqlangani to'g'ri",
+    "keepServerTitle": "Yozuvingiz o'chirilsinmi?",
+    "keepServerBody": "Saqlangan yozuv qoladi, sizniki telefondan o'chadi.",
+    "sendToManager": "Zootexnikka yuborish",
+    "settled": "Hal qilindi"
+  },
+  "errors": {
+    "EDIT_WINDOW_CLOSED": "Bu yozuvni faqat zootexnik o'zgartira oladi. Yozuvingizni unga yuboring.",
+    "STALE_UPDATE": "Yozuv hozirgina o'zgardi. Yangisini ko'rib, qayta tanlang.",
+    "NOTHING_TO_UPDATE": "O'zgartirish yo'q"
+  }
+}

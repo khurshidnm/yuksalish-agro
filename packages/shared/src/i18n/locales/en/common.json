@@ -1,0 +1,87 @@
+{
+  "app": { "name": "Yuksalish Agro", "tagline": "Farm management platform" },
+  "actions": {
+    "save": "Save", "cancel": "Cancel", "delete": "Delete", "edit": "Edit", "add": "Add",
+    "create": "Create", "close": "Close", "back": "Back", "search": "Search", "filter": "Filter",
+    "export": "Export", "import": "Import", "download": "Download", "upload": "Upload a file", "retry": "Try again",
+    "confirm": "Confirm", "approve": "Approve", "reject": "Reject", "yes": "Yes", "no": "No",
+    "more": "More", "refresh": "Refresh", "clear": "Clear", "apply": "Apply", "view": "View",
+    "open": "Open", "print": "Print", "next": "Next", "previous": "Previous", "submit": "Submit"
+  },
+  "status": {
+    "loading": "Loading...", "saving": "Saving...", "noData": "No data",
+    "notEnoughData": "Not enough data", "offline": "No internet connection"
+  },
+  "table": {
+    "actions": "Actions", "pagination": "Pages", "range": "{{from}}–{{to}} of {{total}}",
+    "empty": "No records yet", "emptyHint": "Your first record will appear here once you add it.",
+    "noResults": "Nothing found", "noResultsHint": "No results for \"{{query}}\". Try a different word.",
+    "searchPlaceholder": "Search..."
+  },
+  "form": {
+    "required": "Required field", "optional": "Optional", "selectPlaceholder": "Select",
+    "searchPlaceholder": "Search...", "noOptions": "Nothing found"
+  },
+  "validation": {
+    "required": "Fill in this field", "invalid": "Invalid value", "format": "Invalid format",
+    "min": "Must be at least {{min}}", "max": "Must be at most {{max}}",
+    "greaterThan": "Must be greater than {{min}}",
+    "minLength": "Enter at least {{min}} characters", "maxLength": "Enter at most {{max}} characters"
+  },
+  "errors": {
+    "title": "Could not load the data", "generic": "Something went wrong. Try again.",
+    "network": "Check your internet connection and try again.",
+    "forbidden": "You don't have permission to do this.", "server": "Server error. Try again in a moment.",
+    "rateLimit": "Too many attempts. Try again in a minute.",
+    "VALIDATION_ERROR": "Check the highlighted fields.",
+    "INVALID_INPUT": "Some values are not valid.",
+    "ALREADY_EXISTS": "This record already exists.",
+    "IN_USE": "This record is in use and cannot be deleted.",
+    "INVALID_REFERENCE": "A linked record was not found.",
+    "NOTHING_TO_UPDATE": "No changes were sent.",
+    "NOT_FOUND": "Record not found.",
+    "RETRY": "Someone else is changing this record. Try again.",
+    "FORBIDDEN": "You don't have permission to do this.",
+    "TENANT_SUSPENDED": "This farm's account is suspended. Contact support.",
+    "MODULE_DISABLED": "This module isn't enabled for your farm.",
+    "NO_ACTIVE_FARM": "No active farm is selected.",
+    "FILE_REQUIRED": "No file was selected.",
+    "FILE_TYPE_NOT_ALLOWED": "This file type can't be uploaded.",
+    "FILE_NOT_FOUND": "File not found.",
+    "INSUFFICIENT_STOCK": "Not enough stock in the warehouse.",
+    "BATCH_ALREADY_USED": "This batch has been used and can't be reversed.",
+    "COST_CENTER_REQUIRED": "Choose a cost center.",
+    "INVALID_QUANTITY": "Invalid quantity.",
+    "INVALID_COST": "Unit cost can't be negative.",
+    "SAME_WAREHOUSE": "The warehouses must be different.",
+    "ACCOUNT_REQUIRED": "Choose a cash or bank account.",
+    "ACCOUNTS_REQUIRED": "Choose both accounts for a transfer.",
+    "CATEGORY_REQUIRED": "Choose a category.",
+    "COUNTERPARTY_REQUIRED": "Choose a counterparty for the debt.",
+    "INVALID_AMOUNT": "The amount must be greater than zero.",
+    "SAME_ACCOUNT": "The accounts must be different.",
+    "NOT_PENDING": "This transaction isn't waiting for approval.",
+    "SAME_MAKER_CHECKER": "The person who entered a transaction can't approve it.",
+    "FX_RATE_REQUIRED": "No exchange rate has been entered for this date.",
+    "INVALID_PAYMENT_METHOD": "Invalid payment method."
+  },
+  "pages": {
+    "notFoundTitle": "Page not found", "notFoundBody": "This page doesn't exist or has moved.",
+    "forbiddenTitle": "No access", "forbiddenBody": "You don't have access to this section. Ask your farm manager if you need it.",
+    "moduleOffTitle": "Module not enabled", "moduleOffBody": "This module isn't activated for your farm.",
+    "errorTitle": "Something went wrong", "errorBody": "Try reloading the page. If it happens again, contact support.",
+    "backHome": "Go to home", "reload": "Reload",
+    "offlineTitle": "This page needs a connection", "offlineBody": "It will open once you are back online. You can keep working on the Today screen.", "offlineAction": "Go to Today"
+  },
+  "stub": { "title": "This section is being built", "body": "You'll be able to work here soon." },
+  "theme": { "toggle": "Change theme", "light": "Light", "dark": "Dark", "system": "System" },
+  "language": { "label": "Language" },
+  "toast": { "saved": "Saved", "created": "Created", "updated": "Updated", "deleted": "Deleted" },
+  "chart": { "showTable": "Show table", "showChart": "Show chart", "noData": "No data to chart", "period": "Period" },
+  "number": {"thousand": "{{value}}K", "million": "{{value}}M", "billion": "{{value}}B", "trillion": "{{value}}T"},
+  "date": {
+    "months": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+    "monthsOf": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+    "monthsShort": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+  }
+}

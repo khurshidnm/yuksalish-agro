@@ -1,0 +1,586 @@
+{
+  "page": {
+    "title": "Import from Excel",
+    "description": "Load data from Excel files and download your lists.",
+    "tabs": {
+      "import": "Import",
+      "history": "History",
+      "export": "Export"
+    },
+    "howTo": {
+      "title": "How it works",
+      "step1": "Download the template and fill it in.",
+      "step2": "Upload the file. Nothing is saved yet: you see the check result first.",
+      "step3": "Fix errors in the file and upload it again, or confirm the valid rows.",
+      "order": "Suggested order: counterparties, fields, feed, animals, then expenses. Uploading a file twice is safe: existing records are not duplicated."
+    },
+    "columns": "Columns",
+    "download": "Download template",
+    "upload": "Upload file",
+    "uploading": "Checking…",
+    "locked": "You do not have access to this template. Ask your manager.",
+    "maxRows": "Up to {{max}} rows per file. Excel (.xlsx) or CSV.",
+    "noAccess": "You do not have import or export access",
+    "noAccessHint": "Ask the farm manager if you need it."
+  },
+  "job": {
+    "title": "Check result: {{template}}",
+    "file": "File: {{name}}",
+    "count": {
+      "new": "New",
+      "update": "Will update",
+      "skip": "Already there",
+      "error": "With errors"
+    },
+    "countHint": {
+      "new": "Added when you confirm",
+      "update": "Replaces an existing record",
+      "skip": "Will be skipped",
+      "error": "Will not be imported"
+    },
+    "hasErrorsTitle": "{{count}} rows have errors",
+    "hasErrors": "These rows will not be imported. Fix them in the file and upload it again. If you confirm the valid rows now, they will not be doubled when you upload again.",
+    "problems": "Errors",
+    "notes": "Please note",
+    "times": "{{count}} rows",
+    "rowsList": "Rows: {{rows}}",
+    "andMore": "{{rows}} and more",
+    "confirm": "Import {{count}} rows",
+    "confirmTitle": "Import this data?",
+    "confirmText": "{{count}} rows will be added to the system.",
+    "uploadAgain": "Upload the fixed file",
+    "downloadErrors": "Download rows with errors",
+    "discard": "Discard",
+    "discardTitle": "Discard this import?",
+    "discardText": "Nothing has been saved. You can upload the file again later.",
+    "nothing": "There is nothing new to import. Every row is already in the system or has an error.",
+    "back": "All templates",
+    "rowsTitle": "Rows",
+    "filterAll": "All",
+    "rowNumber": "Row",
+    "status": "Status",
+    "reason": "Note",
+    "noRows": "No rows with this status",
+    "doneTitle": "{{count}} rows imported",
+    "doneSkipped": "{{count}} rows were already there and were skipped.",
+    "doneErrors": "{{count}} rows were not imported because of errors. Fix them and upload again.",
+    "donePending": "{{count}} expenses are waiting for approval: they reach the reports once another person approves them.",
+    "donePregnancies": "Lambing dates calculated for {{count}} ewes.",
+    "openResult": "View the imported data",
+    "another": "Import another file",
+    "discardedTitle": "This import was discarded"
+  },
+  "status": {
+    "new": "New",
+    "update": "Will update",
+    "skip": "Already there",
+    "error": "Error"
+  },
+  "history": {
+    "date": "Date",
+    "template": "Template",
+    "file": "File",
+    "status": "Status",
+    "rows": "Rows",
+    "imported": "Imported",
+    "by": "By",
+    "empty": "Nothing has been imported yet",
+    "emptyHint": "Your history appears here after the first upload.",
+    "open": "Open",
+    "state": {
+      "preview": "Not confirmed",
+      "confirmed": "Imported",
+      "discarded": "Discarded"
+    }
+  },
+  "exports": {
+    "title": "Download your lists",
+    "description": "Lists follow your permissions: columns you cannot see are left out of the file.",
+    "excel": "Excel",
+    "csv": "CSV",
+    "from": "From",
+    "to": "To",
+    "entity": {
+      "animals": "Animals",
+      "fields": "Fields",
+      "stock": "Stock balances",
+      "employees": "Employees",
+      "counterparties": "Counterparties",
+      "transactions": "Transactions"
+    },
+    "entityHint": {
+      "animals": "Every animal in the registry, including those that have left",
+      "fields": "Active fields with the current crop",
+      "stock": "Current stock by warehouse",
+      "employees": "The staff register",
+      "counterparties": "Active counterparties",
+      "transactions": "Approved transactions"
+    }
+  },
+  "templates": {
+    "fields": {
+      "title": "Fields",
+      "sheet": "Fields",
+      "file": "fields-template",
+      "description": "Fields, crops and autumn sowing data.",
+      "note": "When a crop is given, a season plan is created for the field too. The season follows from the sowing date, and is created if it does not exist.",
+      "columns": {
+        "number": {
+          "label": "Field number",
+          "hint": "The field's number or short code. It must not repeat."
+        },
+        "areaHa": {
+          "label": "Area (ha)",
+          "hint": "In hectares. When coordinates are given, the area is computed from them."
+        },
+        "crop": {
+          "label": "Crop",
+          "hint": "Choose from the list.",
+          "example": "Wheat"
+        },
+        "variety": {
+          "label": "Variety",
+          "hint": "Optional."
+        },
+        "sowingDate": {
+          "label": "Sowing date",
+          "hint": "For example 25.10.2026. A past date counts as sown, a future date as planned."
+        },
+        "seedRate": {
+          "label": "Seed rate (kg/ha)",
+          "hint": "Optional."
+        },
+        "irrigationSource": {
+          "label": "Irrigation source",
+          "hint": "Optional.",
+          "example": "Canal"
+        },
+        "coordinates": {
+          "label": "Coordinates (optional)",
+          "hint": "Boundary points as latitude and longitude: 39.5, 64.8; 39.5, 64.81; 39.51, 64.81"
+        }
+      }
+    },
+    "animals": {
+      "title": "Animals",
+      "sheet": "Animals",
+      "file": "animals-template",
+      "description": "Tagged animals with pregnancy and purchase details.",
+      "note": "When a pregnancy date is given, the expected lambing date is calculated automatically. The category follows from sex and age: under one year is a lamb, older is an ewe or a ram.",
+      "columns": {
+        "tag": {
+          "label": "Tag number",
+          "hint": "Unique for each animal."
+        },
+        "breed": {
+          "label": "Breed",
+          "hint": "Choose from the list.",
+          "example": "Hissar"
+        },
+        "sex": {
+          "label": "Sex",
+          "hint": "Choose from the list.",
+          "example": "Female"
+        },
+        "birth": {
+          "label": "Birth date or age",
+          "hint": "A date (15.03.2023) or an age (3, 3 years, 18 months). With an age, the date is marked as estimated."
+        },
+        "weightKg": {
+          "label": "Weight (kg)",
+          "hint": "Optional."
+        },
+        "pregnancyDate": {
+          "label": "Pregnancy date",
+          "hint": "The mating date. The lambing date is calculated from it."
+        },
+        "purchaseDate": {
+          "label": "Purchase date",
+          "hint": "Required for purchased animals."
+        },
+        "purchasePrice": {
+          "label": "Purchase price",
+          "hint": "In so'm, per head."
+        },
+        "seller": {
+          "label": "Seller",
+          "hint": "If not in the system, a new counterparty is created.",
+          "example": "Sherobod Chorva LLC"
+        },
+        "herd": {
+          "label": "Herd",
+          "hint": "Optional. A new name creates a herd. If empty and the farm has one herd, the animal joins it.",
+          "example": "Pregnant ewes"
+        }
+      }
+    },
+    "feed": {
+      "title": "Feed stock",
+      "sheet": "Feed stock",
+      "file": "feed-template",
+      "description": "Opening feed balances and prices.",
+      "note": "Each row enters the warehouse as an opening balance. A new feed given in tons is stored in kilograms, because rations are calculated in kilograms.",
+      "columns": {
+        "item": {
+          "label": "Feed",
+          "hint": "If not in the system, a new item is created.",
+          "example": "Alfalfa hay"
+        },
+        "qty": {
+          "label": "Quantity",
+          "hint": "In the chosen unit."
+        },
+        "unit": {
+          "label": "Unit",
+          "hint": "kg, t or bale.",
+          "example": "t"
+        },
+        "date": {
+          "label": "Receipt date",
+          "hint": "For example 15.10.2026."
+        },
+        "price": {
+          "label": "Price (per unit)",
+          "hint": "In so'm, for the chosen unit."
+        }
+      }
+    },
+    "employees": {
+      "title": "Employees",
+      "sheet": "Employees",
+      "file": "employees-template",
+      "description": "The staff register and pay.",
+      "note": "An employee is identified by phone, or without one by name and hire date.",
+      "columns": {
+        "fullName": {
+          "label": "Full name",
+          "hint": "Full name.",
+          "example": "Vali Aliyev"
+        },
+        "position": {
+          "label": "Position",
+          "hint": "For example shepherd, machine operator.",
+          "example": "Shepherd"
+        },
+        "payType": {
+          "label": "Pay type",
+          "hint": "Choose from the list.",
+          "example": "Monthly"
+        },
+        "rate": {
+          "label": "Pay rate",
+          "hint": "In so'm: the monthly, daily or seasonal rate."
+        },
+        "hireDate": {
+          "label": "Hire date",
+          "hint": "For example 01.09.2026."
+        },
+        "phone": {
+          "label": "Phone",
+          "hint": "Optional."
+        },
+        "contractEndDate": {
+          "label": "Contract end date",
+          "hint": "Required for seasonal staff."
+        }
+      }
+    },
+    "machinery": {
+      "title": "Machinery",
+      "sheet": "Machinery",
+      "file": "machinery-template",
+      "description": "Tractors, equipment and their condition.",
+      "columns": {
+        "name": {
+          "label": "Name",
+          "hint": "Must not repeat when there is no inventory number."
+        },
+        "type": {
+          "label": "Type",
+          "hint": "Choose from the list.",
+          "example": "Tractor"
+        },
+        "inventoryNo": {
+          "label": "Inventory number",
+          "hint": "Optional."
+        },
+        "purchaseDate": {
+          "label": "Purchase date",
+          "hint": "Optional."
+        },
+        "purchasePrice": {
+          "label": "Purchase price",
+          "hint": "In so'm. Optional."
+        },
+        "status": {
+          "label": "Status",
+          "hint": "If empty, it counts as working.",
+          "example": "Working"
+        }
+      }
+    },
+    "counterparties": {
+      "title": "Counterparties",
+      "sheet": "Counterparties",
+      "file": "counterparties-template",
+      "description": "Buyers, suppliers and other parties.",
+      "columns": {
+        "name": {
+          "label": "Name",
+          "hint": "The name of the organisation or person.",
+          "example": "Bukhara Feed Trading LLC"
+        },
+        "tin": {
+          "label": "TIN",
+          "hint": "9 or 14 digits. Optional."
+        },
+        "type": {
+          "label": "Category",
+          "hint": "Choose from the list.",
+          "example": "Supplier"
+        },
+        "phone": {
+          "label": "Phone",
+          "hint": "Optional."
+        },
+        "bank": {
+          "label": "Bank details",
+          "hint": "In one cell: bank name, account number, MFO.",
+          "example": "Agrobank, account 20208000900123456001, MFO 00394"
+        }
+      }
+    },
+    "expenses": {
+      "title": "Opening expenses",
+      "sheet": "Expenses",
+      "file": "expenses-template",
+      "description": "Spending made before the platform went live.",
+      "note": "Large amounts wait for another person's approval, as usual. Feed, seed, fertilizer and fuel on the general farm center count as stock purchases, so they are not counted twice. Choose a field or herd for a direct cost. Animal purchases go into the animal's cost, investments into assets.",
+      "columns": {
+        "date": {
+          "label": "Date",
+          "hint": "For example 05.10.2026."
+        },
+        "category": {
+          "label": "Category",
+          "hint": "Choose from the list.",
+          "example": "Electricity"
+        },
+        "amount": {
+          "label": "Amount",
+          "hint": "In so'm."
+        },
+        "paymentMethod": {
+          "label": "Payment method",
+          "hint": "Cash, bank, card or on credit. The account is the first one of that type.",
+          "example": "Cash"
+        },
+        "costCenter": {
+          "label": "Cost center",
+          "hint": "A field number, herd, machine or general farm.",
+          "example": "General farm"
+        },
+        "note": {
+          "label": "Note",
+          "hint": "Optional.",
+          "example": "Electricity for October"
+        },
+        "counterparty": {
+          "label": "Counterparty",
+          "hint": "Required for spending on credit."
+        }
+      }
+    },
+    "budget": {
+      "title": "Budget 2026/27",
+      "sheet": "Budget",
+      "file": "budget-template",
+      "description": "The plan by month and category.",
+      "note": "A new amount for a month and category replaces the old one.",
+      "columns": {
+        "month": {
+          "label": "Month",
+          "hint": "For example 2026-11, 11.2026 or November 2026."
+        },
+        "category": {
+          "label": "Category",
+          "hint": "Choose from the list.",
+          "example": "Feed"
+        },
+        "amount": {
+          "label": "Planned amount",
+          "hint": "In so'm."
+        }
+      }
+    }
+  },
+  "rows": {
+    "required": "{{column}} is empty",
+    "tooLong": "{{column}} is too long (at most {{max}} characters)",
+    "tooShort": "{{column}} is too short",
+    "invalidNumber": "{{column}} is not a number",
+    "tooSmall": "{{column}} cannot be less than {{min}}",
+    "mustBeAbove": "{{column}} must be greater than {{min}}",
+    "tooBig": "{{column}} is too large (at most {{max}})",
+    "invalidDate": "{{column}}: the date is not valid. Example: 25.10.2026",
+    "futureDate": "{{column}} cannot be in the future",
+    "invalidMonth": "{{column}}: the month is not valid. Example: 2026-11 or November 2026",
+    "unknownValue": "{{column}}: \"{{value}}\" was not found. Allowed: {{allowed}}",
+    "moneyNotAllowed": "{{column}}: only staff with finance access can import prices. Leave this column empty",
+    "duplicateInFile": "Repeated in this file: also on row {{row}}",
+    "unknownCounterparty": "{{column}}: \"{{value}}\" was not found. Import the counterparties template first",
+    "newCounterparty": "A new counterparty will be created",
+    "invalidCoordinates": "{{column}} could not be read. Example: 39.5, 64.8; 39.5, 64.81; 39.51, 64.81",
+    "coordinatesPoint": "One point is not a boundary, so the coordinates are not saved",
+    "invalidOutline": "{{column}}: the boundary crosses itself or has no area",
+    "areaDiffersFromOutline": "The boundary measures {{measured}} ha, and that is what is saved",
+    "areaDiffersFromField": "The system has {{existing}} ha, and that does not change",
+    "fieldExists": "Field {{number}} is already there",
+    "fieldNotArable": "Field {{number}} is not arable land",
+    "seasonTaken": "Field {{number}} already has another crop planned this season",
+    "seasonWillBeCreated": "A new season will be created: {{name}}",
+    "animalExists": "The animal tagged {{tag}} is already there",
+    "tagOnOtherAnimal": "This tag belongs to animal {{tag}}",
+    "invalidBirth": "{{column}} must be a date or an age. Example: 15.03.2023 or 3 years",
+    "priceNeedsDate": "There is a price but no purchase date",
+    "originUnknown": "A purchase date or an exact birth date is needed",
+    "maleCannotBePregnant": "A pregnancy date is given for a male",
+    "matingBeforeBirth": "The pregnancy date is before the birth date",
+    "lambingDatePassed": "The expected lambing date has already passed: check the year",
+    "herdWillBeCreated": "A new herd will be created",
+    "noHerd": "The animal joins no herd. Move it to one later",
+    "stockExists": "\"{{name}}\" is already received for this date",
+    "stockDiffers": "\"{{name}}\" already has a different balance on {{date}}. Correct it in the warehouse",
+    "unitMismatch": "This feed is kept in {{unit}} and cannot be converted",
+    "newItem": "A new item will be created",
+    "baleWeightNeeded": "Enter the bale weight on the item, or days of stock cannot be calculated",
+    "warehouseWillBeCreated": "No feed warehouse was found, so one will be created",
+    "employeeExists": "{{name}} is already in the register",
+    "invalidPhone": "{{column}}: the phone number is not valid",
+    "seasonalNeedsEnd": "A seasonal employee needs a contract end date",
+    "assetExists": "\"{{name}}\" is already there",
+    "counterpartyExists": "\"{{name}}\" is already there",
+    "tinLength": "A TIN usually has 9 or 14 digits: please check",
+    "expenseExists": "This expense is already recorded",
+    "debtNeedsCounterparty": "Spending on credit needs a counterparty",
+    "noAccount": "There is no account for {{method}}. Create one in Finance",
+    "treatedAsStock": "Treated as a stock purchase: the cost reaches a center when issued from the warehouse. Choose a field or herd for a direct cost",
+    "budgetExists": "This plan is already there",
+    "budgetZero": "The plan is zero, so there is nothing to add",
+    "budgetUpdate": "Replaces the old plan: {{old}}"
+  },
+  "workbook": {
+    "instructionsSheet": "Instructions",
+    "step1": "1. Fill in the table on the first sheet. Columns with a star are required.",
+    "step2": "2. You can keep or delete the example row: it is never imported.",
+    "step3": "3. Do not change the headers. The order of columns does not matter.",
+    "step4": "4. Write dates like 25.10.2026 and numbers as usual. Latin and Cyrillic both work.",
+    "step5": "5. Upload the file to the platform. Every row is checked and errors are shown before anything is saved.",
+    "column": "Column",
+    "required": "Required",
+    "description": "Description",
+    "yes": "Yes",
+    "no": "No",
+    "exampleMark": "← This is an example. It is not imported.",
+    "notInListTitle": "Not in the list",
+    "notInList": "This value is not in the list. It will be checked on upload.",
+    "errorColumn": "Reason",
+    "errorsFile": "errors"
+  },
+  "defaults": {
+    "autumnSeason": "Autumn {{years}}",
+    "summerSeason": "Summer {{year}}",
+    "feedWarehouse": "Feed warehouse"
+  },
+  "export": {
+    "animals": {
+      "file": "animals",
+      "tag": "Tag number",
+      "breedName": "Breed",
+      "sex": "Sex",
+      "category": "Category",
+      "status": "Status",
+      "birthDate": "Birth date",
+      "herdName": "Herd",
+      "currentWeightKg": "Weight (kg)",
+      "lastWeighedOn": "Last weighed",
+      "purchaseDate": "Purchase date",
+      "purchasePrice": "Purchase price"
+    },
+    "fields": {
+      "file": "fields",
+      "number": "Field number",
+      "name": "Name",
+      "landUse": "Land use",
+      "areaHa": "Area (ha)",
+      "soilType": "Soil type",
+      "irrigationSource": "Irrigation source",
+      "crop": "Current crop",
+      "variety": "Variety"
+    },
+    "stock": {
+      "file": "stock",
+      "name": "Item",
+      "category": "Category",
+      "warehouseName": "Warehouse",
+      "qty": "Quantity",
+      "unit": "Unit",
+      "nearestExpiry": "Expiry",
+      "avgCost": "Average cost",
+      "value": "Value"
+    },
+    "employees": {
+      "file": "employees",
+      "fullName": "Full name",
+      "position": "Position",
+      "division": "Division",
+      "status": "Status",
+      "hireDate": "Hire date",
+      "payType": "Pay type",
+      "baseRate": "Pay rate",
+      "phone": "Phone"
+    },
+    "counterparties": {
+      "file": "counterparties",
+      "name": "Name",
+      "tin": "TIN",
+      "type": "Category",
+      "phone": "Phone",
+      "address": "Address",
+      "contactPerson": "Contact person",
+      "bankName": "Bank",
+      "bankAccount": "Account number",
+      "bankMfo": "MFO"
+    },
+    "transactions": {
+      "file": "transactions",
+      "date": "Date",
+      "type": "Type",
+      "category": "Category",
+      "amount": "Amount",
+      "currency": "Currency",
+      "amountBase": "Amount (base currency)",
+      "paymentMethod": "Payment method",
+      "accountName": "Account",
+      "counterpartyName": "Counterparty",
+      "costCenterName": "Cost center",
+      "description": "Note"
+    }
+  },
+  "errors": {
+    "NOT_A_SPREADSHEET": "This is not an Excel or CSV file. Download the template and fill that in.",
+    "OLD_EXCEL_FORMAT": "This is the old .xls format. Save it as .xlsx in Excel and upload it again.",
+    "EMPTY_FILE": "The file is empty.",
+    "FILE_TOO_COMPLEX": "This file is too large to read. Remove any sheets you do not need.",
+    "FILE_REQUIRED": "No file was chosen.",
+    "FST_REQ_FILE_TOO_LARGE": "The file must not exceed 15 MB.",
+    "WRONG_TEMPLATE": "The headers in this file do not match the \"{{expected}}\" template. Download it and fill that in.",
+    "LOOKS_LIKE_OTHER_TEMPLATE": "This file looks like the \"{{detected}}\" template, but you chose \"{{expected}}\".",
+    "MISSING_COLUMNS": "The file is missing these columns: {{columns}}.",
+    "NO_DATA_ROWS": "The file has no data rows. It may hold only the example.",
+    "TOO_MANY_ROWS": "A file can hold up to {{max}} rows and this one has {{found}}. Split it into parts.",
+    "JOB_NOT_OPEN": "This import has already been finished.",
+    "NOTHING_TO_IMPORT": "There are no valid rows to import.",
+    "IMPORT_ROW_FAILED": "Row {{row}} failed: {{reason}}. Nothing was saved."
+  }
+}

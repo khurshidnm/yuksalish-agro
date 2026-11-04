@@ -1,0 +1,192 @@
+{
+  "title": "Boshqaruv paneli",
+  "updatedAt": "Yangilandi: {{time}}",
+  "refresh": "Yangilash",
+  "details": "Batafsil",
+  "noData": "Ma'lumot yetarli emas",
+  "head": "{{value}} bosh",
+  "days": "{{value}} kun",
+  "tabs": {
+    "overview": "Holat",
+    "kpi": "KPI"
+  },
+  "unavailable": {
+    "title": "Bu bo'lim hozir ochilmadi",
+    "text": "Boshqa bo'limlar ishlayapti. Birozdan keyin yana urinib ko'ring.",
+    "retry": "Qayta urinish"
+  },
+  "banner": {
+    "urgent": "Shoshilinch ogohlantirishlar: {{value}}",
+    "attention": "E'tibor talab qiladi: {{value}}",
+    "clear": "Shoshilinch muammo yo'q",
+    "open": "Ko'rish"
+  },
+  "sections": {
+    "finance": "Moliya",
+    "livestock": "Chorva",
+    "crops": "Dehqonchilik",
+    "feed": "Ozuqa",
+    "staff": "Xodimlar va texnika",
+    "alerts": "Ogohlantirishlar",
+    "cameras": "Kameralar"
+  },
+  "finance": {
+    "cash": "Kassa va bank",
+    "monthExpense": "Bu oy xarajat",
+    "monthIncome": "Bu oy daromad",
+    "budget": "Byudjet ijrosi",
+    "budgetMonth": "Byudjet ijrosi (bu oy)",
+    "thisMonth": "Bu oy",
+    "yearToDate": "Yil boshidan",
+    "budgetFact": "{{actual}} / {{planned}}",
+    "budgetOver": "{{value}} oshib ketdi",
+    "overruns": "Eng katta oshib ketishlar",
+    "debts": "Qarzdorlik",
+    "receivable": "Bizga qarzdorlar",
+    "payable": "Bizning qarzimiz",
+    "overdueDebts": "Muddati o'tgan qarz",
+    "loans": "Kredit qoldig'i",
+    "forecast": "3 oylik pul oqimi prognozi",
+    "forecastNote": "Statistik baho, aniq reja emas",
+    "inflow": "Kirim",
+    "outflow": "Chiqim",
+    "closing": "Oy oxiridagi qoldiq",
+    "lowConfidence": "Tarixiy ma'lumot kam, baho taxminiy",
+    "shortfall": "Pul yetishmasligi kutilmoqda: {{month}}",
+    "negative": "Pul yetishmaydi"
+  },
+  "livestock": {
+    "total": "Jami poda",
+    "pregnantHint": "Bo'g'oz: {{value}}",
+    "nextLambing": "Keyingi qo'zilash",
+    "next7Days": "7 kun ichida: {{value}}",
+    "unwell": "Kasal va karantinda",
+    "unwellHint": "Kasal: {{sick}} · Karantin: {{quarantine}}",
+    "deaths30": "30 kunda nobud bo'lgan",
+    "lambingByWeek": "Kutilayotgan qo'zilash, hafta bo'yicha",
+    "lambingTotal": "Jami {{ewes}} sovliq, kutilayotgan qo'zilar: {{lambs}}",
+    "lambsUnknown": "birinchi qo'zilashdan keyin ma'lum bo'ladi",
+    "ewes": "Sovliqlar",
+    "noLambing": "Yaqin oylarda qo'zilash kutilmayapti",
+    "lambingOverdue": "{{value}} ta sovliqning qo'zilash muddati o'tgan",
+    "composition": "Poda tarkibi",
+    "weightTrend": "O'rtacha vazn dinamikasi",
+    "avgWeight": "O'rtacha vazn"
+  },
+  "crops": {
+    "sown": "Ekilgan dalalar",
+    "irrigated": "Sug'orilgan",
+    "harvested": "Yig'ilgan",
+    "ofTotal": "{{value}} / {{total}}",
+    "overdue": "Muddati o'tgan tadbirlar",
+    "overdueTitle": "Muddati o'tgan tadbirlar: {{value}}",
+    "noOverdue": "Muddati o'tgan tadbir yo'q",
+    "operationField": "{{type}}, {{field}}-dala",
+    "harvest": "Hosil: fakt / reja",
+    "harvestValue": "{{actual}} / {{planned}} t",
+    "fields": "Dalalar holati",
+    "weatherTitle": "Ob-havo prognozi",
+    "noWeather": "Ob-havo ma'lumoti hali olinmagan",
+    "frost": "Sovuq xavfi",
+    "frostDays": "Sovuq kunlar: {{value}}",
+    "weather": {
+      "clear": "Ochiq",
+      "partly": "Qisman bulutli",
+      "cloudy": "Bulutli",
+      "fog": "Tuman",
+      "rain": "Yomg'ir",
+      "snow": "Qor",
+      "storm": "Momaqaldiroq"
+    }
+  },
+  "feed": {
+    "lowestDays": "Eng kam zaxira",
+    "belowMinimum": "Minimaldan past",
+    "belowMinimumBadge": "{{days}} kundan kam",
+    "nothingLow": "Hamma pozitsiya me'yorda",
+    "dailyUse": "Kunlik sarf",
+    "daysTitle": "Zaxira necha kunga yetadi",
+    "daysNote": "To'liq chiziq {{days}} kunni bildiradi",
+    "daysOf": "{{item}} zaxirasi",
+    "stock": "Qoldiq: {{value}}",
+    "basis": {
+      "actual": "haqiqiy sarf bo'yicha",
+      "plan": "ratsion bo'yicha"
+    },
+    "consumption": "Kunlik ozuqa sarfi",
+    "averagePerDay": "O'rtacha kuniga {{value}}",
+    "fed": "Berilgan ozuqa"
+  },
+  "staff": {
+    "present": "Bugun ishda",
+    "tasksDone": "Bugun bajarilgan vazifalar",
+    "tasksHint": "Ochiq: {{open}} · Muddati o'tgan: {{overdue}}",
+    "machinery": "Ishlayotgan texnika",
+    "machineryHint": "Ta'mirda: {{repair}} · Xizmat vaqti: {{due}}",
+    "fuel": "Yoqilg'i sarfi",
+    "fuelHint": "So'nggi {{days}} kun"
+  },
+  "alerts": {
+    "none": "Ochiq ogohlantirish yo'q"
+  },
+  "cameras": {
+    "fleet": "Kameralar holati",
+    "online": "Onlayn",
+    "offline": "Oflayn",
+    "planned": "Rejada",
+    "events": "Oxirgi hodisalar",
+    "noEvents": "Hozircha hodisa yo'q",
+    "sample": "Namuna"
+  },
+  "kpi": {
+    "period": "Davr",
+    "periods": {
+      "ytd": "Yil boshidan",
+      "month": "Bu oy",
+      "last12": "So'nggi 12 oy"
+    },
+    "units": {
+      "grams": "{{value}} g",
+      "tHa": "{{value}} t/ga",
+      "m3t": "{{value}} m³/t"
+    },
+    "groups": {
+      "finance": "Moliya",
+      "livestock": "Chorva",
+      "crops": "Dehqonchilik",
+      "feed": "Ozuqa",
+      "staff": "Xodimlar",
+      "machinery": "Texnika"
+    },
+    "labels": {
+      "profitabilityPercent": "Rentabellik",
+      "profitPerEwe": "1 bosh sovliqqa foyda",
+      "operatingRatio": "Operatsion xarajat / daromad",
+      "netCashflow": "Sof pul oqimi",
+      "budgetDeviationPercent": "Byudjet og'ishi",
+      "lambingPercent": "Qo'zilash foizi",
+      "survivalPercent": "Saqlanib qolish",
+      "adgG": "O'rtacha kunlik o'sish",
+      "costPerKgLive": "1 kg tirik vazn tannarxi",
+      "feedConversion": "Ozuqa konversiyasi",
+      "mortalityPercent": "Nobudgarchilik",
+      "yieldTHa": "Hosildorlik",
+      "costPerTon": "1 t mahsulot tannarxi",
+      "onTimePercent": "Tadbirlarni o'z vaqtida bajarish",
+      "waterM3PerTon": "Suv sarfi",
+      "stockDays": "Zaxira kunlari",
+      "costPerHeadDay": "1 bosh kunlik ozuqa xarajati (ratsion)",
+      "lossPercent": "Ozuqa yo'qotishlari",
+      "headPerEmployee": "Mehnat unumdorligi, bosh/xodim",
+      "haPerEmployee": "Mehnat unumdorligi, ga/xodim",
+      "attendancePercent": "Tabel intizomi",
+      "utilizationPercent": "Texnika yuklanishi",
+      "costPerHa": "1 ga ish tannarxi",
+      "unplannedStops": "Rejadan tashqari to'xtashlar"
+    },
+    "partlyWeighed": "Faqat {{value}} bosh ikki marta tortilgan, podaning ko'pi kerak"
+  },
+  "errors": {
+    "INVALID_PERIOD": "Davrni 1 oydan {{max}} oygacha tanlang"
+  }
+}

@@ -1,0 +1,189 @@
+{
+  "notification": {
+    "assigned": "Sizga yangi vazifa biriktirildi"
+  },
+  "errors": {
+    "TASK_NOT_OPEN": "Faqat ochiq vazifani boshlash mumkin",
+    "TASK_NOT_ACTIVE": "Bu vazifa allaqachon yopilgan",
+    "TASK_NOT_CLOSED": "Bu vazifa yopilmagan",
+    "TASK_IS_SERIES": "Takrorlanuvchi seriyani bajarilgan deb belgilab bo'lmaydi",
+    "PHOTO_REQUIRED": "Bu vazifani yopish uchun foto kerak",
+    "RECORD_REQUIRED": "Bu vazifa faqat tegishli qayd bilan yopiladi",
+    "ASSIGNEE_NOT_MEMBER": "Bu xodim shu fermada ishlamaydi",
+    "INVALID_DATE_RANGE": "Tugash sanasi boshlanish sanasidan oldin bo'lishi mumkin emas"
+  },
+  "title": "Vazifalar",
+  "description": "Fermadagi ishlar: kim, nima va qachongacha bajaradi.",
+  "myTitle": "Mening vazifalarim",
+  "myDescription": "Sizga biriktirilgan ishlar. Tugatgach, \"Bajarildi\" tugmasini bosing.",
+  "add": "Yangi vazifa",
+  "edit": "Vazifani tahrirlash",
+  "searchPlaceholder": "Vazifa nomi bo'yicha qidirish",
+  "needsPhoto": "Foto kerak",
+  "overdueOn": "Muddati o'tgan: {{date}}",
+  "emptyTitle": "Vazifalar yo'q",
+  "emptyBody": "Yangi vazifa qo'shilganda shu yerda ko'rinadi.",
+  "deleteTitle": "Vazifani o'chirasizmi?",
+  "deleteBody": "\"{{name}}\" butunlay o'chiriladi.",
+  "quickAdd": {
+    "label": "Tezkor qo'shish",
+    "placeholder": "Yangi vazifa yozing",
+    "button": "Qo'shish"
+  },
+  "tabs": {
+    "board": "Doska",
+    "list": "Ro'yxat",
+    "recurring": "Takrorlanuvchi"
+  },
+  "fields": {
+    "title": "Vazifa",
+    "description": "Tavsif",
+    "assignee": "Mas'ul",
+    "assigneePlaceholder": "Xodimni tanlang",
+    "dueDate": "Muddat",
+    "startDate": "Boshlanish sanasi",
+    "priority": "Muhimlik",
+    "status": "Holat",
+    "division": "Bo'linma",
+    "noDivision": "Tanlanmagan",
+    "linkedType": "Bog'langan obyekt turi",
+    "linkedObject": "Bog'langan obyekt",
+    "noLink": "Bog'lanmagan",
+    "recurrence": "Takrorlanishi",
+    "recurrenceHint": "Har safar yangi vazifa avtomatik yaratiladi.",
+    "requiresRecord": "Yopish uchun qayd",
+    "requiresRecordHint": "Vazifa faqat shu qayd kiritilgach yopiladi.",
+    "noRecord": "Talab qilinmaydi",
+    "requiresPhoto": "Foto talab qilinsin",
+    "requiresPhotoHint": "Xodim vazifani foto bilan yopadi.",
+    "notes": "Izoh"
+  },
+  "filters": {
+    "allStatuses": "Barcha holatlar",
+    "allDivisions": "Barcha bo'linmalar",
+    "allPriorities": "Barcha muhimliklar",
+    "allPeople": "Barcha xodimlar",
+    "mine": "Faqat meniki",
+    "overdue": "Muddati o'tgan"
+  },
+  "actions": {
+    "start": "Boshlash",
+    "complete": "Bajarildi",
+    "cancel": "Bekor qilish",
+    "reopen": "Qayta ochish"
+  },
+  "board": {
+    "open": "Ochiq",
+    "inProgress": "Bajarilmoqda",
+    "done": "Bajarilgan",
+    "empty": "Bu yerda vazifa yo'q"
+  },
+  "division": {
+    "crops": "Dehqonchilik",
+    "livestock": "Qo'ychilik",
+    "machinery": "Mexanizatsiya",
+    "admin": "Boshqaruv"
+  },
+  "entity": {
+    "field": "Dala",
+    "herd": "Poda",
+    "animal": "Hayvon",
+    "asset": "Texnika"
+  },
+  "record": {
+    "health_record": "Veterinariya qaydi",
+    "field_operation": "Agrotexnik tadbir",
+    "daily_log": "Kunlik qayd",
+    "weight_record": "Vazn qaydi"
+  },
+  "complete": {
+    "title": "Vazifani yopish",
+    "photo": "Foto",
+    "takePhoto": "Foto olish",
+    "photoPreview": "Olingan foto",
+    "removePhoto": "Fotoni olib tashlash",
+    "note": "Izoh",
+    "recordHint": "Shu vazifa bo'yicha kiritilgan qaydni tanlang.",
+    "chooseRecord": "Qaydni tanlang",
+    "noRecordTitle": "Avval qayd kiriting: {{record}}",
+    "noRecordBody": "Bu vazifa faqat tegishli qayd bilan yopiladi, hozircha esa qayd yo'q.",
+    "goCreateRecord": "Qayd kiritish sahifasiga o'tish"
+  },
+  "series": {
+    "running": "Ishlayapti",
+    "stopped": "To'xtatilgan",
+    "explain": "Har bir seriya belgilangan kunlarda o'zi yangi vazifa yaratadi.",
+    "emptyTitle": "Takrorlanuvchi vazifalar yo'q",
+    "emptyBody": "Yangi vazifa yaratishda takrorlanishini tanlang: masalan, har kuni ozuqa berish.",
+    "stop": "To'xtatish",
+    "resume": "Davom ettirish"
+  },
+  "toast": {
+    "cancelled": "Vazifa bekor qilindi",
+    "reopened": "Vazifa qayta ochildi",
+    "completed": "Vazifa bajarildi"
+  },
+  "calendar": {
+    "title": "Kalendar",
+    "description": "Fermaning barcha rejalashtirilgan ishlari bir joyda.",
+    "addEvent": "Tadbir qo'shish",
+    "editEvent": "Tadbirni tahrirlash",
+    "deleteEvent": "Tadbirni o'chirasizmi?",
+    "today": "Bugun",
+    "nothing": "Bu kunga hech narsa rejalashtirilmagan",
+    "legend": "Belgilar",
+    "itemCount": "Yozuvlar: {{count}}",
+    "more": "yana {{count}}",
+    "eventKind": "Tadbir turi",
+    "startDate": "Boshlanish sanasi",
+    "endDate": "Tugash sanasi",
+    "responsible": "Mas'ul",
+    "view": {
+      "month": "Oy",
+      "week": "Hafta",
+      "day": "Kun"
+    },
+    "weekday": {
+      "mon": "Du",
+      "tue": "Se",
+      "wed": "Ch",
+      "thu": "Pa",
+      "fri": "Ju",
+      "sat": "Sh",
+      "sun": "Ya"
+    },
+    "kind": {
+      "lambing": "Qo'zilash",
+      "vaccination": "Veterinariya",
+      "field_operation": "Agrotexnik tadbir",
+      "loan": "Kredit to'lovi",
+      "contract": "Shartnoma",
+      "document": "Hujjat",
+      "maintenance": "Texnik xizmat",
+      "state_report": "Davlat hisoboti",
+      "staff_contract": "Xodim shartnomasi",
+      "staff_medical": "Tibbiy ko'rik",
+      "task": "Vazifa",
+      "manual": "Tadbir"
+    },
+    "eventKinds": {
+      "meeting": "Uchrashuv",
+      "inspection": "Tekshiruv",
+      "delivery": "Yetkazib berish",
+      "other": "Boshqa"
+    },
+    "item": {
+      "lambing": "Kutilayotgan qo'zilash: {{count}} bosh",
+      "vaccination": "Emlash: {{name}}",
+      "field_operation": "{{operation}}: dala {{field}}",
+      "loan": "Kredit to'lovi: {{name}}",
+      "contract": "Shartnoma tugaydi: {{number}}, {{counterparty}}",
+      "document": "Hujjat muddati tugaydi: {{name}}",
+      "maintenance": "Texnik xizmat: {{name}}",
+      "state_report": "Hisobot topshirish: {{name}}, {{authority}}",
+      "staff_contract": "Shartnoma tugaydi: {{name}}",
+      "staff_medical": "Tibbiy ko'rik: {{name}}"
+    },
+    "free": "Reja yo'q"
+  }
+}

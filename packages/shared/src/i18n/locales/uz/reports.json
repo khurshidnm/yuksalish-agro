@@ -1,0 +1,789 @@
+{
+  "catalog": {
+    "finance": {
+      "income_expense": {
+        "title": "Daromad va xarajatlar",
+        "description": "Moddalar bo'yicha daromad va xarajat, davrlarni taqqoslash bilan"
+      },
+      "monthly_result": {
+        "title": "Oylik natija",
+        "description": "Har oyning daromadi, xarajati va sof natijasi"
+      },
+      "cashflow": {
+        "title": "Pul oqimi (fakt)",
+        "description": "Oylar bo'yicha haqiqiy kirim va chiqim"
+      },
+      "cashflow_forecast": {
+        "title": "Pul oqimi prognozi",
+        "description": "Keyingi oylar uchun kutilayotgan kirim, chiqim va qoldiq"
+      },
+      "cost_per_head": {
+        "title": "1 bosh tannarxi",
+        "description": "Podalar bo'yicha sotib olish narxi va yig'ilgan xarajatlar"
+      },
+      "cost_per_ton": {
+        "title": "1 tonna hosil tannarxi",
+        "description": "Dalalar bo'yicha xarajat, hosil va 1 t tannarxi"
+      },
+      "cost_per_kg": {
+        "title": "1 kg tirik vazn tannarxi",
+        "description": "Podalar bo'yicha qo'shilgan vazn va uning tannarxi"
+      },
+      "profitability": {
+        "title": "Rentabellik",
+        "description": "Xarajat markazlari bo'yicha xarajat, daromad va foyda"
+      },
+      "budget_execution": {
+        "title": "Byudjet ijrosi",
+        "description": "Moddalar bo'yicha reja, fakt va og'ish"
+      },
+      "debts": {
+        "title": "Qarzdorlik",
+        "description": "Kontragentlar bo'yicha debitor va kreditor qarz"
+      },
+      "loans": {
+        "title": "Kreditlar",
+        "description": "Kreditlar holati: to'langan, qoldiq va keyingi to'lov"
+      },
+      "loan_schedule": {
+        "title": "Kredit grafigi",
+        "description": "Davr ichidagi kredit to'lovlari"
+      },
+      "accounts": {
+        "title": "Kassa va bank qoldig'i",
+        "description": "Hisoblar bo'yicha joriy qoldiq"
+      },
+      "transactions": {
+        "title": "Operatsiyalar jurnali",
+        "description": "Davr ichidagi barcha moliyaviy operatsiyalar"
+      },
+      "kpi": {
+        "title": "Moliyaviy KPI",
+        "description": "Rentabellik, 1 sovliqqa foyda, xarajat ulushi va pul oqimi"
+      }
+    },
+    "livestock": {
+      "herd_movement": {
+        "title": "Poda harakati",
+        "description": "Oylar bo'yicha tug'ilgan, sotib olingan, chiqib ketgan hayvonlar"
+      },
+      "herd_structure": {
+        "title": "Poda tarkibi",
+        "description": "Toifa va holat bo'yicha joriy bosh soni"
+      },
+      "animal_register": {
+        "title": "Hayvonlar reyestri",
+        "description": "Fermadagi hayvonlar ro'yxati"
+      },
+      "lambing": {
+        "title": "Qo'zilash",
+        "description": "Davr ichidagi qo'zilash qaydlari"
+      },
+      "lambing_calendar": {
+        "title": "Qo'zilash kalendari",
+        "description": "Kun bo'yicha kutilayotgan qo'zilashlar"
+      },
+      "mortality": {
+        "title": "Nobudgarchilik",
+        "description": "Nobud bo'lgan va yo'qolgan hayvonlar, sabablari bilan"
+      },
+      "exits": {
+        "title": "Chiqib ketish",
+        "description": "Sotuv, so'yish, nobud bo'lish va yo'qolish"
+      },
+      "weight_gain": {
+        "title": "Vazn o'sishi",
+        "description": "Podalar bo'yicha o'sish va ozuqa konversiyasi"
+      },
+      "vaccination": {
+        "title": "Emlash",
+        "description": "Davr ichida bajarilgan emlashlar"
+      },
+      "vaccination_due": {
+        "title": "Emlash muddatlari",
+        "description": "Yaqinlashayotgan va muddati o'tgan emlashlar"
+      },
+      "treatments": {
+        "title": "Davolash jurnali",
+        "description": "Davolash, profilaktika va tekshiruvlar"
+      },
+      "ram_rating": {
+        "title": "Qo'chqorlar reytingi",
+        "description": "Avlodlarning o'sishi bo'yicha baho"
+      },
+      "daily_logs": {
+        "title": "Kunlik qaydlar",
+        "description": "Podalar bo'yicha kunlik holat va suv"
+      },
+      "kpi": {
+        "title": "Chorvachilik KPI",
+        "description": "Qo'zilash, saqlanib qolish, o'sish va nobudgarchilik"
+      }
+    },
+    "feed": {
+      "days_remaining": {
+        "title": "Ozuqa necha kunga yetadi",
+        "description": "Haqiqiy sarf va reja bo'yicha zaxira kunlari"
+      },
+      "consumption_by_herd": {
+        "title": "Podalar bo'yicha ozuqa sarfi",
+        "description": "Reja va haqiqiy sarf, davrlarni taqqoslash bilan"
+      },
+      "daily_consumption": {
+        "title": "Kunlik ozuqa sarfi",
+        "description": "Kun bo'yicha umumiy ozuqa sarfi"
+      },
+      "ration_cost": {
+        "title": "Ratsion tannarxi",
+        "description": "1 bosh uchun kunlik va mavsumiy ozuqa xarajati"
+      },
+      "winter_plan": {
+        "title": "Qishki ozuqa rejasi",
+        "description": "Ehtiyoj, zaxira, yetishmovchilik va kerakli maydon"
+      }
+    },
+    "inventory": {
+      "balances": {
+        "title": "Ombor qoldiqlari",
+        "description": "Nomenklatura va omborlar bo'yicha qoldiq"
+      },
+      "movements": {
+        "title": "Ombor harakati",
+        "description": "Kirim, chiqim, ko'chirish va tuzatishlar"
+      },
+      "expiring": {
+        "title": "Yaroqlilik muddati",
+        "description": "Muddati tugayotgan va o'tgan partiyalar"
+      },
+      "low_stock": {
+        "title": "Minimal qoldiqdan past",
+        "description": "Belgilangan minimumdan kam pozitsiyalar"
+      },
+      "count_differences": {
+        "title": "Inventarizatsiya farqlari",
+        "description": "Tasdiqlangan inventarizatsiyalardagi farqlar"
+      }
+    },
+    "crops": {
+      "field_costs": {
+        "title": "Dalalar bo'yicha xarajat",
+        "description": "Xarajat tarkibi va reja/fakt, mavsumlarni taqqoslash bilan"
+      },
+      "yield": {
+        "title": "Hosildorlik",
+        "description": "Dalalar bo'yicha reja va haqiqiy hosil"
+      },
+      "operations": {
+        "title": "Agrotexnik tadbirlar",
+        "description": "Davr ichidagi dala ishlari"
+      },
+      "rotation": {
+        "title": "Almashlab ekish",
+        "description": "Dalalar bo'yicha mavsumlar kesimida ekinlar"
+      },
+      "water_use": {
+        "title": "Suv sarfi",
+        "description": "Dalalar bo'yicha suv, m³/ga va m³/t"
+      },
+      "harvests": {
+        "title": "Hosil yig'ish",
+        "description": "Davr ichidagi hosil yig'ish qaydlari"
+      },
+      "soil": {
+        "title": "Tuproq tahlili",
+        "description": "Laboratoriya natijalari: NPK, gumus, sho'rlanish"
+      },
+      "kpi": {
+        "title": "Dehqonchilik KPI",
+        "description": "Hosildorlik, tadbirlar o'z vaqtida bajarilishi, suv sarfi"
+      }
+    },
+    "hr": {
+      "timesheet": {
+        "title": "Tabel",
+        "description": "Oy bo'yicha kelish va ish soatlari"
+      },
+      "payroll": {
+        "title": "Ish haqi",
+        "description": "Oylik hisob varag'i xodimlar bo'yicha"
+      },
+      "work_done": {
+        "title": "Bajarilgan ishlar",
+        "description": "Kim qancha gektar va necha boshga ishlov bergani"
+      },
+      "staff": {
+        "title": "Xodimlar ro'yxati",
+        "description": "Lavozim, bo'linma va ish haqi turi"
+      },
+      "productivity": {
+        "title": "Mehnat unumdorligi",
+        "description": "Bir xodimga to'g'ri keladigan bosh va gektar"
+      }
+    },
+    "assets": {
+      "register": {
+        "title": "Texnika reyestri",
+        "description": "Texnika va uskunalar holati"
+      },
+      "usage": {
+        "title": "Texnika ish jurnali",
+        "description": "Smenalar bo'yicha moto-soat, hajm va yoqilg'i"
+      },
+      "fuel": {
+        "title": "Yoqilg'i sarfi",
+        "description": "Me'yor va haqiqiy sarf, og'ish bilan"
+      },
+      "maintenance": {
+        "title": "Texnik xizmat",
+        "description": "Xizmat va ta'mirlash tarixi"
+      },
+      "cost_per_hour": {
+        "title": "1 soat va 1 ga ish tannarxi",
+        "description": "Yoqilg'i, mehnat, ta'mirlash va amortizatsiya"
+      },
+      "depreciation": {
+        "title": "Amortizatsiya",
+        "description": "Oylar va texnika bo'yicha hisoblangan amortizatsiya"
+      }
+    },
+    "sales": {
+      "by_product": {
+        "title": "Mahsulot bo'yicha sotuv",
+        "description": "Hajm, o'rtacha narx va tannarx bilan taqqoslash"
+      },
+      "by_buyer": {
+        "title": "Xaridor bo'yicha sotuv",
+        "description": "Xaridorlar bo'yicha summa va foyda"
+      },
+      "by_month": {
+        "title": "Oylar bo'yicha sotuv",
+        "description": "Oylik sotuv summasi va foyda"
+      },
+      "documents": {
+        "title": "Sotuv hujjatlari",
+        "description": "Davr ichidagi sotuv hujjatlari"
+      },
+      "prices": {
+        "title": "Narxlar tarixi",
+        "description": "Mahsulotlar narxi sanalar bo'yicha"
+      },
+      "purchases": {
+        "title": "Xarid so'rovlari",
+        "description": "So'rovlar holati va qabul qilingan miqdor"
+      }
+    }
+  },
+  "columns": {
+    "absent": "Kelmagan",
+    "account": "Hisob",
+    "accumulated": "Yig'ilgan xarajat",
+    "actual": "Fakt",
+    "actualCost": "Haqiqiy xarajat",
+    "actualDaily": "Haqiqiy kunlik sarf",
+    "actualQty": "Haqiqiy sarf",
+    "actualYieldTHa": "Haqiqiy hosildorlik, t/ga",
+    "adgG": "O'rtacha kunlik o'sish, g",
+    "advance": "Avans",
+    "ageMonths": "Yoshi, oy",
+    "amount": "Summa",
+    "amountBase": "Summa, asosiy valyutada",
+    "animals": "Hayvonlar",
+    "annualRate": "Yillik foiz",
+    "areaDoneHa": "Bajarilgan maydon, ga",
+    "areaHa": "Maydon, ga",
+    "asset": "Texnika",
+    "attendancePercent": "Davomat",
+    "avgCost": "O'rtacha tannarx",
+    "avgGainGrams": "O'rtacha o'sish, g/kun",
+    "avgPrice": "O'rtacha narx",
+    "avgWeight100Kg": "100 kunlik o'rtacha vazn, kg",
+    "balance": "Qoldiq",
+    "balanceBase": "Qoldiq, asosiy valyutada",
+    "base": "Asosiy haq",
+    "baseRate": "Stavka",
+    "basis": "Hisob asosi",
+    "batchNo": "Partiya",
+    "belowMinimum": "Minimumdan past",
+    "birthDate": "Tug'ilgan sana",
+    "bonus": "Mukofot",
+    "born": "Tug'ilgan",
+    "breed": "Zot",
+    "buyer": "Xaridor",
+    "carcassWeightKg": "So'yilgan vazn, kg",
+    "category": "Toifa",
+    "closing": "Davr oxiriga",
+    "complications": "Asoratlar",
+    "condition": "Holat",
+    "cost": "Tannarx",
+    "costCenter": "Xarajat markazi",
+    "costPerHead": "1 bosh tannarxi",
+    "costPerHeadDay": "1 bosh kunlik xarajati",
+    "costPerHectare": "1 ga ish tannarxi",
+    "costPerHour": "1 moto-soat tannarxi",
+    "costPerKg": "1 kg tirik vazn tannarxi",
+    "costPerSeason": "Mavsumiy xarajat",
+    "costPerTon": "1 t tannarxi",
+    "count": "Soni",
+    "counterparty": "Kontragent",
+    "coverageDays": "Yetadigan kunlar",
+    "crop": "Ekin",
+    "currency": "Valyuta",
+    "currentWeightKg": "Joriy vazn, kg",
+    "dailyLogs": "Kunlik qaydlar",
+    "date": "Sana",
+    "dayOff": "Dam olish",
+    "days": "Necha kunga yetadi",
+    "daysByActual": "Haqiqiy sarf bo'yicha, kun",
+    "daysByPlan": "Reja bo'yicha, kun",
+    "daysOverdue": "Kechikkan kunlar",
+    "daysWorked": "Ishlagan kunlar",
+    "dead": "Nobud bo'lgan",
+    "deductions": "Ushlanmalar",
+    "deliveryDate": "Yetkazib berish sanasi",
+    "depreciation": "Amortizatsiya",
+    "description": "Izoh",
+    "deviation": "Og'ish",
+    "deviationPercent": "Og'ish, %",
+    "diagnosis": "Tashxis",
+    "diffCost": "Farq qiymati",
+    "diffQty": "Farq",
+    "direct": "Bevosita xarajat",
+    "direction": "Yo'nalish",
+    "division": "Bo'linma",
+    "docNo": "Hujjat raqami",
+    "documents": "Hujjatlar",
+    "downtimeHours": "To'xtash, soat",
+    "drug": "Preparat",
+    "dryMatterKg": "Quruq modda, kg",
+    "dueDate": "Muddat",
+    "employee": "Xodim",
+    "ewe": "Sovliq",
+    "expected": "Kutilayotgan",
+    "expectedHarvestT": "Reja hosil, t",
+    "expectedPrice": "Kutilayotgan narx",
+    "expectedYieldTHa": "Reja hosildorlik, t/ga",
+    "expense": "Xarajat",
+    "expired": "Muddati o'tgan",
+    "expiryDate": "Yaroqlilik muddati",
+    "feed": "Ozuqa",
+    "feedConversion": "Ozuqa konversiyasi",
+    "fertilizer": "O'g'it",
+    "field": "Dala",
+    "financeCategory": "Modda",
+    "fuel": "Yoqilg'i",
+    "fuelCost": "Yoqilg'i qiymati",
+    "fuelL": "Yoqilg'i, l",
+    "gainKg": "Vazn ortishi, kg",
+    "grossT": "Yalpi hosil, t",
+    "group": "Guruh",
+    "harvestT": "Hosil, t",
+    "harvestedT": "Yig'ilgan hosil, t",
+    "head": "Bosh",
+    "headCount": "Bosh soni",
+    "headDays": "Bosh-kun",
+    "headTreated": "Ishlov berilgan bosh",
+    "hectares": "Gektar",
+    "herd": "Poda",
+    "hireDate": "Ishga qabul sanasi",
+    "hours": "Soat",
+    "humus": "Gumus",
+    "income": "Daromad",
+    "index": "Indeks",
+    "indicator": "Ko'rsatkich",
+    "inflow": "Kirim",
+    "interest": "Foiz",
+    "inventoryNo": "Inventar raqami",
+    "item": "Nomenklatura",
+    "itemCategory": "Toifa",
+    "k": "K",
+    "kind": "Turi",
+    "lab": "Laboratoriya",
+    "labor": "Mehnat",
+    "lambsAlive": "Tirik qo'zilar",
+    "lambsBorn": "Tug'ilgan qo'zilar",
+    "litersPerHour": "l/soat",
+    "liveWeightKg": "Tirik vazn, kg",
+    "loan": "Kredit",
+    "lossAmount": "Zarar",
+    "lost": "Yo'qolgan",
+    "lowConfidence": "Ma'lumot kam",
+    "machinery": "Texnika",
+    "margin": "Foyda",
+    "marginPercent": "Rentabellik, %",
+    "materials": "Materiallar",
+    "minDays": "Minimal kunlar",
+    "minQty": "Minimal qoldiq",
+    "moisturePct": "Namlik, %",
+    "month": "Oy",
+    "motoHours": "Moto-soat",
+    "n": "N",
+    "nearestExpiry": "Eng yaqin muddat",
+    "net": "Sof natija",
+    "nextDueDate": "Keyingi muddat",
+    "nextPayment": "Keyingi to'lov",
+    "normLPerHour": "Me'yor, l/soat",
+    "notes": "Izoh",
+    "number": "Raqam",
+    "opening": "Davr boshiga",
+    "operatingExpense": "Operatsion xarajat",
+    "operations": "Tadbirlar",
+    "operator": "Mexanizator",
+    "origin": "Kelib chiqishi",
+    "outflow": "Chiqim",
+    "outstanding": "Qoldiq qarz",
+    "overdue": "Muddati o'tgan",
+    "overhead": "Umumiy xarajat ulushi",
+    "overheadShare": "Umumiy ulush",
+    "p": "P",
+    "paid": "To'langan",
+    "paidDate": "To'langan sana",
+    "paidInterest": "To'langan foiz",
+    "paidPrincipal": "To'langan asosiy qarz",
+    "payType": "Ish haqi turi",
+    "payment": "To'lov",
+    "paymentMethod": "To'lov usuli",
+    "percent": "Ijro, %",
+    "ph": "PH",
+    "phone": "Telefon",
+    "piecework": "Ishbay",
+    "plan": "Emlash",
+    "planned": "Reja",
+    "plannedDaily": "Reja kunlik sarf",
+    "plannedQty": "Reja sarf",
+    "position": "Lavozim",
+    "present": "Kelgan",
+    "price": "Narx",
+    "principal": "Asosiy qarz",
+    "product": "Mahsulot",
+    "profit": "Foyda",
+    "profitabilityPercent": "Rentabellik, %",
+    "progeny": "Avlodlar",
+    "purchaseCost": "Sotib olish qiymati",
+    "purchaseDate": "Sotib olingan sana",
+    "purchasePrice": "Sotib olish narxi",
+    "purchased": "Sotib olingan",
+    "qty": "Miqdor",
+    "qtyKg": "Sarf, kg",
+    "qtyRemaining": "Qoldiq",
+    "qtyUsed": "Sarf",
+    "quality": "Sifat",
+    "rank": "O'rin",
+    "ration": "Ratsion",
+    "reason": "Sabab",
+    "receivedQty": "Qabul qilingan",
+    "rented": "Ijara",
+    "repairs": "Ta'mirlash",
+    "requiredKg": "Ehtiyoj, kg",
+    "result": "Natija",
+    "runsOutOn": "Tugash sanasi",
+    "salinity": "Sho'rlanish",
+    "season": "Mavsum",
+    "seasonDays": "Mavsum kunlari",
+    "seed": "Urug'",
+    "seller": "Sotuvchi",
+    "sex": "Jinsi",
+    "shortageKg": "Yetishmovchilik, kg",
+    "sick": "Kasal",
+    "slaughtered": "So'yilgan",
+    "sold": "Sotilgan",
+    "source": "Manba",
+    "startDate": "Boshlanish sanasi",
+    "state": "Holat",
+    "status": "Holati",
+    "stockKg": "Zaxira, kg",
+    "stockQty": "Qoldiq",
+    "stockValue": "Zaxira qiymati",
+    "supplier": "Yetkazib beruvchi",
+    "surplusKg": "Ortiqcha, kg",
+    "systemQty": "Hisobdagi qoldiq",
+    "tag": "Birka",
+    "termMonths": "Muddat, oy",
+    "tons": "Tonna",
+    "total": "Jami xarajat",
+    "totalAmount": "Jami summa",
+    "totalCost": "Qiymat",
+    "totalKgPerHeadDay": "kg/bosh/kun",
+    "treatments": "Veterinar qaydlari",
+    "type": "Turi",
+    "unit": "Birlik",
+    "unitCost": "Birlik tannarxi",
+    "vacation": "Ta'til",
+    "value": "Qiymat",
+    "variety": "Nav",
+    "vet": "Veterinar",
+    "vetConclusion": "Veterinar xulosasi",
+    "vetCost": "Veterinariya xarajati",
+    "volumeHa": "Hajm, ga",
+    "warehouse": "Ombor",
+    "water": "Suv",
+    "waterL": "Suv, l",
+    "waterM3": "Suv, m³",
+    "waterM3PerHa": "m³/ga",
+    "waterM3PerTon": "m³/t",
+    "weighed": "Tortilgan",
+    "weightGainKg": "Vazn ortishi, kg",
+    "withdrawalUntil": "Kutish muddati",
+    "workType": "Ish turi",
+    "yieldDeviationPercent": "Hosildorlik og'ishi, %",
+    "yieldTHa": "Hosildorlik, t/ga"
+  },
+  "filters": {
+    "period": "Davr",
+    "month": "Oy",
+    "days": "Necha kun",
+    "months": "Necha oy",
+    "seasonId": "Mavsum",
+    "herdId": "Poda",
+    "fieldId": "Dala",
+    "warehouseId": "Ombor",
+    "assetId": "Texnika",
+    "category": "Toifa",
+    "status": "Holati",
+    "type": "Turi",
+    "direction": "Yo'nalish",
+    "itemCategory": "Toifa"
+  },
+  "presets": {
+    "today": "Bugun",
+    "yesterday": "Kecha",
+    "last_7_days": "Oxirgi 7 kun",
+    "last_30_days": "Oxirgi 30 kun",
+    "this_month": "Shu oy",
+    "last_month": "O'tgan oy",
+    "this_quarter": "Shu chorak",
+    "this_year": "Shu yil",
+    "last_year": "O'tgan yil",
+    "custom": "Boshqa davr"
+  },
+  "modules": {
+    "finance": "Moliya",
+    "livestock": "Chorvachilik",
+    "feed": "Ozuqa",
+    "inventory": "Ombor",
+    "crops": "Dehqonchilik",
+    "hr": "Xodimlar",
+    "assets": "Texnika",
+    "sales": "Sotuv va xarid"
+  },
+  "export": {
+    "period": "Davr",
+    "compareWith": "Taqqoslash davri",
+    "generated": "Tuzilgan vaqt",
+    "total": "Jami",
+    "pdfTruncated": "PDF da {{total}} qatordan birinchi {{shown}} tasi ko'rsatilgan. To'liq ro'yxat uchun Excel yuklab oling."
+  },
+  "common": {
+    "yes": "Ha",
+    "no": "Yo'q"
+  },
+  "compare": {
+    "difference": "farq"
+  },
+  "notes": {
+    "cost_per_kg_needs_weighing": "1 kg tannarxi poda kamida yarmi ikki marta tortilgandan keyin hisoblanadi.",
+    "forecast_statistical": "Bu statistik hisob-kitob, va'da emas: byudjet, o'rtacha xarajatlar va rejalashtirilgan to'lovlarga asoslangan.",
+    "forecast_negative": "Diqqat: {{month}} oyida pul yetishmasligi kutilmoqda.",
+    "internal_transfers": "Xarajat markazlari o'z mahsulotini ichki narxda bir-biriga berishi mumkin, shuning uchun ularning yig'indisi fermaning umumiy xarajatidan katta bo'lishi mumkin.",
+    "lambing_percent": "Qo'zilash foizi: {{percent}}% ({{ewes}} ta sovliq bo'yicha).",
+    "mortality_percent": "Davr nobudgarchiligi: {{percent}}% ({{dead}} bosh)."
+  },
+  "delivery": {
+    "more": "… yana {{count}} qator",
+    "empty": "Bu davrda ma'lumot yo'q."
+  },
+  "debtDirection": {
+    "payable": "Bizning qarzimiz",
+    "receivable": "Bizga qarz"
+  },
+  "dueState": {
+    "overdue": "Muddati o'tgan",
+    "today": "Bugun",
+    "upcoming": "Yaqinlashmoqda"
+  },
+  "feedBasis": {
+    "actual": "Haqiqiy sarf",
+    "plan": "Ratsion rejasi"
+  },
+  "lowStockReason": {
+    "qty": "Miqdor kam",
+    "days": "Kunlar kam"
+  },
+  "operationStatus": {
+    "planned": "Rejada",
+    "done": "Bajarilgan"
+  },
+  "structureGroup": {
+    "category": "Toifa",
+    "status": "Holat"
+  },
+  "kpiUnit": {
+    "money": "so'm",
+    "percent": "%",
+    "tons_per_ha": "t/ga",
+    "m3_per_ton": "m³/t",
+    "ha": "ga",
+    "head": "bosh",
+    "people": "kishi",
+    "grams": "g",
+    "ratio": "kg/kg"
+  },
+  "kpi": {
+    "income": "Daromad",
+    "operating_expense": "Operatsion xarajat",
+    "profitability": "Rentabellik",
+    "profit_per_ewe": "1 sovliqqa foyda",
+    "cost_to_income": "Xarajat / daromad",
+    "net_cash_flow": "Sof pul oqimi",
+    "budget_deviation": "Byudjet og'ishi",
+    "head_total": "Jami bosh soni",
+    "lambing_percent": "Qo'zilash foizi",
+    "survival_percent": "Saqlanib qolish",
+    "adg": "O'rtacha kunlik o'sish",
+    "feed_conversion": "Ozuqa konversiyasi",
+    "mortality_30d": "Nobudgarchilik, 30 kun",
+    "cost_per_kg": "1 kg tirik vazn tannarxi",
+    "yield": "Hosildorlik",
+    "on_time": "Tadbirlarni o'z vaqtida bajarish",
+    "water_per_ton": "Suv sarfi",
+    "cost_per_ton": "1 t tannarxi",
+    "staff": "Xodimlar soni",
+    "head_per_employee": "Bir xodimga bosh",
+    "ha_per_employee": "Bir xodimga gektar"
+  },
+  "investor": {
+    "title": "Investor hisoboti",
+    "finance": "Moliya",
+    "income": "Daromad",
+    "expense": "Xarajat",
+    "net": "Sof natija",
+    "profitability": "Rentabellik",
+    "budget": "Byudjet ijrosi",
+    "cash": "Kassa va bank",
+    "receivable": "Bizga qarz",
+    "payable": "Bizning qarzimiz",
+    "loans": "Kredit qoldig'i",
+    "costPerHead": "1 bosh tannarxi",
+    "forecast": "Pul oqimi prognozi, oy oxiriga",
+    "livestock": "Chorvachilik",
+    "head": "Bosh soni",
+    "pregnant": "Bo'g'oz sovliqlar",
+    "born": "Tug'ilgan",
+    "sold": "Sotilgan",
+    "dead": "Nobud bo'lgan",
+    "mortality": "Nobudgarchilik, 30 kun",
+    "lambingExpected": "Kutilayotgan qo'zilash",
+    "avgWeight": "O'rtacha vazn, kg",
+    "crops": "Dehqonchilik",
+    "sown": "Ekilgan dalalar",
+    "harvestPlanned": "Reja hosil, t",
+    "harvestActual": "Yig'ilgan hosil, t",
+    "feed": "Ozuqa zaxirasi, kun",
+    "noData": "Ma'lumot yo'q",
+    "asOf": "{{date}} holatiga",
+    "currency": "Pul summalari asosiy valyutada ko'rsatilgan.",
+    "disclaimer": "Hisobot umumlashtirilgan ko'rsatkichlardan iborat, shaxsiy ma'lumotlar kiritilmagan."
+  },
+  "page": {
+    "title": "Hisobotlar",
+    "description": "Tayyor hisobotlar, o'z hisobotingiz va investor hisoboti"
+  },
+  "tabs": {
+    "catalog": "Hisobotlar",
+    "saved": "Saqlanganlar",
+    "investor": "Investor hisoboti"
+  },
+  "catalogPage": {
+    "search": "Hisobot qidirish",
+    "empty": "Hisobot topilmadi",
+    "emptyHint": "Boshqa so'z bilan qidirib ko'ring",
+    "noAccess": "Sizga ochiq hisobot yo'q",
+    "moneyBadge": "Moliyaviy"
+  },
+  "viewer": {
+    "back": "Hisobotlar",
+    "notFound": "Hisobot topilmadi yoki sizga ochiq emas",
+    "from": "Boshlanish",
+    "to": "Tugash",
+    "all": "Hammasi",
+    "empty": "Bu shartlarda ma'lumot yo'q",
+    "emptyHint": "Davrni yoki filtrlarni o'zgartirib ko'ring",
+    "totalRow": "Jami",
+    "rowCount": "{{count}} qator",
+    "truncated": "Ekranda birinchi {{shown}} qator ko'rsatilgan, jami {{total}}. To'liq ro'yxat yuklab olingan faylda bo'ladi.",
+    "hiddenMoney": "Moliyaviy ustunlar sizning huquqlaringizga ko'ra yashirilgan.",
+    "hiddenPii": "Shaxsiy ma'lumot ustunlari sizning huquqlaringizga ko'ra yashirilgan.",
+    "took": "{{ms}} ms da tuzildi",
+    "chart": "Grafik",
+    "table": "Jadval",
+    "compare": "Taqqoslash",
+    "compareFrom": "B davri: boshlanish",
+    "compareTo": "B davri: tugash",
+    "compareSeason": "B mavsumi",
+    "compareHint": "A ustuni tanlangan davr, B ustuni taqqoslanadigan davr.",
+    "customize": "Sozlash",
+    "download": "Yuklab olish",
+    "downloadXlsx": "Excel",
+    "downloadPdf": "PDF",
+    "downloadCsv": "CSV"
+  },
+  "builder": {
+    "title": "Hisobotni sozlash",
+    "description": "Kerakli ustunlarni tanlang, guruhlang va saqlang.",
+    "columns": "Ustunlar",
+    "selectAll": "Hammasi",
+    "groupBy": "Guruhlash",
+    "noGrouping": "Guruhlanmagan",
+    "groupHint": "Guruhlanganda faqat qo'shib bo'ladigan ustunlar qoladi.",
+    "apply": "Qo'llash",
+    "saveAs": "Hisobot sifatida saqlash",
+    "name": "Nomi",
+    "schedule": "Avtomatik yuborish",
+    "telegram": "Telegram orqali yuborish",
+    "recipients": "Kimga yuboriladi",
+    "recipientsHint": "Har bir qabul qiluvchi faqat o'z huquqiga mos ustunlarni oladi.",
+    "selfOnly": "Hisobot sizga yuboriladi.",
+    "saved": "Hisobot saqlandi"
+  },
+  "schedule": {
+    "none": "Yuborilmaydi",
+    "daily": "Har kuni",
+    "weekly": "Har dushanba",
+    "monthly": "Har oyning 1-sanasida"
+  },
+  "saved": {
+    "empty": "Saqlangan hisobot yo'q",
+    "emptyHint": "Hisobotni oching, \"Sozlash\"ni bosing va saqlang.",
+    "name": "Nomi",
+    "report": "Hisobot",
+    "schedule": "Yuborish",
+    "lastSent": "Oxirgi yuborilgan",
+    "open": "Ochish",
+    "edit": "Tahrirlash",
+    "send": "Hozir yuborish",
+    "sent": "{{count}} kishiga yuborildi",
+    "delete": "O'chirish",
+    "deleteConfirm": "Bu hisobot o'chirilsinmi?",
+    "deleted": "Hisobot o'chirildi",
+    "updated": "Hisobot yangilandi"
+  },
+  "investorPage": {
+    "month": "Hisobot oyi",
+    "downloadPdf": "PDF yuklab olish",
+    "archive": "Oylik hisobotlar arxivi",
+    "archiveEmpty": "Arxivda hali hisobot yo'q",
+    "noAccess": "Bu hisobot moliyaviy ko'rsatkichlarni o'z ichiga oladi va sizga ochiq emas.",
+    "open": "Ochish"
+  },
+  "errors": {
+    "NOT_REPORT_OWNER": "Bu hisobotni faqat uning egasi o'zgartira oladi",
+    "INVALID_RANGE": "Tugash sanasi boshlanish sanasidan oldin bo'lmasligi kerak",
+    "INVESTOR_REPORT_FORBIDDEN": "Bu hisobot moliyaviy ko'rsatkichlarni o'z ichiga oladi va sizga ochiq emas",
+    "UNKNOWN_COLUMN": "Tanlangan ustun mavjud emas",
+    "INVALID_GROUPING": "Bu ustun bo'yicha guruhlab bo'lmaydi",
+    "COMPARE_WITH_GROUPING": "Taqqoslash va guruhlashni birga ishlatib bo'lmaydi",
+    "INVALID_FORMAT": "Excel, CSV yoki PDF ni tanlang",
+    "UNKNOWN_REPORT": "Bunday hisobot yo'q",
+    "UNKNOWN_RECIPIENT": "Qabul qiluvchi bu fermada ishlamaydi",
+    "RECIPIENTS_FORBIDDEN": "Hisobotni faqat o'zingizga yuborishingiz mumkin"
+  }
+}

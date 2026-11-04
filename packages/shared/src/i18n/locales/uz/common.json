@@ -1,0 +1,87 @@
+{
+  "app": { "name": "Yuksalish Agro", "tagline": "Ferma boshqaruv platformasi" },
+  "actions": {
+    "save": "Saqlash", "cancel": "Bekor qilish", "delete": "O'chirish", "edit": "Tahrirlash", "add": "Qo'shish",
+    "create": "Yaratish", "close": "Yopish", "back": "Orqaga", "search": "Qidirish", "filter": "Filtr",
+    "export": "Eksport", "import": "Import", "download": "Yuklab olish", "upload": "Fayl yuklash", "retry": "Qayta urinish",
+    "confirm": "Tasdiqlash", "approve": "Tasdiqlash", "reject": "Rad etish", "yes": "Ha", "no": "Yo'q",
+    "more": "Yana", "refresh": "Yangilash", "clear": "Tozalash", "apply": "Qo'llash", "view": "Ko'rish",
+    "open": "Ochish", "print": "Chop etish", "next": "Keyingi", "previous": "Oldingi", "submit": "Yuborish"
+  },
+  "status": {
+    "loading": "Yuklanmoqda...", "saving": "Saqlanmoqda...", "noData": "Ma'lumot yo'q",
+    "notEnoughData": "Ma'lumot yetarli emas", "offline": "Internet aloqasi yo'q"
+  },
+  "table": {
+    "actions": "Amallar", "pagination": "Sahifalar", "range": "{{from}}–{{to}} / {{total}}",
+    "empty": "Hozircha yozuv yo'q", "emptyHint": "Birinchi yozuvni qo'shganingizda shu yerda ko'rinadi.",
+    "noResults": "Hech narsa topilmadi", "noResultsHint": "\"{{query}}\" bo'yicha natija yo'q. Boshqa so'z bilan qidirib ko'ring.",
+    "searchPlaceholder": "Qidirish..."
+  },
+  "form": {
+    "required": "Majburiy maydon", "optional": "Ixtiyoriy", "selectPlaceholder": "Tanlang",
+    "searchPlaceholder": "Qidirish...", "noOptions": "Hech narsa topilmadi"
+  },
+  "validation": {
+    "required": "Bu maydonni to'ldiring", "invalid": "Qiymat noto'g'ri", "format": "Format noto'g'ri",
+    "min": "Kamida {{min}} bo'lishi kerak", "max": "Ko'pi bilan {{max}} bo'lishi kerak",
+    "greaterThan": "{{min}} dan katta bo'lishi kerak",
+    "minLength": "Kamida {{min}} ta belgi kiriting", "maxLength": "Ko'pi bilan {{max}} ta belgi kiriting"
+  },
+  "errors": {
+    "title": "Ma'lumotni yuklab bo'lmadi", "generic": "Xatolik yuz berdi. Qayta urinib ko'ring.",
+    "network": "Internet aloqasini tekshiring va qayta urinib ko'ring.",
+    "forbidden": "Bu amal uchun sizda ruxsat yo'q.", "server": "Serverda xatolik. Birozdan keyin qayta urinib ko'ring.",
+    "rateLimit": "Juda ko'p urinish. Bir daqiqadan keyin qayta urinib ko'ring.",
+    "VALIDATION_ERROR": "Belgilangan maydonlarni tekshiring.",
+    "INVALID_INPUT": "Kiritilgan qiymatlarning ayrimlari noto'g'ri.",
+    "ALREADY_EXISTS": "Bunday yozuv allaqachon mavjud.",
+    "IN_USE": "Bu yozuv ishlatilmoqda, uni o'chirib bo'lmaydi.",
+    "INVALID_REFERENCE": "Bog'langan yozuv topilmadi.",
+    "NOTHING_TO_UPDATE": "O'zgartirish yuborilmadi.",
+    "NOT_FOUND": "Yozuv topilmadi.",
+    "RETRY": "Yozuvni boshqa xodim o'zgartirmoqda. Qayta urinib ko'ring.",
+    "FORBIDDEN": "Bu amal uchun sizda ruxsat yo'q.",
+    "TENANT_SUSPENDED": "Xo'jalik hisobi to'xtatilgan. Qo'llab-quvvatlashga murojaat qiling.",
+    "MODULE_DISABLED": "Bu modul xo'jaligingiz uchun yoqilmagan.",
+    "NO_ACTIVE_FARM": "Faol ferma tanlanmagan.",
+    "FILE_REQUIRED": "Fayl tanlanmagan.",
+    "FILE_TYPE_NOT_ALLOWED": "Bu turdagi faylni yuklab bo'lmaydi.",
+    "FILE_NOT_FOUND": "Fayl topilmadi.",
+    "INSUFFICIENT_STOCK": "Omborda yetarli qoldiq yo'q.",
+    "BATCH_ALREADY_USED": "Bu partiya ishlatilgan, uni bekor qilib bo'lmaydi.",
+    "COST_CENTER_REQUIRED": "Xarajat markazini tanlang.",
+    "INVALID_QUANTITY": "Miqdor noto'g'ri.",
+    "INVALID_COST": "Narx manfiy bo'lishi mumkin emas.",
+    "SAME_WAREHOUSE": "Omborlar har xil bo'lishi kerak.",
+    "ACCOUNT_REQUIRED": "Kassa yoki bank hisobini tanlang.",
+    "ACCOUNTS_REQUIRED": "O'tkazma uchun ikkala hisobni tanlang.",
+    "CATEGORY_REQUIRED": "Moddani tanlang.",
+    "COUNTERPARTY_REQUIRED": "Qarz uchun kontragentni tanlang.",
+    "INVALID_AMOUNT": "Summa noldan katta bo'lishi kerak.",
+    "SAME_ACCOUNT": "Hisoblar har xil bo'lishi kerak.",
+    "NOT_PENDING": "Bu operatsiya tasdiqlash kutmayapti.",
+    "SAME_MAKER_CHECKER": "Operatsiyani kiritgan xodim uni tasdiqlay olmaydi.",
+    "FX_RATE_REQUIRED": "Shu sana uchun valyuta kursi kiritilmagan.",
+    "INVALID_PAYMENT_METHOD": "To'lov usuli noto'g'ri."
+  },
+  "pages": {
+    "notFoundTitle": "Sahifa topilmadi", "notFoundBody": "Bunday sahifa yo'q yoki u ko'chirilgan.",
+    "forbiddenTitle": "Ruxsat yo'q", "forbiddenBody": "Bu bo'limga kirish huquqingiz yo'q. Kerak bo'lsa, ferma rahbariga murojaat qiling.",
+    "moduleOffTitle": "Modul yoqilmagan", "moduleOffBody": "Bu modul xo'jaligingiz uchun faollashtirilmagan.",
+    "errorTitle": "Nimadir noto'g'ri ketdi", "errorBody": "Sahifani qayta yuklab ko'ring. Muammo takrorlansa, qo'llab-quvvatlashga yozing.",
+    "backHome": "Bosh sahifaga", "reload": "Qayta yuklash",
+    "offlineTitle": "Bu sahifa internetsiz ochilmaydi", "offlineBody": "Internet qaytgach ochiladi. Kunlik ishlarni \"Bugun\" sahifasida davom ettirishingiz mumkin.", "offlineAction": "Bugun sahifasiga"
+  },
+  "stub": { "title": "Bu bo'lim tayyorlanmoqda", "body": "Tez orada shu yerda ishlash mumkin bo'ladi." },
+  "theme": { "toggle": "Mavzuni almashtirish", "light": "Yorug'", "dark": "Qorong'i", "system": "Tizim bo'yicha" },
+  "language": { "label": "Til" },
+  "toast": { "saved": "Saqlandi", "created": "Yaratildi", "updated": "Yangilandi", "deleted": "O'chirildi" },
+  "chart": { "showTable": "Jadval ko'rinishi", "showChart": "Grafik ko'rinishi", "noData": "Grafik uchun ma'lumot yo'q", "period": "Davr" },
+  "number": {"thousand": "{{value}} ming", "million": "{{value}} mln", "billion": "{{value}} mlrd", "trillion": "{{value}} trln"},
+  "date": {
+    "months": ["Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun", "Iyul", "Avgust", "Sentabr", "Oktabr", "Noyabr", "Dekabr"],
+    "monthsOf": ["yanvar", "fevral", "mart", "aprel", "may", "iyun", "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr"],
+    "monthsShort": ["Yan", "Fev", "Mar", "Apr", "May", "Iyn", "Iyl", "Avg", "Sen", "Okt", "Noy", "Dek"]
+  }
+}

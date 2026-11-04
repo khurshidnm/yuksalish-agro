@@ -1,0 +1,192 @@
+{
+  "title": "Dashboard",
+  "updatedAt": "Updated {{time}}",
+  "refresh": "Refresh",
+  "details": "Details",
+  "noData": "Not enough data",
+  "head": "{{value}} head",
+  "days": "{{value}} days",
+  "tabs": {
+    "overview": "Overview",
+    "kpi": "KPIs"
+  },
+  "unavailable": {
+    "title": "This section is not available right now",
+    "text": "The other sections are working. Please try again shortly.",
+    "retry": "Try again"
+  },
+  "banner": {
+    "urgent": "Urgent alerts: {{value}}",
+    "attention": "Needing attention: {{value}}",
+    "clear": "No urgent problems",
+    "open": "View"
+  },
+  "sections": {
+    "finance": "Finance",
+    "livestock": "Livestock",
+    "crops": "Crops",
+    "feed": "Feed",
+    "staff": "Staff and machinery",
+    "alerts": "Alerts",
+    "cameras": "Cameras"
+  },
+  "finance": {
+    "cash": "Cash and bank",
+    "monthExpense": "Expenses this month",
+    "monthIncome": "Income this month",
+    "budget": "Budget execution",
+    "budgetMonth": "Budget this month",
+    "thisMonth": "This month",
+    "yearToDate": "Year to date",
+    "budgetFact": "{{actual}} / {{planned}}",
+    "budgetOver": "{{value}} over",
+    "overruns": "Largest overruns",
+    "debts": "Debts",
+    "receivable": "Owed to us",
+    "payable": "We owe",
+    "overdueDebts": "Overdue debts",
+    "loans": "Loan balance",
+    "forecast": "3-month cash flow forecast",
+    "forecastNote": "A statistical estimate, not a firm plan",
+    "inflow": "Money in",
+    "outflow": "Money out",
+    "closing": "Month-end balance",
+    "lowConfidence": "Little history, so this is a rough estimate",
+    "shortfall": "Cash shortfall expected: {{month}}",
+    "negative": "Cash shortfall"
+  },
+  "livestock": {
+    "total": "Total herd",
+    "pregnantHint": "Pregnant: {{value}}",
+    "nextLambing": "Next lambing",
+    "next7Days": "Within 7 days: {{value}}",
+    "unwell": "Sick and in quarantine",
+    "unwellHint": "Sick: {{sick}} · Quarantine: {{quarantine}}",
+    "deaths30": "Deaths in 30 days",
+    "lambingByWeek": "Expected lambing by week",
+    "lambingTotal": "{{ewes}} ewes in total, expected lambs: {{lambs}}",
+    "lambsUnknown": "known after the first lambing",
+    "ewes": "Ewes",
+    "noLambing": "No lambing expected in the coming months",
+    "lambingOverdue": "Ewes past their lambing date: {{value}}",
+    "composition": "Herd composition",
+    "weightTrend": "Average weight trend",
+    "avgWeight": "Average weight"
+  },
+  "crops": {
+    "sown": "Fields sown",
+    "irrigated": "Irrigated",
+    "harvested": "Harvested",
+    "ofTotal": "{{value}} / {{total}}",
+    "overdue": "Overdue operations",
+    "overdueTitle": "Overdue operations: {{value}}",
+    "noOverdue": "No overdue operations",
+    "operationField": "{{type}}, field {{field}}",
+    "harvest": "Harvest: actual / plan",
+    "harvestValue": "{{actual}} / {{planned}} t",
+    "fields": "Field status",
+    "weatherTitle": "Weather forecast",
+    "noWeather": "No weather data yet",
+    "frost": "Frost risk",
+    "frostDays": "Frost days: {{value}}",
+    "weather": {
+      "clear": "Clear",
+      "partly": "Partly cloudy",
+      "cloudy": "Cloudy",
+      "fog": "Fog",
+      "rain": "Rain",
+      "snow": "Snow",
+      "storm": "Thunderstorm"
+    }
+  },
+  "feed": {
+    "lowestDays": "Lowest stock",
+    "belowMinimum": "Below minimum",
+    "belowMinimumBadge": "Under {{days}} days",
+    "nothingLow": "All items are at normal levels",
+    "dailyUse": "Daily use",
+    "daysTitle": "How long stock will last",
+    "daysNote": "A full bar means {{days}} days",
+    "daysOf": "{{item}} stock",
+    "stock": "Stock: {{value}}",
+    "basis": {
+      "actual": "by actual use",
+      "plan": "by ration"
+    },
+    "consumption": "Daily feed use",
+    "averagePerDay": "Average {{value}} a day",
+    "fed": "Feed given"
+  },
+  "staff": {
+    "present": "At work today",
+    "tasksDone": "Tasks done today",
+    "tasksHint": "Open: {{open}} · Overdue: {{overdue}}",
+    "machinery": "Machinery working",
+    "machineryHint": "In repair: {{repair}} · Service due: {{due}}",
+    "fuel": "Fuel used",
+    "fuelHint": "Last {{days}} days"
+  },
+  "alerts": {
+    "none": "No open alerts"
+  },
+  "cameras": {
+    "fleet": "Camera status",
+    "online": "Online",
+    "offline": "Offline",
+    "planned": "Planned",
+    "events": "Latest events",
+    "noEvents": "No events yet",
+    "sample": "Sample"
+  },
+  "kpi": {
+    "period": "Period",
+    "periods": {
+      "ytd": "Year to date",
+      "month": "This month",
+      "last12": "Last 12 months"
+    },
+    "units": {
+      "grams": "{{value}} g",
+      "tHa": "{{value}} t/ha",
+      "m3t": "{{value}} m³/t"
+    },
+    "groups": {
+      "finance": "Finance",
+      "livestock": "Livestock",
+      "crops": "Crops",
+      "feed": "Feed",
+      "staff": "Staff",
+      "machinery": "Machinery"
+    },
+    "labels": {
+      "profitabilityPercent": "Profitability",
+      "profitPerEwe": "Profit per ewe",
+      "operatingRatio": "Operating expense / income",
+      "netCashflow": "Net cash flow",
+      "budgetDeviationPercent": "Budget deviation",
+      "lambingPercent": "Lambing rate",
+      "survivalPercent": "Survival",
+      "adgG": "Average daily gain",
+      "costPerKgLive": "Cost of 1 kg live weight",
+      "feedConversion": "Feed conversion",
+      "mortalityPercent": "Mortality",
+      "yieldTHa": "Yield",
+      "costPerTon": "Cost per ton of produce",
+      "onTimePercent": "Operations done on time",
+      "waterM3PerTon": "Water use",
+      "stockDays": "Days of stock",
+      "costPerHeadDay": "Feed cost per head per day (ration)",
+      "lossPercent": "Feed losses",
+      "headPerEmployee": "Productivity, head per employee",
+      "haPerEmployee": "Productivity, ha per employee",
+      "attendancePercent": "Attendance",
+      "utilizationPercent": "Machinery utilisation",
+      "costPerHa": "Cost of work per ha",
+      "unplannedStops": "Unplanned stops"
+    },
+    "partlyWeighed": "Only {{value}} head weighed twice; most of the herd is needed"
+  },
+  "errors": {
+    "INVALID_PERIOD": "Choose a period of 1 to {{max}} months"
+  }
+}

@@ -1,0 +1,318 @@
+import { and, desc, eq, inArray, isNull, lte, ne, or, sql } from 'drizzle-orm';
+import { z } from 'zod';
+import { ALERT_STATUSES, SEVERITIES, type Permission, type RoleKey, type Severity } from '@yap/shared';
+import { schema } from '../../db/client';
+import { ctx, hasPermission, tx } from '../../core/context';
+import { conflict, notFound } from '../../core/errors';
+import { recordEvent } from '../../core/journal';
+import { listQuery, paged, sortBy } from '../../core/query';
+import { interpolate, lookup, type Params } from '../notifications/i18n';
+import { notifyRole } from '../notifications/notify.service';
+
+const { alerts } = schema;
+
+type Alert = typeof alerts.$inferSelect;
+
+const RANK: Record<Severity, number> = { info: 0, attention: 1, urgent: 2 };
+
+/** Who hears about a problem, by the first word of its rule key. Callers may override with `notify`. */
+const RESPONSIBLE: Record<string, RoleKey[]> = {
+  feed: ['zootechnician', 'storekeeper', 'director'],
+  ration: ['zootechnician', 'director'],
+  stock: ['storekeeper', 'director'],
+  batch: ['storekeeper', 'veterinarian'],
+  lambing: ['zootechnician', 'veterinarian', 'shepherd'],
+  vaccination: ['veterinarian', 'zootechnician'],
+  sick: ['veterinarian', 'zootechnician', 'director'],
+  quarantine: ['veterinarian', 'zootechnician'],
+  animal: ['veterinarian', 'zootechnician', 'director'],
+  mortality: ['veterinarian', 'zootechnician', 'director', 'owner'],
+  budget: ['accountant', 'director', 'owner'],
+  approvals: ['director', 'owner'],
+  loan: ['accountant', 'director', 'owner'],
+  tasks: ['director'],
+  operations: ['agronomist', 'director'],
+  document: ['director', 'owner'],
+  contract: ['accountant', 'director'],
+  maintenance: ['mechanic', 'director'],
+  camera: ['director', 'owner'],
+  device: ['director', 'owner'],
+  fuel: ['director', 'storekeeper'],
+};
+
+const DEFAULT_RESPONSIBLE: RoleKey[] = ['director', 'owner'];
+
+function responsibleRoles(ruleKey: string): RoleKey[] {
+  return RESPONSIBLE[ruleKey.split(/[._]/)[0]] ?? DEFAULT_RESPONSIBLE;
+}
+
+export interface RaiseAlertInput {
+  ruleKey: string;
+  dedupKey: string;
+  severity: Severity;
+  title: string;
+  body?: string;
+  link?: string;
+  entityType?: string;
+  entityId?: string;
+  source?: 'rule' | 'ai' | 'device';
+  /** Values for the text; `alerts:rules.<ruleKey>` in i18n renders it in the reader's language. */
+  data?: Record<string, unknown>;
+  /** Roles to notify, instead of the default for this rule key. */
+  notify?: RoleKey[];
+  /** Required to see the alert at all. Set it when the text reveals money. */
+  permission?: Permission;
+}
+
+/** A dictionary template is usable only if the alert carries a value for every placeholder. */
+function fill(template: string | null, data: Params, locale: string): string | null {
+  if (template === null) return null;
+  const complete = [...template.matchAll(/\{\{\s*(\w+)\s*\}\}/g)].every(([, name]) => data[name] != null);
+  return complete ? interpolate(template, data, locale) : null;
+}
+
+/** Device event names live in the cameras dictionary. A type no one has named shows as sent. */
+function deviceEventName(eventType: string, locale: string): string {
+  return lookup(locale, 'cameras', `eventTypes.${eventType.split('.').pop()}`) ?? eventType;
+}
+
+/** The reader's language when i18n has this alert, else the text it was raised with. */
+export function renderAlert(alert: Pick<Alert, 'ruleKey' | 'title' | 'body' | 'data'>, locale: string) {
+  const data = alert.data as Params;
+
+  // An AI alert is a finding, and the `ai` dictionary already words every finding.
+  if (typeof data.insightKey === 'string') {
+    const params = (data.i18n ?? {}) as Params;
+    return {
+      title: fill(lookup(locale, 'ai', `insight.${data.insightKey}.title`), params, locale) ?? alert.title,
+      body: fill(lookup(locale, 'ai', `insight.${data.insightKey}.body`), params, locale) ?? alert.body,
+    };
+  }
+
+  const params = typeof data.eventType === 'string' ? { ...data, eventType: deviceEventName(data.eventType, locale) } : data;
+  const text = (data.textKey as string | undefined) ?? alert.ruleKey;
+  return {
+    title: fill(lookup(locale, 'alerts', `rules.${text}.title`), params, locale) ?? alert.title,
+    body: fill(lookup(locale, 'alerts', `rules.${text}.body`), params, locale) ?? alert.body,
+  };
+}
+
+function nextRepeat(count: number): Date {
+  // 15 min, 30 min, 1 h, 2 h, then every 4 h until someone acknowledges.
+  const minutes = Math.min(15 * 2 ** Math.max(0, count - 1), 240);
+  return new Date(Date.now() + minutes * 60_000);
+}
+
+async function notifyAlert(alert: Alert): Promise<void> {
+  await notifyRole(
+    alert.notifyRoles as RoleKey[],
+    {
+      severity: alert.severity as Severity,
+      title: (locale) => renderAlert(alert, locale).title,
+      body: (locale) => renderAlert(alert, locale).body ?? '',
+      link: alert.link ?? undefined,
+      alertId: alert.id,
+    },
+    { permission: alert.permission as Permission | undefined },
+  );
+}
+
+/**
+ * Report a problem. While it stays unresolved, raising it again only refreshes it, so calling this
+ * on every evaluation is safe. People are told once, and again only if it becomes more severe.
+ */
+export async function raiseAlert(i: RaiseAlertInput): Promise<{ id: string; created: boolean; escalated: boolean }> {
+  const c = ctx();
+  const now = new Date();
+  const urgent = i.severity === 'urgent';
+  const notifyRoles = i.notify ?? responsibleRoles(i.ruleKey);
+
+  const [created] = await tx()
+    .insert(alerts)
+    .values({
+      tenantId: c.tenantId,
+      farmId: c.farmId,
+      createdBy: c.userId,
+      source: i.source ?? 'rule',
+      ruleKey: i.ruleKey,
+      dedupKey: i.dedupKey,
+      severity: i.severity,
+      title: i.title,
+      body: i.body,
+      data: i.data ?? {},
+      link: i.link,
+      entityType: i.entityType,
+      entityId: i.entityId,
+      notifyRoles,
+      permission: i.permission,
+      notifyCount: 1,
+      nextNotifyAt: urgent ? nextRepeat(1) : null,
+    })
+    .onConflictDoNothing()
+    .returning();
+
+  if (created) {
+    await notifyAlert(created);
+    await recordEvent({
+      type: 'alert.raised',
+      severity: i.severity,
+      entityType: i.entityType ?? 'alert',
+      entityId: i.entityId ?? created.id,
+      data: { ruleKey: i.ruleKey, alertId: created.id },
+      source: i.source === 'device' ? 'sensor' : i.source === 'ai' ? 'ai' : 'system',
+    });
+    return { id: created.id, created: true, escalated: false };
+  }
+
+  const [existing] = await tx()
+    .select()
+    .from(alerts)
+    .where(and(eq(alerts.farmId, c.farmId), eq(alerts.dedupKey, i.dedupKey), ne(alerts.status, 'resolved')));
+  if (!existing) return { id: '', created: false, escalated: false };
+
+  const escalated = RANK[i.severity] > RANK[existing.severity as Severity];
+  const [updated] = await tx()
+    .update(alerts)
+    .set({
+      severity: i.severity,
+      title: i.title,
+      body: i.body,
+      data: i.data ?? {},
+      link: i.link,
+      lastSeenAt: now,
+      // A worse situation needs a fresh decision, even if an earlier stage was acknowledged.
+      ...(escalated ? { status: 'open', acknowledgedAt: null, acknowledgedBy: null } : {}),
+      notifyCount: escalated ? existing.notifyCount + 1 : existing.notifyCount,
+      nextNotifyAt: urgent ? (escalated ? nextRepeat(1) : existing.nextNotifyAt) : null,
+    })
+    .where(eq(alerts.id, existing.id))
+    .returning();
+  if (escalated) await notifyAlert(updated);
+  return { id: existing.id, created: false, escalated };
+}
+
+/** Close an alert because the problem is gone. */
+export async function resolveByDedupKey(dedupKey: string): Promise<boolean> {
+  const closed = await tx()
+    .update(alerts)
+    .set({ status: 'resolved', resolvedAt: new Date(), nextNotifyAt: null })
+    .where(and(eq(alerts.farmId, ctx().farmId), eq(alerts.dedupKey, dedupKey), ne(alerts.status, 'resolved')))
+    .returning({ id: alerts.id });
+  return closed.length > 0;
+}
+
+/** Repeat unacknowledged urgent alerts (spec 17.3). */
+export async function repeatUrgentAlerts(): Promise<number> {
+  const due = await tx()
+    .select()
+    .from(alerts)
+    .where(
+      and(
+        eq(alerts.farmId, ctx().farmId),
+        eq(alerts.severity, 'urgent'),
+        eq(alerts.status, 'open'),
+        lte(alerts.nextNotifyAt, new Date()),
+      ),
+    )
+    .for('update', { skipLocked: true });
+  for (const alert of due) {
+    await notifyAlert(alert);
+    const notifyCount = alert.notifyCount + 1;
+    await tx().update(alerts).set({ notifyCount, nextNotifyAt: nextRepeat(notifyCount) }).where(eq(alerts.id, alert.id));
+  }
+  return due.length;
+}
+
+/**
+ * What this user may see: an alert that reveals money needs its permission (rule 7), and staff
+ * without the dashboard see only the alerts addressed to their role.
+ */
+function visible() {
+  const c = ctx();
+  return and(
+    eq(alerts.farmId, c.farmId),
+    or(isNull(alerts.permission), inArray(alerts.permission, [...c.permissions, ''])),
+    hasPermission('dashboard.view') ? undefined : sql`jsonb_exists(${alerts.notifyRoles}, ${c.roleKey ?? ''})`,
+  );
+}
+
+export const alertListQuery = listQuery.extend({
+  status: z.enum(ALERT_STATUSES).optional(),
+  severity: z.enum(SEVERITIES).optional(),
+  /** Open and acknowledged, i.e. everything not yet resolved. */
+  active: z.stringbool().optional(),
+});
+
+const SEVERITY_ORDER = sql`case ${alerts.severity} when 'urgent' then 0 when 'attention' then 1 else 2 end`;
+
+export async function list(q: z.infer<typeof alertListQuery>) {
+  const where = and(
+    visible(),
+    q.status ? eq(alerts.status, q.status) : undefined,
+    q.active ? ne(alerts.status, 'resolved') : undefined,
+    q.severity ? eq(alerts.severity, q.severity) : undefined,
+  );
+  return paged(q, alerts, where, (limit, offset) =>
+    tx()
+      .select()
+      .from(alerts)
+      .where(where)
+      .orderBy(
+        ...sortBy(q.sort, { createdAt: alerts.createdAt, lastSeenAt: alerts.lastSeenAt }, [SEVERITY_ORDER, desc(alerts.lastSeenAt)], alerts.id),
+      )
+      .limit(limit)
+      .offset(offset),
+  );
+}
+
+export async function counts() {
+  const rows = await tx()
+    .select({ severity: alerts.severity, n: sql<number>`count(*)`.mapWith(Number) })
+    .from(alerts)
+    .where(and(visible(), ne(alerts.status, 'resolved')))
+    .groupBy(alerts.severity);
+  const bySeverity = { urgent: 0, attention: 0, info: 0 };
+  for (const row of rows) bySeverity[row.severity as Severity] = row.n;
+  return { ...bySeverity, total: bySeverity.urgent + bySeverity.attention + bySeverity.info };
+}
+
+async function getVisible(id: string): Promise<Alert> {
+  const [alert] = await tx().select().from(alerts).where(and(eq(alerts.id, id), visible()));
+  if (!alert) throw notFound('Alert');
+  return alert;
+}
+
+export async function acknowledge(id: string) {
+  const alert = await getVisible(id);
+  if (alert.status !== 'open') throw conflict('ALERT_NOT_OPEN', 'This alert is not open');
+  const c = ctx();
+  const [row] = await tx()
+    .update(alerts)
+    .set({ status: 'acknowledged', acknowledgedBy: c.userId, acknowledgedAt: new Date(), nextNotifyAt: null })
+    .where(eq(alerts.id, id))
+    .returning();
+  await recordEvent({ type: 'alert.acknowledged', entityType: 'alert', entityId: id, data: { ruleKey: alert.ruleKey } });
+  return row;
+}
+
+export async function resolve(id: string) {
+  const alert = await getVisible(id);
+  if (alert.status === 'resolved') throw conflict('ALERT_ALREADY_RESOLVED', 'This alert is already resolved');
+  const [row] = await tx()
+    .update(alerts)
+    .set({ status: 'resolved', resolvedAt: new Date(), nextNotifyAt: null })
+    .where(eq(alerts.id, id))
+    .returning();
+  await recordEvent({ type: 'alert.resolved', entityType: 'alert', entityId: id, data: { ruleKey: alert.ruleKey } });
+  return row;
+}
+
+/** Newest and most severe first, for dashboards. */
+export async function latest(limit: number) {
+  return tx()
+    .select()
+    .from(alerts)
+    .where(and(visible(), ne(alerts.status, 'resolved')))
+    .orderBy(SEVERITY_ORDER, desc(alerts.lastSeenAt))
+    .limit(limit);
+}

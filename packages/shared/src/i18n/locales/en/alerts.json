@@ -1,0 +1,219 @@
+{
+  "rules": {
+    "feed_low": {
+      "title": "{{item}} is running low",
+      "body": "Stock lasts {{days}} days. Set minimum: {{minimum}} days."
+    },
+    "stock_low": {
+      "title": "{{item}} is below minimum",
+      "body": "In stock: {{qty}} {{unit}}. Minimum: {{minimum}} {{unit}}."
+    },
+    "ration_deviation": {
+      "title": "{{herd}}: feed use off the ration",
+      "body": "On {{date}} the difference was {{percent}}%: fed {{actual}}, ration {{planned}}."
+    },
+    "lambing_soon": {
+      "title": "{{count}} ewes due to lamb within 7 days",
+      "body": "First date: {{date}}."
+    },
+    "lambing_overdue": {
+      "title": "{{count}} ewes are past their lambing date",
+      "body": "Check them and enter the record."
+    },
+    "vaccination_overdue": {
+      "title": "{{plan}}: not done for {{count}} animals",
+      "body": "Overdue, or not done yet."
+    },
+    "sick_animals": {
+      "title": "Sick animals: {{count}}",
+      "body": "A veterinary check is needed."
+    },
+    "quarantine_animals": {
+      "title": "In quarantine: {{count}}",
+      "body": "Keep track of the quarantine period."
+    },
+    "quarantine_ended": {
+      "title": "Quarantine period over for {{count}} animals",
+      "body": "Decide whether to release them."
+    },
+    "mortality_spike": {
+      "title": "Mortality is up: {{count}} in 30 days",
+      "body": "Mortality {{percent}}%. Previous 30 days: {{previous}}."
+    },
+    "budget_overrun": {
+      "title": "{{category}}: over budget",
+      "body": "{{percent}}% of the budget used for {{month}}."
+    },
+    "tasks_overdue": {
+      "title": "Overdue tasks: {{count}}",
+      "body": "Check with the people responsible."
+    },
+    "operations_overdue": {
+      "title": "Overdue field operations: {{count}}",
+      "body": "Oldest: {{date}}."
+    },
+    "document_expiring": {
+      "title": "Document expiring: {{title}}",
+      "body": "Valid until {{date}}."
+    },
+    "contract_expiring": {
+      "title": "Contract expiring: {{number}}",
+      "body": "{{counterparty}}, ends {{date}}."
+    },
+    "batch_expiring": {
+      "title": "{{item}}: batch expiring",
+      "body": "Expires {{date}}. Remaining: {{qty}} {{unit}}."
+    },
+    "approvals_pending": {
+      "title": "Payments awaiting approval: {{count}}",
+      "body": "Review them in Finance."
+    },
+    "loan_payment_due": {
+      "title": "Loan payment coming up: {{loan}}",
+      "body": "Due on {{date}}."
+    },
+    "maintenance_due": {
+      "title": "Maintenance due: {{asset}}",
+      "body": "Planned for {{date}}."
+    },
+    "camera_offline": {
+      "title": "Camera offline: {{camera}}",
+      "body": "Check the camera connection."
+    },
+    "document_expired": {
+      "title": "Document expired: {{title}}",
+      "body": "Valid until {{date}}."
+    },
+    "batch_expired": {
+      "title": "{{item}}: batch expired",
+      "body": "Expired {{date}}. Remaining: {{qty}} {{unit}}."
+    },
+    "loan_payment_overdue": {
+      "title": "Loan payment overdue: {{loan}}",
+      "body": "Was due on {{date}}."
+    },
+    "maintenance_overdue": {
+      "title": "Maintenance overdue: {{asset}}",
+      "body": "Was planned for {{date}}."
+    },
+    "sick_report": {
+      "title": "Sick animal: {{tag}}"
+    },
+    "herd_condition": {
+      "title": "Problem noted in herd: {{herd}}"
+    },
+    "offline_conflict": {
+      "title": "{{herd}}: two different records for {{date}}",
+      "body": "A record entered offline did not match the saved one. Offline record: {{summary}}."
+    },
+    "offline_conflict_empty": {
+      "title": "{{herd}}: two different records for {{date}}",
+      "body": "A record entered offline did not match the saved one. It lists no feed."
+    },
+    "asset_fuel_deviation": {
+      "title": "Fuel use {{percent}}% over the norm: {{name}}",
+      "body": "{{date}}: used {{fuelL}} l, norm {{normL}} l."
+    },
+    "device_event": {
+      "title": "{{deviceName}}: {{eventType}}"
+    },
+    "device_offline": {
+      "title": "{{deviceName}} is offline",
+      "body": "No signal for {{minutes}} minutes."
+    }
+  },
+  "digest": {
+    "title": "Daily summary, {{date}}",
+    "herd": "Herd: {{head}} head, {{pregnant}} pregnant",
+    "health": "Sick: {{sick}}, in quarantine: {{quarantine}}",
+    "lambing": "Lambing in the next 7 days: {{count}}",
+    "feed": "Lowest feed: {{name}}, {{days}} days left",
+    "cash": "Cash and bank: {{amount}} UZS",
+    "alerts": "Open alerts: {{count}}, urgent: {{urgent}}",
+    "tasks": "Open tasks: {{count}}"
+  },
+  "bot": {
+    "linked": "Your account is linked. {{status}} shows today's status, {{alerts}} shows open alerts.",
+    "linkFailed": "That code is wrong or has expired. Get a new one on the Notifications page.",
+    "notLinked": "This chat is not linked to an account. Get a code on the Notifications page.",
+    "help": "Commands: {{status}} today's status, {{alerts}} open alerts.",
+    "noAlerts": "No open alerts.",
+    "noFarm": "Your account is not attached to a farm."
+  },
+  "errors": {
+    "ALERT_NOT_OPEN": "This alert has already been handled",
+    "ALERT_ALREADY_RESOLVED": "This alert is already closed",
+    "TELEGRAM_NOT_CONFIGURED": "The Telegram bot is not set up yet. Contact your administrator."
+  },
+  "title": "Alerts",
+  "description": "Problems found by rules and AI, in one list, by severity.",
+  "evaluate": "Check now",
+  "emptyTitle": "All clear",
+  "emptyBody": "There are no open alerts.",
+  "fields": {
+    "severity": "Severity",
+    "alert": "Alert",
+    "lastSeen": "Last checked",
+    "status": "Status"
+  },
+  "filters": {
+    "active": "Unresolved",
+    "allSeverities": "All severities"
+  },
+  "actions": {
+    "open": "Open source",
+    "acknowledge": "Acknowledge",
+    "resolve": "Mark as resolved"
+  },
+  "toast": {
+    "acknowledged": "Acknowledged, repeat messages stopped",
+    "resolved": "Alert closed",
+    "evaluated": "Checked: {{raised}} new, {{resolved}} closed",
+    "unlinked": "Telegram disconnected"
+  },
+  "inbox": {
+    "title": "Notifications",
+    "description": "Your messages, and where you receive them.",
+    "tab": "Messages",
+    "unreadOnly": "Unread only",
+    "markAll": "Mark all as read",
+    "emptyTitle": "No messages",
+    "emptyBody": "New messages will appear here.",
+    "unread": "Unread"
+  },
+  "settings": {
+    "tab": "Settings",
+    "channelsTitle": "What goes where",
+    "channelsBody": "Messages inside the platform are always on. You choose the rest.",
+    "notConfigured": "Not set up",
+    "event": {
+      "alert_urgent": "Urgent alerts",
+      "alert_attention": "Alerts needing attention",
+      "alert_info": "Information only",
+      "task_assigned": "Tasks assigned to me",
+      "daily_summary": "Daily summary"
+    }
+  },
+  "telegram": {
+    "title": "Telegram",
+    "body": "Get alerts and the daily summary in Telegram. Send the bot /holat to see today's status.",
+    "notConfigured": "The Telegram bot is not set up yet. Contact your administrator.",
+    "linked": "Telegram is connected.",
+    "unlinkTitle": "Disconnect Telegram?",
+    "unlinkBody": "This account will stop receiving Telegram messages.",
+    "unlink": "Disconnect Telegram",
+    "link": "Connect Telegram",
+    "step1": "Open the bot in Telegram.",
+    "step2": "Send the bot the command below.",
+    "openBot": "Open the bot",
+    "copy": "Copy the command",
+    "copied": "Copied",
+    "copyFailed": "Could not copy, please type it",
+    "waiting": "Waiting for the bot. The code works until {{time}}."
+  },
+  "stat": {
+    "urgent": "Urgent",
+    "attention": "Attention",
+    "info": "Info"
+  }
+}

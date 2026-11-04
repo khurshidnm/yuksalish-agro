@@ -1,0 +1,189 @@
+{
+  "notification": {
+    "assigned": "Вам назначена новая задача"
+  },
+  "errors": {
+    "TASK_NOT_OPEN": "Начать можно только открытую задачу",
+    "TASK_NOT_ACTIVE": "Эта задача уже закрыта",
+    "TASK_NOT_CLOSED": "Эта задача не закрыта",
+    "TASK_IS_SERIES": "Повторяющуюся серию нельзя отметить выполненной",
+    "PHOTO_REQUIRED": "Чтобы закрыть задачу, нужно фото",
+    "RECORD_REQUIRED": "Эта задача закрывается только с соответствующей записью",
+    "ASSIGNEE_NOT_MEMBER": "Этот сотрудник не работает на этой ферме",
+    "INVALID_DATE_RANGE": "Дата окончания не может быть раньше даты начала"
+  },
+  "title": "Задачи",
+  "description": "Работа на ферме: кто, что и к какому сроку делает.",
+  "myTitle": "Мои задачи",
+  "myDescription": "Работа, назначенная вам. Закончив, нажмите «Выполнено».",
+  "add": "Новая задача",
+  "edit": "Редактировать задачу",
+  "searchPlaceholder": "Поиск по названию задачи",
+  "needsPhoto": "Нужно фото",
+  "overdueOn": "Просрочено: {{date}}",
+  "emptyTitle": "Задач нет",
+  "emptyBody": "Новые задачи появятся здесь.",
+  "deleteTitle": "Удалить задачу?",
+  "deleteBody": "Задача «{{name}}» будет удалена полностью.",
+  "quickAdd": {
+    "label": "Быстрое добавление",
+    "placeholder": "Напишите новую задачу",
+    "button": "Добавить"
+  },
+  "tabs": {
+    "board": "Доска",
+    "list": "Список",
+    "recurring": "Повторяющиеся"
+  },
+  "fields": {
+    "title": "Задача",
+    "description": "Описание",
+    "assignee": "Ответственный",
+    "assigneePlaceholder": "Выберите сотрудника",
+    "dueDate": "Срок",
+    "startDate": "Дата начала",
+    "priority": "Важность",
+    "status": "Статус",
+    "division": "Подразделение",
+    "noDivision": "Не выбрано",
+    "linkedType": "Тип связанного объекта",
+    "linkedObject": "Связанный объект",
+    "noLink": "Без связи",
+    "recurrence": "Повторение",
+    "recurrenceHint": "Новая задача будет создаваться автоматически.",
+    "requiresRecord": "Запись для закрытия",
+    "requiresRecordHint": "Задача закроется только после этой записи.",
+    "noRecord": "Не требуется",
+    "requiresPhoto": "Требовать фото",
+    "requiresPhotoHint": "Сотрудник закрывает задачу с фото.",
+    "notes": "Примечание"
+  },
+  "filters": {
+    "allStatuses": "Все статусы",
+    "allDivisions": "Все подразделения",
+    "allPriorities": "Любая важность",
+    "allPeople": "Все сотрудники",
+    "mine": "Только мои",
+    "overdue": "Просроченные"
+  },
+  "actions": {
+    "start": "Начать",
+    "complete": "Выполнено",
+    "cancel": "Отменить",
+    "reopen": "Открыть снова"
+  },
+  "board": {
+    "open": "Открытые",
+    "inProgress": "В работе",
+    "done": "Выполненные",
+    "empty": "Здесь задач нет"
+  },
+  "division": {
+    "crops": "Растениеводство",
+    "livestock": "Овцеводство",
+    "machinery": "Механизация",
+    "admin": "Управление"
+  },
+  "entity": {
+    "field": "Поле",
+    "herd": "Отара",
+    "animal": "Животное",
+    "asset": "Техника"
+  },
+  "record": {
+    "health_record": "Ветеринарная запись",
+    "field_operation": "Агротехническая работа",
+    "daily_log": "Дневная запись",
+    "weight_record": "Запись веса"
+  },
+  "complete": {
+    "title": "Закрыть задачу",
+    "photo": "Фото",
+    "takePhoto": "Сделать фото",
+    "photoPreview": "Сделанное фото",
+    "removePhoto": "Убрать фото",
+    "note": "Примечание",
+    "recordHint": "Выберите запись, внесённую по этой задаче.",
+    "chooseRecord": "Выберите запись",
+    "noRecordTitle": "Сначала внесите запись: {{record}}",
+    "noRecordBody": "Эта задача закрывается только с соответствующей записью, а её пока нет.",
+    "goCreateRecord": "Перейти к внесению записи"
+  },
+  "series": {
+    "running": "Работает",
+    "stopped": "Остановлена",
+    "explain": "Каждая серия сама создаёт новую задачу в назначенные дни.",
+    "emptyTitle": "Повторяющихся задач нет",
+    "emptyBody": "При создании задачи выберите повторение: например, ежедневное кормление.",
+    "stop": "Остановить",
+    "resume": "Возобновить"
+  },
+  "toast": {
+    "cancelled": "Задача отменена",
+    "reopened": "Задача открыта снова",
+    "completed": "Задача выполнена"
+  },
+  "calendar": {
+    "title": "Календарь",
+    "description": "Все запланированные работы фермы в одном месте.",
+    "addEvent": "Добавить событие",
+    "editEvent": "Редактировать событие",
+    "deleteEvent": "Удалить событие?",
+    "today": "Сегодня",
+    "nothing": "На этот день ничего не запланировано",
+    "legend": "Обозначения",
+    "itemCount": "Записей: {{count}}",
+    "more": "ещё {{count}}",
+    "eventKind": "Тип события",
+    "startDate": "Дата начала",
+    "endDate": "Дата окончания",
+    "responsible": "Ответственный",
+    "view": {
+      "month": "Месяц",
+      "week": "Неделя",
+      "day": "День"
+    },
+    "weekday": {
+      "mon": "Пн",
+      "tue": "Вт",
+      "wed": "Ср",
+      "thu": "Чт",
+      "fri": "Пт",
+      "sat": "Сб",
+      "sun": "Вс"
+    },
+    "kind": {
+      "lambing": "Окот",
+      "vaccination": "Ветеринария",
+      "field_operation": "Агротехническая работа",
+      "loan": "Платёж по кредиту",
+      "contract": "Договор",
+      "document": "Документ",
+      "maintenance": "Техобслуживание",
+      "state_report": "Госотчётность",
+      "staff_contract": "Договор сотрудника",
+      "staff_medical": "Медосмотр",
+      "task": "Задача",
+      "manual": "Событие"
+    },
+    "eventKinds": {
+      "meeting": "Встреча",
+      "inspection": "Проверка",
+      "delivery": "Доставка",
+      "other": "Другое"
+    },
+    "item": {
+      "lambing": "Ожидаемый окот: {{count}}",
+      "vaccination": "Вакцинация: {{name}}",
+      "field_operation": "{{operation}}: поле {{field}}",
+      "loan": "Платёж по кредиту: {{name}}",
+      "contract": "Заканчивается договор: {{number}}, {{counterparty}}",
+      "document": "Истекает срок документа: {{name}}",
+      "maintenance": "Техобслуживание: {{name}}",
+      "state_report": "Сдать отчёт: {{name}}, {{authority}}",
+      "staff_contract": "Договор заканчивается: {{name}}",
+      "staff_medical": "Медосмотр: {{name}}"
+    },
+    "free": "Нет планов"
+  }
+}

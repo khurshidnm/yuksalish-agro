@@ -1,0 +1,192 @@
+{
+  "title": "Панель управления",
+  "updatedAt": "Обновлено: {{time}}",
+  "refresh": "Обновить",
+  "details": "Подробнее",
+  "noData": "Недостаточно данных",
+  "head": "{{value}} гол.",
+  "days": "{{value}} дн.",
+  "tabs": {
+    "overview": "Состояние",
+    "kpi": "KPI"
+  },
+  "unavailable": {
+    "title": "Этот раздел сейчас недоступен",
+    "text": "Остальные разделы работают. Попробуйте ещё раз чуть позже.",
+    "retry": "Повторить"
+  },
+  "banner": {
+    "urgent": "Срочных предупреждений: {{value}}",
+    "attention": "Требуют внимания: {{value}}",
+    "clear": "Срочных проблем нет",
+    "open": "Посмотреть"
+  },
+  "sections": {
+    "finance": "Финансы",
+    "livestock": "Животноводство",
+    "crops": "Растениеводство",
+    "feed": "Корма",
+    "staff": "Персонал и техника",
+    "alerts": "Предупреждения",
+    "cameras": "Камеры"
+  },
+  "finance": {
+    "cash": "Касса и банк",
+    "monthExpense": "Расходы за месяц",
+    "monthIncome": "Доходы за месяц",
+    "budget": "Исполнение бюджета",
+    "budgetMonth": "Бюджет за месяц",
+    "thisMonth": "Этот месяц",
+    "yearToDate": "С начала года",
+    "budgetFact": "{{actual}} / {{planned}}",
+    "budgetOver": "перерасход {{value}}",
+    "overruns": "Наибольшие перерасходы",
+    "debts": "Задолженность",
+    "receivable": "Нам должны",
+    "payable": "Мы должны",
+    "overdueDebts": "Просроченный долг",
+    "loans": "Остаток по кредитам",
+    "forecast": "Прогноз денежного потока на 3 месяца",
+    "forecastNote": "Статистическая оценка, а не точный план",
+    "inflow": "Поступления",
+    "outflow": "Выплаты",
+    "closing": "Остаток на конец месяца",
+    "lowConfidence": "Истории мало, оценка приблизительная",
+    "shortfall": "Ожидается нехватка денег: {{month}}",
+    "negative": "Нехватка денег"
+  },
+  "livestock": {
+    "total": "Всего поголовье",
+    "pregnantHint": "Суягных: {{value}}",
+    "nextLambing": "Следующий окот",
+    "next7Days": "В ближайшие 7 дней: {{value}}",
+    "unwell": "Больные и на карантине",
+    "unwellHint": "Больные: {{sick}} · Карантин: {{quarantine}}",
+    "deaths30": "Падёж за 30 дней",
+    "lambingByWeek": "Ожидаемый окот по неделям",
+    "lambingTotal": "Всего маток: {{ewes}}, ожидается ягнят: {{lambs}}",
+    "lambsUnknown": "станет известно после первого окота",
+    "ewes": "Матки",
+    "noLambing": "В ближайшие месяцы окот не ожидается",
+    "lambingOverdue": "Срок окота прошёл у маток: {{value}}",
+    "composition": "Структура стада",
+    "weightTrend": "Динамика среднего веса",
+    "avgWeight": "Средний вес"
+  },
+  "crops": {
+    "sown": "Засеянные поля",
+    "irrigated": "Политые",
+    "harvested": "Убранные",
+    "ofTotal": "{{value}} / {{total}}",
+    "overdue": "Просроченные работы",
+    "overdueTitle": "Просроченные работы: {{value}}",
+    "noOverdue": "Просроченных работ нет",
+    "operationField": "{{type}}, поле {{field}}",
+    "harvest": "Урожай: факт / план",
+    "harvestValue": "{{actual}} / {{planned}} т",
+    "fields": "Состояние полей",
+    "weatherTitle": "Прогноз погоды",
+    "noWeather": "Данные о погоде ещё не получены",
+    "frost": "Риск заморозка",
+    "frostDays": "Дней с заморозками: {{value}}",
+    "weather": {
+      "clear": "Ясно",
+      "partly": "Переменная облачность",
+      "cloudy": "Облачно",
+      "fog": "Туман",
+      "rain": "Дождь",
+      "snow": "Снег",
+      "storm": "Гроза"
+    }
+  },
+  "feed": {
+    "lowestDays": "Наименьший запас",
+    "belowMinimum": "Ниже минимума",
+    "belowMinimumBadge": "Меньше {{days}} дн.",
+    "nothingLow": "Все позиции в норме",
+    "dailyUse": "Расход в день",
+    "daysTitle": "На сколько дней хватит запаса",
+    "daysNote": "Полная шкала — {{days}} дн.",
+    "daysOf": "Запас: {{item}}",
+    "stock": "Остаток: {{value}}",
+    "basis": {
+      "actual": "по фактическому расходу",
+      "plan": "по рациону"
+    },
+    "consumption": "Ежедневный расход кормов",
+    "averagePerDay": "В среднем {{value}} в день",
+    "fed": "Выдано кормов"
+  },
+  "staff": {
+    "present": "Сегодня на работе",
+    "tasksDone": "Задач выполнено сегодня",
+    "tasksHint": "Открыто: {{open}} · Просрочено: {{overdue}}",
+    "machinery": "Техника в работе",
+    "machineryHint": "В ремонте: {{repair}} · Пора на ТО: {{due}}",
+    "fuel": "Расход топлива",
+    "fuelHint": "За последние {{days}} дн."
+  },
+  "alerts": {
+    "none": "Открытых предупреждений нет"
+  },
+  "cameras": {
+    "fleet": "Состояние камер",
+    "online": "В сети",
+    "offline": "Не в сети",
+    "planned": "В плане",
+    "events": "Последние события",
+    "noEvents": "Событий пока нет",
+    "sample": "Образец"
+  },
+  "kpi": {
+    "period": "Период",
+    "periods": {
+      "ytd": "С начала года",
+      "month": "Этот месяц",
+      "last12": "Последние 12 месяцев"
+    },
+    "units": {
+      "grams": "{{value}} г",
+      "tHa": "{{value}} т/га",
+      "m3t": "{{value}} м³/т"
+    },
+    "groups": {
+      "finance": "Финансы",
+      "livestock": "Животноводство",
+      "crops": "Растениеводство",
+      "feed": "Корма",
+      "staff": "Персонал",
+      "machinery": "Техника"
+    },
+    "labels": {
+      "profitabilityPercent": "Рентабельность",
+      "profitPerEwe": "Прибыль на 1 матку",
+      "operatingRatio": "Операционные расходы / доход",
+      "netCashflow": "Чистый денежный поток",
+      "budgetDeviationPercent": "Отклонение от бюджета",
+      "lambingPercent": "Процент окота",
+      "survivalPercent": "Сохранность",
+      "adgG": "Среднесуточный прирост",
+      "costPerKgLive": "Себестоимость 1 кг живого веса",
+      "feedConversion": "Конверсия корма",
+      "mortalityPercent": "Падёж",
+      "yieldTHa": "Урожайность",
+      "costPerTon": "Себестоимость 1 т продукции",
+      "onTimePercent": "Работы в срок",
+      "waterM3PerTon": "Расход воды",
+      "stockDays": "Дней запаса",
+      "costPerHeadDay": "Корма на 1 голову в день (по рациону)",
+      "lossPercent": "Потери кормов",
+      "headPerEmployee": "Производительность, голов на работника",
+      "haPerEmployee": "Производительность, га на работника",
+      "attendancePercent": "Табельная дисциплина",
+      "utilizationPercent": "Загрузка техники",
+      "costPerHa": "Себестоимость работ на 1 га",
+      "unplannedStops": "Внеплановые простои"
+    },
+    "partlyWeighed": "Дважды взвешено только {{value}} гол., нужно большинство стада"
+  },
+  "errors": {
+    "INVALID_PERIOD": "Выберите период от 1 до {{max}} месяцев"
+  }
+}

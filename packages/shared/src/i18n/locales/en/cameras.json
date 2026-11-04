@@ -1,0 +1,110 @@
+{
+  "title": "Cameras and sensors",
+  "description": "Device registry, events and live view.",
+  "tabs": {
+    "live": "Live view",
+    "events": "Events",
+    "devices": "Devices",
+    "plan": "Layout plan"
+  },
+  "zones": {
+    "barn": "Inside the barn",
+    "feed_store": "Feed store",
+    "gate": "Main gate and yard",
+    "pump": "Water and pump station"
+  },
+  "live": {
+    "openStream": "Open the stream separately",
+    "notConfiguredTitle": "Stream gateway not configured",
+    "notConfiguredHint": "Add a live view address to the device card.",
+    "notInstalled": "This camera is not installed yet.",
+    "failedTitle": "Could not open the stream",
+    "failedHint": "The address is not working, or this browser cannot play the format.",
+    "emptyTitle": "No cameras",
+    "emptyBody": "Add a camera under Devices.",
+    "gatewayTitle": "Live view is not connected yet",
+    "gatewayBody": "Browsers cannot play RTSP directly. Once a stream gateway such as MediaMTX runs at the farm, put its address on each camera's card."
+  },
+  "plan": {
+    "summary": "Plan: {{range}} cameras, working now: {{online}}",
+    "archive": "A 30-day local archive stays at the farm. Clips of important events go to the cloud.",
+    "planned": "Planned",
+    "registered": "Registered",
+    "working": "Working",
+    "progress": "{{zone}}: installation",
+    "purpose": {
+      "barn": "Counting animals, inactivity, lambing, trough state",
+      "feed_store": "Stock in and out, signs of fire",
+      "gate": "Vehicles, strangers, movement outside working hours",
+      "pump": "Technical condition"
+    }
+  },
+  "devices": {
+    "name": "Name",
+    "type": "Type",
+    "zone": "Zone",
+    "status": "Status",
+    "lastSeen": "Last signal",
+    "add": "Add device",
+    "edit": "Edit device",
+    "searchPlaceholder": "Search by name",
+    "allTypes": "All types",
+    "allStatuses": "All statuses",
+    "emptyTitle": "No devices",
+    "emptyBody": "Add a camera or sensor to the registry.",
+    "deleteTitle": "Delete this device?",
+    "deleteBody": "\"{{name}}\" will leave the registry. Its events stay in the journal.",
+    "facility": "Facility",
+    "streamUrl": "RTSP address",
+    "streamUrlHint": "A user name and password are taken out of the address and stored encrypted.",
+    "credentialsStored": "The user name and password are stored encrypted.",
+    "onvifUrl": "ONVIF address",
+    "onvifUrlHint": "Enter it without a user name or password.",
+    "liveUrl": "Live view address",
+    "liveUrlHint": "Gateway address: HLS, MP4 or a player page.",
+    "offlineAfter": "Count as offline after",
+    "offlineAfterHint": "10 minutes if left empty.",
+    "minutes": "min",
+    "apiKey": "Only with this key",
+    "apiKeyHint": "When set, the device accepts no other key.",
+    "anyKey": "Any key",
+    "notes": "Notes"
+  },
+  "events": {
+    "event": "Event",
+    "device": "Device",
+    "severity": "Severity",
+    "time": "Time",
+    "snapshot": "Snapshot",
+    "openSnapshot": "Open snapshot",
+    "sample": "Sample",
+    "allSeverities": "All levels",
+    "source": "Source",
+    "allSources": "Cameras and sensors",
+    "from": "Start date",
+    "to": "End date",
+    "emptyTitle": "No events",
+    "emptyBody": "Events appear here once devices are connected."
+  },
+  "eventTypes": {
+    "animal_count": "Animal count does not match",
+    "inactivity": "Animal inactive for a long time",
+    "isolation": "Animal apart from the flock",
+    "lambing_activity": "Signs of lambing",
+    "trough_empty": "Trough is empty",
+    "person": "Person detected",
+    "vehicle": "Vehicle detected",
+    "gate_open": "Gate opened",
+    "smoke": "Signs of smoke",
+    "fire": "Signs of fire",
+    "temperature": "Temperature",
+    "humidity": "Humidity",
+    "ammonia": "Ammonia",
+    "water_level": "Water level"
+  },
+  "errors": {
+    "INVALID_STREAM_URL": "This address is not valid. Enter the ONVIF address without a user name or password.",
+    "DEVICE_KEY_MISMATCH": "This device is bound to a different key.",
+    "INVALID_EVENT_TIME": "The event time cannot be in the future."
+  }
+}

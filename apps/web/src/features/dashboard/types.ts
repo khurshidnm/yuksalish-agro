@@ -1,0 +1,140 @@
+import type { Alert } from '@/features/alerts/types';
+
+/** Mirrors apps/api/src/modules/dashboard. A part the reader may not see is absent, not null. */
+export type BlockKey = 'finance' | 'livestock' | 'crops' | 'feed' | 'staff' | 'alerts' | 'cameras';
+
+export type Block<T> = { status: 'ok'; data: T } | { status: 'unavailable'; data: null };
+
+export interface LocalizedName {
+  uz: string;
+  ru: string;
+  en: string;
+}
+
+export interface FinanceData {
+  month: { month: string; income: number; expense: number; operatingExpense: number };
+  cash: {
+    accounts: { id: string; name: string; type: string; currency: string; balance: number; balanceBase: number }[];
+    total: number;
+  };
+  debts: {
+    receivable: number;
+    payable: number;
+    overdue: number;
+    overduePayable: number;
+    overdueReceivable: number;
+    loansOutstanding: number;
+  };
+  budget: {
+    month: BudgetTotals;
+    year: BudgetTotals;
+    overruns: { categoryId: string; key: string; name: LocalizedName; planned: number; actual: number; deviation: number }[];
+  };
+  forecast: {
+    method: string;
+    lowConfidence: boolean;
+    firstNegativeMonth: string | null;
+    months: { month: string; inflow: number; outflow: number; net: number; closing: number; negative: boolean }[];
+  };
+}
+
+export interface BudgetTotals {
+  planned: number;
+  actual: number;
+  deviation: number;
+  percent: number | null;
+}
+
+export interface LivestockData {
+  total: number;
+  byCategory: Record<string, number>;
+  byStatus: Record<string, number>;
+  pregnant: number;
+  sick: number;
+  quarantine: number;
+  lambing: {
+    weeks: { week: string; expected: number }[];
+    totalEwes: number;
+    overdue: number;
+    expectedLambs: number | null;
+    next7Days: number;
+    nextDate: string | null;
+  };
+  mortality: { dead: number; percent: number | null };
+  weightTrend: { month: string; avgKg: number | null }[];
+}
+
+export interface WeatherDay {
+  date: string;
+  tempMin: number | null;
+  tempMax: number | null;
+  precipitationMm: number | null;
+  weatherCode: number | null;
+  frost: boolean | null;
+}
+
+export interface CropsData {
+  status: { sown: number; irrigated: number; harvested: number; total: number };
+  overdueCount: number;
+  overdue: { id: string; type: string; date: string; fieldNumber: string }[];
+  harvest: { plannedT: number; actualT: number };
+  weather: WeatherDay[];
+}
+
+export interface FeedItem {
+  itemId: string;
+  name: string;
+  unit: string;
+  stockQty: number;
+  days: number | null;
+  basis: 'actual' | 'plan' | null;
+  minDays: number;
+  belowMinimum: boolean;
+}
+
+export interface FeedData {
+  items: FeedItem[];
+  limiting: { itemId: string; name: string; days: number; basis: 'actual' | 'plan' | null } | null;
+  avgDailyKg: number | null;
+  consumption: { date: string; qty: number }[];
+  lowStockCount: number;
+  lowStock: { itemId: string; name: string; unit: string; stockQty: number; minQty: number | null; days: number | null; minDays: number | null; reason: 'qty' | 'days' }[];
+}
+
+export interface StaffData {
+  attendance?: { present: number; total: number };
+  tasks?: { open: number; overdue: number; doneToday: number };
+  machinery?: { total: number; byStatus: Record<string, number>; maintenanceDue: number };
+  fuel?: { liters: number; days: number };
+}
+
+export interface AlertsData {
+  counts: { urgent: number; attention: number; info: number; total: number };
+  items: Alert[];
+}
+
+export interface CamerasData {
+  fleet: { total: number; online: number; offline: number; planned: number };
+  events: { id: string; occurredAt: string; source: string; type: string; severity: string; deviceId: string | null; deviceName: string | null; sample: boolean }[];
+}
+
+export interface DashboardData {
+  asOf: string;
+  order: BlockKey[];
+  blocks: {
+    finance?: Block<FinanceData>;
+    livestock?: Block<LivestockData>;
+    crops?: Block<CropsData>;
+    feed?: Block<FeedData>;
+    staff?: Block<StaffData>;
+    alerts?: Block<AlertsData>;
+    cameras?: Block<CamerasData>;
+  };
+}
+
+export type KpiGroupKey = 'finance' | 'livestock' | 'crops' | 'feed' | 'staff' | 'machinery';
+
+export interface KpiData {
+  period: { from: string; to: string };
+  groups: Partial<Record<KpiGroupKey, Block<Record<string, number | string | null>>>>;
+}

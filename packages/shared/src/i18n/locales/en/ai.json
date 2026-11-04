@@ -1,0 +1,400 @@
+{
+  "insight": {
+    "feed_anomaly": {
+      "title": "Feed use differs from normal ({{date}})",
+      "body": "On {{date}}, {{actual}} kg of feed per head was given, against an average of {{expected}} kg on earlier days. Difference {{direction}}{{deviation}}%. Check the record and the feeding."
+    },
+    "mortality_spike": {
+      "title": "Sharp rise in deaths",
+      "body": "{{dead}} head died in the last 7 days, against a usual {{expected}} a week. Find the cause with the veterinarian."
+    },
+    "weight_slowdown": {
+      "title": "{{herd}}: weight gain has slowed",
+      "body": "Daily gain at the last weighing was {{latestG}} g, against an earlier average of {{previousG}} g. Check the ration and the animals' health."
+    },
+    "weight_loss": {
+      "title": "{{count}} head lost weight",
+      "body": "These lost more than 8% between the last two weighings: {{tags}}. This can be a sign of illness, so have the veterinarian look at them."
+    },
+    "fuel_spike": {
+      "title": "{{asset}}: fuel use has risen",
+      "body": "On {{date}} it used {{actual}} l per motor-hour, against a usual {{expected}} l. Difference +{{deviation}}%. Check the machine and the records."
+    },
+    "expense_spike": {
+      "title": "{{category}} spending rose ({{month}})",
+      "body": "{{actual}} {{currency}} was spent in {{month}}, against an average of {{expected}} {{currency}} in earlier months. Difference +{{deviation}}%."
+    },
+    "lambing_workload": {
+      "title": "Lambing workload: {{ewes}} ewes",
+      "body": "About {{lambs}} lambs are expected. The busiest week starts {{peakWeek}} ({{peakEwes}} ewes) and needs {{workers}} workers. The lactation ration needs a further {{extraFeedT}} t of feed."
+    },
+    "season_profit": {
+      "title": "{{season}}: expected profit {{profit}} {{currency}}",
+      "body": "Expected revenue {{revenue}} {{currency}}, cost {{cost}} {{currency}}. This covers {{covered}}% of the area. {{skipped}} plans have no price, yield or cost data."
+    },
+    "feed_shortage": {
+      "title": "{{item}} will not last the winter",
+      "body": "Stock lasts {{days}} days and runs out on {{runOut}}. {{winterDays}} days of winter housing need another {{shortageT}} t. Buy by {{purchaseBy}}."
+    },
+    "feed_cost_saving": {
+      "title": "{{ration}}: a cheaper mix is possible",
+      "body": "Replacing 10% of the dry matter from {{from}} with {{to}} saves about {{savingPerDay}} {{currency}} a day ({{head}} head). The zootechnician should judge whether it suits the animals."
+    },
+    "crop_suggestion": {
+      "title": "Crop suggestion for next season",
+      "body": "A suggestion is ready for {{fields}} fields. For example, field {{field}}: {{crop}}, expected profit {{margin}} {{currency}}/ha. Based on planned yields and costs."
+    },
+    "lambing_workload_no_feed": {
+      "title": "Lambing workload: {{ewes}} ewes",
+      "body": "About {{lambs}} lambs are expected. The busiest week starts {{peakWeek}} ({{peakEwes}} ewes) and needs {{workers}} workers."
+    },
+    "season_profit_complete": {
+      "title": "{{season}}: expected profit {{profit}} {{currency}}",
+      "body": "Expected revenue {{revenue}} {{currency}}, cost {{cost}} {{currency}}. This covers every plan."
+    }
+  },
+  "assistant": {
+    "refused": "I can't answer that. Please try asking in a different way.",
+    "truncated": "The answer ran too long and was cut off. Please ask a shorter question.",
+    "noAnswer": "I couldn't put an answer together. Please try asking in a different way.",
+    "gaveUp": "That question took too many steps, so I couldn't finish. Please split it into smaller questions."
+  },
+  "summary": {
+    "title": {
+      "week": "Weekly summary ({{from}} — {{to}})",
+      "month": "Monthly summary ({{from}} — {{to}})"
+    },
+    "headings": {
+      "good": "What is good",
+      "bad": "What is bad",
+      "todo": "What to do"
+    },
+    "good": {
+      "noDeaths": "No deaths this period, with {{head}} head on the farm.",
+      "feedCovered": "Feed is sufficient: the lowest stock ({{item}}) lasts {{days}} days.",
+      "noOverdue": "Nothing is overdue.",
+      "money": "Income {{income}} {{currency}}, expense {{expense}} {{currency}}, {{cash}} {{currency}} in cash and bank.",
+      "onBudget": "Budget execution is {{percent}}%, within plan.",
+      "none": "No particular gains to report this period."
+    },
+    "bad": {
+      "deaths": "{{dead}} head died this period.",
+      "sick": "{{sick}} sick, {{quarantine}} in quarantine.",
+      "feedLow": "{{item}} stock lasts only {{days}} days.",
+      "overdue": "Overdue: {{tasks}} tasks, {{operations}} field operations.",
+      "urgentAlerts": "{{count}} urgent alerts are open.",
+      "overBudget": "Budget execution is {{percent}}%, over plan.",
+      "none": "No serious problems recorded."
+    },
+    "todo": {
+      "vetCheck": "Go through the deaths and sick animals with the veterinarian.",
+      "buyFeed": "Bring forward the purchase of {{item}}.",
+      "closeOverdue": "Finish or reschedule the overdue work.",
+      "reviewAlerts": "Go through the urgent alerts.",
+      "reviewBudget": "Review the spending above plan.",
+      "prepareLambing": "{{ewes}} ewes lamb in the next 30 days, so start preparing.",
+      "none": "Nothing urgent for now."
+    }
+  },
+  "page": {
+    "title": "AI analysis and assistant",
+    "description": "Questions about your farm data, automatic analysis and recommendations",
+    "notConfiguredTitle": "The AI assistant is not set up yet",
+    "notConfiguredBody": "Questions and document reading are unavailable for now. Statistical analysis and recommendations work without a key.",
+    "notConfiguredHow": "To turn it on, set ANTHROPIC_API_KEY in the server settings and restart the API.",
+    "tabs": {
+      "assistant": "Assistant",
+      "insights": "Analysis",
+      "documents": "Documents"
+    }
+  },
+  "chat": {
+    "placeholder": "Type your question",
+    "send": "Send",
+    "thinking": "Preparing an answer",
+    "newChat": "New conversation",
+    "history": "Conversations",
+    "historyEmpty": "No conversations yet",
+    "deleteChat": "Delete conversation",
+    "deleteChatConfirm": "Delete this conversation?",
+    "emptyTitle": "Ask about your farm",
+    "emptyDescription": "The assistant only reads data and never changes anything. Each answer shows its sources and confidence.",
+    "suggestions": {
+      "feedSpending": "How much did we spend on feed last month?",
+      "lambingThisWeek": "Which ewes lamb this week?",
+      "feedDays": "How many days will the feed last?",
+      "attention": "What needs attention today?"
+    },
+    "toolActivity": "Data consulted",
+    "tableMore": "Showing {{shown}} of {{total}} rows",
+    "rows": "{{count}} rows",
+    "sourcesTitle": "Sources: {{count}}",
+    "confidence": {
+      "high": "Confidence: high",
+      "medium": "Confidence: medium",
+      "low": "Confidence: low"
+    },
+    "basis": {
+      "farm_data": "This answer rests on your farm data.",
+      "partial": "Some of the data was missing.",
+      "general": "General knowledge, no farm data used."
+    },
+    "unavailableTitle": "The assistant is switched off for now",
+    "unavailableDescription": "Once it is on, you can ask questions here. The Analysis section already works."
+  },
+  "toolStatus": {
+    "ok": "Read",
+    "no_data": "Not enough data",
+    "denied": "No access",
+    "invalid": "Invalid request",
+    "error": "Could not be read"
+  },
+  "tools": {
+    "herd_summary": "Herd status",
+    "herd_movement": "Herd movement",
+    "reproduction_kpis": "Breeding figures",
+    "lambing_schedule": "Lambing schedule",
+    "mortality_report": "Deaths",
+    "sick_animals": "Sick animals",
+    "animal_card": "Animal card",
+    "stock_levels": "Stock levels",
+    "feed_position": "Feed balance",
+    "feed_consumption": "Feed use",
+    "fields_overview": "Fields",
+    "overdue_tasks": "Overdue tasks",
+    "overdue_field_operations": "Overdue field work",
+    "open_alerts": "Alerts",
+    "machinery_status": "Machinery status",
+    "attendance_today": "Attendance today",
+    "recent_findings": "Recent findings",
+    "feed_spending": "Feed spending",
+    "cash_position": "Cash and bank",
+    "income_expense": "Income and expense",
+    "budget_execution": "Budget execution",
+    "debt_summary": "Debts",
+    "cashflow_forecast": "Cash-flow forecast",
+    "herd_cost": "Herd cost",
+    "field_costs": "Field costs"
+  },
+  "tables": {
+    "animals": "animals",
+    "animal_exits": "exits",
+    "breeding_records": "pregnancy records",
+    "lambing_records": "lambing records",
+    "health_records": "veterinary records",
+    "weight_records": "weighings",
+    "daily_logs": "daily records",
+    "daily_log_lines": "daily feed use",
+    "herds": "herds",
+    "items": "items",
+    "stock_batches": "stock batches",
+    "stock_movements": "stock movements",
+    "rations": "rations",
+    "ration_lines": "ration contents",
+    "fields": "fields",
+    "crop_plans": "crop plans",
+    "crops": "crops",
+    "seasons": "seasons",
+    "harvests": "harvests",
+    "tech_cards": "technology cards",
+    "field_operations": "field work",
+    "tasks": "tasks",
+    "alerts": "alerts",
+    "assets": "machinery",
+    "asset_usage_logs": "machinery work log",
+    "timesheets": "timesheet",
+    "employees": "employees",
+    "transactions": "financial transactions",
+    "finance_categories": "expense categories",
+    "accounts": "cash and bank",
+    "budgets": "budget",
+    "counterparties": "counterparties",
+    "loan_instalments": "loan instalments",
+    "prices": "prices",
+    "ai_insights": "AI findings"
+  },
+  "fields": {
+    "tag": "Tag",
+    "date": "Date",
+    "expectedDate": "Expected date",
+    "earliest": "Earliest",
+    "latest": "Latest",
+    "herd": "Herd",
+    "ewes": "Ewes",
+    "name": "Name",
+    "value": "Value",
+    "qty": "Quantity",
+    "unit": "Unit",
+    "status": "Status",
+    "category": "Category",
+    "total": "Total",
+    "month": "Month",
+    "inflow": "Inflow",
+    "outflow": "Outflow",
+    "closing": "End of month",
+    "number": "Number",
+    "crop": "Crop",
+    "areaHa": "Area (ha)",
+    "planned": "Plan",
+    "actual": "Actual",
+    "deviation": "Difference",
+    "days": "Days",
+    "stockQty": "Stock",
+    "balance": "Balance",
+    "title": "Title",
+    "dueDate": "Due",
+    "reason": "Reason",
+    "dead": "Dead"
+  },
+  "types": {
+    "feed_anomaly": "Feed use",
+    "mortality_spike": "Deaths",
+    "weight_slowdown": "Weight gain",
+    "weight_loss": "Weight loss",
+    "fuel_spike": "Fuel use",
+    "expense_spike": "Rising expense",
+    "lambing_workload": "Lambing workload",
+    "season_profit": "Season profit",
+    "feed_shortage": "Feed shortage",
+    "feed_cost_saving": "Cheaper ration",
+    "crop_suggestion": "Crop suggestion",
+    "executive_summary": "Executive summary"
+  },
+  "coverage": {
+    "title": "Data readiness",
+    "description": "With too little data an analysis draws no conclusion. This shows how much each one needs.",
+    "enough": "Enough",
+    "units": {
+      "days": "days",
+      "weeks": "weeks",
+      "intervals": "weighing intervals",
+      "logs": "records",
+      "months": "months",
+      "ewes": "ewes",
+      "lines": "plans",
+      "feeds": "feeds",
+      "crops": "crops"
+    }
+  },
+  "insights": {
+    "filterType": "Analysis type",
+    "allTypes": "All types",
+    "filterDecision": "Decision",
+    "allDecisions": "All decisions",
+    "runNow": "Run analysis",
+    "weeklySummary": "Weekly summary",
+    "monthlySummary": "Monthly summary",
+    "runDone": "Analysis finished: {{created}} new, {{refreshed}} updated",
+    "runNothing": "Analysis finished, nothing new",
+    "runPartial": "{{count}} analyses failed, the rest finished",
+    "summaryDone": "Summary ready",
+    "emptyTitle": "No findings yet",
+    "emptyDescription": "The analyses run every morning. Once there is enough data, findings appear here.",
+    "emptyFiltered": "No findings match this filter",
+    "money": "Financial",
+    "confidence": "Confidence",
+    "evidence": "What this rests on",
+    "tables": "Sources",
+    "assumption": "assumption",
+    "accept": "Accept",
+    "reject": "Reject",
+    "acceptTitle": "Accept the recommendation",
+    "rejectTitle": "Reject the recommendation",
+    "noteLabel": "Note",
+    "noteHint": "Optional. The decision stays visible later.",
+    "addOutcome": "Record the outcome",
+    "editOutcome": "Change the outcome",
+    "outcomeTitle": "Outcome",
+    "outcomeLabel": "What happened?",
+    "open": "Open",
+    "noteLine": "Note: {{note}}",
+    "outcomeLine": "Outcome: {{outcome}}"
+  },
+  "sources": {
+    "from": "From",
+    "to": "To",
+    "days": "Days",
+    "baselineDays": "Days compared",
+    "baselineMeanKgPerHead": "Average, kg/head",
+    "baselineStd": "Usual variation",
+    "z": "Strength of deviation (z)",
+    "baselineWeeks": "Weeks compared",
+    "expectedPerWeek": "Usual per week",
+    "intervals": "Weighing intervals",
+    "animalsWeighed": "Animals weighed",
+    "thresholdPercent": "Threshold, %",
+    "weighings": "Weighings",
+    "logs": "Records",
+    "baselineLogs": "Records compared",
+    "months": "Months",
+    "baselineMonths": "Months compared",
+    "pregnantEwes": "Pregnant ewes",
+    "ownLambings": "Lambings on this farm",
+    "lambsPerEwe": "Lambs per ewe",
+    "lambsPerEweSource": "Source of lambs per ewe",
+    "lactationWeeks": "Lactation, weeks",
+    "laborHoursPerLambing": "Hours per lambing",
+    "shiftHours": "Shift, hours",
+    "lines": "Plans",
+    "linesUsed": "Counted",
+    "linesSkipped": "Left out",
+    "basis": "Basis",
+    "stockKg": "Stock, kg",
+    "dailyKg": "Daily use, kg",
+    "requiredKg": "Required, kg",
+    "purchaseLeadDays": "Purchase lead time, days",
+    "winterDays": "Winter housing, days",
+    "head": "Head",
+    "method": "Method",
+    "cropsCompared": "Crops compared",
+    "feedShortCrops": "Crops short as feed",
+    "note": "Note"
+  },
+  "documents": {
+    "title": "Read a document",
+    "description": "An invoice, receipt or veterinary certificate, as a photo or PDF. The assistant pulls out the fields and you check them.",
+    "choose": "Choose a file",
+    "confirmTitle": "This is only a proposal",
+    "confirmBody": "Nothing was saved. Compare the values with the document and enter them yourself on the right page.",
+    "type": "Document type",
+    "number": "Number",
+    "date": "Date",
+    "counterparty": "Counterparty",
+    "tin": "TIN",
+    "total": "Total",
+    "animals": "Number of animals",
+    "validUntil": "Valid until",
+    "issuer": "Issued by",
+    "lineName": "Name",
+    "lineQty": "Quantity",
+    "lineAmount": "Amount",
+    "types": {
+      "invoice": "Invoice",
+      "receipt": "Receipt",
+      "waybill": "Waybill",
+      "vet_certificate": "Veterinary certificate",
+      "contract": "Contract",
+      "other": "Other"
+    }
+  },
+  "errors": {
+    "AI_NOT_CONFIGURED": "The AI assistant is not set up on this server.",
+    "AI_RATE_LIMITED": "Too many questions. Please wait a moment and try again.",
+    "AI_PROVIDER_AUTH": "The AI service rejected the key. Please contact your administrator.",
+    "AI_PROVIDER_BUSY": "The AI service is busy. Please try again shortly.",
+    "AI_PROVIDER_UNREACHABLE": "Could not reach the AI service. Check the internet connection and try again.",
+    "AI_PROVIDER_ERROR": "The AI service returned an error. Please try again shortly.",
+    "AI_DOCUMENT_UNREADABLE": "The document could not be read. Please send a clearer photo.",
+    "AI_UNSUPPORTED_FILE": "Only photos and PDF files can be read.",
+    "ALREADY_DECIDED": "A decision on this recommendation has already been recorded.",
+    "NOT_DECIDED": "Record a decision first, then the outcome."
+  },
+  "sourceValues": {
+    "actual": "actual use",
+    "plan": "ration plan",
+    "dry_matter_swap": "by cost per kg of dry matter: 10% of the dearest component moves to the cheapest",
+    "farm_history": "the farm's own history",
+    "assumed_default": "assumed until the farm has 30 lambings",
+    "planned_figures": "Margins use planned figures, not results of past harvests."
+  }
+}

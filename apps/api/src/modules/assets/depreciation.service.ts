@@ -1,0 +1,138 @@
+import { and, eq, max, sql } from 'drizzle-orm';
+import { addDays, monthOf, monthRange, round, straightLineMonthly, unitsOfProductionDepreciation } from '@yap/shared';
+import { schema } from '../../db/client';
+import { ctx, today, tx } from '../../core/context';
+import { badRequest } from '../../core/errors';
+import { recordEvent } from '../../core/journal';
+import { postTransaction } from '../../core/ledger';
+import { sumOf } from '../../core/query';
+import { assetCostCenter, getAssetRow } from './assets.service';
+
+const { assets, assetUsageLogs, depreciationEntries: t, financeCategories } = schema;
+
+type Asset = typeof assets.$inferSelect;
+
+function monthsBetween(from: string, to: string): number {
+  const [fy, fm] = from.split('-').map(Number);
+  const [ty, tm] = to.split('-').map(Number);
+  return (ty - fy) * 12 + (tm - fm);
+}
+
+export function previousMonth(month: string): string {
+  return monthOf(addDays(`${month}-01`, -1));
+}
+
+function nextMonth(month: string): string {
+  return monthOf(addDays(monthRange(month).to, 1));
+}
+
+/** Depreciation for one month, never exceeding what is left to depreciate. */
+async function amountFor(asset: Asset, month: string): Promise<number> {
+  const price = asset.purchasePrice ?? 0;
+  const purchaseMonth = asset.purchaseDate ? monthOf(asset.purchaseDate) : null;
+  // Depreciation starts the month after the machine enters service.
+  if (asset.rented || price <= 0 || !purchaseMonth || month <= purchaseMonth) return 0;
+
+  const [{ posted }] = await tx()
+    .select({ posted: sumOf(t.amount) })
+    .from(t)
+    .where(eq(t.assetId, asset.id));
+  const remaining = Math.max(0, price - asset.salvageValue - posted);
+
+  if (asset.depreciationMethod === 'units') {
+    if (!asset.totalUnits) return 0;
+    const { from, to } = monthRange(month);
+    const [{ hours }] = await tx()
+      .select({ hours: sumOf(assetUsageLogs.motoHours) })
+      .from(assetUsageLogs)
+      .where(and(eq(assetUsageLogs.assetId, asset.id), sql`${assetUsageLogs.date} between ${from} and ${to}`));
+    const amount = unitsOfProductionDepreciation(price, asset.salvageValue, asset.totalUnits, hours) ?? 0;
+    return round(Math.min(amount, remaining), 2);
+  }
+
+  if (!asset.usefulLifeMonths) return 0;
+  const monthly = straightLineMonthly(price, asset.salvageValue, asset.usefulLifeMonths) ?? 0;
+  // Counted from the purchase, so a machine older than its useful life stays at zero even when
+  // the platform started after it was bought.
+  const elapsed = monthsBetween(purchaseMonth, month) - 1;
+  if (elapsed >= asset.usefulLifeMonths) return 0;
+  return round(Math.min(monthly, remaining), 2);
+}
+
+/**
+ * Post one month for every machine. Safe to repeat: depreciation_entries is unique per asset and
+ * month, so a machine already done is skipped. Non-cash, so account balances do not move.
+ */
+export async function runDepreciation(month: string): Promise<{ month: string; posted: number; total: number }> {
+  const c = ctx();
+  if (month >= monthOf(today())) {
+    throw badRequest('MONTH_NOT_CLOSED', 'Depreciation is posted after the month has ended');
+  }
+  const [category] = await tx()
+    .select({ id: financeCategories.id })
+    .from(financeCategories)
+    .where(and(eq(financeCategories.tenantId, c.tenantId), eq(financeCategories.key, 'depreciation')));
+  if (!category) throw badRequest('CATEGORY_NOT_FOUND', 'Finance category depreciation does not exist');
+
+  const rows = await tx()
+    .select()
+    .from(assets)
+    .where(and(eq(assets.farmId, c.farmId), sql`${assets.status} <> 'written_off'`));
+
+  let posted = 0;
+  let total = 0;
+  for (const asset of rows) {
+    const amount = await amountFor(asset, month);
+    if (amount <= 0) continue;
+
+    const [entry] = await tx()
+      .insert(t)
+      .values({ tenantId: c.tenantId, farmId: c.farmId, createdBy: c.userId, assetId: asset.id, month, amount })
+      .onConflictDoNothing()
+      .returning();
+    if (!entry) continue;
+
+    const transaction = await postTransaction({
+      date: monthRange(month).to,
+      type: 'expense',
+      categoryId: category.id,
+      amount,
+      paymentMethod: 'non_cash',
+      costCenterId: await assetCostCenter(asset),
+      autoApprove: true,
+      description: `Amortizatsiya: ${asset.name} (${month})`,
+      sourceType: 'depreciation',
+      sourceId: entry.id,
+    });
+    await tx().update(t).set({ transactionId: transaction.id }).where(eq(t.id, entry.id));
+    posted += 1;
+    total += amount;
+  }
+
+  if (posted > 0) {
+    await recordEvent({ type: 'asset.depreciation_posted', data: { month, posted, total: round(total, 2) } });
+  }
+  return { month, posted, total: round(total, 2) };
+}
+
+/**
+ * Months to post now: last month, plus any gap since the last posted month, so a server that
+ * was down on the 1st catches up. A farm with no entries yet starts from last month rather
+ * than back-posting years into a ledger that did not exist then.
+ */
+export async function monthsToRun(): Promise<string[]> {
+  const last = previousMonth(monthOf(today()));
+  const [{ latest }] = await tx()
+    .select({ latest: max(t.month) })
+    .from(t)
+    .where(eq(t.farmId, ctx().farmId));
+  if (!latest) return [last];
+  const months: string[] = [];
+  for (let m = nextMonth(latest); m <= last; m = nextMonth(m)) months.push(m);
+  return months;
+}
+
+export async function listDepreciation(assetId: string) {
+  await getAssetRow(assetId);
+  return tx().select().from(t).where(eq(t.assetId, assetId)).orderBy(sql`${t.month} desc`);
+}

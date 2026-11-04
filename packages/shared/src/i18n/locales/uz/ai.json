@@ -1,0 +1,400 @@
+{
+  "insight": {
+    "feed_anomaly": {
+      "title": "Ozuqa sarfi odatdagidan farq qildi ({{date}})",
+      "body": "{{date}} kuni bir boshga {{actual}} kg ozuqa berilgan, oldingi kunlarda o'rtacha {{expected}} kg edi. Farq {{direction}}{{deviation}}%. Yozuv to'g'riligini va ozuqa berilishini tekshiring."
+    },
+    "mortality_spike": {
+      "title": "Nobudgarchilik keskin oshdi",
+      "body": "So'nggi 7 kunda {{dead}} bosh nobud bo'ldi, odatda haftasiga {{expected}} bosh. Sababini veterinar bilan aniqlang."
+    },
+    "weight_slowdown": {
+      "title": "{{herd}}: vazn o'sishi sekinlashdi",
+      "body": "Oxirgi tortishda kunlik o'sish {{latestG}} g, oldingi tortishlarda o'rtacha {{previousG}} g edi. Ratsion va hayvonlar sog'lig'ini tekshiring."
+    },
+    "weight_loss": {
+      "title": "{{count}} bosh hayvon vazn yo'qotdi",
+      "body": "Oxirgi ikki tortish orasida 8% dan ko'p vazn yo'qotganlar: {{tags}}. Bu kasallik belgisi bo'lishi mumkin, veterinarga ko'rsating."
+    },
+    "fuel_spike": {
+      "title": "{{asset}}: yoqilg'i sarfi oshdi",
+      "body": "{{date}} kuni bir moto-soatga {{actual}} litr sarflangan, odatda {{expected}} litr. Farq +{{deviation}}%. Texnika holatini va hisobni tekshiring."
+    },
+    "expense_spike": {
+      "title": "{{category}} xarajati oshdi ({{month}})",
+      "body": "{{month}} oyida {{actual}} {{currency}} sarflandi, oldingi oylarda o'rtacha {{expected}} {{currency}} edi. Farq +{{deviation}}%."
+    },
+    "lambing_workload": {
+      "title": "Qo'zilash yuklamasi: {{ewes}} sovliq",
+      "body": "Taxminan {{lambs}} qo'zi kutilmoqda. Eng band hafta {{peakWeek}} dan boshlanadi ({{peakEwes}} sovliq), o'shanda {{workers}} nafar ishchi kerak bo'ladi. Emizikli ratsion uchun qo'shimcha {{extraFeedT}} t ozuqa kerak."
+    },
+    "season_profit": {
+      "title": "{{season}}: kutilayotgan foyda {{profit}} {{currency}}",
+      "body": "Kutilayotgan daromad {{revenue}} {{currency}}, xarajat {{cost}} {{currency}}. Hisob maydonning {{covered}}% ini qamrab oladi. {{skipped}} ta rejada narx, hosil yoki xarajat ma'lumoti yo'q."
+    },
+    "feed_shortage": {
+      "title": "{{item}} qishga yetmaydi",
+      "body": "Zaxira {{days}} kunga yetadi va {{runOut}} da tugaydi. {{winterDays}} kunlik qishlov uchun yana {{shortageT}} t kerak. Xaridni {{purchaseBy}} gacha qiling."
+    },
+    "feed_cost_saving": {
+      "title": "{{ration}}: arzonlashtirish imkoni",
+      "body": "{{from}} quruq moddasining 10% ini {{to}} bilan almashtirish kuniga taxminan {{savingPerDay}} {{currency}} tejaydi ({{head}} bosh). Bu hayvonlarga mosligini zootexnik baholashi kerak."
+    },
+    "crop_suggestion": {
+      "title": "Keyingi mavsum uchun ekin tavsiyasi",
+      "body": "{{fields}} ta dala bo'yicha taklif tayyorlandi. Masalan, {{field}}-dala: {{crop}}, kutilayotgan foyda {{margin}} {{currency}}/ga. Hisob rejadagi hosil va xarajatlarga asoslangan."
+    },
+    "lambing_workload_no_feed": {
+      "title": "Qo'zilash yuklamasi: {{ewes}} sovliq",
+      "body": "Taxminan {{lambs}} qo'zi kutilmoqda. Eng band hafta {{peakWeek}} dan boshlanadi ({{peakEwes}} sovliq), o'shanda {{workers}} nafar ishchi kerak bo'ladi."
+    },
+    "season_profit_complete": {
+      "title": "{{season}}: kutilayotgan foyda {{profit}} {{currency}}",
+      "body": "Kutilayotgan daromad {{revenue}} {{currency}}, xarajat {{cost}} {{currency}}. Hisob barcha rejalarni qamrab oladi."
+    }
+  },
+  "assistant": {
+    "refused": "Bu savolga javob bera olmayman. Savolni boshqacha yozib ko'ring.",
+    "truncated": "Javob juda uzun bo'lib ketdi va to'liq chiqmadi. Savolni qisqaroq bering.",
+    "noAnswer": "Javob tayyorlay olmadim. Savolni boshqacha yozib ko'ring.",
+    "gaveUp": "Bu savol juda ko'p qadam talab qildi va javob tayyorlay olmadim. Savolni kichikroq qismlarga bo'ling."
+  },
+  "summary": {
+    "title": {
+      "week": "Haftalik xulosa ({{from}} — {{to}})",
+      "month": "Oylik xulosa ({{from}} — {{to}})"
+    },
+    "headings": {
+      "good": "Nima yaxshi",
+      "bad": "Nima yomon",
+      "todo": "Nima qilish kerak"
+    },
+    "good": {
+      "noDeaths": "Bu davrda nobudgarchilik bo'lmadi, fermada {{head}} bosh hayvon bor.",
+      "feedCovered": "Ozuqa yetarli: eng kam zaxira ({{item}}) {{days}} kunga yetadi.",
+      "noOverdue": "Muddati o'tgan ishlar yo'q.",
+      "money": "Daromad {{income}} {{currency}}, xarajat {{expense}} {{currency}}, kassa va bankda {{cash}} {{currency}}.",
+      "onBudget": "Byudjet ijrosi {{percent}}%, rejadan oshmadi.",
+      "none": "Bu davrda alohida yaxshi natija qayd etilmadi."
+    },
+    "bad": {
+      "deaths": "Bu davrda {{dead}} bosh hayvon nobud bo'ldi.",
+      "sick": "{{sick}} bosh kasal, {{quarantine}} bosh karantinda.",
+      "feedLow": "{{item}} zaxirasi faqat {{days}} kunga yetadi.",
+      "overdue": "Muddati o'tgan ishlar: {{tasks}} ta vazifa, {{operations}} ta dala tadbiri.",
+      "urgentAlerts": "{{count}} ta shoshilinch ogohlantirish ochiq turibdi.",
+      "overBudget": "Byudjet ijrosi {{percent}}%, reja oshib ketdi.",
+      "none": "Jiddiy muammo qayd etilmadi."
+    },
+    "todo": {
+      "vetCheck": "Veterinar bilan nobud bo'lgan va kasal hayvonlarni ko'rib chiqing.",
+      "buyFeed": "{{item}} xaridini tezlashtiring.",
+      "closeOverdue": "Muddati o'tgan ishlarni bajaring yoki qayta rejalashtiring.",
+      "reviewAlerts": "Shoshilinch ogohlantirishlarni ko'rib chiqing.",
+      "reviewBudget": "Rejadan oshgan xarajatlarni ko'rib chiqing.",
+      "prepareLambing": "Keyingi 30 kunda {{ewes}} sovliq qo'zilaydi, tayyorgarlikni boshlang.",
+      "none": "Hozircha shoshilinch ish yo'q."
+    }
+  },
+  "page": {
+    "title": "AI tahlil va yordamchi",
+    "description": "Farmangiz ma'lumotlari bo'yicha savol-javob, avtomatik tahlillar va tavsiyalar",
+    "notConfiguredTitle": "AI yordamchi hali sozlanmagan",
+    "notConfiguredBody": "Savol-javob va hujjat o'qish hozircha ishlamaydi. Statistik tahlillar va tavsiyalar kalitsiz ham ishlayveradi.",
+    "notConfiguredHow": "Yoqish uchun server sozlamalarida ANTHROPIC_API_KEY qiymatini kiriting va API xizmatini qayta ishga tushiring.",
+    "tabs": {
+      "assistant": "Yordamchi",
+      "insights": "Tahlillar",
+      "documents": "Hujjatlar"
+    }
+  },
+  "chat": {
+    "placeholder": "Savolingizni yozing",
+    "send": "Yuborish",
+    "thinking": "Javob tayyorlanmoqda",
+    "newChat": "Yangi suhbat",
+    "history": "Suhbatlar",
+    "historyEmpty": "Hali suhbat yo'q",
+    "deleteChat": "Suhbatni o'chirish",
+    "deleteChatConfirm": "Bu suhbat o'chirilsinmi?",
+    "emptyTitle": "Fermangiz haqida so'rang",
+    "emptyDescription": "Yordamchi faqat ma'lumotlarni o'qiydi va hech narsani o'zgartirmaydi. Har bir javob ostida manbasi va ishonch darajasi ko'rsatiladi.",
+    "suggestions": {
+      "feedSpending": "O'tgan oyda ozuqaga qancha sarfladik?",
+      "lambingThisWeek": "Qaysi sovliqlar bu hafta qo'zilaydi?",
+      "feedDays": "Ozuqa necha kunga yetadi?",
+      "attention": "Bugun nimaga e'tibor berish kerak?"
+    },
+    "toolActivity": "Ko'rilgan ma'lumotlar",
+    "tableMore": "{{total}} qatordan {{shown}} tasi ko'rsatildi",
+    "rows": "{{count}} qator",
+    "sourcesTitle": "Manbalar: {{count}} ta",
+    "confidence": {
+      "high": "Ishonch: yuqori",
+      "medium": "Ishonch: o'rtacha",
+      "low": "Ishonch: past"
+    },
+    "basis": {
+      "farm_data": "Javob ferma ma'lumotlariga asoslangan.",
+      "partial": "Ma'lumotlarning bir qismi yetishmadi.",
+      "general": "Umumiy bilim, ferma ma'lumotlari ishlatilmadi."
+    },
+    "unavailableTitle": "Yordamchi hozircha o'chirilgan",
+    "unavailableDescription": "Yoqilgach, shu yerda savol berish mumkin bo'ladi. \"Tahlillar\" bo'limi hozir ham ishlaydi."
+  },
+  "toolStatus": {
+    "ok": "O'qildi",
+    "no_data": "Ma'lumot yetarli emas",
+    "denied": "Ruxsat yo'q",
+    "invalid": "So'rov noto'g'ri",
+    "error": "O'qib bo'lmadi"
+  },
+  "tools": {
+    "herd_summary": "Poda holati",
+    "herd_movement": "Poda harakati",
+    "reproduction_kpis": "Nasl ko'rsatkichlari",
+    "lambing_schedule": "Qo'zilash jadvali",
+    "mortality_report": "Nobudgarchilik",
+    "sick_animals": "Kasal hayvonlar",
+    "animal_card": "Hayvon kartochkasi",
+    "stock_levels": "Ombor qoldig'i",
+    "feed_position": "Ozuqa balansi",
+    "feed_consumption": "Ozuqa sarfi",
+    "fields_overview": "Dalalar",
+    "overdue_tasks": "Muddati o'tgan vazifalar",
+    "overdue_field_operations": "Muddati o'tgan dala ishlari",
+    "open_alerts": "Ogohlantirishlar",
+    "machinery_status": "Texnika holati",
+    "attendance_today": "Bugungi davomat",
+    "recent_findings": "Oxirgi tahlillar",
+    "feed_spending": "Ozuqa xarajati",
+    "cash_position": "Kassa va bank",
+    "income_expense": "Daromad va xarajat",
+    "budget_execution": "Byudjet ijrosi",
+    "debt_summary": "Qarzdorlik",
+    "cashflow_forecast": "Pul oqimi prognozi",
+    "herd_cost": "Poda tannarxi",
+    "field_costs": "Dala xarajatlari"
+  },
+  "tables": {
+    "animals": "hayvonlar",
+    "animal_exits": "chiqimlar",
+    "breeding_records": "bo'g'ozlik qaydlari",
+    "lambing_records": "qo'zilash qaydlari",
+    "health_records": "veterinariya qaydlari",
+    "weight_records": "tortish qaydlari",
+    "daily_logs": "kunlik qaydlar",
+    "daily_log_lines": "kunlik ozuqa sarfi",
+    "herds": "podalar",
+    "items": "nomenklatura",
+    "stock_batches": "ombor partiyalari",
+    "stock_movements": "ombor harakatlari",
+    "rations": "ratsionlar",
+    "ration_lines": "ratsion tarkibi",
+    "fields": "dalalar",
+    "crop_plans": "ekin rejalari",
+    "crops": "ekinlar",
+    "seasons": "mavsumlar",
+    "harvests": "hosil",
+    "tech_cards": "texnologik kartalar",
+    "field_operations": "dala ishlari",
+    "tasks": "vazifalar",
+    "alerts": "ogohlantirishlar",
+    "assets": "texnika",
+    "asset_usage_logs": "texnika ish jurnali",
+    "timesheets": "tabel",
+    "employees": "xodimlar",
+    "transactions": "moliyaviy operatsiyalar",
+    "finance_categories": "xarajat moddalari",
+    "accounts": "kassa va bank",
+    "budgets": "byudjet",
+    "counterparties": "kontragentlar",
+    "loan_instalments": "kredit to'lovlari",
+    "prices": "narxlar",
+    "ai_insights": "AI tahlillari"
+  },
+  "fields": {
+    "tag": "Birka",
+    "date": "Sana",
+    "expectedDate": "Kutilgan sana",
+    "earliest": "Eng erta",
+    "latest": "Eng kech",
+    "herd": "Poda",
+    "ewes": "Sovliqlar",
+    "name": "Nomi",
+    "value": "Qiymati",
+    "qty": "Miqdori",
+    "unit": "Birlik",
+    "status": "Holati",
+    "category": "Toifa",
+    "total": "Jami",
+    "month": "Oy",
+    "inflow": "Kirim",
+    "outflow": "Chiqim",
+    "closing": "Oy oxiri",
+    "number": "Raqam",
+    "crop": "Ekin",
+    "areaHa": "Maydon (ga)",
+    "planned": "Reja",
+    "actual": "Fakt",
+    "deviation": "Farq",
+    "days": "Kunlar",
+    "stockQty": "Qoldiq",
+    "balance": "Qoldiq",
+    "title": "Nomi",
+    "dueDate": "Muddat",
+    "reason": "Sabab",
+    "dead": "Nobud bo'lgan"
+  },
+  "types": {
+    "feed_anomaly": "Ozuqa sarfi",
+    "mortality_spike": "Nobudgarchilik",
+    "weight_slowdown": "Vazn o'sishi",
+    "weight_loss": "Vazn yo'qotish",
+    "fuel_spike": "Yoqilg'i sarfi",
+    "expense_spike": "Xarajat o'sishi",
+    "lambing_workload": "Qo'zilash yuklamasi",
+    "season_profit": "Mavsum foydasi",
+    "feed_shortage": "Ozuqa yetishmasligi",
+    "feed_cost_saving": "Ratsionni arzonlashtirish",
+    "crop_suggestion": "Ekin tavsiyasi",
+    "executive_summary": "Rahbar xulosasi"
+  },
+  "coverage": {
+    "title": "Ma'lumot yetarliligi",
+    "description": "Ma'lumot kam bo'lsa tahlil xulosa chiqarmaydi. Har bir tahlilga qancha ma'lumot kerakligi shu yerda ko'rinadi.",
+    "enough": "Yetarli",
+    "units": {
+      "days": "kun",
+      "weeks": "hafta",
+      "intervals": "tortish oralig'i",
+      "logs": "yozuv",
+      "months": "oy",
+      "ewes": "sovliq",
+      "lines": "reja",
+      "feeds": "ozuqa turi",
+      "crops": "ekin"
+    }
+  },
+  "insights": {
+    "filterType": "Tahlil turi",
+    "allTypes": "Barcha turlar",
+    "filterDecision": "Qaror",
+    "allDecisions": "Barcha qarorlar",
+    "runNow": "Tahlilni boshlash",
+    "weeklySummary": "Haftalik xulosa",
+    "monthlySummary": "Oylik xulosa",
+    "runDone": "Tahlil tugadi: {{created}} ta yangi, {{refreshed}} ta yangilandi",
+    "runNothing": "Tahlil tugadi, yangi xulosa yo'q",
+    "runPartial": "{{count}} ta tahlil bajarilmadi, qolganlari tugadi",
+    "summaryDone": "Xulosa tayyor",
+    "emptyTitle": "Hali xulosa yo'q",
+    "emptyDescription": "Tahlillar har kuni ertalab ishlaydi. Ma'lumot to'plangach xulosalar shu yerda chiqadi.",
+    "emptyFiltered": "Bu filtr bo'yicha xulosa topilmadi",
+    "money": "Moliyaviy",
+    "confidence": "Ishonch",
+    "evidence": "Nimaga asoslangan",
+    "tables": "Manbalar",
+    "assumption": "taxmin",
+    "accept": "Qabul qilish",
+    "reject": "Rad etish",
+    "acceptTitle": "Tavsiyani qabul qilish",
+    "rejectTitle": "Tavsiyani rad etish",
+    "noteLabel": "Izoh",
+    "noteHint": "Ixtiyoriy. Qaror keyin ham ko'rinib turadi.",
+    "addOutcome": "Natijani yozish",
+    "editOutcome": "Natijani o'zgartirish",
+    "outcomeTitle": "Natija",
+    "outcomeLabel": "Nima bo'ldi?",
+    "open": "Ochish",
+    "noteLine": "Izoh: {{note}}",
+    "outcomeLine": "Natija: {{outcome}}"
+  },
+  "sources": {
+    "from": "Boshlanishi",
+    "to": "Tugashi",
+    "days": "Kunlar",
+    "baselineDays": "Taqqoslangan kunlar",
+    "baselineMeanKgPerHead": "O'rtacha, kg/bosh",
+    "baselineStd": "Odatiy tebranish",
+    "z": "Og'ish kuchi (z)",
+    "baselineWeeks": "Taqqoslangan haftalar",
+    "expectedPerWeek": "Haftasiga odatda",
+    "intervals": "Tortish oraliqlari",
+    "animalsWeighed": "Tortilgan hayvonlar",
+    "thresholdPercent": "Chegara, %",
+    "weighings": "Tortishlar",
+    "logs": "Yozuvlar",
+    "baselineLogs": "Taqqoslangan yozuvlar",
+    "months": "Oylar",
+    "baselineMonths": "Taqqoslangan oylar",
+    "pregnantEwes": "Bo'g'oz sovliqlar",
+    "ownLambings": "Fermaning qo'zilashlari",
+    "lambsPerEwe": "Bir sovliqqa qo'zi",
+    "lambsPerEweSource": "Qo'zi soni manbasi",
+    "lactationWeeks": "Emizish, hafta",
+    "laborHoursPerLambing": "Bir qo'zilashga soat",
+    "shiftHours": "Smena, soat",
+    "lines": "Rejalar",
+    "linesUsed": "Hisobga olingan",
+    "linesSkipped": "Chiqarib qoldirilgan",
+    "basis": "Hisob asosi",
+    "stockKg": "Qoldiq, kg",
+    "dailyKg": "Kunlik sarf, kg",
+    "requiredKg": "Kerak, kg",
+    "purchaseLeadDays": "Xarid muddati, kun",
+    "winterDays": "Qishlov, kun",
+    "head": "Bosh soni",
+    "method": "Usul",
+    "cropsCompared": "Taqqoslangan ekinlar",
+    "feedShortCrops": "Yetishmayotgan ozuqa ekinlari",
+    "note": "Izoh"
+  },
+  "documents": {
+    "title": "Hujjatni o'qish",
+    "description": "Hisob-faktura, chek yoki veterinariya guvohnomasi foto yoki PDF ko'rinishida. Yordamchi maydonlarni ajratadi, siz tekshirasiz.",
+    "choose": "Fayl tanlash",
+    "confirmTitle": "Bu faqat taklif",
+    "confirmBody": "Hech narsa saqlanmadi. Qiymatlarni hujjat bilan solishtiring va tegishli sahifada o'zingiz kiriting.",
+    "type": "Hujjat turi",
+    "number": "Raqami",
+    "date": "Sanasi",
+    "counterparty": "Kontragent",
+    "tin": "STIR",
+    "total": "Jami",
+    "animals": "Hayvonlar soni",
+    "validUntil": "Amal qilish muddati",
+    "issuer": "Bergan tashkilot",
+    "lineName": "Nomi",
+    "lineQty": "Miqdori",
+    "lineAmount": "Summa",
+    "types": {
+      "invoice": "Hisob-faktura",
+      "receipt": "Chek",
+      "waybill": "Yuk xati",
+      "vet_certificate": "Veterinariya guvohnomasi",
+      "contract": "Shartnoma",
+      "other": "Boshqa"
+    }
+  },
+  "errors": {
+    "AI_NOT_CONFIGURED": "AI yordamchi serverda sozlanmagan.",
+    "AI_RATE_LIMITED": "Savollar juda ko'p. Biroz kutib, qayta yuboring.",
+    "AI_PROVIDER_AUTH": "AI xizmati kalitni qabul qilmadi. Administratorga murojaat qiling.",
+    "AI_PROVIDER_BUSY": "AI xizmati hozir band. Birozdan so'ng urinib ko'ring.",
+    "AI_PROVIDER_UNREACHABLE": "AI xizmatiga ulanib bo'lmadi. Internetni tekshirib, qayta urinib ko'ring.",
+    "AI_PROVIDER_ERROR": "AI xizmati xato qaytardi. Birozdan so'ng urinib ko'ring.",
+    "AI_DOCUMENT_UNREADABLE": "Hujjatni o'qib bo'lmadi. Tiniqroq foto yuboring.",
+    "AI_UNSUPPORTED_FILE": "Faqat foto va PDF fayllarni o'qish mumkin.",
+    "ALREADY_DECIDED": "Bu tavsiya bo'yicha qaror allaqachon qabul qilingan.",
+    "NOT_DECIDED": "Avval qaror qabul qiling, keyin natijani yozing."
+  },
+  "sourceValues": {
+    "actual": "haqiqiy sarf",
+    "plan": "ratsion rejasi",
+    "dry_matter_swap": "1 kg quruq modda narxi bo'yicha: eng qimmat tarkibning 10% i eng arzoniga almashtiriladi",
+    "farm_history": "fermaning o'z tarixi",
+    "assumed_default": "ferma 30 ta qo'zilashni qayd etguncha taxminiy qiymat",
+    "planned_figures": "Foyda reja ko'rsatkichlariga asoslangan, o'tgan hosil natijalariga emas."
+  }
+}

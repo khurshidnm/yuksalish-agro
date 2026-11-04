@@ -1,0 +1,219 @@
+{
+  "rules": {
+    "feed_low": {
+      "title": "{{item}} zaxirasi kamaydi",
+      "body": "Zaxira {{days}} kunga yetadi. Belgilangan chegara: {{minimum}} kun."
+    },
+    "stock_low": {
+      "title": "{{item}} qoldig'i minimaldan past",
+      "body": "Qoldiq: {{qty}} {{unit}}. Minimal: {{minimum}} {{unit}}."
+    },
+    "ration_deviation": {
+      "title": "{{herd}}: ozuqa sarfi me'yordan chetlandi",
+      "body": "{{date}} kuni farq {{percent}}%: berilgan {{actual}}, me'yor {{planned}}."
+    },
+    "lambing_soon": {
+      "title": "7 kun ichida {{count}} ta sovliq qo'zilaydi",
+      "body": "Eng yaqin sana: {{date}}."
+    },
+    "lambing_overdue": {
+      "title": "{{count}} ta sovliqning qo'zilash muddati o'tdi",
+      "body": "Holatini tekshiring va qaydni kiriting."
+    },
+    "vaccination_overdue": {
+      "title": "{{plan}}: {{count}} boshda bajarilmagan",
+      "body": "Muddati o'tgan yoki hali bajarilmagan."
+    },
+    "sick_animals": {
+      "title": "Kasal hayvonlar: {{count}} bosh",
+      "body": "Veterinar ko'rigi kerak."
+    },
+    "quarantine_animals": {
+      "title": "Karantinda: {{count}} bosh",
+      "body": "Karantin muddatini kuzatib boring."
+    },
+    "quarantine_ended": {
+      "title": "{{count}} boshning karantin muddati tugadi",
+      "body": "Karantindan chiqarish haqida qaror qabul qiling."
+    },
+    "mortality_spike": {
+      "title": "Nobudgarchilik oshdi: 30 kunda {{count}} bosh",
+      "body": "Nobudgarchilik {{percent}}%. Oldingi 30 kunda: {{previous}} bosh."
+    },
+    "budget_overrun": {
+      "title": "{{category}}: byudjetdan oshdi",
+      "body": "{{month}} oyi uchun ijro {{percent}}%."
+    },
+    "tasks_overdue": {
+      "title": "Muddati o'tgan vazifalar: {{count}} ta",
+      "body": "Mas'ullar bilan tekshiring."
+    },
+    "operations_overdue": {
+      "title": "Muddati o'tgan agrotexnik tadbirlar: {{count}} ta",
+      "body": "Eng eskisi: {{date}}."
+    },
+    "document_expiring": {
+      "title": "Hujjat muddati tugayapti: {{title}}",
+      "body": "Amal qilish muddati: {{date}}."
+    },
+    "contract_expiring": {
+      "title": "Shartnoma muddati tugayapti: {{number}}",
+      "body": "{{counterparty}}, muddat: {{date}}."
+    },
+    "batch_expiring": {
+      "title": "{{item}}: partiya yaroqlilik muddati tugayapti",
+      "body": "Muddat: {{date}}. Qoldiq: {{qty}} {{unit}}."
+    },
+    "approvals_pending": {
+      "title": "Tasdiq kutayotgan to'lovlar: {{count}} ta",
+      "body": "Moliya bo'limida ko'rib chiqing."
+    },
+    "loan_payment_due": {
+      "title": "Kredit to'lovi yaqinlashdi: {{loan}}",
+      "body": "To'lov sanasi: {{date}}."
+    },
+    "maintenance_due": {
+      "title": "Texnik xizmat vaqti keldi: {{asset}}",
+      "body": "Reja sanasi: {{date}}."
+    },
+    "camera_offline": {
+      "title": "Kamera oflayn: {{camera}}",
+      "body": "Kamera ulanishini tekshiring."
+    },
+    "document_expired": {
+      "title": "Hujjat muddati tugagan: {{title}}",
+      "body": "Amal qilish muddati: {{date}}."
+    },
+    "batch_expired": {
+      "title": "{{item}}: partiya yaroqlilik muddati tugagan",
+      "body": "Muddat: {{date}}. Qoldiq: {{qty}} {{unit}}."
+    },
+    "loan_payment_overdue": {
+      "title": "Kredit to'lovi kechikdi: {{loan}}",
+      "body": "To'lov sanasi: {{date}}."
+    },
+    "maintenance_overdue": {
+      "title": "Texnik xizmat kechikdi: {{asset}}",
+      "body": "Reja sanasi: {{date}}."
+    },
+    "sick_report": {
+      "title": "Kasal hayvon: {{tag}}"
+    },
+    "herd_condition": {
+      "title": "Podada og'ish qayd etildi: {{herd}}"
+    },
+    "offline_conflict": {
+      "title": "{{herd}}: {{date}} kuni uchun ikki xil yozuv",
+      "body": "Oflayn kiritilgan yozuv saqlangan yozuvga mos kelmadi. Oflayn yozuv: {{summary}}."
+    },
+    "offline_conflict_empty": {
+      "title": "{{herd}}: {{date}} kuni uchun ikki xil yozuv",
+      "body": "Oflayn kiritilgan yozuv saqlangan yozuvga mos kelmadi. Oflayn yozuvda ozuqa ko'rsatilmagan."
+    },
+    "asset_fuel_deviation": {
+      "title": "Yoqilg'i me'yordan {{percent}}% ortiq: {{name}}",
+      "body": "{{date}}: sarf {{fuelL}} l, me'yor {{normL}} l."
+    },
+    "device_event": {
+      "title": "{{deviceName}}: {{eventType}}"
+    },
+    "device_offline": {
+      "title": "{{deviceName}} aloqada emas",
+      "body": "{{minutes}} daqiqadan beri signal yo'q."
+    }
+  },
+  "digest": {
+    "title": "Kunlik xulosa, {{date}}",
+    "herd": "Chorva: {{head}} bosh, shundan bo'g'oz {{pregnant}}",
+    "health": "Kasal: {{sick}}, karantinda: {{quarantine}}",
+    "lambing": "7 kunda qo'zilash: {{count}} bosh",
+    "feed": "Eng kam ozuqa: {{name}}, {{days}} kunga yetadi",
+    "cash": "Kassa va bank: {{amount}} so'm",
+    "alerts": "Ochiq ogohlantirishlar: {{count}}, shundan shoshilinch: {{urgent}}",
+    "tasks": "Ochiq vazifalar: {{count}}"
+  },
+  "bot": {
+    "linked": "Hisobingiz Telegramga ulandi. {{status}} bugungi holatni, {{alerts}} ochiq ogohlantirishlarni ko'rsatadi.",
+    "linkFailed": "Kod noto'g'ri yoki muddati o'tgan. Platformadagi Bildirishnomalar sahifasidan yangi kod oling.",
+    "notLinked": "Bu chat hisobingizga ulanmagan. Platformadagi Bildirishnomalar sahifasidan ulash kodini oling.",
+    "help": "Buyruqlar: {{status}} bugungi holat, {{alerts}} ochiq ogohlantirishlar.",
+    "noAlerts": "Ochiq ogohlantirishlar yo'q.",
+    "noFarm": "Hisobingiz hech qaysi fermaga biriktirilmagan."
+  },
+  "errors": {
+    "ALERT_NOT_OPEN": "Bu ogohlantirish allaqachon ko'rib chiqilgan",
+    "ALERT_ALREADY_RESOLVED": "Bu ogohlantirish allaqachon yopilgan",
+    "TELEGRAM_NOT_CONFIGURED": "Telegram bot hali sozlanmagan. Administratorga murojaat qiling."
+  },
+  "title": "Ogohlantirishlar",
+  "description": "Qoidalar va AI aniqlagan og'ishlar bir ro'yxatda, muhimlik darajasi bilan.",
+  "evaluate": "Hozir tekshirish",
+  "emptyTitle": "Hammasi joyida",
+  "emptyBody": "Hozircha ochiq ogohlantirish yo'q.",
+  "fields": {
+    "severity": "Muhimlik",
+    "alert": "Ogohlantirish",
+    "lastSeen": "Oxirgi tekshiruv",
+    "status": "Holat"
+  },
+  "filters": {
+    "active": "Hal qilinmaganlar",
+    "allSeverities": "Barcha darajalar"
+  },
+  "actions": {
+    "open": "Manbani ochish",
+    "acknowledge": "Qabul qilish",
+    "resolve": "Hal qilindi deb belgilash"
+  },
+  "toast": {
+    "acknowledged": "Qabul qilindi, takroriy xabarlar to'xtatildi",
+    "resolved": "Ogohlantirish yopildi",
+    "evaluated": "Tekshirildi: yangi {{raised}}, yopilgan {{resolved}}",
+    "unlinked": "Telegram uzildi"
+  },
+  "inbox": {
+    "title": "Bildirishnomalar",
+    "description": "Sizga kelgan xabarlar va ularni qayerdan olish sozlamalari.",
+    "tab": "Xabarlar",
+    "unreadOnly": "Faqat o'qilmaganlar",
+    "markAll": "Hammasini o'qilgan deb belgilash",
+    "emptyTitle": "Xabarlar yo'q",
+    "emptyBody": "Yangi xabarlar shu yerda ko'rinadi.",
+    "unread": "O'qilmagan"
+  },
+  "settings": {
+    "tab": "Sozlamalar",
+    "channelsTitle": "Qaysi xabar qayerga keladi",
+    "channelsBody": "Platforma ichidagi xabarlar doim yoqilgan. Qolganini o'zingiz tanlaysiz.",
+    "notConfigured": "Sozlanmagan",
+    "event": {
+      "alert_urgent": "Shoshilinch ogohlantirishlar",
+      "alert_attention": "E'tibor talab qiladigan ogohlantirishlar",
+      "alert_info": "Ma'lumot uchun xabarlar",
+      "task_assigned": "Menga biriktirilgan vazifalar",
+      "daily_summary": "Kunlik xulosa"
+    }
+  },
+  "telegram": {
+    "title": "Telegram",
+    "body": "Ogohlantirish va kunlik xulosani Telegramda oling. Botga /holat deb yozsangiz, bugungi holatni ko'rsatadi.",
+    "notConfigured": "Telegram bot hali sozlanmagan. Administratorga murojaat qiling.",
+    "linked": "Telegram ulangan.",
+    "unlinkTitle": "Telegramni uzasizmi?",
+    "unlinkBody": "Bu hisobga Telegram xabarlari kelmay qoladi.",
+    "unlink": "Telegramni uzish",
+    "link": "Telegramni ulash",
+    "step1": "Telegramda botni oching.",
+    "step2": "Quyidagi buyruqni botga yuboring.",
+    "openBot": "Botni ochish",
+    "copy": "Buyruqni nusxalash",
+    "copied": "Nusxalandi",
+    "copyFailed": "Nusxalab bo'lmadi, qo'lda yozing",
+    "waiting": "Bot javobi kutilmoqda. Kod {{time}} gacha amal qiladi."
+  },
+  "stat": {
+    "urgent": "Shoshilinch",
+    "attention": "E'tibor",
+    "info": "Ma'lumot"
+  }
+}

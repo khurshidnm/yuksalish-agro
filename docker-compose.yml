@@ -1,0 +1,39 @@
+# Local development services. Ports avoid clashes with other local stacks.
+name: yap
+services:
+  db:
+    build: ./infra/postgres
+    image: yap/postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: yap
+      POSTGRES_PASSWORD: yap_dev
+      POSTGRES_DB: yap
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - yap_db:/var/lib/postgresql/data
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U yap -d yap"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "127.0.0.1:6381:6379"
+    volumes:
+      - yap_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  yap_db:
+  yap_redis:

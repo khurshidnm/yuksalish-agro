@@ -1,0 +1,12 @@
+**/node_modules
+**/dist
+**/coverage
+**/storage
+**/*.test.ts
+**/*.tsbuildinfo
+.git
+.env
+.env.*
+docs
+*.md
+apps/api/test

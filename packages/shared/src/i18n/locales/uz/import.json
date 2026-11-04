@@ -1,0 +1,586 @@
+{
+  "page": {
+    "title": "Excel orqali yuklash",
+    "description": "Ma'lumotlarni Excel fayldan yuklang yoki ro'yxatlarni yuklab oling.",
+    "tabs": {
+      "import": "Yuklash",
+      "history": "Tarix",
+      "export": "Eksport"
+    },
+    "howTo": {
+      "title": "Qanday ishlaydi",
+      "step1": "Shablonni yuklab oling va to'ldiring.",
+      "step2": "Faylni yuklang. Hech narsa saqlanmaydi: avval tekshiruv natijasini ko'rasiz.",
+      "step3": "Xatolarni faylda tuzating va qayta yuklang yoki to'g'ri qatorlarni tasdiqlang.",
+      "order": "Tavsiya etilgan tartib: kontragentlar, dalalar, ozuqa, hayvonlar, keyin xarajatlar. Bir faylni qayta yuklash xavfsiz: mavjud yozuvlar ikki marta qo'shilmaydi."
+    },
+    "columns": "Ustunlar",
+    "download": "Shablonni yuklab olish",
+    "upload": "Faylni yuklash",
+    "uploading": "Tekshirilmoqda…",
+    "locked": "Bu shablon uchun ruxsatingiz yo'q. Rahbarga murojaat qiling.",
+    "maxRows": "Bitta faylda {{max}} tagacha qator. Excel (.xlsx) yoki CSV.",
+    "noAccess": "Yuklash va eksport uchun ruxsatingiz yo'q",
+    "noAccessHint": "Kerak bo'lsa, ferma rahbariga murojaat qiling."
+  },
+  "job": {
+    "title": "Tekshiruv natijasi: {{template}}",
+    "file": "Fayl: {{name}}",
+    "count": {
+      "new": "Yangi",
+      "update": "Yangilanadi",
+      "skip": "Allaqachon bor",
+      "error": "Xato"
+    },
+    "countHint": {
+      "new": "Tasdiqlaganda qo'shiladi",
+      "update": "Mavjud yozuv almashtiriladi",
+      "skip": "O'tkazib yuboriladi",
+      "error": "Yuklanmaydi"
+    },
+    "hasErrorsTitle": "{{count}} ta qatorda xato bor",
+    "hasErrors": "Bu qatorlar yuklanmaydi. Ularni faylda tuzatib, qayta yuklang. To'g'ri qatorlarni hozir tasdiqlasangiz, qayta yuklaganda ular ikki marta qo'shilmaydi.",
+    "problems": "Xatolar",
+    "notes": "E'tibor bering",
+    "times": "{{count}} ta qator",
+    "rowsList": "Qatorlar: {{rows}}",
+    "andMore": "{{rows}} va boshqalar",
+    "confirm": "{{count}} ta qatorni yuklash",
+    "confirmTitle": "Ma'lumotlar yuklansinmi?",
+    "confirmText": "{{count}} ta qator tizimga qo'shiladi.",
+    "uploadAgain": "Tuzatilgan faylni yuklash",
+    "downloadErrors": "Xatoli qatorlarni yuklab olish",
+    "discard": "Bekor qilish",
+    "discardTitle": "Bu yuklash bekor qilinsinmi?",
+    "discardText": "Hech narsa saqlanmagan, faylni keyinroq qayta yuklashingiz mumkin.",
+    "nothing": "Yuklanadigan yangi qator yo'q. Barcha qatorlar allaqachon tizimda yoki xato.",
+    "back": "Barcha shablonlar",
+    "rowsTitle": "Qatorlar",
+    "filterAll": "Hammasi",
+    "rowNumber": "Qator",
+    "status": "Holat",
+    "reason": "Izoh",
+    "noRows": "Bu holatda qator yo'q",
+    "doneTitle": "{{count}} ta qator yuklandi",
+    "doneSkipped": "{{count}} ta qator allaqachon bor edi va o'tkazib yuborildi.",
+    "doneErrors": "{{count}} ta qator xato sababli yuklanmadi. Ularni tuzatib, qayta yuklang.",
+    "donePending": "{{count}} ta xarajat tasdiqlashni kutmoqda: ular boshqa xodim tasdiqlagandan keyin hisobotlarga kiradi.",
+    "donePregnancies": "{{count}} ta sovliq uchun qo'zilash sanasi hisoblandi.",
+    "openResult": "Yuklangan ma'lumotlarni ko'rish",
+    "another": "Yana yuklash",
+    "discardedTitle": "Bu yuklash bekor qilingan"
+  },
+  "status": {
+    "new": "Yangi",
+    "update": "Yangilanadi",
+    "skip": "Allaqachon bor",
+    "error": "Xato"
+  },
+  "history": {
+    "date": "Sana",
+    "template": "Shablon",
+    "file": "Fayl",
+    "status": "Holat",
+    "rows": "Qatorlar",
+    "imported": "Yuklangan",
+    "by": "Kim",
+    "empty": "Hali yuklash bo'lmagan",
+    "emptyHint": "Birinchi faylni yuklagandan keyin tarix shu yerda ko'rinadi.",
+    "open": "Ochish",
+    "state": {
+      "preview": "Tasdiqlanmagan",
+      "confirmed": "Yuklangan",
+      "discarded": "Bekor qilingan"
+    }
+  },
+  "exports": {
+    "title": "Ro'yxatlarni yuklab olish",
+    "description": "Ro'yxatlar sizning huquqlaringiz doirasida chiqariladi: ruxsat yo'q ustunlar faylga kirmaydi.",
+    "excel": "Excel",
+    "csv": "CSV",
+    "from": "Boshlanish sanasi",
+    "to": "Tugash sanasi",
+    "entity": {
+      "animals": "Hayvonlar",
+      "fields": "Dalalar",
+      "stock": "Ombor qoldig'i",
+      "employees": "Xodimlar",
+      "counterparties": "Kontragentlar",
+      "transactions": "Moliyaviy operatsiyalar"
+    },
+    "entityHint": {
+      "animals": "Reyestrdagi barcha hayvonlar, shu jumladan chiqib ketganlar",
+      "fields": "Faol dalalar va joriy ekin",
+      "stock": "Omborlar bo'yicha joriy qoldiq",
+      "employees": "Xodimlar reyestri",
+      "counterparties": "Faol kontragentlar",
+      "transactions": "Tasdiqlangan operatsiyalar"
+    }
+  },
+  "templates": {
+    "fields": {
+      "title": "Dalalar",
+      "sheet": "Dalalar",
+      "file": "dalalar-shablon",
+      "description": "Dalalar, ekinlar va kuzgi ekish ma'lumotlari.",
+      "note": "Ekin yozilsa, dala uchun mavsum rejasi ham yaratiladi. Mavsum ekish sanasidan aniqlanadi; bunday mavsum bo'lmasa, yaratiladi.",
+      "columns": {
+        "number": {
+          "label": "Dala raqami",
+          "hint": "Dalaning raqami yoki qisqa belgisi. Takrorlanmasligi kerak."
+        },
+        "areaHa": {
+          "label": "Maydoni (ga)",
+          "hint": "Gektarda. Koordinatalar berilsa, maydon ulardan hisoblanadi."
+        },
+        "crop": {
+          "label": "Ekin",
+          "hint": "Ro'yxatdan tanlang.",
+          "example": "Bug'doy"
+        },
+        "variety": {
+          "label": "Nav",
+          "hint": "Ixtiyoriy."
+        },
+        "sowingDate": {
+          "label": "Ekish sanasi",
+          "hint": "Masalan, 25.10.2026. O'tgan sana ekilgan, kelajakdagi sana rejalashtirilgan deb olinadi."
+        },
+        "seedRate": {
+          "label": "Urug' me'yori (kg/ga)",
+          "hint": "Ixtiyoriy."
+        },
+        "irrigationSource": {
+          "label": "Sug'orish manbai",
+          "hint": "Ixtiyoriy.",
+          "example": "Kanal"
+        },
+        "coordinates": {
+          "label": "Koordinatalar (ixtiyoriy)",
+          "hint": "Chegara nuqtalari, kenglik va uzunlik: 39.5, 64.8; 39.5, 64.81; 39.51, 64.81"
+        }
+      }
+    },
+    "animals": {
+      "title": "Hayvonlar",
+      "sheet": "Hayvonlar",
+      "file": "hayvonlar-shablon",
+      "description": "Birkalangan hayvonlar, bo'g'ozlik va sotib olish ma'lumotlari.",
+      "note": "Bo'g'ozlik sanasi yozilsa, kutilayotgan qo'zilash sanasi avtomatik hisoblanadi. Toifa jins va yoshdan aniqlanadi: bir yoshgacha qo'zi, undan katta sovliq yoki qo'chqor.",
+      "columns": {
+        "tag": {
+          "label": "Birka raqami",
+          "hint": "Har bir hayvon uchun noyob."
+        },
+        "breed": {
+          "label": "Zoti",
+          "hint": "Ro'yxatdan tanlang.",
+          "example": "Hisori"
+        },
+        "sex": {
+          "label": "Jinsi",
+          "hint": "Ro'yxatdan tanlang.",
+          "example": "Urg'ochi"
+        },
+        "birth": {
+          "label": "Tug'ilgan sana yoki yoshi",
+          "hint": "Sana (15.03.2023) yoki yosh (3, 3 yosh, 18 oy). Yosh yozilsa, sana taxminiy deb belgilanadi."
+        },
+        "weightKg": {
+          "label": "Vazni (kg)",
+          "hint": "Ixtiyoriy."
+        },
+        "pregnancyDate": {
+          "label": "Bo'g'ozlik sanasi",
+          "hint": "Qochirish sanasi. Qo'zilash sanasi shundan hisoblanadi."
+        },
+        "purchaseDate": {
+          "label": "Sotib olish sanasi",
+          "hint": "Sotib olingan hayvonlar uchun majburiy."
+        },
+        "purchasePrice": {
+          "label": "Sotib olish narxi",
+          "hint": "So'mda, bir bosh uchun."
+        },
+        "seller": {
+          "label": "Sotuvchi",
+          "hint": "Tizimda bo'lmasa, yangi kontragent yaratiladi.",
+          "example": "Sherobod Chorva MChJ"
+        },
+        "herd": {
+          "label": "Poda",
+          "hint": "Ixtiyoriy. Yangi nom yozilsa, poda yaratiladi. Bo'sh qolsa, fermada bitta poda bo'lsa, shunga qo'shiladi.",
+          "example": "Bo'g'oz sovliqlar"
+        }
+      }
+    },
+    "feed": {
+      "title": "Ozuqa qoldig'i",
+      "sheet": "Ozuqa qoldig'i",
+      "file": "ozuqa-shablon",
+      "description": "Boshlang'ich ozuqa qoldig'i va narxi.",
+      "note": "Har bir qator boshlang'ich qoldiq sifatida omborga kiradi. Tonnada yozilgan yangi ozuqa kilogrammda saqlanadi, chunki ratsion kilogrammda hisoblanadi.",
+      "columns": {
+        "item": {
+          "label": "Ozuqa turi",
+          "hint": "Tizimda bo'lmasa, yangi nomenklatura yaratiladi.",
+          "example": "Beda (pichan)"
+        },
+        "qty": {
+          "label": "Miqdori",
+          "hint": "Tanlangan o'lchov birligida."
+        },
+        "unit": {
+          "label": "O'lchov birligi",
+          "hint": "kg, t yoki bog'.",
+          "example": "t"
+        },
+        "date": {
+          "label": "Kirim sanasi",
+          "hint": "Masalan, 15.10.2026."
+        },
+        "price": {
+          "label": "Narxi (1 birlik uchun)",
+          "hint": "So'mda, tanlangan o'lchov birligi uchun."
+        }
+      }
+    },
+    "employees": {
+      "title": "Xodimlar",
+      "sheet": "Xodimlar",
+      "file": "xodimlar-shablon",
+      "description": "Xodimlar reyestri va ish haqi.",
+      "note": "Telefon raqami mavjud bo'lsa, xodim shu raqam orqali, bo'lmasa, ismi va ishga qabul sanasi orqali aniqlanadi.",
+      "columns": {
+        "fullName": {
+          "label": "Ism",
+          "hint": "To'liq ism va familiya.",
+          "example": "Aliyev Vali"
+        },
+        "position": {
+          "label": "Lavozim",
+          "hint": "Masalan, Cho'pon, Mexanizator.",
+          "example": "Cho'pon"
+        },
+        "payType": {
+          "label": "Ish haqi turi",
+          "hint": "Ro'yxatdan tanlang.",
+          "example": "Oylik"
+        },
+        "rate": {
+          "label": "Ish haqi miqdori",
+          "hint": "So'mda: oylik, kunlik yoki mavsumiy stavka."
+        },
+        "hireDate": {
+          "label": "Ishga qabul sanasi",
+          "hint": "Masalan, 01.09.2026."
+        },
+        "phone": {
+          "label": "Telefon",
+          "hint": "Ixtiyoriy."
+        },
+        "contractEndDate": {
+          "label": "Shartnoma tugash sanasi",
+          "hint": "Mavsumiy xodimlar uchun majburiy."
+        }
+      }
+    },
+    "machinery": {
+      "title": "Texnika",
+      "sheet": "Texnika",
+      "file": "texnika-shablon",
+      "description": "Traktorlar, uskunalar va ularning holati.",
+      "columns": {
+        "name": {
+          "label": "Nomi",
+          "hint": "Takrorlanmasligi kerak, agar inventar raqami bo'lmasa."
+        },
+        "type": {
+          "label": "Turi",
+          "hint": "Ro'yxatdan tanlang.",
+          "example": "Traktor"
+        },
+        "inventoryNo": {
+          "label": "Inventar raqami",
+          "hint": "Ixtiyoriy."
+        },
+        "purchaseDate": {
+          "label": "Xarid sanasi",
+          "hint": "Ixtiyoriy."
+        },
+        "purchasePrice": {
+          "label": "Xarid narxi",
+          "hint": "So'mda. Ixtiyoriy."
+        },
+        "status": {
+          "label": "Holati",
+          "hint": "Bo'sh qolsa, ishlamoqda deb olinadi.",
+          "example": "Ishlamoqda"
+        }
+      }
+    },
+    "counterparties": {
+      "title": "Kontragentlar",
+      "sheet": "Kontragentlar",
+      "file": "kontragentlar-shablon",
+      "description": "Xaridorlar, yetkazib beruvchilar va boshqa tomonlar.",
+      "columns": {
+        "name": {
+          "label": "Nomi",
+          "hint": "Tashkilot yoki shaxs nomi.",
+          "example": "Buxoro Yem Savdo MChJ"
+        },
+        "tin": {
+          "label": "STIR",
+          "hint": "9 yoki 14 raqam. Ixtiyoriy."
+        },
+        "type": {
+          "label": "Toifa",
+          "hint": "Ro'yxatdan tanlang.",
+          "example": "Yetkazib beruvchi"
+        },
+        "phone": {
+          "label": "Telefon",
+          "hint": "Ixtiyoriy."
+        },
+        "bank": {
+          "label": "Bank rekvizitlari",
+          "hint": "Bitta katakda: bank nomi, hisob raqami, MFO.",
+          "example": "Agrobank, h/r 20208000900123456001, MFO 00394"
+        }
+      }
+    },
+    "expenses": {
+      "title": "Boshlang'ich xarajatlar",
+      "sheet": "Xarajatlar",
+      "file": "xarajatlar-shablon",
+      "description": "Platforma ishga tushgunga qadar qilingan xarajatlar.",
+      "note": "Katta summalar oddiy tartibda boshqa xodim tasdig'ini kutadi. Ozuqa, urug', o'g'it va yoqilg'i xarajati umumiy ferma markaziga yozilsa, ombor xaridi deb olinadi va omborda ikki marta hisoblanmaydi. To'g'ridan-to'g'ri xarajat uchun dala yoki podani tanlang. Hayvon xaridi hayvon tannarxiga, investitsiya esa aktivga o'tadi.",
+      "columns": {
+        "date": {
+          "label": "Sana",
+          "hint": "Masalan, 05.10.2026."
+        },
+        "category": {
+          "label": "Modda",
+          "hint": "Ro'yxatdan tanlang.",
+          "example": "Elektr"
+        },
+        "amount": {
+          "label": "Summa",
+          "hint": "So'mda."
+        },
+        "paymentMethod": {
+          "label": "To'lov usuli",
+          "hint": "Naqd, bank, karta yoki qarzga. Hisob shu turdagi birinchi kassa yoki bank bo'ladi.",
+          "example": "Naqd"
+        },
+        "costCenter": {
+          "label": "Xarajat markazi",
+          "hint": "Dala raqami, poda, texnika yoki umumiy ferma.",
+          "example": "Umumiy ferma"
+        },
+        "note": {
+          "label": "Izoh",
+          "hint": "Ixtiyoriy.",
+          "example": "Oktabr uchun elektr"
+        },
+        "counterparty": {
+          "label": "Kontragent",
+          "hint": "Qarzga olingan xarajatda majburiy."
+        }
+      }
+    },
+    "budget": {
+      "title": "Byudjet 2026/27",
+      "sheet": "Byudjet",
+      "file": "byudjet-shablon",
+      "description": "Oylar va moddalar bo'yicha reja.",
+      "note": "Bir oy va modda uchun yangi summa eskisining o'rnini egallaydi.",
+      "columns": {
+        "month": {
+          "label": "Oy",
+          "hint": "Masalan, 2026-11, 11.2026 yoki Noyabr 2026."
+        },
+        "category": {
+          "label": "Modda",
+          "hint": "Ro'yxatdan tanlang.",
+          "example": "Ozuqa"
+        },
+        "amount": {
+          "label": "Reja summa",
+          "hint": "So'mda."
+        }
+      }
+    }
+  },
+  "rows": {
+    "required": "{{column}} to'ldirilmagan",
+    "tooLong": "{{column}} juda uzun (ko'pi bilan {{max}} belgi)",
+    "tooShort": "{{column}} juda qisqa",
+    "invalidNumber": "{{column}}: son emas",
+    "tooSmall": "{{column}} {{min}} dan kam bo'lmasligi kerak",
+    "mustBeAbove": "{{column}} {{min}} dan katta bo'lishi kerak",
+    "tooBig": "{{column}} juda katta (ko'pi bilan {{max}})",
+    "invalidDate": "{{column}}: sana noto'g'ri. Namuna: 25.10.2026",
+    "futureDate": "{{column}} kelajakdagi sana bo'lishi mumkin emas",
+    "invalidMonth": "{{column}}: oy noto'g'ri. Namuna: 2026-11 yoki Noyabr 2026",
+    "unknownValue": "{{column}}: \"{{value}}\" topilmadi. Mumkin: {{allowed}}",
+    "moneyNotAllowed": "{{column}}: narxlarni faqat moliya ma'lumotlarini ko'ra oladigan xodim yuklaydi. Bu ustunni bo'sh qoldiring",
+    "duplicateInFile": "Fayl ichida takrorlangan: {{row}}-qatorda ham bor",
+    "unknownCounterparty": "{{column}}: \"{{value}}\" topilmadi. Avval kontragentlar shablonini yuklang",
+    "newCounterparty": "Yangi kontragent yaratiladi",
+    "invalidCoordinates": "{{column}}: o'qib bo'lmadi. Namuna: 39.5, 64.8; 39.5, 64.81; 39.51, 64.81",
+    "coordinatesPoint": "Bitta nuqta chegara bo'la olmaydi, koordinatalar saqlanmaydi",
+    "invalidOutline": "{{column}}: chegara chiziqlari kesishadi yoki maydoni yo'q",
+    "areaDiffersFromOutline": "Chegaradan hisoblangan maydon {{measured}} ga, u saqlanadi",
+    "areaDiffersFromField": "Tizimdagi maydon {{existing}} ga, u o'zgarmaydi",
+    "fieldExists": "{{number}}-dala allaqachon bor",
+    "fieldNotArable": "{{number}}-dala ekin maydoni emas",
+    "seasonTaken": "{{number}}-dalada bu mavsumda boshqa ekin rejalashtirilgan",
+    "seasonWillBeCreated": "Yangi mavsum yaratiladi: {{name}}",
+    "animalExists": "{{tag}} birkali hayvon allaqachon bor",
+    "tagOnOtherAnimal": "Bu birka {{tag}} hayvoniga tegishli",
+    "invalidBirth": "{{column}}: sana yoki yosh bo'lishi kerak. Namuna: 15.03.2023 yoki 3 yosh",
+    "priceNeedsDate": "Narx bor, lekin sotib olish sanasi yo'q",
+    "originUnknown": "Sotib olish sanasi yoki aniq tug'ilgan sana kerak",
+    "maleCannotBePregnant": "Erkak hayvon uchun bo'g'ozlik sanasi yozilgan",
+    "matingBeforeBirth": "Bo'g'ozlik sanasi tug'ilgan sanadan oldin",
+    "lambingDatePassed": "Kutilayotgan qo'zilash sanasi allaqachon o'tgan: yilni tekshiring",
+    "herdWillBeCreated": "Yangi poda yaratiladi",
+    "noHerd": "Hayvon hech qaysi podaga kiritilmaydi. Keyin podaga ko'chiring",
+    "stockExists": "\"{{name}}\" bu sana uchun allaqachon kirim qilingan",
+    "stockDiffers": "\"{{name}}\" uchun {{date}} sanasida boshqa qoldiq kiritilgan. Uni omborda tuzating",
+    "unitMismatch": "Bu ozuqa {{unit}} da yuritiladi, o'tkazib bo'lmadi",
+    "newItem": "Yangi nomenklatura yaratiladi",
+    "baleWeightNeeded": "Bog' og'irligini nomenklaturada kiriting, aks holda zaxira kunlari hisoblanmaydi",
+    "warehouseWillBeCreated": "Ozuqa ombori topilmadi, u yaratiladi",
+    "employeeExists": "{{name}} allaqachon reyestrda bor",
+    "invalidPhone": "{{column}}: telefon raqami noto'g'ri",
+    "seasonalNeedsEnd": "Mavsumiy xodim uchun shartnoma tugash sanasi kerak",
+    "assetExists": "\"{{name}}\" allaqachon bor",
+    "counterpartyExists": "\"{{name}}\" allaqachon bor",
+    "tinLength": "STIR odatda 9 yoki 14 raqamdan iborat: tekshiring",
+    "expenseExists": "Bunday xarajat allaqachon kiritilgan",
+    "debtNeedsCounterparty": "Qarzga olingan xarajatda kontragent ko'rsatilishi kerak",
+    "noAccount": "{{method}} uchun hisob yo'q. Uni Moliya bo'limida yarating",
+    "treatedAsStock": "Ombor xaridi deb olinadi: xarajat ombordan chiqqanda markazga tushadi. To'g'ridan-to'g'ri xarajat uchun dala yoki podani tanlang",
+    "budgetExists": "Bu reja allaqachon bor",
+    "budgetZero": "Reja nolga teng, qo'shiladigan narsa yo'q",
+    "budgetUpdate": "Eski reja almashtiriladi: {{old}}"
+  },
+  "workbook": {
+    "instructionsSheet": "Ko'rsatma",
+    "step1": "1. Birinchi varaqdagi jadvalni to'ldiring. Yulduzchali ustunlar majburiy.",
+    "step2": "2. Misol qatorini qoldirsangiz ham, o'chirsangiz ham bo'ladi: u yuklanmaydi.",
+    "step3": "3. Sarlavhalarni o'zgartirmang. Ustunlar tartibi muhim emas.",
+    "step4": "4. Sanalarni 25.10.2026 ko'rinishida, sonlarni oddiy yozing. Lotin va kirill yozuvi ham ishlaydi.",
+    "step5": "5. Faylni platformaga yuklang. Saqlashdan oldin har bir qator tekshiriladi va xatolar ko'rsatiladi.",
+    "column": "Ustun",
+    "required": "Majburiy",
+    "description": "Tavsif",
+    "yes": "Ha",
+    "no": "Yo'q",
+    "exampleMark": "← Bu misol. U yuklanmaydi.",
+    "notInListTitle": "Ro'yxatda yo'q",
+    "notInList": "Bu qiymat ro'yxatda yo'q. Yuklashda tekshiriladi.",
+    "errorColumn": "Xato sababi",
+    "errorsFile": "xatolar"
+  },
+  "defaults": {
+    "autumnSeason": "Kuzgi {{years}}",
+    "summerSeason": "Yozgi {{year}}",
+    "feedWarehouse": "Ozuqa ombori"
+  },
+  "export": {
+    "animals": {
+      "file": "hayvonlar",
+      "tag": "Birka raqami",
+      "breedName": "Zoti",
+      "sex": "Jinsi",
+      "category": "Toifa",
+      "status": "Holati",
+      "birthDate": "Tug'ilgan sana",
+      "herdName": "Poda",
+      "currentWeightKg": "Vazni (kg)",
+      "lastWeighedOn": "Oxirgi tortilgan sana",
+      "purchaseDate": "Sotib olish sanasi",
+      "purchasePrice": "Sotib olish narxi"
+    },
+    "fields": {
+      "file": "dalalar",
+      "number": "Dala raqami",
+      "name": "Nomi",
+      "landUse": "Yer turi",
+      "areaHa": "Maydoni (ga)",
+      "soilType": "Tuproq turi",
+      "irrigationSource": "Sug'orish manbai",
+      "crop": "Joriy ekin",
+      "variety": "Nav"
+    },
+    "stock": {
+      "file": "ombor-qoldig'i",
+      "name": "Nomenklatura",
+      "category": "Turkum",
+      "warehouseName": "Ombor",
+      "qty": "Qoldiq",
+      "unit": "O'lchov birligi",
+      "nearestExpiry": "Yaroqlilik muddati",
+      "avgCost": "O'rtacha tannarx",
+      "value": "Qiymati"
+    },
+    "employees": {
+      "file": "xodimlar",
+      "fullName": "Ism",
+      "position": "Lavozim",
+      "division": "Bo'linma",
+      "status": "Holati",
+      "hireDate": "Ishga qabul sanasi",
+      "payType": "Ish haqi turi",
+      "baseRate": "Ish haqi miqdori",
+      "phone": "Telefon"
+    },
+    "counterparties": {
+      "file": "kontragentlar",
+      "name": "Nomi",
+      "tin": "STIR",
+      "type": "Toifa",
+      "phone": "Telefon",
+      "address": "Manzil",
+      "contactPerson": "Aloqa shaxsi",
+      "bankName": "Bank",
+      "bankAccount": "Hisob raqami",
+      "bankMfo": "MFO"
+    },
+    "transactions": {
+      "file": "operatsiyalar",
+      "date": "Sana",
+      "type": "Turi",
+      "category": "Modda",
+      "amount": "Summa",
+      "currency": "Valyuta",
+      "amountBase": "Summa (asosiy valyutada)",
+      "paymentMethod": "To'lov usuli",
+      "accountName": "Hisob",
+      "counterpartyName": "Kontragent",
+      "costCenterName": "Xarajat markazi",
+      "description": "Izoh"
+    }
+  },
+  "errors": {
+    "NOT_A_SPREADSHEET": "Bu fayl Excel yoki CSV emas. Shablonni yuklab olib, shuni to'ldiring.",
+    "OLD_EXCEL_FORMAT": "Bu eski .xls format. Excelda \"Saqlash\" orqali .xlsx qilib saqlang va qayta yuklang.",
+    "EMPTY_FILE": "Fayl bo'sh.",
+    "FILE_TOO_COMPLEX": "Fayl juda katta, uni o'qib bo'lmaydi. Keraksiz varaqlarni olib tashlang.",
+    "FILE_REQUIRED": "Fayl tanlanmagan.",
+    "FST_REQ_FILE_TOO_LARGE": "Fayl hajmi 15 MB dan oshmasligi kerak.",
+    "WRONG_TEMPLATE": "Fayldagi sarlavhalar \"{{expected}}\" shabloniga mos kelmadi. Shablonni yuklab olib, shuni to'ldiring.",
+    "LOOKS_LIKE_OTHER_TEMPLATE": "Bu fayl \"{{detected}}\" shabloniga o'xshaydi, siz esa \"{{expected}}\" ni tanlagansiz.",
+    "MISSING_COLUMNS": "Faylda ustunlar yetishmaydi: {{columns}}.",
+    "NO_DATA_ROWS": "Faylda ma'lumot qatorlari yo'q. Faqat misol qatori bo'lishi mumkin.",
+    "TOO_MANY_ROWS": "Bitta faylda {{max}} tagacha qator bo'lishi mumkin, sizda {{found}} ta. Faylni bo'lib yuklang.",
+    "JOB_NOT_OPEN": "Bu yuklash allaqachon yakunlangan.",
+    "NOTHING_TO_IMPORT": "Yuklanadigan to'g'ri qator yo'q.",
+    "IMPORT_ROW_FAILED": "{{row}}-qatorda xato: {{reason}}. Hech narsa saqlanmadi."
+  }
+}

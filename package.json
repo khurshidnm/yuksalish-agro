@@ -1,0 +1,25 @@
+{
+  "name": "yuksalish-agro",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Yuksalish Agro Platform (YAP) — multi-tenant farm management SaaS",
+  "packageManager": "pnpm@12.16.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @yap/api --filter @yap/web dev",
+    "dev:api": "pnpm --filter @yap/api dev",
+    "dev:web": "pnpm --filter @yap/web dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "db:up": "docker compose up -d db redis",
+    "db:down": "docker compose down",
+    "db:setup": "pnpm --filter @yap/api db:setup",
+    "db:seed": "pnpm --filter @yap/api db:seed",
+    "db:reset": "pnpm --filter @yap/api db:reset",
+    "db:generate": "pnpm --filter @yap/api db:generate",
+    "db:migrate": "pnpm --filter @yap/api db:migrate"
+  }
+}

@@ -1,0 +1,181 @@
+{
+  "title": "Today",
+  "sections": {
+    "herds": "Daily record",
+    "actions": "Quick actions",
+    "tasks": "Tasks"
+  },
+  "common": {
+    "back": "Back",
+    "less": "{{label}}: less",
+    "more": "{{label}}: more"
+  },
+  "data": {
+    "stale": "No internet. Data as of {{time}}. Your records are being saved.",
+    "firstTimeTitle": "Internet is needed the first time",
+    "firstTimeBody": "Data has to reach this phone once. Connect to the internet."
+  },
+  "herd": {
+    "head": "{{n}} head",
+    "todo": "Not recorded yet",
+    "queued": "Saved, waiting to send",
+    "failed": "Error, please check",
+    "conflict": "Two records, choose one",
+    "logged": "Recorded"
+  },
+  "actions": {
+    "report_sick": "Sick animal",
+    "record_death": "Animal died",
+    "weight": "Weight",
+    "lambing": "Lambing",
+    "animals": "Animals",
+    "health": "Veterinary",
+    "field_operation": "Field work",
+    "field_map": "Field map",
+    "machinery": "Machinery",
+    "stock": "Stock",
+    "rations": "Ration"
+  },
+  "tasks": {
+    "none": "No tasks today",
+    "overdue": "Overdue",
+    "open": "Open",
+    "done": "Done",
+    "markDone": "Done: {{title}}",
+    "photoDone": "Close with a photo: {{title}}"
+  },
+  "attendance": {
+    "since": "At work since {{time}}"
+  },
+  "saved": {
+    "sending": "Saved",
+    "queued": "Saved. It will be sent when there is internet.",
+    "failed": "Could not save on this phone. Please try again."
+  },
+  "bar": {
+    "waiting": "Waiting to send: {{n}}",
+    "syncing": "Sending: {{n}}",
+    "attention": "Need attention: {{n}}",
+    "retry": "Retry"
+  },
+  "log": {
+    "title": "Daily record",
+    "norm": "Norm: {{qty}}",
+    "overNorm": "{{percent}}% over the norm",
+    "underNorm": "{{percent}}% under the norm",
+    "short": "Only {{qty}} in stock",
+    "qtyRequired": "Enter the quantity",
+    "water": "Water",
+    "waterUnit": "litres",
+    "condition": "Herd condition",
+    "normal": "Good",
+    "deviation": "Something is wrong",
+    "notes": "Note",
+    "save": "Save",
+    "saveCorrection": "Save correction",
+    "correcting": "Today is already recorded. If you change it, stock is recalculated.",
+    "noRation": "This herd has no ration. Add the feed that was given.",
+    "addFeed": "Add another feed",
+    "herdMissing": "Herd not found",
+    "herdMissingBody": "Connect to the internet and refresh.",
+    "waitingToSend": "This record is being sent. You can correct it once it arrives.",
+    "loggedByOther": "Someone else recorded today. The zootechnician can change it."
+  },
+  "animal": {
+    "label": "Animal tag",
+    "placeholder": "Tag number",
+    "change": "Change",
+    "notFound": "Not found on this phone",
+    "noList": "The animal list is not on this phone. Connect to the internet and open the Today page."
+  },
+  "photo": {
+    "take": "Take a photo",
+    "remove": "Remove photo",
+    "failed": "Could not save the photo"
+  },
+  "sick": {
+    "note": "What happened?",
+    "save": "Tell the vet",
+    "recordTitle": "Sick: {{tag}}",
+    "symptoms": {
+      "notEating": "Not eating",
+      "limping": "Limping",
+      "coughing": "Coughing",
+      "diarrhea": "Diarrhoea",
+      "lyingDown": "Cannot stand"
+    }
+  },
+  "death": {
+    "reason": "Cause",
+    "save": "Save",
+    "recordTitle": "Died: {{tag}}",
+    "reasons": {
+      "disease": "Disease",
+      "predator": "Predator",
+      "accident": "Accident",
+      "unknown": "Unknown"
+    }
+  },
+  "weight": {
+    "kg": "Weight",
+    "save": "Save and next",
+    "recordTitle": "Weight: {{tag}}, {{kg}} kg",
+    "count": "Saved: {{n}}"
+  },
+  "lambing": {
+    "ewe": "Ewe tag",
+    "count": "Number of lambs",
+    "lamb": "Lamb {{n}}",
+    "sex": "Sex",
+    "female": "Female",
+    "male": "Male",
+    "state": "Condition",
+    "alive": "Alive",
+    "dead": "Stillborn",
+    "weight": "Birth weight",
+    "save": "Save",
+    "recordTitle": "Lambing: {{tag}}, {{n}} lambs"
+  },
+  "kinds": {
+    "daily_log": "Daily record",
+    "sick_report": "Sick animal",
+    "death": "Death",
+    "weight": "Weight",
+    "lambing": "Lambing",
+    "task_complete": "Task"
+  },
+  "sync": {
+    "title": "Send queue",
+    "online": "Connected",
+    "offline": "No internet. Records are kept on this phone.",
+    "lastSync": "Last sent: {{time}}",
+    "sendNow": "Send now ({{n}})",
+    "retry": "Send again",
+    "edit": "Correct",
+    "discard": "Delete",
+    "discardTitle": "Delete this record?",
+    "discardBody": "It will not remain anywhere.",
+    "conflicts": "Choose one",
+    "failed": "Not accepted",
+    "waiting": "Waiting",
+    "sent": "Sent",
+    "emptyTitle": "Everything is sent",
+    "emptyBody": "No unsent records on this phone.",
+    "others": "Records of another user or farm: {{n}}. They go out when that person signs in.",
+    "conflictBody": "Another record is already saved for this herd and day. Which one is right?",
+    "mine": "My record",
+    "server": "Saved record",
+    "serverUnknown": "Internet is needed to see the saved record.",
+    "keepMine": "Mine is right",
+    "keepServer": "Saved one is right",
+    "keepServerTitle": "Delete your record?",
+    "keepServerBody": "The saved record stays, and yours is removed from this phone.",
+    "sendToManager": "Send to the zootechnician",
+    "settled": "Done"
+  },
+  "errors": {
+    "EDIT_WINDOW_CLOSED": "Only the zootechnician can change this record. Send yours to them.",
+    "STALE_UPDATE": "The record has just changed. Look at the new one and choose again.",
+    "NOTHING_TO_UPDATE": "Nothing to change"
+  }
+}

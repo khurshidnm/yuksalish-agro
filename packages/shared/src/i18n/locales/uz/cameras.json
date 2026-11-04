@@ -1,0 +1,110 @@
+{
+  "title": "Kameralar va datchiklar",
+  "description": "Qurilmalar reyestri, hodisalar va jonli ko'rish.",
+  "tabs": {
+    "live": "Jonli ko'rish",
+    "events": "Hodisalar",
+    "devices": "Qurilmalar",
+    "plan": "Joylashuv rejasi"
+  },
+  "zones": {
+    "barn": "Molxona ichi",
+    "feed_store": "Ozuqa ombori",
+    "gate": "Asosiy darvoza va hovli",
+    "pump": "Suv va nasos inshooti"
+  },
+  "live": {
+    "openStream": "Oqimni alohida ochish",
+    "notConfiguredTitle": "Strim shlyuzi sozlanmagan",
+    "notConfiguredHint": "Qurilma kartochkasiga jonli ko'rish manzilini kiriting.",
+    "notInstalled": "Kamera hali o'rnatilmagan.",
+    "failedTitle": "Oqimni ochib bo'lmadi",
+    "failedHint": "Manzil ishlamayapti yoki brauzer bu formatni o'ynata olmaydi.",
+    "emptyTitle": "Kameralar yo'q",
+    "emptyBody": "«Qurilmalar» bo'limida kamera qo'shing.",
+    "gatewayTitle": "Jonli ko'rish hali ulanmagan",
+    "gatewayBody": "Brauzer RTSP oqimini to'g'ridan-to'g'ri ko'rsata olmaydi. Fermada strim shlyuzi (masalan, MediaMTX) ishga tushirilgach, uning manzilini har bir kamera kartochkasiga kiriting."
+  },
+  "plan": {
+    "summary": "Reja: {{range}} ta kamera, hozir ishlayapti: {{online}} ta",
+    "archive": "Fermada 30 kunlik lokal arxiv saqlanadi, muhim hodisa kliplari bulutga yuboriladi.",
+    "planned": "Rejada",
+    "registered": "Reyestrda",
+    "working": "Ishlayapti",
+    "progress": "{{zone}}: o'rnatilishi",
+    "purpose": {
+      "barn": "Hayvonlarni sanash, harakatsizlik, qo'zilash, oxur holati",
+      "feed_store": "Kirim-chiqim nazorati, yong'in belgilari",
+      "gate": "Transport, notanish shaxslar, ish vaqtidan tashqari harakat",
+      "pump": "Texnik holat"
+    }
+  },
+  "devices": {
+    "name": "Nomi",
+    "type": "Turi",
+    "zone": "Hudud",
+    "status": "Holati",
+    "lastSeen": "Oxirgi signal",
+    "add": "Qurilma qo'shish",
+    "edit": "Qurilmani tahrirlash",
+    "searchPlaceholder": "Nomi bo'yicha qidirish",
+    "allTypes": "Barcha turlar",
+    "allStatuses": "Barcha holatlar",
+    "emptyTitle": "Qurilmalar yo'q",
+    "emptyBody": "Kamera yoki datchikni reyestrga qo'shing.",
+    "deleteTitle": "Qurilma o'chirilsinmi?",
+    "deleteBody": "«{{name}}» reyestrdan o'chiriladi. Uning hodisalari jurnalda qoladi.",
+    "facility": "Obyekt",
+    "streamUrl": "RTSP manzili",
+    "streamUrlHint": "Login va parol manzildan olinib, shifrlab saqlanadi.",
+    "credentialsStored": "Login va parol shifrlangan holda saqlangan.",
+    "onvifUrl": "ONVIF manzili",
+    "onvifUrlHint": "Login va parolsiz kiriting.",
+    "liveUrl": "Jonli ko'rish manzili",
+    "liveUrlHint": "Strim shlyuzi manzili: HLS, MP4 yoki pleyer sahifasi.",
+    "offlineAfter": "Oflayn deb hisoblash",
+    "offlineAfterHint": "Bo'sh qoldirilsa, 10 daqiqa.",
+    "minutes": "daqiqa",
+    "apiKey": "Faqat shu kalit bilan",
+    "apiKeyHint": "Tanlansa, qurilma boshqa kalitni qabul qilmaydi.",
+    "anyKey": "Istalgan kalit",
+    "notes": "Izoh"
+  },
+  "events": {
+    "event": "Hodisa",
+    "device": "Qurilma",
+    "severity": "Muhimlik",
+    "time": "Vaqt",
+    "snapshot": "Kadr",
+    "openSnapshot": "Kadrni ochish",
+    "sample": "Namuna",
+    "allSeverities": "Barcha darajalar",
+    "source": "Manba",
+    "allSources": "Kamera va datchik",
+    "from": "Boshlanish sanasi",
+    "to": "Tugash sanasi",
+    "emptyTitle": "Hodisalar yo'q",
+    "emptyBody": "Qurilmalar ulangach, hodisalar shu yerda ko'rinadi."
+  },
+  "eventTypes": {
+    "animal_count": "Hayvonlar soni mos emas",
+    "inactivity": "Uzoq vaqt harakatsiz hayvon",
+    "isolation": "Podadan ajralgan hayvon",
+    "lambing_activity": "Qo'zilash belgilari",
+    "trough_empty": "Oxur bo'sh",
+    "person": "Odam aniqlandi",
+    "vehicle": "Transport aniqlandi",
+    "gate_open": "Darvoza ochildi",
+    "smoke": "Tutun belgisi",
+    "fire": "Yong'in belgisi",
+    "temperature": "Harorat",
+    "humidity": "Namlik",
+    "ammonia": "Ammiak",
+    "water_level": "Suv sathi"
+  },
+  "errors": {
+    "INVALID_STREAM_URL": "Manzil noto'g'ri. ONVIF manzilini login va parolsiz kiriting.",
+    "DEVICE_KEY_MISMATCH": "Bu qurilma boshqa kalitga bog'langan.",
+    "INVALID_EVENT_TIME": "Hodisa vaqti kelajakda bo'lishi mumkin emas."
+  }
+}

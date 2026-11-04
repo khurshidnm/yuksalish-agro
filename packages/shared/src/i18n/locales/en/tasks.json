@@ -1,0 +1,189 @@
+{
+  "notification": {
+    "assigned": "A new task was assigned to you"
+  },
+  "errors": {
+    "TASK_NOT_OPEN": "Only an open task can be started",
+    "TASK_NOT_ACTIVE": "This task is already closed",
+    "TASK_NOT_CLOSED": "This task is not closed",
+    "TASK_IS_SERIES": "A recurring series cannot be marked as done",
+    "PHOTO_REQUIRED": "This task needs a photo before it can be closed",
+    "RECORD_REQUIRED": "This task closes only with the matching record",
+    "ASSIGNEE_NOT_MEMBER": "This person does not work on this farm",
+    "INVALID_DATE_RANGE": "The end date cannot be before the start date"
+  },
+  "title": "Tasks",
+  "description": "Work on the farm: who does what, and by when.",
+  "myTitle": "My tasks",
+  "myDescription": "Work assigned to you. When you finish, press Done.",
+  "add": "New task",
+  "edit": "Edit task",
+  "searchPlaceholder": "Search by task name",
+  "needsPhoto": "Photo needed",
+  "overdueOn": "Overdue: {{date}}",
+  "emptyTitle": "No tasks",
+  "emptyBody": "New tasks will appear here.",
+  "deleteTitle": "Delete this task?",
+  "deleteBody": "\"{{name}}\" will be deleted for good.",
+  "quickAdd": {
+    "label": "Quick add",
+    "placeholder": "Type a new task",
+    "button": "Add"
+  },
+  "tabs": {
+    "board": "Board",
+    "list": "List",
+    "recurring": "Recurring"
+  },
+  "fields": {
+    "title": "Task",
+    "description": "Description",
+    "assignee": "Assigned to",
+    "assigneePlaceholder": "Choose a person",
+    "dueDate": "Due date",
+    "startDate": "Start date",
+    "priority": "Priority",
+    "status": "Status",
+    "division": "Division",
+    "noDivision": "None",
+    "linkedType": "Linked object type",
+    "linkedObject": "Linked object",
+    "noLink": "Not linked",
+    "recurrence": "Repeats",
+    "recurrenceHint": "A new task is created automatically each time.",
+    "requiresRecord": "Record needed to close",
+    "requiresRecordHint": "The task closes only after this record is entered.",
+    "noRecord": "Not required",
+    "requiresPhoto": "Require a photo",
+    "requiresPhotoHint": "The person closes the task with a photo.",
+    "notes": "Notes"
+  },
+  "filters": {
+    "allStatuses": "All statuses",
+    "allDivisions": "All divisions",
+    "allPriorities": "All priorities",
+    "allPeople": "Everyone",
+    "mine": "Mine only",
+    "overdue": "Overdue"
+  },
+  "actions": {
+    "start": "Start",
+    "complete": "Done",
+    "cancel": "Cancel",
+    "reopen": "Reopen"
+  },
+  "board": {
+    "open": "Open",
+    "inProgress": "In progress",
+    "done": "Done",
+    "empty": "No tasks here"
+  },
+  "division": {
+    "crops": "Crops",
+    "livestock": "Sheep",
+    "machinery": "Machinery",
+    "admin": "Management"
+  },
+  "entity": {
+    "field": "Field",
+    "herd": "Herd",
+    "animal": "Animal",
+    "asset": "Machinery"
+  },
+  "record": {
+    "health_record": "Veterinary record",
+    "field_operation": "Field operation",
+    "daily_log": "Daily record",
+    "weight_record": "Weight record"
+  },
+  "complete": {
+    "title": "Close task",
+    "photo": "Photo",
+    "takePhoto": "Take a photo",
+    "photoPreview": "Photo taken",
+    "removePhoto": "Remove photo",
+    "note": "Notes",
+    "recordHint": "Choose the record entered for this task.",
+    "chooseRecord": "Choose a record",
+    "noRecordTitle": "Enter a record first: {{record}}",
+    "noRecordBody": "This task closes only with the matching record, and there is none yet.",
+    "goCreateRecord": "Go to enter the record"
+  },
+  "series": {
+    "running": "Running",
+    "stopped": "Stopped",
+    "explain": "Each series creates a new task on its own on the set days.",
+    "emptyTitle": "No recurring tasks",
+    "emptyBody": "When creating a task, choose how it repeats: daily feeding, for example.",
+    "stop": "Stop",
+    "resume": "Resume"
+  },
+  "toast": {
+    "cancelled": "Task cancelled",
+    "reopened": "Task reopened",
+    "completed": "Task done"
+  },
+  "calendar": {
+    "title": "Calendar",
+    "description": "All planned work on the farm in one place.",
+    "addEvent": "Add event",
+    "editEvent": "Edit event",
+    "deleteEvent": "Delete this event?",
+    "today": "Today",
+    "nothing": "Nothing planned for this day",
+    "legend": "Legend",
+    "itemCount": "Entries: {{count}}",
+    "more": "{{count}} more",
+    "eventKind": "Event type",
+    "startDate": "Start date",
+    "endDate": "End date",
+    "responsible": "Responsible",
+    "view": {
+      "month": "Month",
+      "week": "Week",
+      "day": "Day"
+    },
+    "weekday": {
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat",
+      "sun": "Sun"
+    },
+    "kind": {
+      "lambing": "Lambing",
+      "vaccination": "Veterinary",
+      "field_operation": "Field operation",
+      "loan": "Loan payment",
+      "contract": "Contract",
+      "document": "Document",
+      "maintenance": "Maintenance",
+      "state_report": "State report",
+      "staff_contract": "Staff contract",
+      "staff_medical": "Medical check",
+      "task": "Task",
+      "manual": "Event"
+    },
+    "eventKinds": {
+      "meeting": "Meeting",
+      "inspection": "Inspection",
+      "delivery": "Delivery",
+      "other": "Other"
+    },
+    "item": {
+      "lambing": "Lambing expected: {{count}}",
+      "vaccination": "Vaccination: {{name}}",
+      "field_operation": "{{operation}}: field {{field}}",
+      "loan": "Loan payment: {{name}}",
+      "contract": "Contract ends: {{number}}, {{counterparty}}",
+      "document": "Document expires: {{name}}",
+      "maintenance": "Maintenance: {{name}}",
+      "state_report": "Report due: {{name}}, {{authority}}",
+      "staff_contract": "Contract ends: {{name}}",
+      "staff_medical": "Medical check: {{name}}"
+    },
+    "free": "Nothing planned"
+  }
+}

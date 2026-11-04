@@ -1,0 +1,123 @@
+{
+  "errors": {
+    "NOT_A_FEED_ITEM": "A ration can only contain feed",
+    "DUPLICATE_RATION_ITEM": "Each feed can appear only once in a ration",
+    "RATION_IN_USE": "This ration is assigned to the herd \"{{herd}}\"",
+    "SCENARIO_INCOMPLETE": "Enter a ration and a head count"
+  },
+  "rations": {
+    "title": "Feed rations",
+    "description": "Daily feed per head by physiological state, and what it costs.",
+    "add": "Add ration",
+    "edit": "Edit ration",
+    "dialogHint": "Enter the daily amount per head for each feed.",
+    "addLine": "Add feed",
+    "noFeeds": "No feed found. Add it to the items list first",
+    "perHeadDay": "kg/head/day",
+    "total": "Total: {{kg}} kg/head/day",
+    "totalLabel": "Total",
+    "amount": "{{kg}} kg",
+    "costPerDay": "Per head per day",
+    "costPerSeason": "Per head for {{days}} days",
+    "emptyTitle": "No rations yet",
+    "emptyBody": "Create rations for pregnant, lactating and other groups.",
+    "deleteTitle": "Delete this ration?",
+    "deleteBody": "\"{{name}}\" leaves the list.",
+    "fields": {
+      "name": "Name",
+      "state": "Physiological state",
+      "stateHint": "Which group it is for",
+      "feed": "Feed",
+      "amount": "Daily amount",
+      "notes": "Notes"
+    }
+  },
+  "balance": {
+    "title": "Feed balance",
+    "description": "How long stock lasts, by actual consumption and by plan.",
+    "days": "Lasts {{days}} days",
+    "daysLabel": "{{name}}: days of stock",
+    "noData": "Not enough data",
+    "stock": "In stock: {{qty}}",
+    "byActual": "By actual consumption",
+    "byPlan": "By plan",
+    "planned": "Plan: {{qty}}/day",
+    "actual": "Actual: {{qty}}/day",
+    "covered": "last {{days}} days",
+    "belowMinimum": "Below minimum ({{days}} days)",
+    "shortest": "Shortest supply",
+    "belowCount": "Feeds below minimum",
+    "allFine": "Everything is sufficient",
+    "dailyPlan": "Daily plan",
+    "dailyPlanHint": "All herds",
+    "emptyTitle": "No feed recorded",
+    "emptyBody": "Add feed to the items list and receive it to see the balance.",
+    "emptyAction": "Open items"
+  },
+  "plan": {
+    "title": "Daily feeding plan",
+    "summary": "{{head}} head, ration: {{ration}}",
+    "perDay": "Total per day",
+    "costPerDay": "Cost per day",
+    "withoutRationTitle": "Some herds have no ration",
+    "withoutRationBody": "Not counted: {{herds}}. Assign them a ration so the plan is right."
+  },
+  "consumption": {
+    "title": "Daily feed consumption",
+    "description": "Last 30 days, all feeds",
+    "series": "Consumption",
+    "empty": "No feed issues recorded yet"
+  },
+  "winter": {
+    "title": "Winter plan",
+    "description": "How much feed the winter takes, what is short, and how much land would grow it.",
+    "modeHerds": "Current herds",
+    "modeScenario": "What-if",
+    "days": "Winter days",
+    "daysUnit": "days",
+    "ration": "Ration",
+    "head": "Head count",
+    "headUnit": "head",
+    "headValue": "{{head}} head",
+    "columns": {
+      "feed": "Feed",
+      "balance": "Result",
+      "required": "Required",
+      "stock": "In stock",
+      "daily": "Per day",
+      "coverage": "Lasts",
+      "cost": "Purchase cost"
+    },
+    "unknown": "Unknown",
+    "shortage": "{{qty}} short",
+    "surplus": "{{qty}} to spare",
+    "coverage": "{{days}} days, until {{date}}",
+    "scenarioPromptTitle": "Choose a ration and a head count",
+    "scenarioPromptBody": "For example, plan the pregnancy ration for 500 ewes.",
+    "emptyTitle": "Nothing to calculate yet",
+    "emptyBody": "Assign rations to herds, or use the what-if mode.",
+    "enoughTitle": "Stock covers the whole winter",
+    "enoughBody": "There is feed for {{head}} head for {{days}} days.",
+    "shortTitle": "Feeds running short: {{count}}",
+    "shortLine": "{{name}}: {{qty}} short, runs out on {{date}}",
+    "purchaseTotal": "Estimated purchase: {{amount}}",
+    "stats": {
+      "herd": "Head counted",
+      "days": "{{days}}-day winter",
+      "required": "Total required",
+      "shortage": "Total shortage",
+      "shortItems": "Feeds running short: {{count}}",
+      "purchase": "Purchase cost"
+    },
+    "sowing": {
+      "title": "Land to grow it",
+      "description": "The area needed to grow the missing feed yourself.",
+      "short": "{{name}}: {{qty}} short",
+      "yield": "Expected yield",
+      "yieldUnit": "t/ha",
+      "hectares": "{{ha}} ha needed",
+      "enterYield": "Enter the yield",
+      "noCrop": "The short feeds are not linked to a crop. Set \"Grown from\" on the item."
+    }
+  }
+}
