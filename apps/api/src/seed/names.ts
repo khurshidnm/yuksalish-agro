@@ -20,7 +20,7 @@ export const SEED = {
   },
   account: { cash: 'Kassa', bank: 'Agrobank hisob raqami' },
   counterparty: {
-    sheepSeller: 'Sherobod Chorva MChJ',
+    sheepSeller: 'Tatariston Naslchilik Markazi',
     feedSupplier: 'Buxoro Yem Savdo MChJ',
     seedSupplier: "O'zAgroUrug' MChJ",
     fuelSupplier: 'Qorovulbozor Neft Baza',
@@ -30,13 +30,14 @@ export const SEED = {
     grainBuyer: 'Buxoro Don Mahsulotlari',
     tax: 'Qorovulbozor tuman soliq inspeksiyasi',
   },
-  /** Field `number`s. Arable fields total 70 ha (spec 2, 6.2). */
+  /** Field `number`s. Arable fields total 90 ha. */
   field: {
     wheat1: '1',
     wheat2: '2',
     barley: '3',
     alfalfa: '4',
-    rice: '5',
+    corn: '5',
+    wheat3: '6',
     pasture: 'Y-1',
     reserve: 'Z-1',
     yard: 'H-1',
@@ -64,7 +65,7 @@ export const SEED = {
     wheatSeed: "Bug'doy urug'i",
     barleySeed: "Arpa urug'i",
     alfalfaSeed: "Beda urug'i",
-    riceSeed: "Sholi urug'i",
+    cornSeed: "Makkajo'xori urug'i",
     ammophos: 'Ammofos',
     urea: 'Karbamid',
     herbicide: 'Gerbitsid',

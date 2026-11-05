@@ -8,6 +8,8 @@ import { openAssistant } from './assistant-launch';
 
 /** Ready-made questions. Each stays hidden from people who could not see the answer anyway. */
 const CHIPS = [
+  { key: 'analysis', question: 'chat.suggestions.farmAnalysis', permission: 'ai.view' },
+  { key: 'outlook', question: 'chat.suggestions.outlook', permission: 'ai.view' },
   { key: 'attention', question: 'chat.suggestions.attention', permission: 'ai.view' },
   { key: 'lambing', question: 'chat.suggestions.lambingThisWeek', permission: 'livestock.view' },
   { key: 'feed', question: 'chat.suggestions.feedDays', permission: 'feed.view' },

@@ -1602,29 +1602,29 @@ describe('seed', () => {
     for (const name of Object.values(SEED.item)) expect(names.has(name)).toBe(true);
 
     const qty = (name: string) => all.find((i: any) => i.name === name).qtyOnHand;
-    expect(qty(SEED.item.alfalfa)).toBe(120_000);
-    expect(qty(SEED.item.straw)).toBe(80_000);
-    expect(qty(SEED.item.barley)).toBe(40_000);
-    expect(qty(SEED.item.bran)).toBe(3_000);
-    expect(qty(SEED.item.cake)).toBe(10_000);
-    expect(qty(SEED.item.silage)).toBe(0);
+    expect(qty(SEED.item.alfalfa)).toBe(210_000);
+    expect(qty(SEED.item.straw)).toBe(95_000);
+    expect(qty(SEED.item.barley)).toBe(62_000);
+    expect(qty(SEED.item.bran)).toBe(15_000);
+    expect(qty(SEED.item.cake)).toBe(16_000);
+    expect(qty(SEED.item.silage)).toBe(240_000);
 
     const rations = (await owner.get('/feed/rations')).data;
     expect(rations.map((r: any) => r.name).sort()).toEqual(Object.values(SEED.ration).sort());
     const pregnant = rations.find((r: any) => r.name === SEED.ration.pregnant);
-    expect(pregnant.lines.find((l: any) => l.itemName === SEED.item.alfalfa).kgPerHeadDay).toBe(1.2);
+    expect(pregnant.lines.find((l: any) => l.itemName === SEED.item.alfalfa).kgPerHeadDay).toBe(1.1);
     expect(pregnant.costPerHeadDay).toBeGreaterThan(0);
 
-    // 500 ewes on the pregnant ration: bran and premix are the planned winter shortages.
-    const plan = (await owner.get('/feed/winter-plan', { rationId: pregnant.id, head: 500 })).data;
+    // 700 ewes on the pregnant ration: the farm enters the winter with enough of everything.
+    const plan = (await owner.get('/feed/winter-plan', { rationId: pregnant.id, head: 700 })).data;
     const short = plan.rows.filter((r: any) => r.shortageKg > 0).map((r: any) => r.name);
-    expect(short.sort()).toEqual([SEED.item.bran, SEED.item.premix].sort());
+    expect(short).toEqual([]);
 
     // Stock must cover 14 days of daily logs without INSUFFICIENT_STOCK.
     for (const row of plan.rows) expect(row.coverageDays).toBeGreaterThan(20);
 
     const expiring = (await owner.get('/inventory/stock/expiring', { days: 30 })).data;
-    expect(expiring.map((b: any) => b.itemName)).toEqual([SEED.item.poxVaccine]);
+    expect(expiring).toEqual([]);
   });
 });
 

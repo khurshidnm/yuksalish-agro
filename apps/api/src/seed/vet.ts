@@ -3,6 +3,8 @@ import { addDays, expectedLambingDate, lambingWindow, todayIso } from '@yap/shar
 import { schema } from '../db/client';
 import { tx } from '../core/context';
 import { recordEvent } from '../core/journal';
+import { resolveByDedupKey } from '../modules/alerts/alerts.service';
+import { sickDedupKey } from '../modules/livestock/animals.service';
 import { createPlan, createRecord, reportSick, startQuarantine, vaccinateHerd } from '../modules/livestock/health.service';
 import { findEmployee, findHerd, findItem, findWarehouse } from './lookup';
 import { SEED } from './names';
@@ -69,11 +71,11 @@ export async function seedVet(s: SeedContext): Promise<void> {
     const [sheep] = await tx().select({ id: species.id }).from(species).where(and(eq(species.tenantId, s.tenantId), eq(species.key, 'sheep')));
 
     // Mandatory calendar (spec 8.3). Brucellosis is a laboratory check here, so it uses no stock.
-    await createPlan({ name: 'Brutsellyoz tekshiruvi', speciesId: sheep.id, ageDays: 120, intervalDays: 365, mandatory: true });
+    const brucellosis = await createPlan({ name: 'Brutsellyoz tekshiruvi', speciesId: sheep.id, ageDays: 120, intervalDays: 365, mandatory: true });
     const pox = await findItem(SEED.item.poxVaccine);
-    await createPlan({ name: 'Chechakka qarshi emlash', itemId: pox.id, speciesId: sheep.id, ageDays: 90, intervalDays: 365, mandatory: true });
+    const poxPlan = await createPlan({ name: 'Chechakka qarshi emlash', itemId: pox.id, speciesId: sheep.id, ageDays: 90, intervalDays: 365, mandatory: true });
     const fmd = await findItem(SEED.item.fmdVaccine);
-    await createPlan({ name: 'Oqsilga qarshi emlash', itemId: fmd.id, speciesId: sheep.id, ageDays: 60, intervalDays: 180, mandatory: true });
+    const fmdPlan = await createPlan({ name: 'Oqsilga qarshi emlash', itemId: fmd.id, speciesId: sheep.id, ageDays: 60, intervalDays: 180, mandatory: true });
     const enterotoxemia = await findItem(SEED.item.enterotoxemiaVaccine);
     const enterotoxemiaPlan = await createPlan({
       name: 'Enterotoksemiyaga qarshi emlash',
@@ -84,9 +86,16 @@ export async function seedVet(s: SeedContext): Promise<void> {
       mandatory: true,
     });
     const dewormer = await findItem(SEED.item.dewormer);
-    await createPlan({ name: 'Gijjaga qarshi ishlov', itemId: dewormer.id, speciesId: sheep.id, ageDays: 60, intervalDays: 120, mandatory: false });
+    const dewormerPlan = await createPlan({ name: 'Gijjaga qarshi ishlov', itemId: dewormer.id, speciesId: sheep.id, ageDays: 60, intervalDays: 120, mandatory: false });
 
-    // The whole flock against enterotoxemia: one dose a head, taken from the vet store.
+    // On arrival, in quarantine: the whole flock tested, vaccinated and dewormed, one dose a head.
+    const onArrival = { herdId: herd.id, warehouseId: vaccineStore.id, dosePerHead: 1, vetEmployeeId: vet.id };
+    await vaccinateHerd({ herdId: herd.id, planId: brucellosis.id, date: '2026-10-22', vetEmployeeId: vet.id, notes: 'Karantindagi qon tahlili: hammasi manfiy' });
+    await vaccinateHerd({ ...onArrival, planId: fmdPlan.id, date: '2026-10-24', notes: "Import karantini" });
+    await vaccinateHerd({ ...onArrival, planId: poxPlan.id, date: '2026-10-26', notes: 'Import karantini' });
+    await vaccinateHerd({ ...onArrival, planId: dewormerPlan.id, date: '2026-10-28', notes: 'Import karantini' });
+
+    // Enterotoxemia last, a few days ago.
     await vaccinateHerd({
       herdId: herd.id,
       planId: enterotoxemiaPlan.id,
@@ -130,9 +139,11 @@ export async function seedVet(s: SeedContext): Promise<void> {
     });
   }, 'veterinarian');
 
-  // A live report, so the vet's "today" panel and the urgent alert have something real to show.
+  // A live report, so the vet's "today" panel has something real to show. The vet has seen it, so it
+  // waits on that panel rather than as an urgent alert on the owner's screen.
   await s.run(
     () => reportSick({ animalId: pick(103).id, note: "Ikki kundan beri yem yemayapti, boshini quyi solgan", date: today }),
     'shepherd',
   );
+  await s.run(() => resolveByDedupKey(sickDedupKey(pick(103).id)), 'veterinarian');
 }

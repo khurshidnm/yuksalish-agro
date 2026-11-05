@@ -1590,8 +1590,10 @@ describe('pilot seed', () => {
         })),
       );
       await tx().insert(fields).values([
-        { ...base, number: SEED.field.wheat1, areaHa: 20 },
+        { ...base, number: SEED.field.wheat1, areaHa: 10 },
+        { ...base, number: SEED.field.wheat3, areaHa: 18 },
         { ...base, number: SEED.field.barley, areaHa: 15 },
+        { ...base, number: SEED.field.alfalfa, areaHa: 28 },
       ]);
       await tx().insert(assets).values({ ...base, name: SEED.asset.tractor1, type: 'tractor', inventoryNo: 'T1' });
       const [warehouse] = await tx().insert(warehouses).values({ ...base, name: 'Ombor', type: 'feed' }).returning();
@@ -1605,8 +1607,8 @@ describe('pilot seed', () => {
 
     const owner = await f.as('owner');
     const cash = (await owner.get('/finance/summary/cash')).data;
-    expect(cash.accounts.find((a: any) => a.name === SEED.account.bank).balance).toBe(940_000_000);
-    expect(cash.accounts.find((a: any) => a.name === SEED.account.cash).balance).toBe(38_000_000);
+    expect(cash.accounts.find((a: any) => a.name === SEED.account.bank).balance).toBe(1_860_000_000);
+    expect(cash.accounts.find((a: any) => a.name === SEED.account.cash).balance).toBe(62_000_000);
 
     const pending = await owner.get('/finance/transactions', { status: 'pending' });
     expect(pending.body.data).toHaveLength(1);
@@ -1618,12 +1620,12 @@ describe('pilot seed', () => {
 
     const debts = (await owner.get('/finance/debts/summary')).data;
     expect(debts.payable).toBe(14_000_000); // 24m on credit, 10m settled
-    expect(debts.overduePayable).toBe(14_000_000);
-    expect(debts.loansOutstanding).toBeGreaterThan(1_460_000_000);
+    expect(debts.overduePayable).toBe(0); // due later this month
+    expect(debts.loansOutstanding).toBeGreaterThan(2_400_000_000);
 
     const loans = (await owner.get('/finance/loans')).data;
     expect(loans[0]).toMatchObject({ annualRate: 14, preferential: true, status: 'active' });
-    expect(loans[0].paidInterest).toBe(17_500_000);
+    expect(loans[0].paidInterest).toBe(29_166_666.67); // 2.5 billion at 14 % for a month
 
     // Stock bought is not a cost until it is issued, and nothing has been issued here.
     const rows = await f.run(() => costCenterCosts());
@@ -1637,7 +1639,7 @@ describe('pilot seed', () => {
     expect(budget.totals.income.planned).toBeGreaterThan(1_000_000_000);
 
     const forecast = (await owner.get('/finance/cashflow/forecast')).data;
-    expect(forecast.opening).toBe(978_000_000);
+    expect(forecast.opening).toBe(1_922_000_000);
     expect(forecast.rows).toHaveLength(12);
   });
 });

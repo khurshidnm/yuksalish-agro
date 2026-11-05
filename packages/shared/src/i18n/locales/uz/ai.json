@@ -22,15 +22,15 @@
     },
     "expense_spike": {
       "title": "{{category}} xarajati oshdi ({{month}})",
-      "body": "{{month}} oyida {{actual}} {{currency}} sarflandi, oldingi oylarda o'rtacha {{expected}} {{currency}} edi. Farq +{{deviation}}%."
+      "body": "{{month}} oyida {{actual}} so'm sarflandi, oldingi oylarda o'rtacha {{expected}} so'm edi. Farq +{{deviation}}%."
     },
     "lambing_workload": {
       "title": "Qo'zilash yuklamasi: {{ewes}} sovliq",
       "body": "Taxminan {{lambs}} qo'zi kutilmoqda. Eng band hafta {{peakWeek}} dan boshlanadi ({{peakEwes}} sovliq), o'shanda {{workers}} nafar ishchi kerak bo'ladi. Emizikli ratsion uchun qo'shimcha {{extraFeedT}} t ozuqa kerak."
     },
     "season_profit": {
-      "title": "{{season}}: kutilayotgan foyda {{profit}} {{currency}}",
-      "body": "Kutilayotgan daromad {{revenue}} {{currency}}, xarajat {{cost}} {{currency}}. Hisob maydonning {{covered}}% ini qamrab oladi. {{skipped}} ta rejada narx, hosil yoki xarajat ma'lumoti yo'q."
+      "title": "{{season}}: kutilayotgan foyda {{profit}} so'm",
+      "body": "Kutilayotgan daromad {{revenue}} so'm, xarajat {{cost}} so'm. Hisob maydonning {{covered}}% ini qamrab oladi. {{skipped}} ta rejada narx, hosil yoki xarajat ma'lumoti yo'q."
     },
     "feed_shortage": {
       "title": "{{item}} qishga yetmaydi",
@@ -38,19 +38,19 @@
     },
     "feed_cost_saving": {
       "title": "{{ration}}: arzonlashtirish imkoni",
-      "body": "{{from}} quruq moddasining 10% ini {{to}} bilan almashtirish kuniga taxminan {{savingPerDay}} {{currency}} tejaydi ({{head}} bosh). Bu hayvonlarga mosligini zootexnik baholashi kerak."
+      "body": "{{from}} quruq moddasining 10% ini {{to}} bilan almashtirish kuniga taxminan {{savingPerDay}} so'm tejaydi ({{head}} bosh). Bu hayvonlarga mosligini zootexnik baholashi kerak."
     },
     "crop_suggestion": {
       "title": "Keyingi mavsum uchun ekin tavsiyasi",
-      "body": "{{fields}} ta dala bo'yicha taklif tayyorlandi. Masalan, {{field}}-dala: {{crop}}, kutilayotgan foyda {{margin}} {{currency}}/ga. Hisob rejadagi hosil va xarajatlarga asoslangan."
+      "body": "{{fields}} ta dala bo'yicha taklif tayyorlandi. Masalan, {{field}}-dala: {{crop}}, kutilayotgan foyda {{margin}} so'm/ga. Hisob rejadagi hosil va xarajatlarga asoslangan."
     },
     "lambing_workload_no_feed": {
       "title": "Qo'zilash yuklamasi: {{ewes}} sovliq",
       "body": "Taxminan {{lambs}} qo'zi kutilmoqda. Eng band hafta {{peakWeek}} dan boshlanadi ({{peakEwes}} sovliq), o'shanda {{workers}} nafar ishchi kerak bo'ladi."
     },
     "season_profit_complete": {
-      "title": "{{season}}: kutilayotgan foyda {{profit}} {{currency}}",
-      "body": "Kutilayotgan daromad {{revenue}} {{currency}}, xarajat {{cost}} {{currency}}. Hisob barcha rejalarni qamrab oladi."
+      "title": "{{season}}: kutilayotgan foyda {{profit}} so'm",
+      "body": "Kutilayotgan daromad {{revenue}} so'm, xarajat {{cost}} so'm. Hisob barcha rejalarni qamrab oladi."
     }
   },
   "assistant": {
@@ -96,7 +96,7 @@
       "noDeaths": "Bu davrda nobudgarchilik bo'lmadi, fermada {{head}} bosh hayvon bor.",
       "feedCovered": "Ozuqa yetarli: eng kam zaxira ({{item}}) {{days}} kunga yetadi.",
       "noOverdue": "Muddati o'tgan ishlar yo'q.",
-      "money": "Daromad {{income}} {{currency}}, xarajat {{expense}} {{currency}}, kassa va bankda {{cash}} {{currency}}.",
+      "money": "Daromad {{income}} so'm, xarajat {{expense}} so'm, kassa va bankda {{cash}} so'm.",
       "onBudget": "Byudjet ijrosi {{percent}}%, rejadan oshmadi.",
       "none": "Bu davrda alohida yaxshi natija qayd etilmadi."
     },
@@ -143,6 +143,8 @@
     "emptyTitle": "Fermangiz haqida so'rang",
     "emptyDescription": "Yordamchi faqat ma'lumotlarni o'qiydi va hech narsani o'zgartirmaydi. Har bir javob ostida manbasi va ishonch darajasi ko'rsatiladi.",
     "suggestions": {
+      "farmAnalysis": "Ferma qanday holatda? To'liq tahlil bering.",
+      "outlook": "Keyingi 12 oyga prognoz bering.",
       "feedSpending": "O'tgan oyda ozuqaga qancha sarfladik?",
       "lambingThisWeek": "Qaysi sovliqlar bu hafta qo'zilaydi?",
       "feedDays": "Ozuqa necha kunga yetadi?",
@@ -466,7 +468,7 @@
       "willNeedApproval": "Summa katta: siz tasdiqlaganingizdan keyin ikkinchi xodim ham tasdiqlashi kerak.",
       "noPermission": "Bu yozuvni tasdiqlash uchun sizda ruxsat yo'q.",
       "expires": "{{time}} gacha amal qiladi",
-      "fxRate": "kurs: 1 {{currency}} = {{rate}} {{base}}",
+      "fxRate": "kurs: 1 so'm = {{rate}} {{base}}",
       "notApplied": "Bu o'zgarish siz kiritgandek saqlanmadi: {{fields}}. Tasdiqlashdan oldin tekshiring yoki suhbatda yozib to'g'rilang.",
       "masked": "Siz endi pul ma'lumotlarini ko'ra olmaysiz, shuning uchun bu kartada summalar ko'rsatilmaydi va uni bu yerda tasdiqlab yoki o'zgartirib bo'lmaydi.",
       "learningTitle": "Eslab qoladi",
@@ -510,7 +512,7 @@
       },
       "CURRENCY_CONVERTED": {
         "title": "Hisob boshqa valyutada",
-        "body": "{{account}} hisobining valyutasi: {{currency}}. Shuning uchun bu kartadagi kurs bo'yicha shu valyutadagi qiymati bilan yoziladi. Shunday bo'lganini tekshiring.",
+        "body": "{{account}} hisobining valyutasi: so'm. Shuning uchun bu kartadagi kurs bo'yicha shu valyutadagi qiymati bilan yoziladi. Shunday bo'lganini tekshiring.",
         "yes": "Ha, shunday yozilsin"
       }
     },
@@ -752,6 +754,8 @@
     "placeholder": "Savol bering yoki yozing...",
     "send": "Yordamchiga yuborish",
     "chips": {
+      "analysis": "Ferma tahlili",
+      "outlook": "12 oylik prognoz",
       "attention": "Bugungi muhim ishlar",
       "lambing": "Bu hafta qo'zilash",
       "feed": "Ozuqa zaxirasi"

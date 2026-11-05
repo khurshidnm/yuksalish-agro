@@ -36,7 +36,7 @@ import { badRequest } from '../../core/errors';
 import { COST_MOVEMENT_TYPES } from '../../core/inventory';
 import { isoMonth, sumOf } from '../../core/query';
 import { assetCosts } from '../assets/costs.service';
-import { cropKpis } from '../crops/summary';
+import { cropKpis, lastHarvestedSeason } from '../crops/summary';
 import { feedingPlan } from '../feed/balance.service';
 import { monthsBetween } from '../finance/budget.service';
 import { budgetExecution, cashflowActual, fieldCosts, herdCost, herdResult, monthToDate } from '../finance/summary';
@@ -130,9 +130,13 @@ async function seasonCostPerTon(): Promise<number | null> {
 }
 
 async function cropKpiGroup() {
-  const { yieldTHa, onTimePercent, waterM3PerTon } = await cropKpis();
+  const { yieldTHa: seasonYield, onTimePercent, waterM3PerTon } = await cropKpis();
+  // Before this season's harvest, the last one is what there is to show.
+  const last = seasonYield === null ? await lastHarvestedSeason() : null;
+  const yieldTHa = last ? (await cropKpis(last.id)).yieldTHa : seasonYield;
   return {
     yieldTHa: roundOrNull(yieldTHa, 2),
+    yieldSeason: last?.name ?? null,
     onTimePercent: roundOrNull(onTimePercent, 1),
     waterM3PerTon: roundOrNull(waterM3PerTon, 1),
     ...(canSeeMoney(FINANCE_SUMMARY_VIEW) ? { costPerTon: await seasonCostPerTon() } : {}),

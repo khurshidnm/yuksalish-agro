@@ -22,15 +22,15 @@
     },
     "expense_spike": {
       "title": "{{category}} spending rose ({{month}})",
-      "body": "{{actual}} {{currency}} was spent in {{month}}, against an average of {{expected}} {{currency}} in earlier months. Difference +{{deviation}}%."
+      "body": "{{actual}} so'm was spent in {{month}}, against an average of {{expected}} so'm in earlier months. Difference +{{deviation}}%."
     },
     "lambing_workload": {
       "title": "Lambing workload: {{ewes}} ewes",
       "body": "About {{lambs}} lambs are expected. The busiest week starts {{peakWeek}} ({{peakEwes}} ewes) and needs {{workers}} workers. The lactation ration needs a further {{extraFeedT}} t of feed."
     },
     "season_profit": {
-      "title": "{{season}}: expected profit {{profit}} {{currency}}",
-      "body": "Expected revenue {{revenue}} {{currency}}, cost {{cost}} {{currency}}. This covers {{covered}}% of the area. {{skipped}} plans have no price, yield or cost data."
+      "title": "{{season}}: expected profit {{profit}} so'm",
+      "body": "Expected revenue {{revenue}} so'm, cost {{cost}} so'm. This covers {{covered}}% of the area. {{skipped}} plans have no price, yield or cost data."
     },
     "feed_shortage": {
       "title": "{{item}} will not last the winter",
@@ -38,19 +38,19 @@
     },
     "feed_cost_saving": {
       "title": "{{ration}}: a cheaper mix is possible",
-      "body": "Replacing 10% of the dry matter from {{from}} with {{to}} saves about {{savingPerDay}} {{currency}} a day ({{head}} head). The zootechnician should judge whether it suits the animals."
+      "body": "Replacing 10% of the dry matter from {{from}} with {{to}} saves about {{savingPerDay}} so'm a day ({{head}} head). The zootechnician should judge whether it suits the animals."
     },
     "crop_suggestion": {
       "title": "Crop suggestion for next season",
-      "body": "A suggestion is ready for {{fields}} fields. For example, field {{field}}: {{crop}}, expected profit {{margin}} {{currency}}/ha. Based on planned yields and costs."
+      "body": "A suggestion is ready for {{fields}} fields. For example, field {{field}}: {{crop}}, expected profit {{margin}} so'm/ha. Based on planned yields and costs."
     },
     "lambing_workload_no_feed": {
       "title": "Lambing workload: {{ewes}} ewes",
       "body": "About {{lambs}} lambs are expected. The busiest week starts {{peakWeek}} ({{peakEwes}} ewes) and needs {{workers}} workers."
     },
     "season_profit_complete": {
-      "title": "{{season}}: expected profit {{profit}} {{currency}}",
-      "body": "Expected revenue {{revenue}} {{currency}}, cost {{cost}} {{currency}}. This covers every plan."
+      "title": "{{season}}: expected profit {{profit}} so'm",
+      "body": "Expected revenue {{revenue}} so'm, cost {{cost}} so'm. This covers every plan."
     }
   },
   "assistant": {
@@ -96,7 +96,7 @@
       "noDeaths": "No deaths this period, with {{head}} head on the farm.",
       "feedCovered": "Feed is sufficient: the lowest stock ({{item}}) lasts {{days}} days.",
       "noOverdue": "Nothing is overdue.",
-      "money": "Income {{income}} {{currency}}, expense {{expense}} {{currency}}, {{cash}} {{currency}} in cash and bank.",
+      "money": "Income {{income}} so'm, expense {{expense}} so'm, {{cash}} so'm in cash and bank.",
       "onBudget": "Budget execution is {{percent}}%, within plan.",
       "none": "No particular gains to report this period."
     },
@@ -143,6 +143,8 @@
     "emptyTitle": "Ask about your farm",
     "emptyDescription": "The assistant only reads data and never changes anything. Each answer shows its sources and confidence.",
     "suggestions": {
+      "farmAnalysis": "How is the farm doing? Give me a full analysis.",
+      "outlook": "Give me a forecast for the next 12 months.",
       "feedSpending": "How much did we spend on feed last month?",
       "lambingThisWeek": "Which ewes lamb this week?",
       "feedDays": "How many days will the feed last?",
@@ -466,7 +468,7 @@
       "willNeedApproval": "This is a large amount: after you confirm, a second person must approve it.",
       "noPermission": "You do not have permission to confirm this record.",
       "expires": "Valid until {{time}}",
-      "fxRate": "rate: 1 {{currency}} = {{rate}} {{base}}",
+      "fxRate": "rate: 1 so'm = {{rate}} {{base}}",
       "notApplied": "This change was not saved as you entered it: {{fields}}. Check it before confirming, or correct it in the chat.",
       "masked": "You can no longer see money, so this card shows no amounts and cannot be confirmed or changed here.",
       "learningTitle": "It will remember",
@@ -510,7 +512,7 @@
       },
       "CURRENCY_CONVERTED": {
         "title": "The account holds another currency",
-        "body": "{{account}} is kept in {{currency}}, so this is recorded at its value in that currency, at the rate on the card. Check that this is what happened.",
+        "body": "{{account}} is kept in so'm, so this is recorded at its value in that currency, at the rate on the card. Check that this is what happened.",
         "yes": "Yes, record it this way"
       }
     },
@@ -752,6 +754,8 @@
     "placeholder": "Ask or record something...",
     "send": "Send to the assistant",
     "chips": {
+      "analysis": "Farm analysis",
+      "outlook": "12-month forecast",
       "attention": "Today's priorities",
       "lambing": "Lambing this week",
       "feed": "Feed reserve"

@@ -345,6 +345,7 @@ export default function FarmMapPage() {
                   colorBy={colorBy as ColorBy}
                   selectedId={mode.kind === 'edit' ? mode.feature.id : (selected?.id ?? null)}
                   className="h-[calc(100dvh-20rem)] min-h-96 w-full"
+                  fitBottom={window.innerWidth >= 768 ? 220 : 110}
                   onSelect={setSelected}
                   onDrawn={onDrawn}
                   onLiveArea={setLiveArea}

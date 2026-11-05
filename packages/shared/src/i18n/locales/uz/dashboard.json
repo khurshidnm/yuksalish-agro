@@ -6,7 +6,7 @@
   "noData": "Ma'lumot yetarli emas",
   "head": "{{value}} bosh",
   "days": "{{value}} kun",
-  "tabs": {
+  "tabs": { "outlook": "Prognoz",
     "overview": "Holat",
     "kpi": "KPI"
   },
@@ -189,5 +189,57 @@
   },
   "errors": {
     "INVALID_PERIOD": "Davrni 1 oydan {{max}} oygacha tanlang"
+  },
+  "outlook": {
+    "stats": {
+      "lambs": "Kutilayotgan qo'zi",
+      "lambsHint": "{{ewes}} bo'g'oz sovliqdan",
+      "head": "Eng yuqori poda",
+      "headHint": "Qo'zilashdan keyin, bosh",
+      "feed": "O'z ozuqasi yetadi",
+      "feedHint": "Keyingi hosilgacha",
+      "cash": "12 oydan keyin pul",
+      "cashHint": "Hisob-kitob bo'yicha qoldiq"
+    },
+    "conclusions": {
+      "title": "Xulosalar",
+      "lambing": "Qo'zilash {{from}} dan {{to}} gacha: {{ewes}} sovliqdan taxminan {{lambs}} ta qo'zi kutilmoqda.",
+      "herd": "Poda eng yuqori {{peak}} boshga yetadi. {{sold}} ta qo'zi sotuvga chiqadi, {{kept}} tasi podaga qoladi.",
+      "feedOk": "O'z hosilidan olingan {{count}} xil ozuqa keyingi hosilgacha to'liq yetadi.",
+      "feedShort": "Keyingi hosilgacha yetmaydigan ozuqa: {{names}}.",
+      "feedBuy": "Sotib olinadigan ozuqadan birinchi bo'lib {{name}} tugaydi: {{month}}. Xaridni shundan oldin rejalang.",
+      "lambIncome": "{{head}} ta qo'zi sotuvidan taxminan {{amount}} tushum kutilmoqda.",
+      "cashOk": "Pul yetishmovchiligi kutilmaydi: eng past qoldiq {{amount}}, {{month}}.",
+      "cashShort": "{{month}} oyidan pul yetishmasligi kutilmoqda."
+    },
+    "charts": {
+      "herd": "Poda soni",
+      "herdHint": "Oyma-oy, sotuv va qo'zilash bilan",
+      "headSeries": "Bosh soni",
+      "cash": "Pul qoldig'i",
+      "cashHint": "Oy oxiriga",
+      "closing": "Qoldiq",
+      "lambs": "Qo'zilar: tug'ilish va sotuv",
+      "born": "Tug'iladi",
+      "sold": "Sotiladi",
+      "flow": "Kirim va chiqim",
+      "inflow": "Kirim",
+      "outflow": "Chiqim"
+    },
+    "feed": {
+      "title": "Ozuqa: keyingi hosilgacha",
+      "line": "Qoldiq {{stock}} t, kerak {{need}} t",
+      "harvest": "hosil {{month}}",
+      "enough": "Yetadi",
+      "until": "{{month}} gacha"
+    },
+    "crops": {
+      "title": "Hosil prognozi",
+      "area": "{{area}} ga",
+      "yield": "{{value}} t/ga",
+      "tons": "{{value}} t",
+      "lastYear": "O'tgan yil {{value}} t"
+    },
+    "assumptions": "Prognoz haqiqiy yozuvlar va quyidagi faraz asosida: bitta sovliqdan {{lambs}} ta qo'zi, {{survival}}% saqlanib qolish, {{months}} oyda sotuv, {{kept}}% qo'zi podaga qoladi, sotuv vazni {{weight}} kg. Yaylov aprel-oktyabrda dag'al ozuqaning yarmini beradi."
   }
 }

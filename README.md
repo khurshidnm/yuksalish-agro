@@ -2,7 +2,7 @@
 
 Multi-tenant farm management: land, crops, livestock, feed and stock, finance, staff, machinery, sales,
 reports, alerts and an AI assistant. The pilot tenant is the Yuksalish Agro farm in Qorovulbozor
-(210 ha, 500 Hisori ewes). Requirements are in
+(210 ha of which 90 ha arable, 700 Hisori ewes). Requirements are in
 `Yuksalish Agro — Ferma boshqaruv platformasi. Texnik topshiriq.md`.
 
 This repository is the web application: a React front end, a Node API and PostgreSQL. Field staff use the
@@ -138,7 +138,7 @@ Development values are in `.env.example`. Production values are in `infra/env.pr
 - Push, SMS and email notifications. Those channels are stubs reported as not configured.
 - Camera barcode scanning. Tags and barcodes are typed.
 - OAuth 2.0. Users have JWT sessions and machines have API keys.
-- AI herd growth forecast and market price monitoring.
+- Market price monitoring.
 - Forced password change for one-time passwords, payslip PDFs, and Excel for the full tenant export, which
   is JSON and CSV. The main lists do export to Excel.
 
