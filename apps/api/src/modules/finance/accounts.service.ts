@@ -1,4 +1,4 @@
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { ACCOUNT_TYPES, CURRENCIES, addDays, round } from '@yap/shared';
 import { schema } from '../../db/client';
@@ -134,8 +134,9 @@ export async function lookup(search: string | undefined) {
     .limit(50);
 }
 
-export async function get(id: string) {
-  const [row] = await tx().select().from(a).where(and(eq(a.id, id), eq(a.farmId, ctx().farmId)));
+export async function get(id: string, opts: { lock?: boolean } = {}) {
+  const query = tx().select().from(a).where(and(eq(a.id, id), eq(a.farmId, ctx().farmId)));
+  const [row] = await (opts.lock ? query.for('update') : query);
   if (!row) throw notFound('Account');
   return row;
 }
@@ -159,7 +160,18 @@ export async function create(input: AccountInput) {
 }
 
 export async function update(id: string, input: Partial<AccountInput>) {
-  await get(id);
+  const account = await get(id, { lock: true });
+  // Its balance is a number in this currency: a new label would change what the money is.
+  if (input.currency && input.currency !== account.currency) {
+    const [used] = await tx()
+      .select({ id: t.id })
+      .from(t)
+      .where(or(eq(t.accountId, id), eq(t.toAccountId, id)))
+      .limit(1);
+    if (used || Number(account.openingBalance) !== 0) {
+      throw conflict('ACCOUNT_CURRENCY_LOCKED', 'This account already holds money, so its currency cannot change');
+    }
+  }
   const { id: _ignored, ...values } = input;
   const [row] = await tx()
     .update(a)
@@ -171,7 +183,8 @@ export async function update(id: string, input: Partial<AccountInput>) {
 
 /** Soft delete. An account holding money cannot be closed. */
 export async function remove(id: string) {
-  await get(id);
+  // The lock waits for money on its way in, which then counts in this balance.
+  await get(id, { lock: true });
   const [account] = (await listWithBalances()).filter((row) => row.id === id);
   if (account && account.balance !== 0) {
     throw conflict('ACCOUNT_NOT_EMPTY', 'Move the balance out before closing this account', {

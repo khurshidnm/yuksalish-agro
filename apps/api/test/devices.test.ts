@@ -1,6 +1,9 @@
+import { spawn } from 'node:child_process';
+import { randomInt } from 'node:crypto';
+import { once } from 'node:events';
 import { eq, sql } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { schema } from '../src/db/client';
 import { tx } from '../src/core/context';
 import { unseal } from '../src/core/crypto';
@@ -28,6 +31,36 @@ async function setup() {
 }
 
 const alertsFor = (f: Fixture) => f.run(() => tx().select().from(schema.alerts));
+
+describe('with Redis down when the API starts', () => {
+  it('it still answers, still takes a fire event, and stops at once', async () => {
+    const { f, key, device } = await setup();
+    const port = 4700 + randomInt(0, 200);
+    const api = spawn(process.execPath, ['--import', 'tsx', 'src/index.ts'], {
+      cwd: process.cwd(),
+      stdio: 'ignore',
+      env: { ...process.env, API_PORT: String(port), JOBS_ENABLED: 'true', REDIS_URL: 'redis://127.0.0.1:1', TELEGRAM_BOT_TOKEN: '' },
+    });
+    try {
+      await vi.waitFor(async () => expect((await fetch(`http://127.0.0.1:${port}/api/health`)).status).toBe(200), { timeout: 20_000, interval: 200 });
+
+      const res = await fetch(`http://127.0.0.1:${port}/api/v1/devices/events`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-api-key': key },
+        body: JSON.stringify({ deviceId: device.id, type: 'fire', severity: 'urgent' }),
+      });
+
+      expect(res.status).toBe(200);
+      expect(await alertsFor(f)).toHaveLength(1);
+      const stopped = once(api, 'exit');
+      api.kill('SIGTERM');
+      await vi.waitFor(() => expect(api.exitCode).toBe(0), { timeout: 5_000 });
+      await stopped;
+    } finally {
+      api.kill('SIGKILL');
+    }
+  }, 40_000);
+});
 
 describe('device registry', () => {
   let f: Fixture;
@@ -283,6 +316,82 @@ describe('event ingest', () => {
 
     await ingest(f, key, '/events', { deviceId: device.id, type: 'fire', severity: 'urgent' });
     expect(await alertsFor(f)).toHaveLength(2);
+  });
+
+  describe('an urgent event after the last one', () => {
+    const fire = (f: Fixture, key: string, deviceId: string) => ingest(f, key, '/events', { deviceId, type: 'fire', severity: 'urgent' });
+    const told = (f: Fixture, userId: string) =>
+      f.run(() => tx().select().from(schema.notifications).where(eq(schema.notifications.userId, userId)));
+    const quietFor = (f: Fixture, ms: number, changes: Partial<typeof schema.alerts.$inferInsert> = {}) =>
+      f.run(() => tx().update(schema.alerts).set({ lastSeenAt: new Date(Date.now() - ms), ...changes }));
+
+    it('frames seconds apart stay one message, even just after someone acknowledged', async () => {
+      const { f, owner, key, device } = await setup();
+      await fire(f, key, device.id);
+      const [alert] = await alertsFor(f);
+      expect((await owner.post(`/alerts/${alert.id}/acknowledge`)).status).toBe(200);
+
+      await fire(f, key, device.id);
+      await quietFor(f, 90_000);
+      await fire(f, key, device.id);
+
+      const [after] = await alertsFor(f);
+      expect(after.status).toBe('acknowledged');
+      expect(after.nextNotifyAt).toBeNull();
+      expect(await told(f, owner.userId)).toHaveLength(1);
+    });
+
+    it('past the burst, an acknowledged alarm opens again and someone hears now', async () => {
+      const { f, owner, key, device } = await setup();
+      await fire(f, key, device.id);
+      const [alert] = await alertsFor(f);
+      await owner.post(`/alerts/${alert.id}/acknowledge`);
+      await quietFor(f, 3 * 60_000);
+
+      await fire(f, key, device.id);
+
+      const [after] = await alertsFor(f);
+      expect(after).toMatchObject({ id: alert.id, status: 'open', acknowledgedAt: null, acknowledgedBy: null, notifyCount: 1 });
+      expect(after.nextNotifyAt!.getTime()).toBeGreaterThan(Date.now() + 14 * 60_000);
+      expect(await told(f, owner.userId)).toHaveLength(2);
+      const raised = await f.run(() => tx().select().from(schema.events).where(eq(schema.events.type, 'alert.raised')));
+      expect(raised).toHaveLength(2);
+    });
+
+    it('past the burst, an alarm nobody answered is told now, and the repeats start over from 15 minutes', async () => {
+      const { f, owner, key, device } = await setup();
+      await fire(f, key, device.id);
+      await quietFor(f, 6 * 3_600_000, { notifyCount: 6, nextNotifyAt: new Date(Date.now() + 3 * 3_600_000) });
+
+      await fire(f, key, device.id);
+
+      const [after] = await alertsFor(f);
+      expect(after.notifyCount).toBe(1);
+      expect(after.nextNotifyAt!.getTime()).toBeLessThan(Date.now() + 16 * 60_000);
+      expect(await told(f, owner.userId)).toHaveLength(2);
+    });
+
+    it('two frames at the same instant after a quiet spell are one new event', async () => {
+      const { f, owner, key, device } = await setup();
+      await fire(f, key, device.id);
+      await quietFor(f, 3 * 60_000);
+
+      await Promise.all([fire(f, key, device.id), fire(f, key, device.id)]);
+
+      expect(await told(f, owner.userId)).toHaveLength(2);
+    });
+
+    it('a resolved alarm stays closed, and the next event is an alert of its own', async () => {
+      const { f, owner, key, device } = await setup();
+      await fire(f, key, device.id);
+      const [alert] = await alertsFor(f);
+      await owner.post(`/alerts/${alert.id}/resolve`);
+
+      await fire(f, key, device.id);
+
+      expect((await alertsFor(f)).map((a) => a.status).sort()).toEqual(['open', 'resolved']);
+      expect(await told(f, owner.userId)).toHaveLength(2);
+    });
   });
 
   it('a batch keeps the good events and reports the bad ones', async () => {

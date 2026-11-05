@@ -86,7 +86,7 @@ function selectAll(event: FocusEvent<HTMLInputElement>) {
 function FeedStepper({ line, threshold, onChange }: { line: FeedLine; threshold: number; onChange: (qty: number | null) => void }) {
   const { t } = useTranslation('livestock');
   const step = stepFor(line.plannedQty);
-  const qty = line.qty ?? 0;
+  const qty = line.qty || 0;
   const percent = line.plannedQty > 0 ? round(((qty - line.plannedQty) / line.plannedQty) * 100, 1) : null;
   const strayed = percent !== null && Math.abs(percent) > threshold;
   const shortOfStock = line.onHand !== null && qty > line.onHand;
@@ -116,6 +116,8 @@ function FeedStepper({ line, threshold, onChange }: { line: FeedLine; threshold:
           className="h-16 text-center text-2xl font-semibold tabular-nums"
           value={line.qty}
           onChange={onChange}
+          // Not null: an empty field saves as none given, and text nobody can read is not that.
+          onUnreadable={() => onChange(Number.NaN)}
           onFocus={selectAll}
           suffix={t(`enums:unit.${line.unit}`)}
           maxDigits={3}
@@ -213,7 +215,7 @@ function DailyLogForm({ plan, log, herdName, date, herdId, onDone }: FormProps) 
       if (log) {
         await api.patch(`${PATH}/${log.id}`, { ...common, baseUpdatedAt: log.updatedAt });
       } else {
-        await api.post(PATH, { ...common, id: clientId.current, herdId, date }, { idempotencyKey: clientId.current });
+        await api.postOnce(PATH, { ...common, id: clientId.current, herdId, date });
       }
     },
     invalidate: [PATH, '/livestock/herds', '/inventory', '/feed'],
@@ -275,7 +277,7 @@ function DailyLogForm({ plan, log, herdName, date, herdId, onDone }: FormProps) 
       </div>
 
       <div className="border-t border-border bg-card p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-        <Button size="lg" className="h-16 w-full text-lg" loading={save.isPending} onClick={() => save.mutate()}>
+        <Button size="lg" className="h-16 w-full text-lg" loading={save.isPending} disabled={lines.some((l) => Number.isNaN(l.qty))} onClick={() => save.mutate()}>
           <ClipboardCheck className="size-6" aria-hidden />
           {t('dailyLogs.save', { herd: herdName, count: headCount })}
         </Button>

@@ -55,12 +55,13 @@ const isEnabled = (template: Template, modules: string[]) =>
   template.modules.every((m) => ALWAYS_ON.has(m) || modules.includes(m));
 
 export async function assertTemplate(template: Template): Promise<void> {
-  for (const group of template.requires) {
-    if (!group.some((permission) => hasPermission(permission))) throw forbidden(undefined, 'FORBIDDEN', { required: group });
-  }
+  // A module switched off grants no permission in it, so that is the reason to give first.
   const modules = await enabledModules();
   const off = template.modules.find((m) => !ALWAYS_ON.has(m) && !modules.includes(m));
   if (off) throw forbidden('This module is not enabled for your workspace', 'MODULE_DISABLED', { module: off });
+  for (const group of template.requires) {
+    if (!group.some((permission) => hasPermission(permission))) throw forbidden(undefined, 'FORBIDDEN', { required: group });
+  }
 }
 
 /** A person without finance.view gets a template with no price columns at all (rule 7). */

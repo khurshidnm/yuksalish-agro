@@ -13,6 +13,7 @@ import { zDate, zOptionalNumber, zOptionalRef, zOptionalText } from '@/lib/forms
 import { useApiMutation, useDetail } from '@/lib/query';
 import { DocumentsPanel } from './DocumentsPanel';
 import { FieldFormDialog } from './FieldFormDialog';
+import { FieldPhoto } from './FieldPhoto';
 import { FileAttachField } from './FileAttachField';
 import type { FieldCard, RotationRow, SoilAnalysis } from './types';
 import { fieldTitle, formatHa, useLocalName } from './utils';
@@ -63,6 +64,11 @@ function OverviewTab({ field }: { field: FieldCard }) {
   const crop = field.currentCrop;
   return (
     <div className="flex flex-col gap-4">
+      {field.boundary && (
+        <Card className="overflow-hidden">
+          <FieldPhoto geometry={field.boundary} width={1400} aspect={2.6} credit />
+        </Card>
+      )}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label={t('fields.area')} value={formatHa(field.areaHa, 4)} hint={field.boundary ? t('fields.measuredOnMap') : t('fields.enteredByHand')} />
         <StatCard label={t('fields.currentCrop')} value={crop ? localName(crop.cropName) : '—'} hint={crop?.seasonName} icon={Sprout} tone="success" />

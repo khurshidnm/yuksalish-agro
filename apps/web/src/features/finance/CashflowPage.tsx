@@ -8,6 +8,7 @@ import { Alert, Badge, Label, Select, Sheet, SheetContent, SheetDescription, She
 import { formatMoney, formatMonth, formatMonthShort } from '@/lib/format';
 import { useDetail } from '@/lib/query';
 import { FINANCE_PATHS, budgetYear } from './lib';
+import { shortfallPeriod } from './shortfall';
 import type { ActualMonth, Forecast, ForecastMonth, ForecastParts } from './types';
 
 const PATH = FINANCE_PATHS.cashflow;
@@ -41,6 +42,7 @@ function ForecastTab() {
 
   const data = forecast.data;
   const rows = data?.rows ?? [];
+  const shortfall = shortfallPeriod(rows);
   const lowest = useMemo(() => rows.reduce<ForecastMonth | null>((low, row) => (!low || row.closing < low.closing ? row : low), null), [rows]);
   const negative = rows.filter((row) => row.negative);
 
@@ -118,7 +120,8 @@ function ForecastTab() {
         kind="area"
         data={rows}
         xKey="month"
-        series={[{ key: 'closing', label: t('cashflow.closing'), slot: 1 }]}
+        series={[{ key: 'closing', label: t('cashflow.closing'), slot: 1, dashed: true }]}
+        highlight={shortfall && { ...shortfall, tone: 'danger' }}
         formatValue={(value) => formatMoney(value)}
         formatX={(month) => formatMonthShort(month)}
         formatLabel={formatMonth}

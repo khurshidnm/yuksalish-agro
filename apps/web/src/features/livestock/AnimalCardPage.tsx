@@ -1,5 +1,5 @@
 import { IDENTIFIER_TYPES, todayIso } from '@yap/shared';
-import { ArrowRightLeft, Camera, DoorOpen, Pencil, Plus, Scale, ShieldAlert, Tag, Trash2 } from 'lucide-react';
+import { ArrowRightLeft, Camera, CircleMinus, Pencil, Plus, Scale, ShieldAlert, Tag, Trash2 } from 'lucide-react';
 import { lazy, Suspense, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router';
@@ -416,7 +416,7 @@ export default function AnimalCardPage() {
             )}
             {(canExit || canSell) && active && (
               <Button variant="outline" onClick={() => setExiting(true)}>
-                <DoorOpen aria-hidden />
+                <CircleMinus aria-hidden />
                 {t('exits.add')}
               </Button>
             )}

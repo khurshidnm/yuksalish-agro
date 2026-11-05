@@ -42,6 +42,8 @@ describe('dictionaries', () => {
 describe('enum labels', () => {
   const groups: Record<string, readonly string[]> = {
     landUse: enums.LAND_USES,
+    leadStatus: enums.LEAD_STATUSES,
+    leadFarmType: enums.LEAD_FARM_TYPES,
     facilityType: enums.FACILITY_TYPES,
     irrigationNodeType: enums.IRRIGATION_NODE_TYPES,
     operationType: enums.OPERATION_TYPES,

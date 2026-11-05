@@ -1,0 +1,17 @@
+# Simulated farm cameras for development: a looping video served over RTSP, the protocol real IP
+# cameras use, plus a browser gateway. See README.md in this folder.
+name: yap-camera
+services:
+  camera:
+    image: bluenviron/mediamtx:1.21.3-ffmpeg
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8554:8554"       # RTSP, what the platform and Frigate would connect to
+      - "127.0.0.1:8888:8888"       # HLS page
+      - "127.0.0.1:8889:8889"       # WebRTC page, used for the Live URL
+      - "127.0.0.1:8189:8189"       # WebRTC media over TCP, because Docker Desktop has no UDP route
+      - "127.0.0.1:9997:9997"       # MediaMTX API, to confirm streams are up
+    volumes:
+      - ./mediamtx.yml:/mediamtx.yml:ro
+      - ./videos:/videos:ro
+      - ./snapshots:/snapshots

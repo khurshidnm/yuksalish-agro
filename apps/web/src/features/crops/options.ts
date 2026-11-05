@@ -59,11 +59,6 @@ export const itemOptions = (category?: string) =>
     category ? { category } : undefined,
   );
 
-/** One key per open form, so a double tap or a retry on a bad connection posts once. */
-export function newIdempotencyKey(): string {
-  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
-
 /** Which stock a type of work draws from. */
 export const MATERIAL_CATEGORY: Record<string, string | undefined> = {
   sowing: 'seed',

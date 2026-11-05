@@ -55,6 +55,10 @@ export interface DataTableViewProps<T> {
   /** Navigate when the row is clicked; the title cell becomes a real link. */
   rowHref?: (row: T) => string;
   onRowClick?: (row: T) => void;
+  /** Takes over a row click from `rowHref`: a side panel shows the row, and its title stays a link. */
+  onRowPreview?: (row: T) => void;
+  /** The row a side panel is showing. */
+  isRowSelected?: (row: T) => boolean;
   loading?: boolean;
   error?: unknown;
   onRetry?: () => void;
@@ -123,6 +127,8 @@ export function DataTableView<T>({
   rowActions,
   rowHref,
   onRowClick,
+  onRowPreview,
+  isRowSelected,
   loading,
   error,
   onRetry,
@@ -140,7 +146,8 @@ export function DataTableView<T>({
 
   const activate = (row: T, event: MouseEvent) => {
     if ((event.target as HTMLElement).closest(INTERACTIVE)) return;
-    if (rowHref) navigate(rowHref(row));
+    if (onRowPreview) onRowPreview(row);
+    else if (rowHref) navigate(rowHref(row));
     else onRowClick?.(row);
   };
 
@@ -206,7 +213,8 @@ export function DataTableView<T>({
                     <Tr
                       key={rowKey(row)}
                       onClick={clickable ? (event) => activate(row, event) : undefined}
-                      className={cn(clickable && 'cursor-pointer hover:bg-muted/60')}
+                      aria-selected={isRowSelected?.(row) || undefined}
+                      className={cn(clickable && 'cursor-pointer hover:bg-muted/60', isRowSelected?.(row) && 'bg-secondary hover:bg-secondary')}
                     >
                       {columns.map((column) => (
                         <Td key={column.key} className={cn(ALIGN[column.align ?? 'left'], column.className)}>
@@ -272,7 +280,8 @@ export function DataTableView<T>({
   );
 }
 
-export interface DataTableProps<T> extends Pick<DataTableViewProps<T>, 'columns' | 'rowKey' | 'rowActions' | 'rowHref' | 'onRowClick' | 'empty' | 'className'> {
+export interface DataTableProps<T>
+  extends Pick<DataTableViewProps<T>, 'columns' | 'rowKey' | 'rowActions' | 'rowHref' | 'onRowClick' | 'onRowPreview' | 'isRowSelected' | 'empty' | 'className'> {
   /** List endpoint, e.g. '/finance/counterparties'. */
   path: string;
   /** Extra query parameters: the page's filters. Changing them returns to page 1. */

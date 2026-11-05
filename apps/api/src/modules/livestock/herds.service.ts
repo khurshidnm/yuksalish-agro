@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { ANIMAL_ON_FARM_STATUSES, PHYSIOLOGICAL_STATES, round } from '@yap/shared';
 import { schema } from '../../db/client';
 import { ctx, today, tx } from '../../core/context';
-import { ensureCostCenter, renameCostCenter } from '../../core/costCenters';
+import { deactivateCostCenter, ensureCostCenter, renameCostCenter } from '../../core/costCenters';
 import { badRequest, conflict } from '../../core/errors';
 import { recordEvent } from '../../core/journal';
 import { clientId, isoDate, listQuery, paged, searchAny, sortBy } from '../../core/query';
@@ -83,10 +83,11 @@ export async function updateHerd(id: string, input: Partial<HerdInput>) {
 
 /** History points at herds, so a finished herd is archived and only if it is empty. */
 export async function archiveHerd(id: string) {
-  await getHerdOrThrow(id, { lock: true });
+  const herd = await getHerdOrThrow(id, { lock: true });
   const head = await herdHeadCount(id);
   if (head > 0) throw conflict('HERD_NOT_EMPTY', `This herd still has ${head} animals`, { head });
   const [row] = await tx().update(t).set({ status: 'archived' }).where(eq(t.id, id)).returning();
+  await deactivateCostCenter(herd.costCenterId ?? (await ensureCostCenter('herd', herd.id, herd.name)));
   await recordEvent({ type: 'herd.archived', entityType: 'herd', entityId: id });
   return row;
 }

@@ -53,7 +53,7 @@ function OwnershipFields({ form, seesMoney }: { form: Form; seesMoney: boolean }
       <>
         <ComboboxField form={form} name="rentalCounterpartyId" label={t('fields.contractor')} loadOptions={contractorOptions} clearable />
         <FormGrid>
-          {seesMoney && <NumberField form={form} name="rentalPrice" label={t('fields.rentalPrice')} />}
+          {seesMoney && <NumberField money form={form} name="rentalPrice" label={t('fields.rentalPrice')} />}
           <SelectField
             form={form}
             name="rentalUnit"
@@ -68,8 +68,8 @@ function OwnershipFields({ form, seesMoney }: { form: Form; seesMoney: boolean }
   return (
     <FormGrid>
       <DateField form={form} name="purchaseDate" label={t('fields.purchaseDate')} />
-      {seesMoney && <NumberField form={form} name="purchasePrice" label={t('fields.purchasePrice')} />}
-      {seesMoney && <NumberField form={form} name="salvageValue" label={t('fields.salvageValue')} hint={t('fields.salvageHint')} />}
+      {seesMoney && <NumberField money form={form} name="purchasePrice" label={t('fields.purchasePrice')} />}
+      {seesMoney && <NumberField money form={form} name="salvageValue" label={t('fields.salvageValue')} hint={t('fields.salvageHint')} />}
       <SelectField form={form} name="depreciationMethod" label={t('fields.depreciationMethod')} options={enumOptions('depreciationMethod', DEPRECIATION_METHODS)} />
       {method === 'units' ? (
         <NumberField form={form} name="totalUnits" label={t('fields.totalUnits')} suffix={t('unit.hours')} hint={t('fields.totalUnitsHint')} />
@@ -95,7 +95,7 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
       const body: Record<string, unknown> = { ...values, salvageValue: salvageValue ?? 0, motoHours: motoHours ?? 0 };
       // Hidden fields come back empty: sending them would erase values this user cannot see.
       if (!seesMoney) for (const key of MONEY_KEYS) delete body[key];
-      return asset ? api.patch(`${PATH}/${asset.id}`, body) : api.post(PATH, body);
+      return asset ? api.patch(`${PATH}/${asset.id}`, body) : api.postOnce(PATH, body);
     },
     invalidate: [PATH],
     silentError: true,

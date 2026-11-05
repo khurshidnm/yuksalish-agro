@@ -1,23 +1,82 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { FastifyBaseLogger } from 'fastify';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { resources } from '@yap/shared/i18n';
 import { addDays, todayIso, monthOf } from '@yap/shared';
 import { schema } from '../src/db/client';
-import { tx } from '../src/core/context';
+import { tx, withPlatform } from '../src/core/context';
 import { generalCostCenterId } from '../src/core/costCenters';
 import { issueStock, receiveStock } from '../src/core/inventory';
 import { postTransaction } from '../src/core/ledger';
 import { INSIGHT_TYPES } from '../src/modules/ai/analyzers/types';
+import { asAi } from '../src/modules/ai/role';
 import { raiseAlert, renderAlert, repeatUrgentAlerts } from '../src/modules/alerts/alerts.service';
 import { evaluateRules, RULES } from '../src/modules/alerts/rules';
 import { openAlerts } from '../src/modules/alerts/summary';
+import { startJobs } from '../src/jobs';
 import { handleMessage, startTelegramBot } from '../src/modules/notifications/bot';
-import { digestFacts, renderDigest } from '../src/modules/notifications/digest';
+import { tr } from '../src/modules/notifications/i18n';
+import { digestFacts, digestScope, renderDigest } from '../src/modules/notifications/digest';
 import { sendDailySummary } from '../src/modules/notifications/jobs';
 import { dispatchPending, notifyRole, notifyUser } from '../src/modules/notifications/notify.service';
 import { createFixture, type Fixture } from './helpers';
+
+/** The scheduler itself, with no Redis behind it. */
+const bull = vi.hoisted(() => ({
+  schedulers: [] as [string, string][],
+  removed: [] as [string, string][],
+  workers: [] as { queue: string }[],
+  templates: [] as { opts?: { removeOnComplete?: unknown; removeOnFail?: unknown } }[],
+  /** Stands in for Redis not answering, or refusing, until told otherwise. */
+  before: async () => {},
+  status: 'ready',
+  closes: [] as (boolean | undefined)[],
+  reset() {
+    this.schedulers = [];
+    this.removed = [];
+    this.workers = [];
+    this.templates = [];
+    this.before = async () => {};
+    this.status = 'ready';
+    this.closes = [];
+  },
+}));
+
+vi.mock('ioredis', () => ({
+  Redis: class {
+    on() {}
+    disconnect() {}
+    get status() {
+      return bull.status;
+    }
+  },
+}));
+vi.mock('bullmq', () => ({
+  Queue: class {
+    constructor(readonly name: string) {}
+    on() {}
+    async close() {}
+    async upsertJobScheduler(job: string, _repeat: unknown, template: (typeof bull.templates)[number]) {
+      await bull.before();
+      bull.schedulers.push([this.name, job]);
+      bull.templates.push(template);
+    }
+    async removeJobScheduler(job: string) {
+      bull.removed.push([this.name, job]);
+    }
+  },
+  Worker: class {
+    constructor(queue: string) {
+      bull.workers.push({ queue });
+    }
+    on() {}
+    async close(force?: boolean) {
+      bull.closes.push(force);
+    }
+  },
+}));
 
 const {
   alerts,
@@ -900,17 +959,220 @@ describe('telegram delivery', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it('honours Telegram rate limiting', async () => {
+  it('jobs that wait on the model cannot take a slot from the ones that reach people', async () => {
+    bull.reset();
+    startJobs({ info: vi.fn(), error: vi.fn() } as unknown as FastifyBaseLogger);
+    await vi.waitFor(() => expect(bull.workers).toHaveLength(2));
+
+    const on = (queue: string) => bull.schedulers.filter(([name]) => name === queue).map(([, job]) => job);
+    expect(on('yap-urgent').sort()).toEqual(['alerts.evaluate', 'alerts.repeat-urgent', 'notifications.dispatch']);
+    expect(on('yap')).toContain('ai-summary-weekly');
+    expect(on('yap')).not.toContain('notifications.dispatch');
+    expect(bull.workers.map((worker) => worker.queue).sort()).toEqual(['yap', 'yap-urgent']);
+    // A scheduler left in Redis from before the split would keep firing on the shared queue.
+    expect(bull.removed.filter(([name]) => name === 'yap').map(([, job]) => job).sort()).toEqual(on('yap-urgent').sort());
+    // Two of these run every minute for ever, and Redis has no memory limit.
+    expect(bull.templates.every((template) => template.opts?.removeOnComplete && template.opts.removeOnFail)).toBe(true);
+  });
+
+  it('a Redis that refuses the start is told about loudly and tried again', async () => {
+    bull.reset();
+    const log = { info: vi.fn(), error: vi.fn() };
+    let refusals = 2;
+    bull.before = async () => {
+      if (refusals-- > 0) throw new Error('LOADING Redis is loading the dataset in memory');
+    };
+
+    const stop = startJobs(log as unknown as FastifyBaseLogger);
+
+    await vi.waitFor(() => expect(bull.workers).toHaveLength(2), { timeout: 5_000 });
+    expect(log.error).toHaveBeenCalledTimes(1);
+    await stop();
+  });
+
+  it('stopping lets running jobs finish, unless Redis has gone and no answer can come', async () => {
+    bull.reset();
+    const stopping = () => startJobs({ info: vi.fn(), error: vi.fn() } as unknown as FastifyBaseLogger);
+    const stop = stopping();
+    await vi.waitFor(() => expect(bull.workers).toHaveLength(2));
+    await stop();
+    expect(bull.closes).toEqual([false, false]);
+
+    bull.reset();
+    const stopWithRedisGone = stopping();
+    await vi.waitFor(() => expect(bull.workers).toHaveLength(2));
+    bull.status = 'reconnecting';
+    await stopWithRedisGone();
+    expect(bull.closes).toEqual([true, true]);
+  });
+
+  it('stopping before Redis ever answered ends at once, with no worker left behind', async () => {
+    bull.reset();
+    bull.before = () => new Promise(() => {});
+
+    const stop = startJobs({ info: vi.fn(), error: vi.fn() } as unknown as FastifyBaseLogger);
+    await stop();
+
+    expect(bull.workers).toEqual([]);
+  });
+
+  it('a connection lost in the middle of a transaction fails that work, and the process carries on', async () => {
+    const f = await createFixture();
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const terminate = () => tx().execute(sql`select pg_terminate_backend(pg_backend_pid())`);
+
+    await expect(f.run(terminate)).rejects.toThrow();
+    await expect(f.run(() => asAi(terminate))).rejects.toThrow();
+
+    expect((await f.run(() => tx().execute(sql`select 1 as one`))).rows).toEqual([{ one: 1 }]);
+    await vi.waitFor(() => expect(errors).toHaveBeenCalled());
+  });
+
+  it('a person Telegram limits keeps their message for after the pause, and it costs no attempt', async () => {
+    const f = await createFixture();
+    const owner = await linked(f, 'owner', '1');
+    vi.stubEnv('TELEGRAM_BOT_TOKEN', 'test-token');
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ok: false, parameters: { retry_after: 30 } }), { status: 429 })));
+    await f.run(() => notifyRole('owner', { severity: 'urgent', title: 'X' }));
+
+    const started = Date.now();
+    expect(await f.run(() => dispatchPending())).toMatchObject({ sent: 0, retried: 1 });
+
+    expect(Date.now() - started).toBeLessThan(5_000);
+    const state = await deliveries(f, owner.userId);
+    expect(state.telegram).toBe('pending');
+    expect(state.telegram_attempts).toBeUndefined();
+    expect(Date.parse(state.telegram_next)).toBeGreaterThan(started + 25_000);
+  });
+
+  it('one person\'s retry_after does not delay a fire alert to the next person', async () => {
     const f = await createFixture();
     await linked(f, 'owner', '1');
+    await linked(f, 'director', '2');
     vi.stubEnv('TELEGRAM_BOT_TOKEN', 'test-token');
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: false, parameters: { retry_after: 0.01 } }), { status: 429 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true, result: {} }), { status: 200 }));
-    vi.stubGlobal('fetch', fetchMock);
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const asked: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init: RequestInit) => {
+        const { chat_id: chatId } = JSON.parse(init.body as string);
+        asked.push(chatId);
+        return chatId === '1'
+          ? new Response(JSON.stringify({ ok: false, parameters: { retry_after: 600 } }), { status: 429 })
+          : new Response(JSON.stringify({ ok: true, result: {} }), { status: 200 });
+      }),
+    );
+    await f.run(() => notifyRole(['owner', 'director'], { severity: 'urgent', title: "Yong'in" }));
+    await f.run(() => notifyRole('owner', { severity: 'attention', title: 'Yana biri' }));
+
+    const started = Date.now();
+    const result = await f.run(() => dispatchPending());
+
+    expect(Date.now() - started).toBeLessThan(5_000);
+    expect(result).toMatchObject({ sent: 1, retried: 2 });
+    expect(asked.filter((chat) => chat === '1')).toHaveLength(1); // once limited, that chat is left alone
+    expect(asked).toContain('2');
+  });
+
+  it('a chat that blocked the bot is settled at once, and a bad token is not', async () => {
+    const f = await createFixture();
+    const owner = await linked(f, 'owner', '1');
+    vi.stubEnv('TELEGRAM_BOT_TOKEN', 'test-token');
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const answer = (status: number, description: string) =>
+      vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ok: false, description }), { status })));
+
+    answer(401, 'Unauthorized');
     await f.run(() => notifyRole('owner', { severity: 'urgent', title: 'X' }));
-    expect((await f.run(() => dispatchPending())).sent).toBe(1);
+    await f.run(() => dispatchPending());
+    expect((await deliveries(f, owner.userId)).telegram).toBe('pending');
+
+    await f.run(() => tx().update(notifications).set({ deliveries: { telegram: 'pending' } }));
+    answer(403, 'Forbidden: bot was blocked by the user');
+    await f.run(() => dispatchPending());
+    expect((await deliveries(f, owner.userId)).telegram).toBe('not_linked');
+  });
+
+  it('an outage stops the run early, rather than sitting out every timeout, and costs the rest no attempt', async () => {
+    const f = await createFixture();
+    const owner = await linked(f, 'owner', '1');
+    vi.stubEnv('TELEGRAM_BOT_TOKEN', 'test-token');
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const fetchMock = vi.fn(async () => {
+      throw new Error('network down');
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    for (let i = 0; i < 5; i++) await f.run(() => notifyRole('owner', { severity: 'urgent', title: `X${i}` }));
+
+    expect((await f.run(() => dispatchPending())).retried).toBe(3);
+
+    const rows = await notificationsOf(f, owner.userId);
+    expect(rows.filter((row) => row.deliveries.telegram_attempts === '1')).toHaveLength(3);
+    expect(rows.filter((row) => row.deliveries.telegram_attempts === undefined)).toHaveLength(2);
+  });
+
+  it('a fire alert goes first, past rows waiting out their retry and past older urgent ones', async () => {
+    const f = await createFixture();
+    await linked(f, 'owner', '1');
+    const fetchMock = telegramOk();
+    const later = new Date(Date.now() + 3_600_000).toISOString();
+    await f.run(async () => {
+      for (let i = 0; i < 3; i++) await notifyRole('owner', { severity: 'info', eventType: 'daily_summary', title: `Kunlik ${i}` });
+      for (let i = 0; i < 3; i++) await notifyRole('owner', { severity: 'urgent', title: `Kasal ${i}` });
+      await tx().update(notifications).set({ createdAt: new Date(Date.now() - 86_400_000) });
+      for (let i = 0; i < 3; i++) await notifyRole('owner', { severity: 'attention', title: `Kutmoqda ${i}` });
+      await tx()
+        .update(notifications)
+        .set({ deliveries: { telegram: 'pending', telegram_next: later, telegram_attempts: '2' } })
+        .where(eq(notifications.severity, 'attention'));
+      await notifyRole('owner', { severity: 'urgent', title: "Yong'in" });
+    });
+
+    await f.run(() => dispatchPending(2));
+
+    const sent = (fetchMock.mock.calls as unknown as [string, RequestInit][]).map(([, init]) => JSON.parse(init.body as string).text as string);
+    expect(sent).toHaveLength(2);
+    expect(sent[0]).toContain("Yong'in");
+    expect(sent[1]).toContain('Kasal');
+  });
+
+  it('rows waiting out their retry do not use up the batch', async () => {
+    const f = await createFixture();
+    await linked(f, 'owner', '1');
+    const fetchMock = telegramOk();
+    const later = new Date(Date.now() + 3_600_000).toISOString();
+    await f.run(async () => {
+      await notifyRole('owner', { severity: 'urgent', title: "Yong'in" });
+      await tx().update(notifications).set({ createdAt: new Date(Date.now() - 60_000) });
+      for (let i = 0; i < 3; i++) await notifyRole('owner', { severity: 'urgent', title: `Kutmoqda ${i}` });
+      await tx()
+        .update(notifications)
+        .set({ deliveries: { telegram: 'pending', telegram_next: later, telegram_attempts: '2' } })
+        .where(sql`${notifications.title} like 'Kutmoqda%'`);
+    });
+
+    expect(await f.run(() => dispatchPending(2))).toMatchObject({ sent: 1 });
+
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(init.body as string).text).toContain("Yong'in");
+  });
+
+  it.each([
+    ['the account is blocked', (f: Fixture, id: string) => tx().update(users).set({ status: 'blocked' }).where(eq(users.id, id))],
+    ['the membership has ended', (f: Fixture, id: string) => tx().update(schema.memberships).set({ status: 'blocked' }).where(eq(schema.memberships.userId, id))],
+  ])('a message waiting in the outbox does not go out once %s', async (_name, block) => {
+    const f = await createFixture();
+    const owner = await linked(f, 'owner', '1');
+    const fetchMock = telegramOk();
+    await f.run(() => notifyRole('owner', { severity: 'urgent', title: 'X', body: '3 000 000 so\'m' }));
+    await f.run(() => block(f, owner.userId));
+
+    const result = await f.run(() => dispatchPending());
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ sent: 0, skipped: 1 });
+    expect((await deliveries(f, owner.userId)).telegram).toBe('skipped');
   });
 
   it('an outage keeps the message for later, with backoff, and finally gives up in the journal', async () => {
@@ -963,11 +1225,12 @@ describe('telegram delivery', () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
     const log = vi.spyOn(console, 'info').mockImplementation(() => {});
-    await f.run(() => notifyRole('owner', { severity: 'urgent', title: 'Sinov' }));
+    await f.run(() => notifyRole('owner', { severity: 'urgent', title: 'Sinov', body: "Kassada 3 000 000 so'm" }));
     const result = await f.run(() => dispatchPending());
     expect(result.skipped).toBe(1);
     expect(fetchMock).not.toHaveBeenCalled();
     expect(log.mock.calls.flat().join(' ')).toContain('Sinov');
+    expect(log.mock.calls.flat().join(' ')).not.toContain('3 000 000'); // money stays out of the log
     expect((await deliveries(f, owner.userId)).telegram).toBe('not_configured');
 
     const status = await owner.get('/notifications/telegram');
@@ -1004,15 +1267,18 @@ describe('telegram delivery', () => {
       'fetch',
       vi.fn(async (url: string, init: RequestInit) => {
         const body = JSON.parse(init.body as string);
+        if (url.endsWith('/setMyCommands')) return new Response(JSON.stringify({ ok: true, result: true }), { status: 200 });
         if (url.endsWith('/sendMessage')) {
           replies.push(body);
           return new Response(JSON.stringify({ ok: true, result: {} }), { status: 200 });
         }
         polls.push(body);
-        if (polls.length === 1) {
-          const update = { update_id: 10, message: { text: '/holat', chat: { id: 555001 } } };
+        // Telegram keeps handing an update back until a poll's offset passes it.
+        if (body.offset <= 10) {
+          const update = { update_id: 10, message: { message_id: 1, text: '/holat', chat: { id: 555001, type: 'private' } } };
           return new Response(JSON.stringify({ ok: true, result: [update] }), { status: 200 });
         }
+        if (body.timeout === 0) return new Response(JSON.stringify({ ok: true, result: [] }), { status: 200 });
         // A real long poll hangs until something arrives or the caller gives up.
         return new Promise((_, reject) =>
           init.signal!.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError'))),
@@ -1022,16 +1288,14 @@ describe('telegram delivery', () => {
     const log = { info: vi.fn(), error: vi.fn() };
 
     const stop = startTelegramBot(log);
-    await vi.waitFor(() => expect(polls).toHaveLength(2));
+    await vi.waitFor(() => expect(polls.at(-1).offset).toBe(11), { timeout: 3_000 });
 
-    expect(replies).toHaveLength(1);
+    expect(replies).toHaveLength(1); // however many times Telegram hands it back
     expect(replies[0].chat_id).toBe('555001');
     expect(replies[0].text).toContain('ulanmagan'); // an unknown chat learns nothing about the farm
     expect(polls[0].offset).toBe(0);
-    expect(polls[1].offset).toBe(11); // the same message is never answered twice
 
-    stop();
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await stop();
     expect(log.error).not.toHaveBeenCalled();
   });
 
@@ -1111,6 +1375,29 @@ describe('telegram delivery', () => {
     expect(await notificationsOf(f, shepherd.userId)).toHaveLength(0);
   });
 
+  it('/holat shows a role only what the web shows it', async () => {
+    const { f } = await farmWithMoney();
+    const mechanic = await f.as('mechanic');
+    await f.run(() => tx().update(users).set({ telegramChatId: '301' }).where(eq(users.id, mechanic.userId)));
+    expect((await mechanic.get('/livestock/summary')).status).toBe(403);
+
+    const text = await handleMessage('301', '/holat');
+
+    expect(text).not.toContain(tr('uz', 'alerts', 'digest.herd', { head: '', pregnant: '' }).split(' ')[0]);
+    expect(text).toContain(tr('uz', 'alerts', 'digest.alerts', { count: 0, urgent: 0 }).split(' ')[0]);
+  });
+
+  it('the daily summary shows no cash when the finance module is off', async () => {
+    const { f } = await farmWithMoney();
+    const owner = await f.as('owner');
+    await withPlatform((trx) => trx.update(schema.tenants).set({ modules: ['livestock', 'feed'] }).where(eq(schema.tenants.id, f.tenantId)));
+
+    await f.run(() => sendDailySummary());
+
+    const [mine] = (await notificationsOf(f, owner.userId)).filter((n) => n.eventType === 'daily_summary');
+    expect(mine.body).not.toContain('Kassa va bank');
+  });
+
   it('digest leaves out what it cannot say, and cash adds up', async () => {
     const f = await createFixture();
     const account = await f.run(async () => {
@@ -1144,11 +1431,11 @@ describe('telegram delivery', () => {
         status: 'pending',
       }),
     );
-    const facts = await f.run(() => digestFacts(true));
+    const facts = await f.run(() => digestFacts(digestScope(['finance.view'])));
     expect(facts.cash).toBe(1500);
     const { body } = renderDigest({ ...facts, scarceFeed: null }, 'en');
     expect(body).not.toContain('Lowest feed');
     expect(body).not.toContain('Sick');
-    expect((await f.run(() => digestFacts(false))).cash).toBeNull();
+    expect((await f.run(() => digestFacts(digestScope([])))).cash).toBeNull();
   });
 });

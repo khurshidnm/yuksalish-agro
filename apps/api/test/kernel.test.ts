@@ -98,7 +98,7 @@ describe('tenant isolation', () => {
         costCenterId: await generalCostCenterId(),
       });
     });
-    await expect(attempt).rejects.toMatchObject({ cause: { code: '23503' } });
+    await expect(attempt).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });
 
   it('a row cannot claim a farm of another tenant', async () => {

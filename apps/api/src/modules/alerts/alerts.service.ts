@@ -62,6 +62,11 @@ export interface RaiseAlertInput {
   notify?: RoleKey[];
   /** Required to see the alert at all. Set it when the text reveals money. */
   permission?: Permission;
+  /**
+   * For a discrete event rather than a state that is evaluated again: after this much silence the next
+   * one is a new event, whatever became of the last. Anything sooner belongs to the same burst.
+   */
+  newAfterMs?: number;
 }
 
 /** A dictionary template is usable only if the alert carries a value for every placeholder. */
@@ -117,9 +122,20 @@ async function notifyAlert(alert: Alert): Promise<void> {
   );
 }
 
+const journalRaised = (i: RaiseAlertInput, alertId: string) =>
+  recordEvent({
+    type: 'alert.raised',
+    severity: i.severity,
+    entityType: i.entityType ?? 'alert',
+    entityId: i.entityId ?? alertId,
+    data: { ruleKey: i.ruleKey, alertId },
+    source: i.source === 'device' ? 'sensor' : i.source === 'ai' ? 'ai' : 'system',
+  });
+
 /**
  * Report a problem. While it stays unresolved, raising it again only refreshes it, so calling this
- * on every evaluation is safe. People are told once, and again only if it becomes more severe.
+ * on every evaluation is safe. People are told once, and again only if it becomes more severe, or
+ * if it is a new event (`newAfterMs`), which also starts the repeats over.
  */
 export async function raiseAlert(i: RaiseAlertInput): Promise<{ id: string; created: boolean; escalated: boolean }> {
   const c = ctx();
@@ -153,24 +169,21 @@ export async function raiseAlert(i: RaiseAlertInput): Promise<{ id: string; crea
 
   if (created) {
     await notifyAlert(created);
-    await recordEvent({
-      type: 'alert.raised',
-      severity: i.severity,
-      entityType: i.entityType ?? 'alert',
-      entityId: i.entityId ?? created.id,
-      data: { ruleKey: i.ruleKey, alertId: created.id },
-      source: i.source === 'device' ? 'sensor' : i.source === 'ai' ? 'ai' : 'system',
-    });
+    await journalRaised(i, created.id);
     return { id: created.id, created: true, escalated: false };
   }
 
   const [existing] = await tx()
     .select()
     .from(alerts)
-    .where(and(eq(alerts.farmId, c.farmId), eq(alerts.dedupKey, i.dedupKey), ne(alerts.status, 'resolved')));
+    .where(and(eq(alerts.farmId, c.farmId), eq(alerts.dedupKey, i.dedupKey), ne(alerts.status, 'resolved')))
+    // Two frames at once must both see the gap the first one closes.
+    .for('update');
   if (!existing) return { id: '', created: false, escalated: false };
 
   const escalated = RANK[i.severity] > RANK[existing.severity as Severity];
+  const anew = i.newAfterMs !== undefined && now.getTime() - existing.lastSeenAt.getTime() > i.newAfterMs;
+  const tell = escalated || anew;
   const [updated] = await tx()
     .update(alerts)
     .set({
@@ -180,14 +193,15 @@ export async function raiseAlert(i: RaiseAlertInput): Promise<{ id: string; crea
       data: i.data ?? {},
       link: i.link,
       lastSeenAt: now,
-      // A worse situation needs a fresh decision, even if an earlier stage was acknowledged.
-      ...(escalated ? { status: 'open', acknowledgedAt: null, acknowledgedBy: null } : {}),
-      notifyCount: escalated ? existing.notifyCount + 1 : existing.notifyCount,
-      nextNotifyAt: urgent ? (escalated ? nextRepeat(1) : existing.nextNotifyAt) : null,
+      // A worse situation or a new event needs a fresh decision, even if an earlier one was acknowledged.
+      ...(tell ? { status: 'open', acknowledgedAt: null, acknowledgedBy: null } : {}),
+      notifyCount: anew ? 1 : escalated ? existing.notifyCount + 1 : existing.notifyCount,
+      nextNotifyAt: urgent ? (tell ? nextRepeat(1) : existing.nextNotifyAt) : null,
     })
     .where(eq(alerts.id, existing.id))
     .returning();
-  if (escalated) await notifyAlert(updated);
+  if (tell) await notifyAlert(updated);
+  if (anew) await journalRaised(i, existing.id);
   return { id: existing.id, created: false, escalated };
 }
 

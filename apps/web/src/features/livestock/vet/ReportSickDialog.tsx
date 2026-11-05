@@ -8,24 +8,20 @@ import { api, type UploadedFile } from '@/lib/api';
 import { zRef, zText } from '@/lib/forms';
 import { useApiMutation } from '@/lib/query';
 import { FileButton } from './FileButton';
-import { ANIMALS_PATH, HEALTH_PATH, animalOptions, newRequestKey } from './options';
+import { ANIMALS_PATH, HEALTH_PATH, animalOptions } from './options';
 
 const schema = z.object({ animalId: zRef(), note: zText(1000) });
 
 export function ReportSickDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const { t } = useTranslation('vet');
   const [photos, setPhotos] = useState<UploadedFile[]>([]);
-  const [requestKey, setRequestKey] = useState(newRequestKey);
 
   const report = useApiMutation<z.output<typeof schema>>({
     mutationFn: (values) =>
-      api.post(`${HEALTH_PATH}/report-sick`, { ...values, photoFileIds: photos.map((p) => p.id) }, { idempotencyKey: requestKey }),
+      api.postOnce(`${HEALTH_PATH}/report-sick`, { ...values, photoFileIds: photos.map((p) => p.id) }),
     invalidate: [HEALTH_PATH, ANIMALS_PATH],
     silentError: true,
-    onSuccess: () => {
-      setPhotos([]);
-      setRequestKey(newRequestKey());
-    },
+    onSuccess: () => setPhotos([]),
   });
 
   return (

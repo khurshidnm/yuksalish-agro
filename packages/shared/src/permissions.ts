@@ -90,6 +90,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<RoleKey, Permission[]> = {
   accountant: [
     ...grant(['finance', 'payroll']),
     ...grant(['sales'], WRITE),
+    ...grant(['ai'], ['view', 'create']),
     ...grant(['dashboard', 'reports', 'hr', 'assets', 'farm', 'crops', 'livestock', 'inventory', 'feed'], VIEW),
     ...grant(['tasks'], WRITE),
     PII_VIEW,

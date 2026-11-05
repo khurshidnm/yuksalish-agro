@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { Link, useRouteError } from 'react-router';
 import { EmptyState } from '@/components/EmptyState';
 import { Button, Card, Skeleton } from '@/components/ui';
-import { useAuth } from '@/lib/auth';
 import { LogoMark } from './Logo';
+import { useSignOut } from './useSignOut';
 
 function HomeButton() {
   const { t } = useTranslation();
@@ -45,7 +45,7 @@ export function ModuleOffPage() {
 /** A signed-in user with no farm: nothing to show until someone adds them. */
 export function NoAccessScreen() {
   const { t } = useTranslation();
-  const { logout } = useAuth();
+  const signOut = useSignOut();
   return (
     <div className="flex min-h-dvh items-center justify-center p-4">
       <Card className="w-full max-w-md">
@@ -54,7 +54,7 @@ export function NoAccessScreen() {
           title={t('common:pages.forbiddenTitle')}
           description={t('common:pages.forbiddenBody')}
           action={
-            <Button variant="outline" onClick={() => void logout()}>
+            <Button variant="outline" onClick={() => void signOut()}>
               {t('auth:twoFactor.signOutInstead')}
             </Button>
           }

@@ -190,7 +190,7 @@ function PolicyTab() {
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
               <FormGrid>
-                <NumberField form={form} name="finance.approvalThreshold" label={t('policy.approvalThreshold')} hint={t('policy.approvalThresholdHint')} suffix={query.data?.currency} />
+                <NumberField money form={form} name="finance.approvalThreshold" label={t('policy.approvalThreshold')} hint={t('policy.approvalThresholdHint')} suffix={query.data?.currency} />
                 <SelectField form={form} name="finance.overheadBase" label={t('policy.overheadBase')} hint={t('policy.overheadBaseHint')} options={enumOptions('overheadBase', OVERHEAD_BASES)} />
               </FormGrid>
               <SwitchField form={form} name="finance.makerChecker" label={t('policy.makerChecker')} hint={t('policy.makerCheckerHint')} />
@@ -210,7 +210,7 @@ function PolicyTab() {
               <SelectField form={form} name="inventory.costingMethod" label={t('policy.costingMethod')} hint={t('policy.costingMethodHint')} options={enumOptions('costingMethod', COSTING_METHODS)} />
               <FormGrid>
                 <NumberField form={form} name="feed.winterDays" label={t('policy.winterDays')} hint={t('policy.winterDaysHint')} suffix={t('policy.days')} maxDigits={0} />
-                <NumberField form={form} name="feed.minStockDays" label={t('policy.minStockDays')} hint={t('policy.minStockDaysHint')} suffix={t('policy.days')} />
+                <NumberField form={form} name="feed.minStockDays" label={t('policy.minStockDays')} hint={t('policy.minStockDaysHint')} suffix={t('policy.days')} maxDigits={0} />
               </FormGrid>
               <NumberField form={form} name="feed.deviationPercent" label={t('policy.deviationPercent')} hint={t('policy.deviationPercentHint')} suffix="%" />
             </CardContent>

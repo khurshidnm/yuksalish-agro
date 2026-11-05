@@ -50,7 +50,7 @@ function StatusLine({ label, value, total }: { label: string; value: number; tot
         <span className="text-sm text-muted-foreground">{label}</span>
         <span className="font-semibold tabular-nums">{t('crops.ofTotal', { value: formatNumber(value, 0), total: formatNumber(total, 0) })}</span>
       </div>
-      <Meter value={total > 0 ? (value / total) * 100 : 0} label={label} />
+      <Meter value={total > 0 ? (value / total) * 100 : 0} label={label} ticks />
     </div>
   );
 }

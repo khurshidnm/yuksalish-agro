@@ -170,7 +170,7 @@ function LineEditor({ form, index, onRemove, salePrice }: { form: Form; index: n
             required
             suffix={line?.unit ? t(`enums:unit.${line.unit}`) : undefined}
           />
-          <NumberField
+          <NumberField money
             form={form}
             name={name('price')}
             label={t(line?.unit === 'head' ? 'orders.fields.pricePerHead' : 'orders.fields.price')}
@@ -277,7 +277,7 @@ export function SaleFormDialog({ open, onOpenChange, sale, onSaved }: SaleFormDi
             : { itemId: l.itemId, warehouseId: l.warehouseId, qty: l.qty, price: l.price },
         ),
       };
-      return sale ? api.patch(`${PATH}/${sale.id}`, body) : api.post(PATH, body);
+      return sale ? api.patch(`${PATH}/${sale.id}`, body) : api.postOnce(PATH, body);
     },
     invalidate: [PATH],
     silentError: true,

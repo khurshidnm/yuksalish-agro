@@ -12,8 +12,10 @@
     "FX_RATE_REQUIRED": "Valyuta kursini kiriting",
     "SAME_WAREHOUSE": "Ikkala ombor bir xil bo'lishi mumkin emas",
     "BATCH_ALREADY_USED": "Bu partiyadan sarflangan, kirimni bekor qilib bo'lmaydi",
+    "AVERAGE_COST_USED": "Bu kirimdan keyin o'rtacha narxda chiqim qilingan, kirimni bekor qilib bo'lmaydi",
     "DOCUMENT_HAS_PAYMENT": "Bu kirimga to'lov bog'langan. Avval moliya bo'limida to'lovni bekor qiling",
     "DOCUMENT_NOT_REVERSIBLE": "Bu hujjatni shu yerdan bekor qilib bo'lmaydi",
+    "DOCUMENT_NUMBER_AMBIGUOUS": "Bu raqam ikki hujjatda bor, raqam bo'yicha bekor qilib bo'lmaydi",
     "COUNT_NOT_DRAFT": "Bu inventarizatsiya allaqachon tasdiqlangan",
     "COUNT_EMPTY": "Inventarizatsiyaga kamida bitta mahsulot qo'shing"
   },
@@ -48,6 +50,8 @@
     "payNow": "To'lovni ham qayd etish",
     "payNowHint": "Xarajat tannarxga ombordan chiqim qilinganda o'tadi",
     "paymentMethod": "To'lov usuli",
+    "category": "Xarajat moddasi",
+    "categoryHint": "Ba'zi tovarlarning o'z moddasi yo'q. Bu modda butun kirimga qo'llanadi.",
     "dueDate": "To'lov muddati",
     "account": "Kassa yoki bank hisobi"
   },

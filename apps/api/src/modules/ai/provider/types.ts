@@ -1,5 +1,5 @@
 /**
- * The swappable LLM boundary (spec 15.2: Claude, OpenAI or a local model). Nothing outside
+ * The swappable LLM boundary (spec 15.2). Claude and Gemini are implemented. Nothing outside
  * provider/ knows which vendor runs. A new provider implements LlmProvider and is chosen in
  * provider/index.ts.
  *
@@ -11,7 +11,9 @@ export type LlmBlock =
   | { type: 'tool_use'; id: string; name: string; input: unknown }
   | { type: 'tool_result'; toolUseId: string; content: string; isError?: boolean }
   | { type: 'image'; mediaType: string; dataBase64: string }
-  | { type: 'document'; mediaType: 'application/pdf'; dataBase64: string };
+  | { type: 'document'; mediaType: 'application/pdf'; dataBase64: string }
+  /** Spoken audio, such as a voice note. Gemini reads it; Claude reports AI_AUDIO_NOT_SUPPORTED. */
+  | { type: 'audio'; mediaType: string; dataBase64: string };
 
 export interface LlmMessage {
   role: 'user' | 'assistant';

@@ -23,7 +23,7 @@ function ReceiveDialog({ harvest, onClose }: { harvest: Harvest | null; onClose:
   const { t } = useTranslation('crops');
   const [unit, setUnit] = useState<string | null>(null);
   const save = useApiMutation<z.output<typeof receiveSchema>>({
-    mutationFn: (values) => api.post(`${HARVESTS}/${harvest!.id}/receive`, values),
+    mutationFn: (values) => api.postOnce(`${HARVESTS}/${harvest!.id}/receive`, values),
     invalidate: AFFECTED_BY_WORK,
     silentError: true,
   });

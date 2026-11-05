@@ -1,0 +1,521 @@
+{
+  "meta": {
+    "title": "Farm Management Software for Uzbekistan | Yuksalish Agro",
+    "description": "Run fields, livestock, warehouse, money and staff in one system. Works on a phone, and field records save without internet. Ask for a demo.",
+    "keywords": "farm management software, livestock management software, cattle records, sheep records, crop records, farm accounting, cost per head, agriculture software Uzbekistan",
+    "ogImageAlt": "Yuksalish Agro farm management platform"
+  },
+  "nav": {
+    "features": "Features",
+    "product": "Product",
+    "how": "Getting started",
+    "faq": "FAQ",
+    "contact": "Contact",
+    "login": "Sign in",
+    "cta": "Ask for a demo",
+    "language": "Language",
+    "menu": "Menu"
+  },
+  "hero": {
+    "eyebrow": "The management platform for farmers",
+    "titleMuted": "Instead of notebooks and Excel,",
+    "title": "your whole farm in one system",
+    "lead": "Fields, livestock, feed, money and staff in one place. See which field or herd every som went to, while your herder sends the daily log from a phone.",
+    "cta": "Ask for a demo",
+    "secondary": "See what it does",
+    "points": [
+      "Works on a phone",
+      "Field records without internet",
+      "In Uzbek and Russian"
+    ],
+    "imageAlt": "Yuksalish Agro dashboard: cash, expenses, head count and feed reserve on one screen",
+    "phoneAlt": "The Today screen on a phone: daily log and quick actions for a herder"
+  },
+  "problem": {
+    "label": "The problem",
+    "titleMuted": "The farm runs,",
+    "title": "but the numbers are scattered",
+    "lead": "Records sit in notebooks, Excel files and Telegram groups. Getting an answer means waiting for the end of the month.",
+    "items": [
+      {
+        "title": "The real cost is unknown",
+        "body": "It is hard to say what one animal or one ton of wheat actually cost you. Profit stays a guess."
+      },
+      {
+        "title": "Feed runs out without warning",
+        "body": "You learn what is left and whether it lasts the winter too late. Emergency buying is expensive."
+      },
+      {
+        "title": "Field records get lost",
+        "body": "News of births, illness and deaths arrives late, or never reaches the books at all."
+      }
+    ]
+  },
+  "modules": {
+    "label": "Features",
+    "titleMuted": "Every part of the farm,",
+    "title": "on one platform",
+    "lead": "Switch on only the modules you need. Everything is connected: feed issued from stock lands in the herd's cost by itself.",
+    "items": [
+      {
+        "key": "land",
+        "title": "Land and fields",
+        "body": "A digital farm passport and a satellite map.",
+        "points": [
+          "Draw a field on the map and its area is measured",
+          "Soil tests and crop rotation history",
+          "Irrigation points and water limits",
+          "Documents with expiry reminders"
+        ]
+      },
+      {
+        "key": "crops",
+        "title": "Crops",
+        "body": "The whole season, from plan to harvest.",
+        "points": [
+          "Crop plans by season and field",
+          "A journal of field operations",
+          "Harvest and yield records",
+          "Weather forecast and frost warnings"
+        ]
+      },
+      {
+        "key": "livestock",
+        "title": "Livestock",
+        "body": "Cattle, sheep, goats, horses and more: every animal's story, from birth to sale.",
+        "points": [
+          "An animal card by ear tag",
+          "Herds and transfers",
+          "Weight trends and daily logs",
+          "Sales, slaughter and mortality records"
+        ]
+      },
+      {
+        "key": "breeding",
+        "title": "Breeding and births",
+        "body": "Plan the future of the herd.",
+        "points": [
+          "Pregnancy tracking",
+          "Birth calendar and weekly plan",
+          "Newborns registered automatically",
+          "Sire ratings"
+        ]
+      },
+      {
+        "key": "vet",
+        "title": "Veterinary care",
+        "body": "Vaccinations and treatments under control.",
+        "points": [
+          "Vaccination calendar",
+          "Treatment journal",
+          "Medicine issued from stock automatically",
+          "Sick and quarantined animals"
+        ]
+      },
+      {
+        "key": "feed",
+        "title": "Feed and rations",
+        "body": "Always know how many days your feed will last.",
+        "points": [
+          "Rations for each herd",
+          "Days of feed remaining",
+          "Feed balance",
+          "Winter feed plan"
+        ]
+      },
+      {
+        "key": "inventory",
+        "title": "Warehouse",
+        "body": "Every sack and litre accounted for.",
+        "points": [
+          "Receipts, issues and transfers",
+          "Batches and costing (FIFO or average)",
+          "Stock counts",
+          "Low stock warnings"
+        ]
+      },
+      {
+        "key": "finance",
+        "title": "Finance",
+        "body": "See where money comes from and where it goes.",
+        "points": [
+          "Cash, bank and counterparties",
+          "Debts, loans and repayment schedules",
+          "Budget tracking",
+          "Cash flow forecast and two-person approval"
+        ]
+      },
+      {
+        "key": "costs",
+        "title": "Cost and profit",
+        "body": "A precise answer to a farmer's biggest question.",
+        "points": [
+          "Cost per head",
+          "Cost per ton of crop",
+          "Cost per kg of live weight",
+          "Profitability by field and herd"
+        ]
+      },
+      {
+        "key": "sales",
+        "title": "Sales and purchasing",
+        "body": "Work with buyers and suppliers.",
+        "points": [
+          "Sales orders",
+          "Purchases and stock receipts",
+          "Buyers and suppliers",
+          "Unpaid debt tracking"
+        ]
+      },
+      {
+        "key": "people",
+        "title": "Staff and payroll",
+        "body": "Know who came in and how much they worked.",
+        "points": [
+          "Check-in from a phone",
+          "Timesheets",
+          "Payroll and advances",
+          "Safety instructions"
+        ]
+      },
+      {
+        "key": "machinery",
+        "title": "Machinery",
+        "body": "Tractors and equipment under control.",
+        "points": [
+          "Machinery register",
+          "Service schedules",
+          "Fuel use",
+          "Depreciation"
+        ]
+      },
+      {
+        "key": "tasks",
+        "title": "Tasks and calendar",
+        "body": "Everyone knows what to do today.",
+        "points": [
+          "Task board",
+          "Recurring work",
+          "Proof with a photo",
+          "Telegram notifications"
+        ]
+      },
+      {
+        "key": "cameras",
+        "title": "Cameras and sensors",
+        "body": "Watch the barn and the store remotely.",
+        "points": [
+          "Live view",
+          "Event log",
+          "Device register",
+          "An API for outside systems"
+        ]
+      },
+      {
+        "key": "reports",
+        "title": "Reports and KPIs",
+        "body": "64 ready-made reports in one click.",
+        "points": [
+          "Finance, livestock, crops and stock reports",
+          "Export to Excel, CSV and PDF",
+          "A KPI board for the owner",
+          "A separate investor report"
+        ]
+      },
+      {
+        "key": "ai",
+        "title": "AI assistant",
+        "body": "Ask about your farm in plain words.",
+        "points": [
+          "Answers questions with your numbers",
+          "Understands voice messages on Telegram",
+          "Spots problems and warns you",
+          "Saves a record only after you confirm it"
+        ]
+      }
+    ]
+  },
+  "showcase": {
+    "label": "Product",
+    "titleMuted": "Nothing complicated.",
+    "title": "Everything in plain sight",
+    "lead": "These pictures come from the real product.",
+    "items": [
+      {
+        "key": "dashboard",
+        "title": "The whole farm at a glance",
+        "body": "Cash, expenses, head count and feed reserve on one screen. If something is wrong, the system warns you.",
+        "points": [
+          "Warnings come first",
+          "Every figure opens the detailed report",
+          "The view fits your role"
+        ],
+        "alt": "Dashboard with status, key figures and AI analysis"
+      },
+      {
+        "key": "fields",
+        "title": "Fields on a real map",
+        "body": "Draw a field on satellite imagery and its area is measured for you. Crop, soil and irrigation source sit beside each field.",
+        "points": [
+          "Draw and edit on the map",
+          "Colours by crop and land use",
+          "A card for every field"
+        ],
+        "alt": "Field list with field outlines and a satellite view"
+      },
+      {
+        "key": "tasks",
+        "title": "Clear about who does what",
+        "body": "The board shows who is working on what and what is running late. Staff mark work done from a phone.",
+        "points": [
+          "Due date and priority",
+          "Proof with a photo",
+          "Recurring tasks"
+        ],
+        "alt": "Task board with open, in progress and done columns"
+      },
+      {
+        "key": "phone",
+        "title": "Easy in the field, even with gloves",
+        "body": "A simple screen with big buttons for herders and staff. No internet? The record stays on the phone and sends itself when the connection returns.",
+        "points": [
+          "A daily log in a minute",
+          "Illness, deaths and births",
+          "Works without internet"
+        ],
+        "alt": "The Today screen on a phone with big buttons"
+      }
+    ]
+  },
+  "roles": {
+    "label": "Who it is for",
+    "titleMuted": "Everyone sees their own work.",
+    "title": "And nothing else",
+    "lead": "Each person gets a screen made for their role. A herder never sees finance, and an investor sees only the overall result.",
+    "items": [
+      {
+        "key": "owner",
+        "title": "Farmer and director",
+        "body": "The whole farm, profit, debts and warnings."
+      },
+      {
+        "key": "agronomist",
+        "title": "Agronomist",
+        "body": "Fields, crop plans, operations and harvest."
+      },
+      {
+        "key": "zootechnician",
+        "title": "Livestock manager",
+        "body": "Herds, breeding, rations and weight."
+      },
+      {
+        "key": "veterinarian",
+        "title": "Veterinarian",
+        "body": "Vaccination, treatment and medicine use."
+      },
+      {
+        "key": "storekeeper",
+        "title": "Storekeeper",
+        "body": "Receipts, issues, balances and stock counts."
+      },
+      {
+        "key": "accountant",
+        "title": "Accountant",
+        "body": "Transactions, debts, budget and reports."
+      },
+      {
+        "key": "shepherd",
+        "title": "Herder",
+        "body": "Daily log and quick actions, with no prices."
+      },
+      {
+        "key": "mechanic",
+        "title": "Mechanic",
+        "body": "Machinery status, service and fuel."
+      }
+    ]
+  },
+  "trust": {
+    "label": "Trust",
+    "titleMuted": "Your data",
+    "title": "belongs to you alone",
+    "lead": "Farm data is a business secret, so security is built into the foundation of the product.",
+    "items": [
+      {
+        "key": "isolation",
+        "title": "Every farm is separate",
+        "body": "Farm data is separated at the database level. No other customer can see your numbers."
+      },
+      {
+        "key": "money",
+        "title": "Finance stays closed",
+        "body": "Only permitted staff see prices and costs, and the server enforces it."
+      },
+      {
+        "key": "approval",
+        "title": "Two-person approval",
+        "body": "A large payment does not reach the books until a second person confirms it."
+      },
+      {
+        "key": "audit",
+        "title": "Every change is recorded",
+        "body": "Who changed what, and when, is kept on record."
+      },
+      {
+        "key": "twofactor",
+        "title": "Two-step sign-in",
+        "body": "Protect your account with a password and a confirmation code."
+      },
+      {
+        "key": "ai",
+        "title": "AI never writes on its own",
+        "body": "The assistant only proposes. A record is saved after you confirm it."
+      }
+    ]
+  },
+  "how": {
+    "label": "Getting started",
+    "titleMuted": "Up and running",
+    "title": "in four steps",
+    "lead": "Your records in notebooks and Excel are not lost. They move into the system.",
+    "items": [
+      {
+        "title": "Send a request",
+        "body": "Fill in the form or call us, and we will get in touch."
+      },
+      {
+        "title": "See a demo",
+        "body": "We show the product using your farm as the example and choose the modules you need."
+      },
+      {
+        "title": "Move your data",
+        "body": "Upload fields, animals, stock, staff and machinery from Excel."
+      },
+      {
+        "title": "Start working",
+        "body": "Each person signs in with their own role and runs their work here."
+      }
+    ]
+  },
+  "pilot": {
+    "label": "On a real farm",
+    "title": "Built for a real farm",
+    "lead": "The platform is being developed around the daily work of the Yuksalish Agro farm in Qorovulbozor district, Bukhara region.",
+    "facts": [
+      {
+        "value": "210 ha",
+        "label": "total land"
+      },
+      {
+        "value": "70 ha",
+        "label": "crop area"
+      },
+      {
+        "value": "500 head",
+        "label": "Hisori breeding ewes"
+      },
+      {
+        "value": "64",
+        "label": "ready-made reports"
+      }
+    ]
+  },
+  "cta": {
+    "title": "Ready to run your farm by the numbers?",
+    "lead": "Send a request and we will show you the product using your farm as the example.",
+    "button": "Ask for a demo"
+  },
+  "faq": {
+    "label": "FAQ",
+    "titleMuted": "Common",
+    "title": "questions",
+    "items": [
+      {
+        "q": "Which farms is it for?",
+        "a": "Livestock, crop and mixed farms: cattle, sheep, goats, horses and more. You can run several farms from one account."
+      },
+      {
+        "q": "Does it work without internet?",
+        "a": "Yes. Daily logs, illness, deaths, weights and birth records stay on the phone and send themselves when the connection returns."
+      },
+      {
+        "q": "Do I need to install an app?",
+        "a": "No. It opens in a browser, and you can add it to your phone's home screen like an app. It works on a computer too."
+      },
+      {
+        "q": "How much does it cost?",
+        "a": "The price depends on the size of your farm and the modules you need. Send a request and we will give you an offer."
+      },
+      {
+        "q": "What happens to my Excel files?",
+        "a": "You can upload fields, animals, feed stock, staff, machinery and counterparties using ready-made templates."
+      },
+      {
+        "q": "Is my data safe?",
+        "a": "Each farm's data is kept separately, access is limited by role, every change is recorded, and backups are taken."
+      },
+      {
+        "q": "Will staff see the money?",
+        "a": "No. Herders and other staff do not see prices or costs. The server enforces this, not just the screen."
+      },
+      {
+        "q": "Which languages does it support?",
+        "a": "Uzbek (Latin and Cyrillic), Russian and English. Each person chooses their own language."
+      },
+      {
+        "q": "Can the AI assistant change my data?",
+        "a": "No. It answers questions and prepares records, but nothing is saved until you confirm it."
+      }
+    ]
+  },
+  "contact": {
+    "label": "Contact",
+    "titleMuted": "Let's talk",
+    "title": "about your farm",
+    "lead": "Leave your details and we will get in touch and show you the product.",
+    "phoneLabel": "Call us",
+    "telegramLabel": "Write on Telegram",
+    "points": [
+      "We show the product using your farm as the example",
+      "We choose the modules you need",
+      "We give you a clear price"
+    ]
+  },
+  "form": {
+    "title": "Ask for a demo",
+    "name": "Your name",
+    "namePlaceholder": "First and last name",
+    "phone": "Phone number",
+    "phonePlaceholder": "+998 90 123 45 67",
+    "farmType": "Type of farm",
+    "farmTypePlaceholder": "Choose",
+    "size": "Farm size",
+    "sizePlaceholder": "For example: 50 ha, 300 head",
+    "region": "Region",
+    "regionPlaceholder": "Region or district",
+    "message": "Message",
+    "messagePlaceholder": "What would you like to know?",
+    "consent": "I agree that my details may be used to contact me",
+    "submit": "Send request",
+    "sending": "Sending...",
+    "successTitle": "Thank you! We have your request",
+    "successBody": "We will be in touch soon.",
+    "again": "Send another request",
+    "errorName": "Enter your name",
+    "errorPhone": "Enter a valid phone number",
+    "errorConsent": "We need your consent to continue",
+    "errorGeneric": "It could not be sent. Please try again or call us.",
+    "errorRate": "Too many attempts. Please try again a little later.",
+    "optional": "optional",
+    "types": {
+      "livestock": "Livestock",
+      "crops": "Crops",
+      "mixed": "Mixed",
+      "other": "Other"
+    }
+  },
+  "footer": {
+    "tagline": "The management platform for farmers",
+    "rights": "All rights reserved."
+  }
+}

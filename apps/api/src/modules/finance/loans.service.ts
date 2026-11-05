@@ -45,8 +45,9 @@ export function addMonths(isoDateValue: string, months: number): string {
   return date.toISOString().slice(0, 10);
 }
 
-async function getLoan(id: string) {
-  const [row] = await tx().select().from(l).where(and(eq(l.id, id), eq(l.farmId, ctx().farmId)));
+async function getLoan(id: string, opts: { lock?: boolean } = {}) {
+  const query = tx().select().from(l).where(and(eq(l.id, id), eq(l.farmId, ctx().farmId)));
+  const [row] = await (opts.lock ? query.for('update') : query);
   if (!row) throw notFound('Loan');
   return row;
 }
@@ -169,7 +170,7 @@ export async function update(id: string, input: z.infer<typeof loanPatch>) {
 
 /** A loan can be removed only while nothing has really happened on it. */
 export async function remove(id: string) {
-  await getLoan(id);
+  await getLoan(id, { lock: true });
   const [paid] = await tx()
     .select({ id: i.id })
     .from(i)
@@ -197,7 +198,8 @@ export async function remove(id: string) {
  */
 export async function payInstalment(loanId: string, instalmentId: string, input: z.infer<typeof payInput>) {
   const c = ctx();
-  const loan = await getLoan(loanId);
+  // Locked, so a loan cannot be deleted while money goes out against it.
+  const loan = await getLoan(loanId, { lock: true });
   if (!loan.counterpartyId) throw badRequest('COUNTERPARTY_REQUIRED', 'This loan has no lender');
 
   const [instalment] = await tx()

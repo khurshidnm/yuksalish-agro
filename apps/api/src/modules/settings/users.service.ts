@@ -12,6 +12,8 @@ import { recordEvent } from '../../core/journal';
 import { hidePii } from '../../core/privacy';
 import { listQuery, paged, searchAny, sortBy, type ListQuery } from '../../core/query';
 import { normalizePhone, revokeAllSessions } from '../auth/auth.service';
+import { PASSWORD_NOTICE } from '../notifications/notifications.service';
+import { notifyUser } from '../notifications/notify.service';
 
 const { memberships, roles, users } = schema;
 
@@ -264,6 +266,7 @@ export async function resetPassword(membershipId: string) {
   await tx().update(users).set({ passwordHash }).where(eq(users.id, member.userId));
   await recordEvent({ type: 'user.password_reset', severity: 'attention', entityType: 'membership', entityId: membershipId });
   await revokeAllSessions(member.userId);
+  await notifyUser(member.userId, PASSWORD_NOTICE);
   return { oneTimePassword };
 }
 

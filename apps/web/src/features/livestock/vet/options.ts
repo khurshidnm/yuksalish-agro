@@ -58,8 +58,3 @@ export async function drugOptions(search: string): Promise<ComboboxOption[]> {
   );
   return [...drugs.data, ...vaccines.data].map(toItem);
 }
-
-/** Pairs a client key with one submit, so a double tap or a retry on bad signal records once. */
-export function newRequestKey(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}

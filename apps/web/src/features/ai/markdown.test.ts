@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { parseSse } from './chat-stream';
-import { parseBlocks, parseInline } from './markdown';
+import { parseBlocks, parseInline, plainText } from './markdown';
+
+describe('plainText', () => {
+  it('flattens headings, lists and bold into one line', () => {
+    expect(plainText('## Nima yaxshi\n- **Bir** narsa\n- ikki\n\nOxiri\nyana')).toBe('Nima yaxshi · Bir narsa · ikki · Oxiri yana');
+  });
+
+  it('gives nothing for an empty text', () => {
+    expect(plainText('\n\n')).toBe('');
+  });
+});
 
 describe('parseBlocks', () => {
   it('reads paragraphs, headings and lists', () => {

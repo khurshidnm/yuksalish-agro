@@ -26,7 +26,8 @@
     "required": "Fill in this field", "invalid": "Invalid value", "format": "Invalid format",
     "min": "Must be at least {{min}}", "max": "Must be at most {{max}}",
     "greaterThan": "Must be greater than {{min}}",
-    "minLength": "Enter at least {{min}} characters", "maxLength": "Enter at most {{max}} characters"
+    "minLength": "Enter at least {{min}} characters", "maxLength": "Enter at most {{max}} characters",
+    "unreadableNumber": "This number can't be read. Write it like 1500000 or 1 500 000."
   },
   "errors": {
     "title": "Could not load the data", "generic": "Something went wrong. Try again.",
@@ -63,7 +64,9 @@
     "NOT_PENDING": "This transaction isn't waiting for approval.",
     "SAME_MAKER_CHECKER": "The person who entered a transaction can't approve it.",
     "FX_RATE_REQUIRED": "No exchange rate has been entered for this date.",
-    "INVALID_PAYMENT_METHOD": "Invalid payment method."
+    "INVALID_PAYMENT_METHOD": "Invalid payment method.",
+    "IDEMPOTENCY_KEY_REUSED": "This request key was already used for something else.",
+    "SAVED_EARLIER": "An earlier press already reached the books with other figures, and this one was not saved. Check the list first. To enter it as well, press Save again."
   },
   "pages": {
     "notFoundTitle": "Page not found", "notFoundBody": "This page doesn't exist or has moved.",
@@ -78,7 +81,7 @@
   "language": { "label": "Language" },
   "toast": { "saved": "Saved", "created": "Created", "updated": "Updated", "deleted": "Deleted" },
   "chart": { "showTable": "Show table", "showChart": "Show chart", "noData": "No data to chart", "period": "Period" },
-  "number": {"thousand": "{{value}}K", "million": "{{value}}M", "billion": "{{value}}B", "trillion": "{{value}}T"},
+  "number": {"thousand": "{{value}}K", "million": "{{value}}M", "billion": "{{value}}B", "trillion": "{{value}}T", "readAs": "Read as {{value}}", "readAsNot": "Read as {{value}}, not {{other}}"},
   "date": {
     "months": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
     "monthsOf": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],

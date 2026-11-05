@@ -682,6 +682,49 @@ describe('stock counts', () => {
     expect((await o.get(`/inventory/counts/${id}`)).status).toBe(404);
   });
 
+  it('a deleted draft never gives its number to the next count', async () => {
+    const f2 = await createFixture();
+    const o = await f2.as('owner');
+    const store = await warehouse(o, 'Bosh');
+    const year = TODAY.slice(0, 4);
+    const one = (await o.post('/inventory/counts', { warehouseId: store, date: TODAY })).data;
+    expect(one.docNo).toBe(`IA-${year}-0001`);
+    expect((await o.delete(`/inventory/counts/${one.id}`)).status).toBe(200);
+    const two = (await o.post('/inventory/counts', { warehouseId: store, date: TODAY })).data;
+    expect(two.docNo).toBe(`IA-${year}-0002`);
+
+    expect((await o.delete(`/inventory/counts/${two.id}`)).status).toBe(200);
+    expect((await o.post('/inventory/counts', { warehouseId: store, date: TODAY })).data.docNo).toBe(`IA-${year}-0003`);
+  });
+
+  it('a deleted draft leaves one journal event, and an empty count deleted moves no stock', async () => {
+    const f2 = await createFixture();
+    const o = await f2.as('owner');
+    const store = await warehouse(o, 'Bosh');
+    const id = (await o.post('/inventory/counts', { warehouseId: store, date: TODAY })).data.id;
+    const { docNo } = (await o.get(`/inventory/counts/${id}`)).data;
+    await o.delete(`/inventory/counts/${id}`);
+    const written = await f2.run(() => tx().select().from(schema.events).where(eq(schema.events.entityId, id)));
+    expect(written).toHaveLength(1);
+    expect(written[0]).toMatchObject({ type: 'stock.document_reversed', entityType: 'stock_count' });
+    expect(written[0].data).toMatchObject({ docNo });
+  });
+
+  it('the numbering holds across kinds of document, and per farm', async () => {
+    const f2 = await createFixture();
+    const f3 = await createFixture();
+    const o = await f2.as('owner');
+    const stranger = await f3.as('owner');
+    const store = await warehouse(o, 'Bosh');
+    const theirs = await warehouse(stranger, 'Bosh');
+    const year = TODAY.slice(0, 4);
+    const count = (await o.post('/inventory/counts', { warehouseId: store, date: TODAY })).data;
+    await o.delete(`/inventory/counts/${count.id}`);
+    // The sequence is shared per farm, and a deleted count keeps its place in it.
+    expect((await stranger.post('/inventory/counts', { warehouseId: theirs, date: TODAY })).data.docNo).toBe(`IA-${year}-0001`);
+    expect((await o.post('/inventory/counts', { warehouseId: store, date: TODAY })).data.docNo).toBe(`IA-${year}-0002`);
+  });
+
   it('entering a count needs inventory.create, approving needs inventory.update', async () => {
     const i = await stocked('Perm', 10);
     const zootechnician = await f.as('zootechnician');

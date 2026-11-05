@@ -262,6 +262,8 @@
     "ALREADY_APPROVED": "Bu hisob-kitob allaqachon tasdiqlangan",
     "ALREADY_PAID": "Bu ish haqi allaqachon to'langan",
     "PAYROLL_EMPTY": "Bu hisob-kitobda xodimlar yo'q",
+    "PAYROLL_ADVANCES_WAITING": "Shu oy uchun avans hali tasdiqlanishini kutmoqda. Avval uni tasdiqlang yoki rad eting",
+    "PAYROLL_ADVANCES_CHANGED": "Ish haqi hisoblangandan keyin avans berilgan. Avval qayta hisoblang",
     "SAME_MAKER_CHECKER": "Tayyorlagan xodim o'zi tasdiqlay olmaydi"
   }
 }

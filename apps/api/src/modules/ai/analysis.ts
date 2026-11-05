@@ -1,3 +1,4 @@
+import { safeError } from '../../core/errors';
 import { eq } from 'drizzle-orm';
 import type { RoleKey } from '@yap/shared';
 import { ctx, tx } from '../../core/context';
@@ -68,7 +69,7 @@ export async function runStatistics(): Promise<AnalysisReport> {
   }
 
   for (const { key, error } of run.failed) {
-    console.error(`[ai] analysis ${key} failed`, error);
+    console.error(`[ai] analysis ${key} failed`, safeError(error));
     await recordEvent({ type: 'ai.analysis_failed', severity: 'attention', source: 'ai', data: { analysis: key } });
   }
 

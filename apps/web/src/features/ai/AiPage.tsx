@@ -1,11 +1,14 @@
 import { useTranslation } from 'react-i18next';
 import { ErrorCard, PageHeader, UrlTabs } from '@/components';
-import { Alert, Skeleton } from '@/components/ui';
+import { Alert, Badge, Skeleton } from '@/components/ui';
 import { usePermission } from '@/lib/auth';
 import { useDetail } from '@/lib/query';
 import { AssistantTab } from './AssistantTab';
 import { DocumentsTab } from './DocumentsTab';
 import { InsightsTab } from './InsightsTab';
+import { usePendingProposals } from './pending';
+import { PendingPanel } from './PendingPanel';
+import { PhrasesPanel } from './PhrasesPanel';
 import type { AiStatus } from './types';
 
 export default function AiPage() {
@@ -13,6 +16,7 @@ export default function AiPage() {
   const canCreate = usePermission('ai.create');
   const { data: status, error, isLoading, refetch } = useDetail<AiStatus>('/ai/status');
   const configured = status?.assistant.configured ?? false;
+  const pending = usePendingProposals().data?.length ?? 0;
 
   return (
     <div className="flex flex-col gap-4">
@@ -32,6 +36,16 @@ export default function AiPage() {
           <UrlTabs
             tabs={[
               { value: 'assistant', label: t('page.tabs.assistant'), content: <AssistantTab configured={configured} /> },
+              {
+                value: 'pending',
+                label: (
+                  <span className="flex items-center gap-1.5">
+                    {t('records.pending.tab')}
+                    {pending > 0 && <Badge variant="warning">{pending}</Badge>}
+                  </span>
+                ),
+                content: <PendingPanel />,
+              },
               { value: 'insights', label: t('page.tabs.insights'), content: <InsightsTab /> },
               {
                 value: 'documents',
@@ -39,6 +53,7 @@ export default function AiPage() {
                 hidden: !configured || !canCreate,
                 content: <DocumentsTab />,
               },
+              { value: 'phrases', label: t('records.phrases.tab'), content: <PhrasesPanel /> },
             ]}
           />
         </>

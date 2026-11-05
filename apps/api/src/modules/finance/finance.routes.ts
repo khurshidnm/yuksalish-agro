@@ -6,7 +6,6 @@ import { schema } from '../../db/client';
 import { ctx, tx } from '../../core/context';
 import { badRequest, notFound } from '../../core/errors';
 import { routes } from '../../core/http';
-import { approveTransaction, rejectTransaction } from '../../core/ledger';
 import { clientId, idParam, isoDate, isoMonth, searchAny } from '../../core/query';
 import * as accounts from './accounts.service';
 import * as budget from './budget.service';
@@ -233,7 +232,7 @@ export function registerFinance(app: FastifyInstance) {
     access: 'finance.update',
     summary: 'Change a transaction that is not approved yet',
     params: idParam,
-    body: transactions.transactionInput.partial(),
+    body: transactions.transactionPatch,
     handler: (req) => transactions.update(req.params.id, req.body),
   });
 
@@ -247,14 +246,15 @@ export function registerFinance(app: FastifyInstance) {
   r.post('/transactions/:id/approve', {
     access: 'finance.approve',
     params: idParam,
-    handler: (req) => approveTransaction(req.params.id),
+    body: transactions.asRead.optional(),
+    handler: (req) => transactions.approve(req.params.id, req.body?.baseUpdatedAt),
   });
 
   r.post('/transactions/:id/reject', {
     access: 'finance.approve',
     params: idParam,
-    body: reason,
-    handler: (req) => rejectTransaction(req.params.id, req.body.reason),
+    body: reason.extend(transactions.asRead.shape),
+    handler: (req) => transactions.reject(req.params.id, req.body.reason, req.body.baseUpdatedAt),
   });
 
   r.post('/transactions/:id/void', {

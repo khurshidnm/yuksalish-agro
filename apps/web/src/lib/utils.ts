@@ -13,6 +13,14 @@ export function storageGet(key: string): string | null {
   }
 }
 
+export function storageRemove(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // Nothing to clean up if storage is blocked.
+  }
+}
+
 export function storageSet(key: string, value: string): void {
   try {
     localStorage.setItem(key, value);

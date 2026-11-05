@@ -100,7 +100,7 @@ export function AnimalForm({ open, onOpenChange, animal, herdId }: AnimalFormPro
       // Money the user may not see stays out of the request, rather than being sent back as empty.
       const body = canSeeMoney ? common : { ...common, purchasePrice: undefined, sellerId: undefined };
       if (animal) return api.patch(`${PATH}/${animal.id}`, body);
-      return api.post(PATH, {
+      return api.postOnce(PATH, {
         ...body,
         speciesId,
         origin,
@@ -160,7 +160,7 @@ export function AnimalForm({ open, onOpenChange, animal, herdId }: AnimalFormPro
             {origin === 'purchased' && (
               <FormGrid>
                 <DateField form={form} name="purchaseDate" label={t('fields.purchaseDate')} required />
-                {canSeeMoney && <NumberField form={form} name="purchasePrice" label={t('fields.purchasePrice')} suffix={currencyLabel()} />}
+                {canSeeMoney && <NumberField money form={form} name="purchasePrice" label={t('fields.purchasePrice')} suffix={currencyLabel()} />}
                 {canSeeMoney && (
                   <ComboboxField
                     form={form}

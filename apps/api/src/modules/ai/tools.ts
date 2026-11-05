@@ -23,10 +23,19 @@ import { attendanceToday } from '../hr/summary';
 import { feedBalance } from '../inventory/summary';
 import { herdMovement, herdSummary, reproductionKpis } from '../livestock/summary';
 import * as facts from './facts';
+import type { EventInput } from '../../core/journal';
 import type { LlmTool } from './provider';
+import { RECORD_TOOLS } from './records/tools';
+import type { DraftEnv, DraftRecord, ProposalView, Question } from './records/types';
 
 export interface ToolOutcome {
   data: unknown;
+  /** Cards and questions to show below the answer. */
+  attachments?: ToolAttachment[];
+  /** What a draft was about. */
+  record?: DraftRecord;
+  /** For the journal, which the AI role cannot write: the person's own transaction records these. */
+  events?: EventInput[];
   /** Tables the answer rests on, shown to the user as its source. */
   tables: string[];
   from?: string;
@@ -36,15 +45,30 @@ export interface ToolOutcome {
   enoughData?: boolean;
 }
 
+export type ToolAttachment =
+  | { type: 'proposal'; proposal: ProposalView }
+  | { type: 'question'; question: Question };
+
+/** What a tool may know about the conversation it runs in. */
+export interface ToolEnv {
+  draft: DraftEnv;
+}
+
 export interface AiTool {
   name: string;
   description: string;
   input: ZodType;
   /** The caller needs at least one of these. Empty means any AI user. */
   anyOf: Permission[];
+  /** Permissions it needs together, on top of anyOf. */
+  allOf?: Permission[];
   /** Returns money figures, so it also needs finance.view. */
   money: boolean;
-  run(input: never): Promise<ToolOutcome>;
+  /** Open to everyone, and adds money for those allowed to see it. */
+  moneyIfAllowed?: boolean;
+  /** Writes to the ai_* tables, so it runs in a writable AI transaction. */
+  writes?: boolean;
+  run(input: never, env?: ToolEnv): Promise<ToolOutcome>;
 }
 
 function tool<S extends ZodType>(def: {
@@ -376,12 +400,18 @@ export const TOOLS: AiTool[] = [
 
 /** The tools this caller may use. This list is both what the model sees and what can run. */
 export function toolsFor(permissions: ReadonlySet<string>): AiTool[] {
-  return TOOLS.filter(
+  return [...TOOLS, ...RECORD_TOOLS].filter(
     (t) =>
       (t.anyOf.length === 0 || t.anyOf.some((p) => permissions.has(p))) &&
+      (t.allOf ?? []).every((p) => permissions.has(p)) &&
       (!t.money || permissions.has('finance.view')),
   );
 }
+
+const MONEY_TOOLS = new Set([...TOOLS, ...RECORD_TOOLS].filter((t) => t.money).map((t) => t.name));
+
+/** Only someone allowed to see money could have run this. */
+export const isMoneyTool = (name: string) => MONEY_TOOLS.has(name);
 
 function schemaOf(input: ZodType): Record<string, unknown> {
   const { $schema: _dropped, ...schema } = z.toJSONSchema(input, { io: 'input' }) as Record<string, unknown>;

@@ -5,6 +5,8 @@ import { ctx, tx } from './context';
 
 const { costCenters } = schema;
 
+const onThisFarm = (id: string) => and(eq(costCenters.id, id), eq(costCenters.farmId, ctx().farmId));
+
 /** The cost center of a field, herd, animal, asset or employee, created on first use. */
 export async function ensureCostCenter(type: CostCenterType, refId: string, name: string): Promise<string> {
   const c = ctx();
@@ -40,10 +42,15 @@ export async function generalCostCenterId(): Promise<string> {
 
 /** Keep a cost center's label in step when its field, herd or asset is renamed. */
 export async function renameCostCenter(id: string, name: string): Promise<void> {
-  await tx().update(costCenters).set({ name }).where(eq(costCenters.id, id));
+  await tx().update(costCenters).set({ name }).where(onThisFarm(id));
 }
 
 /** Stop offering an archived object's cost center. Its history stays. */
 export async function deactivateCostCenter(id: string): Promise<void> {
-  await tx().update(costCenters).set({ active: false }).where(eq(costCenters.id, id));
+  await tx().update(costCenters).set({ active: false }).where(onThisFarm(id));
+}
+
+/** Offer it again when an archived object comes back into use. */
+export async function activateCostCenter(id: string): Promise<void> {
+  await tx().update(costCenters).set({ active: true }).where(onThisFarm(id));
 }

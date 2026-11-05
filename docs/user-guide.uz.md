@@ -84,7 +84,7 @@ telefonda turadi.
 - **Hayvonlar:** ro'yxat, qidiruv, hayvon kartochkasi.
 - **Podalar:** poda kartochkasi, ko'chirish, vazn o'lchash, yaylov, junqirqish.
 - **Bo'g'ozlik va qo'zilash:** bo'g'oz sovliqlar, qo'zilash kalendari, ko'rsatkichlar, nasl daraxti.
-- **Chiqib ketish:** so'yish, nobud bo'lish va yo'qolish. Hayvon sotuvi **Sotuv** bo'limida rasmiylashtiriladi.
+- **Hayvon chiqimi:** so'yish, nobud bo'lish va yo'qolish. Hayvon sotuvi **Sotuv** bo'limida rasmiylashtiriladi.
 - **Ratsionlar**, **Ozuqa balansi**, **Qishki reja:** ozuqa necha kunga yetishini va qish uchun qancha kerakligini ko'ring.
 
 **Qo'zilash:** **Qo'zilash** tugmasini bosing, sovliq birkasini kiriting, qo'zilar sonini tanlang, har biri uchun

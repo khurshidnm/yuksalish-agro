@@ -26,7 +26,7 @@ function RentalActButton({ asset }: { asset: AssetCard }) {
   const [open, setOpen] = useState(false);
   const [result, setResult] = useState<RentalAct | null>(null);
   const create = useApiMutation<z.output<typeof actSchema>, RentalAct>({
-    mutationFn: (values) => api.post<RentalAct>(`/assets/${asset.id}/rental-act`, values),
+    mutationFn: (values) => api.postOnce<RentalAct>(`/assets/${asset.id}/rental-act`, values),
     invalidate: [`/assets/${asset.id}`, '/finance'],
     silentError: true,
     onSuccess: setResult,

@@ -42,7 +42,7 @@ function RunsTab() {
   const [creating, setCreating] = useState(false);
 
   const create = useApiMutation<z.output<typeof runSchema>, PayrollRun>({
-    mutationFn: (values) => api.post<PayrollRun>(PATH, values),
+    mutationFn: (values) => api.postOnce<PayrollRun>(PATH, values),
     invalidate: [PATH],
     silentError: true,
     onSuccess: (run) => setRunId(run.id),
@@ -133,7 +133,7 @@ function AdvancesTab() {
   const accounts = useDetail<{ id: string; name: string }[]>(creating ? '/finance/accounts/lookup' : null);
 
   const save = useApiMutation<z.output<typeof advanceSchema>>({
-    mutationFn: (values) => api.post('/hr/advances', values),
+    mutationFn: (values) => api.postOnce('/hr/advances', values),
     invalidate: ['/hr/advances'],
     silentError: true,
   });
@@ -197,7 +197,7 @@ function AdvancesTab() {
             />
             <FormGrid>
               <DateField form={form} name="date" label={t('advances.date')} required />
-              <NumberField form={form} name="amount" label={t('advances.amount')} suffix={currencyLabel()} required maxDigits={2} />
+              <NumberField money form={form} name="amount" label={t('advances.amount')} suffix={currencyLabel()} required maxDigits={2} />
             </FormGrid>
             <SelectField
               form={form}
@@ -339,7 +339,7 @@ function KpiRulesTab() {
               <TextField form={form} name="position" label={t('employees.fields.position')} placeholder={t('kpi.everyone')} />
               <NumberField form={form} name="threshold" label={t('kpi.fields.threshold')} required maxDigits={3} />
               <SelectField form={form} name="rewardType" label={t('kpi.fields.rewardType')} required options={rewardOptions} />
-              <NumberField form={form} name="amount" label={t('kpi.fields.amount')} suffix={currencyLabel()} required maxDigits={2} />
+              <NumberField money form={form} name="amount" label={t('kpi.fields.amount')} suffix={currencyLabel()} required maxDigits={2} />
             </FormGrid>
             <SwitchField form={form} name="active" label={t('kpi.fields.active')} />
           </>

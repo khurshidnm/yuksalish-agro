@@ -6,7 +6,18 @@ import { schema } from '../../db/client';
 import { ctx, hasPermission, tx } from '../../core/context';
 import { badRequest, conflict, forbidden, notFound } from '../../core/errors';
 import { recordEvent } from '../../core/journal';
-import { deleteUnapprovedTransactions, postTransaction, type PostTransactionInput, voidTransactions } from '../../core/ledger';
+import {
+  approveTransaction,
+  assertCostCenterOpen,
+  cancelStockPurchase,
+  deleteUnapprovedTransactions,
+  postTransaction,
+  rejectTransaction,
+  type PostTransactionInput,
+  type RecordSource,
+  SOURCES_RELEASED_BY_CANCEL,
+  voidTransactions,
+} from '../../core/ledger';
 import { hidePii } from '../../core/privacy';
 import { clientId, isoDate, listQuery, searchAny, sortBy, sumOf } from '../../core/query';
 
@@ -38,6 +49,11 @@ export const transactionInput = z.object({
   fileId: z.uuid().nullish(),
 });
 export type TransactionInput = z.infer<typeof transactionInput>;
+
+/** The entry's updatedAt as the screen read it: an edit or a decision stands only for that version. */
+export const asRead = z.object({ baseUpdatedAt: z.iso.datetime({ offset: true }).optional() });
+
+export const transactionPatch = transactionInput.partial().extend(asRead.shape);
 
 export const transactionListQuery = listQuery.extend({
   from: isoDate.optional(),
@@ -92,8 +108,10 @@ const journalColumns = {
   categoryGroup: cat.group,
   accountId: t.accountId,
   accountName: accounts.name,
+  accountType: accounts.type,
   toAccountId: t.toAccountId,
   toAccountName: toAccount.name,
+  toAccountType: toAccount.type,
   counterpartyId: t.counterpartyId,
   counterpartyName: counterparties.name,
   counterpartyTin: counterparties.tin,
@@ -106,6 +124,7 @@ const journalColumns = {
   approvedByName: approver.fullName,
   approvedAt: t.approvedAt,
   createdAt: t.createdAt,
+  updatedAt: t.updatedAt,
 };
 
 function journalQuery() {
@@ -178,10 +197,9 @@ export async function get(id: string) {
 
 async function assertBelongsToFarm(input: Partial<TransactionInput>) {
   const farm = ctx().farmId;
-  const checks: [string | null | undefined, typeof accounts | typeof costCenters | typeof counterparties, string][] = [
+  const checks: [string | null | undefined, typeof accounts | typeof counterparties, string][] = [
     [input.accountId, accounts, 'Account'],
     [input.toAccountId, accounts, 'Account'],
-    [input.costCenterId, costCenters, 'Cost center'],
     [input.counterpartyId, counterparties, 'Counterparty'],
   ];
   for (const [id, table, what] of checks) {
@@ -192,11 +210,11 @@ async function assertBelongsToFarm(input: Partial<TransactionInput>) {
       .where(and(eq(table.id, id), eq(table.farmId, farm)));
     if (!row) throw notFound(what);
   }
+  if (input.costCenterId) await assertCostCenterOpen(input.costCenterId);
 }
 
 async function validate(input: TransactionInput) {
   await assertBelongsToFarm(input);
-  const c = ctx();
 
   if (input.categoryId) {
     const [category] = await tx().select({ kind: cat.kind }).from(cat).where(eq(cat.id, input.categoryId));
@@ -209,38 +227,35 @@ async function validate(input: TransactionInput) {
   if (input.type === 'transfer' && input.paymentMethod === 'debt') {
     throw badRequest('INVALID_PAYMENT_METHOD', 'A transfer moves real money, it cannot be on credit');
   }
-
-  const currency = input.currency ?? c.currency;
-  const accountIds = [input.accountId, input.toAccountId].filter(Boolean) as string[];
-  const rows = [];
-  for (const id of accountIds) {
-    const [row] = await tx().select({ currency: accounts.currency }).from(accounts).where(eq(accounts.id, id));
-    rows.push(row);
-  }
-  // A foreign account only moves its own currency. A base account can settle anything at the base amount.
-  for (const row of rows) {
-    if (row.currency !== c.currency && row.currency !== currency) {
-      throw badRequest('CURRENCY_MISMATCH', 'This account holds a different currency');
-    }
-  }
-  if (input.type === 'transfer' && rows.length === 2 && rows[0].currency !== rows[1].currency) {
-    throw badRequest('CURRENCY_MISMATCH', 'A transfer needs two accounts in the same currency');
-  }
 }
 
-export async function create(input: TransactionInput) {
+/** `source` is for callers in this codebase. It is not in the input, so a client cannot set it. */
+export async function create(input: TransactionInput, source?: RecordSource) {
   await validate(input);
-  return postTransaction({ ...input, categoryId: input.type === 'transfer' ? null : input.categoryId });
+  return postTransaction({
+    ...input,
+    categoryId: input.type === 'transfer' ? null : input.categoryId,
+    sourceType: source?.type,
+    sourceId: source?.id,
+  });
 }
 
-/** An approved entry is history, and an entry from another module is owned by that module. */
+/** An entry from another module is owned by that module. The assistant only prepares entries, so those stay with finance. */
+function assertOwnedByFinance(row: typeof t.$inferSelect) {
+  if (row.sourceType && row.sourceType !== 'ai_proposal') {
+    throw conflict('TRANSACTION_HAS_SOURCE', 'This entry was created by another module; change it there');
+  }
+}
+
+/** Only an entry still waiting can change. An approved one is history, and so is one refused or voided. */
 function assertEditable(row: typeof t.$inferSelect) {
   if (row.status === 'approved') {
     throw conflict('TRANSACTION_APPROVED', 'An approved transaction cannot be changed; void it instead');
   }
-  if (row.sourceType) {
-    throw conflict('TRANSACTION_HAS_SOURCE', 'This entry was created by another module; change it there');
+  if (row.status === 'rejected') {
+    throw conflict('TRANSACTION_REJECTED', 'A rejected or voided transaction stays in the journal; enter a new one');
   }
+  assertOwnedByFinance(row);
 }
 
 async function lockRow(id: string) {
@@ -251,6 +266,23 @@ async function lockRow(id: string) {
     .for('update');
   if (!row) throw notFound('Transaction');
   return row;
+}
+
+/** The fresh figures go back with the refusal, so the screen can say what the entry reads now. */
+async function assertAsRead(row: typeof t.$inferSelect, baseUpdatedAt: string | undefined) {
+  if (!baseUpdatedAt || row.status !== 'pending' || new Date(baseUpdatedAt).getTime() === row.updatedAt.getTime()) return;
+  const fresh = hasPermission('finance.view') ? { amount: row.amount, currency: row.currency, transaction: await get(row.id) } : undefined;
+  throw conflict('TRANSACTION_CHANGED', 'This entry changed after it was read', fresh);
+}
+
+export async function approve(id: string, baseUpdatedAt?: string) {
+  await assertAsRead(await lockRow(id), baseUpdatedAt);
+  return approveTransaction(id);
+}
+
+export async function reject(id: string, reason: string, baseUpdatedAt?: string) {
+  await assertAsRead(await lockRow(id), baseUpdatedAt);
+  return rejectTransaction(id, reason);
 }
 
 function toPostInput(row: typeof t.$inferSelect): PostTransactionInput {
@@ -271,6 +303,8 @@ function toPostInput(row: typeof t.$inferSelect): PostTransactionInput {
     description: row.description,
     dueDate: row.dueDate,
     fileId: row.fileId,
+    sourceType: row.sourceType,
+    sourceId: row.sourceId,
   };
 }
 
@@ -278,14 +312,17 @@ function toPostInput(row: typeof t.$inferSelect): PostTransactionInput {
  * Editing replaces the row through the ledger, so validation, FX and approval rules stay in one
  * place. The editor becomes the maker: whoever typed the final numbers must not approve them.
  */
-export async function update(id: string, input: Partial<TransactionInput>) {
+export async function update(id: string, { baseUpdatedAt, ...input }: z.infer<typeof transactionPatch>) {
   const row = await lockRow(id);
   assertEditable(row);
   // A settlement is limited by the debt it pays, so changing it means entering it again.
   if (row.type === 'debt_payment' || row.type === 'debt_receipt') {
     throw conflict('SETTLEMENT_NOT_EDITABLE', 'Delete this settlement and enter it again');
   }
+  await assertAsRead(row, baseUpdatedAt);
   const merged = { ...toPostInput(row), ...input, id } as TransactionInput;
+  // A stored rate belongs to the stored currency.
+  if (merged.currency !== row.currency && input.fxRate === undefined) merged.fxRate = null;
   await validate(merged);
   await deleteUnapprovedTransactions([id]);
   return postTransaction(merged);
@@ -307,17 +344,22 @@ export async function remove(id: string) {
 /**
  * Cancel an approved entry made by mistake. It stays in the journal as rejected and stops counting
  * everywhere, because only approved entries count. Bound by the same two-person rule as approval.
+ * The money of a stock purchase goes together with its receipt, while the stock is untouched.
+ * Entries of other modules stay with them, unless their own screens send a person here to cancel the money.
  */
 export async function voidTransaction(id: string, reason: string) {
   const row = await lockRow(id);
   if (row.status !== 'approved') throw conflict('NOT_APPROVED', 'Only an approved transaction can be voided');
-  if (row.sourceType) {
-    throw conflict('TRANSACTION_HAS_SOURCE', 'This entry was created by another module; change it there');
-  }
+  const purchase = row.sourceType === 'stock_batch';
+  if (!purchase && !SOURCES_RELEASED_BY_CANCEL.includes(row.sourceType ?? '')) assertOwnedByFinance(row);
   const c = ctx();
   if (!hasPermission('finance.approve')) throw forbidden();
   if (c.settings.finance.makerChecker && row.createdBy === c.userId) {
     throw forbidden('The person who entered a transaction cannot void it', 'SAME_MAKER_CHECKER');
+  }
+  if (purchase) {
+    const cancelled = await cancelStockPurchase(row.sourceId!, reason);
+    return cancelled.find((entry) => entry.id === id)!;
   }
   const [voided] = await voidTransactions({ id }, reason);
   return voided;

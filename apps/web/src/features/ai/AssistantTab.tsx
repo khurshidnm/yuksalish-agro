@@ -1,18 +1,28 @@
-import { History, Loader2, MessageSquarePlus, SendHorizontal, Sparkles, Trash2 } from 'lucide-react';
-import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react';
+import { CircleHelp, History, MessageSquarePlus, Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EmptyState, ErrorCard, useConfirm, useUrlParam } from '@/components';
-import { Alert, Button, Sheet, SheetContent, SheetTitle, Skeleton, Textarea } from '@/components/ui';
+import { ErrorCard, useConfirm, useUrlParam } from '@/components';
+import {
+  Button,
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  Skeleton,
+} from '@/components/ui';
 import { api } from '@/lib/api';
-import { useApiMutation, useDetail, useList } from '@/lib/query';
+import { useApiMutation, useList } from '@/lib/query';
 import { cn } from '@/lib/utils';
-import { streamChat } from './chat-stream';
-import { type LiveTool, MessageBubble, ToolActivity } from './MessageBubble';
-import { aiErrorMessage } from './text';
-import type { ChatEvent, ChatMessage, ChatReply, Conversation, ConversationSummary } from './types';
-
-const SUGGESTIONS = ['feedSpending', 'lambingThisWeek', 'feedDays', 'attention'] as const;
-const MAX_LENGTH = 2000;
+import { ChatView } from './ChatView';
+import { useLastConversation } from './conversation-store';
+import { HelpPanel } from './HelpPanel';
+import type { ConversationSummary } from './types';
+import { useAssistantChat } from './useAssistantChat';
 
 function ConversationList({
   active,
@@ -68,113 +78,70 @@ function ConversationList({
   );
 }
 
-function applyEvent(tools: LiveTool[], event: ChatEvent): LiveTool[] {
-  if (event.type === 'tool_start') return [...tools, { name: event.name, status: 'running' }];
-  const index = tools.findLastIndex((tool) => tool.name === event.name && tool.status === 'running');
-  return tools.map((tool, i) => (i === index ? { name: tool.name, status: event.status } : tool));
-}
-
 export function AssistantTab({ configured }: { configured: boolean }) {
-  const { i18n, t } = useTranslation('ai');
-  const [conversationId, setConversationId] = useUrlParam('c');
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [draft, setDraft] = useState('');
-  const [live, setLive] = useState<LiveTool[]>([]);
+  const { t } = useTranslation('ai');
+  const [conversationId, setUrlConversation] = useUrlParam('c');
+  const last = useLastConversation();
   const [historyOpen, setHistoryOpen] = useState(false);
-  const bottom = useRef<HTMLDivElement>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
 
-  const conversation = useDetail<Conversation>(conversationId ? `/ai/conversations/${conversationId}` : null);
-
-  const send = useApiMutation<string, ChatReply>({
-    mutationFn: (message) =>
-      streamChat(
-        { conversationId: conversationId || undefined, message, language: i18n.language },
-        (event) => setLive((tools) => applyEvent(tools, event)),
-      ),
-    invalidate: ['/ai/conversations'],
-    silentError: true,
-    onSuccess: (reply) => {
-      setMessages((current) => [...current, reply.message]);
-      setConversationId(reply.conversationId);
-      setLive([]);
+  const setConversation = useCallback(
+    (id: string) => {
+      setUrlConversation(id);
+      last.write(id);
     },
-    onError: (_error, message) => {
-      // Give the question back, so a failed send loses nothing.
-      setMessages((current) => current.slice(0, -1));
-      setDraft(message);
-      setLive([]);
-    },
-  });
+    [setUrlConversation, last],
+  );
+  const chat = useAssistantChat({ conversationId, onConversation: setConversation });
 
-  // The server copy wins once loaded, except while an answer is on its way.
+  // Pick up the conversation in progress, including one started in the floating sheet.
   useEffect(() => {
-    if (send.isPending) return;
-    if (conversation.data) setMessages(conversation.data.messages);
-    else if (!conversationId) setMessages([]);
-  }, [conversation.data, conversationId, send.isPending]);
-
-  useEffect(() => {
-    bottom.current?.scrollIntoView({ block: 'end' });
-  }, [messages.length, live.length, send.isPending]);
-
-  const ask = (text: string) => {
-    const message = text.trim();
-    if (!message || send.isPending || !configured) return;
-    send.reset();
-    setDraft('');
-    setMessages((current) => [
-      ...current,
-      { id: `local-${Date.now()}`, role: 'user', createdAt: new Date().toISOString(), text: message },
-    ]);
-    send.mutate(message);
-  };
-
-  const onSubmit = (event: FormEvent) => {
-    event.preventDefault();
-    ask(draft);
-  };
-
-  const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
-      event.preventDefault();
-      ask(draft);
-    }
-  };
-
-  const startNew = () => {
-    setConversationId('');
-    setMessages([]);
-    send.reset();
-  };
+    if (conversationId) last.write(conversationId);
+    else if (last.read()) setUrlConversation(last.read());
+    // Only on arrival: "New conversation" must stay empty afterwards.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const open = (id: string) => {
-    setConversationId(id);
+    setConversation(id);
     setHistoryOpen(false);
   };
 
   const list = (
-    <ConversationList active={conversationId} onOpen={open} onDeleted={(id) => id === conversationId && startNew()} />
+    <ConversationList active={conversationId} onOpen={open} onDeleted={(id) => id === conversationId && chat.startNew()} />
+  );
+
+  const helpButton = (
+    <Button variant="outline" onClick={() => setHelpOpen(true)}>
+      <CircleHelp aria-hidden />
+      {t('records.help.open')}
+    </Button>
   );
 
   return (
     <div className="grid gap-4 lg:grid-cols-[17rem_minmax(0,1fr)]">
       <aside className="hidden flex-col gap-2 lg:flex">
-        <Button variant="outline" onClick={startNew}>
+        <Button variant="outline" onClick={chat.startNew}>
           <MessageSquarePlus aria-hidden />
           {t('chat.newChat')}
         </Button>
+        {helpButton}
         {list}
       </aside>
 
       <div className="flex min-w-0 flex-col gap-4">
         <div className="flex gap-2 lg:hidden">
-          <Button variant="outline" className="flex-1" onClick={startNew}>
+          {/* The words of all three do not fit a 360 px row in any language. */}
+          <Button variant="outline" className="min-w-0 flex-1" onClick={chat.startNew}>
             <MessageSquarePlus aria-hidden />
-            {t('chat.newChat')}
+            <span className="max-sm:sr-only">{t('chat.newChat')}</span>
           </Button>
-          <Button variant="outline" className="flex-1" onClick={() => setHistoryOpen(true)}>
+          <Button variant="outline" className="min-w-0 flex-1" onClick={() => setHistoryOpen(true)}>
             <History aria-hidden />
-            {t('chat.history')}
+            <span className="max-sm:sr-only">{t('chat.history')}</span>
+          </Button>
+          <Button variant="outline" size="icon" aria-label={t('records.help.open')} onClick={() => setHelpOpen(true)}>
+            <CircleHelp aria-hidden />
           </Button>
         </div>
         <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
@@ -183,68 +150,28 @@ export function AssistantTab({ configured }: { configured: boolean }) {
             <div className="max-h-[60dvh] overflow-y-auto px-4 pb-4">{list}</div>
           </SheetContent>
         </Sheet>
+        <Dialog open={helpOpen} onOpenChange={setHelpOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{t('records.help.title')}</DialogTitle>
+              <DialogDescription className="sr-only">{t('records.help.intro')}</DialogDescription>
+            </DialogHeader>
+            <DialogBody>
+              <HelpPanel
+                onPick={
+                  configured
+                    ? (text) => {
+                        chat.setDraft(text);
+                        setHelpOpen(false);
+                      }
+                    : undefined
+                }
+              />
+            </DialogBody>
+          </DialogContent>
+        </Dialog>
 
-        {conversation.error ? (
-          <ErrorCard error={conversation.error} onRetry={startNew} />
-        ) : conversation.isLoading ? (
-          <Skeleton className="h-40" />
-        ) : messages.length === 0 ? (
-          <EmptyState
-            icon={Sparkles}
-            title={t(configured ? 'chat.emptyTitle' : 'chat.unavailableTitle')}
-            description={t(configured ? 'chat.emptyDescription' : 'chat.unavailableDescription')}
-            action={
-              configured && (
-                <div className="flex max-w-xl flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-center">
-                  {SUGGESTIONS.map((key) => (
-                    <Button key={key} variant="outline" className="h-auto min-h-11 py-2 whitespace-normal" onClick={() => ask(t(`chat.suggestions.${key}`))}>
-                      {t(`chat.suggestions.${key}`)}
-                    </Button>
-                  ))}
-                </div>
-              )
-            }
-          />
-        ) : (
-          <div className="flex flex-col gap-3" aria-live="polite">
-            {messages.map((message) => (
-              <MessageBubble key={message.id} message={message} />
-            ))}
-            {send.isPending && (
-              <div className="flex flex-col gap-2 rounded-2xl rounded-bl-sm border border-border bg-card p-4">
-                <ToolActivity tools={live} />
-                <p className="flex items-center gap-2 text-muted-foreground">
-                  <Loader2 className="size-4 animate-spin" aria-hidden />
-                  {t('chat.thinking')}
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {send.error != null && <Alert tone="danger">{aiErrorMessage(t, send.error)}</Alert>}
-        <div ref={bottom} />
-
-        {configured && (
-        <form
-          onSubmit={onSubmit}
-          className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] flex items-end gap-2 rounded-xl border border-border bg-card p-2 shadow-pop lg:bottom-3"
-        >
-          <Textarea
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            onKeyDown={onKeyDown}
-            placeholder={t('chat.placeholder')}
-            aria-label={t('chat.placeholder')}
-            maxLength={MAX_LENGTH}
-            rows={1}
-            className="max-h-40 min-h-11 flex-1 resize-none border-0 shadow-none focus-visible:ring-0"
-          />
-          <Button type="submit" size="icon" aria-label={t('chat.send')} disabled={!draft.trim()} loading={send.isPending}>
-            <SendHorizontal aria-hidden />
-          </Button>
-        </form>
-        )}
+        <ChatView chat={chat} configured={configured} />
       </div>
     </div>
   );

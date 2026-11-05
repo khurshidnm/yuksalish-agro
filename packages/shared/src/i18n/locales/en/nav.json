@@ -9,7 +9,8 @@
     "people": "People",
     "machinery": "Machinery and cameras",
     "analytics": "Reports and analysis",
-    "admin": "Administration"
+    "admin": "Administration",
+    "platform": "Platform"
   },
   "item": {
     "dashboard": "Dashboard",
@@ -31,7 +32,7 @@
     "breeding": "Breeding and lambing",
     "health": "Veterinary",
     "dailyLogs": "Daily logs",
-    "exits": "Exits",
+    "exits": "Animal exits",
     "stock": "Stock",
     "items": "Items",
     "warehouses": "Warehouses",
@@ -62,7 +63,9 @@
     "users": "Users",
     "apiKeys": "API keys",
     "audit": "Audit log",
-    "platform": "Platform"
+    "platform": "Platform",
+    "leads": "Leads",
+    "platformUsers": "All users"
   },
   "shell": {
     "menu": "Menu",

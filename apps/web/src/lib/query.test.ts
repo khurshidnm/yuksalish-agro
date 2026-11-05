@@ -1,7 +1,8 @@
-import { afterAll, describe, expect, it, vi } from 'vitest';
+import { MutationObserver, onlineManager } from '@tanstack/react-query';
+import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from './api';
 import i18n from './i18n';
-import { errorMessage, pathKey } from './query';
+import { errorMessage, pathKey, queryClient } from './query';
 
 // sonner injects a stylesheet on import, and these tests have no real DOM.
 vi.mock('sonner', () => ({ toast: {} }));
@@ -35,6 +36,40 @@ describe('errorMessage', () => {
     expect(errorMessage(new ApiError(429, 'RATE_LIMITED', 'Too many'))).toBe('Too many attempts. Try again in a minute.');
     expect(errorMessage(new Error('boom'))).toBe('Something went wrong. Try again.');
     expect(errorMessage('nope')).toBe('Something went wrong. Try again.');
+  });
+});
+
+describe('a refusal that names the new figure', () => {
+  afterAll(() => {
+    void i18n.changeLanguage('uz');
+  });
+  const changed = new ApiError(409, 'TRANSACTION_CHANGED', 'This entry changed', { amount: 480_000_000, currency: 'UZS', transaction: {} });
+
+  it('reads the amount the way amounts read on screen, in every language', async () => {
+    await i18n.changeLanguage('en');
+    expect(errorMessage(changed)).toContain('480,000,000 UZS');
+    await i18n.changeLanguage('ru');
+    expect(errorMessage(changed).replace(/\s/g, ' ')).toContain('480 000 000 UZS');
+    await i18n.changeLanguage('uz');
+    expect(errorMessage(changed).replace(/\s/g, ' ')).toContain('480 000 000 UZS');
+  });
+});
+
+describe('a press with no signal', () => {
+  afterEach(() => onlineManager.setOnline(true));
+
+  it('fails at once and is never kept to go out later', async () => {
+    onlineManager.setOnline(false);
+    const sent = vi.fn(async () => {
+      throw new ApiError(0, 'NETWORK_ERROR', 'Network error');
+    });
+    const press = new MutationObserver(queryClient, { mutationFn: sent });
+    await expect(press.mutate()).rejects.toMatchObject({ status: 0 });
+    expect(sent).toHaveBeenCalledOnce();
+    expect(press.getCurrentResult().isPaused).toBe(false);
+    onlineManager.setOnline(true);
+    await queryClient.resumePausedMutations();
+    expect(sent).toHaveBeenCalledOnce();
   });
 });
 

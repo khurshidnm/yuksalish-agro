@@ -3,13 +3,13 @@ import { z } from 'zod';
 import { ASSET_STATUSES, ASSET_TYPES, DEPRECIATION_METHODS } from '@yap/shared';
 import { schema } from '../../db/client';
 import { ctx, today, tx } from '../../core/context';
-import { deactivateCostCenter, ensureCostCenter, renameCostCenter } from '../../core/costCenters';
+import { activateCostCenter, deactivateCostCenter, ensureCostCenter, renameCostCenter } from '../../core/costCenters';
 import { conflict, notFound } from '../../core/errors';
 import { recordEvent } from '../../core/journal';
 import { hideMoney } from '../../core/privacy';
 import { clientId, isoDate, listQuery, paged, searchAny, sortBy, sumOf } from '../../core/query';
 
-const { assets: t, assetUsageLogs, costCenters, depreciationEntries, maintenanceRecords } = schema;
+const { assets: t, assetUsageLogs, contracts, counterparties, depreciationEntries, fields, maintenanceRecords } = schema;
 
 export const RENTAL_UNITS = ['ha', 'hour', 'day'] as const;
 
@@ -45,6 +45,21 @@ export const assetListQuery = listQuery.extend({
   type: z.enum(ASSET_TYPES).optional(),
   status: z.enum(ASSET_STATUSES).optional(),
 });
+
+/** Foreign keys ignore RLS, so an id from a request is confirmed against this farm first. */
+export async function assertOnFarm(table: typeof contracts | typeof counterparties | typeof fields, id: string | null | undefined, what: string): Promise<void> {
+  if (!id) return;
+  const [row] = await tx()
+    .select({ id: table.id })
+    .from(table)
+    .where(and(eq(table.id, id), eq(table.farmId, ctx().farmId)));
+  if (!row) throw notFound(what);
+}
+
+async function assertRentalRefs(input: Partial<AssetInput>): Promise<void> {
+  await assertOnFarm(counterparties, input.rentalCounterpartyId, 'Counterparty');
+  await assertOnFarm(contracts, input.rentalContractId, 'Contract');
+}
 
 export async function getAssetRow(id: string): Promise<AssetRow> {
   const [row] = await tx()
@@ -157,6 +172,7 @@ export function dueState(
 }
 
 export async function create(input: AssetInput) {
+  await assertRentalRefs(input);
   const c = ctx();
   const { id, ...values } = input;
   const [row] = await tx()
@@ -165,6 +181,7 @@ export async function create(input: AssetInput) {
     .returning();
   const costCenterId = await ensureCostCenter('asset', row.id, row.name);
   const [saved] = await tx().update(t).set({ costCenterId }).where(eq(t.id, row.id)).returning();
+  if (saved.status === 'written_off') await deactivateCostCenter(costCenterId);
   await recordEvent({
     type: 'asset.created',
     entityType: 'asset',
@@ -176,12 +193,17 @@ export async function create(input: AssetInput) {
 
 export async function update(id: string, input: Partial<AssetInput>) {
   const before = await getAssetRow(id);
+  await assertRentalRefs(input);
   const { id: _ignored, ...values } = input;
   const [row] = await tx().update(t).set(values).where(eq(t.id, id)).returning();
   if (values.name && values.name !== before.name && row.costCenterId) {
     await renameCostCenter(row.costCenterId, values.name);
   }
   if (values.status && values.status !== before.status) {
+    const costCenterId = await assetCostCenter(row);
+    if (values.status === 'written_off') await deactivateCostCenter(costCenterId);
+    // A write-off taken back: the machine carries costs again.
+    if (before.status === 'written_off') await activateCostCenter(costCenterId);
     await recordEvent({
       type: 'asset.status_changed',
       entityType: 'asset',

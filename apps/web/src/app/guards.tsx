@@ -4,6 +4,8 @@ import { Navigate, useLocation } from 'react-router';
 import { useAuth, useCan, useModuleEnabled, useSession } from '@/lib/auth';
 import { ForbiddenPage, ModuleOffPage, NoAccessScreen, PageSkeleton, SplashScreen } from './pages';
 
+const LandingRoute = lazy(() => import('@/features/landing/LandingRoute'));
+
 /** Lets signed-in users through; everyone else goes to /login and returns here afterwards. */
 export function RequireAuth({ children, enrolment }: { children: ReactNode; enrolment?: boolean }) {
   const { status, session } = useAuth();
@@ -11,12 +13,20 @@ export function RequireAuth({ children, enrolment }: { children: ReactNode; enro
 
   if (status === 'loading') return <SplashScreen />;
   if (status === 'anonymous' || !session) {
+    // In production nginx answers "/" with the prerendered page, so this is development and sign-out.
+    if (location.pathname === '/') {
+      return (
+        <Suspense fallback={<SplashScreen />}>
+          <LandingRoute />
+        </Suspense>
+      );
+    }
     return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
   }
   if (session.mustEnroll2fa && !enrolment) return <Navigate to="/2fa/setup" replace />;
   if (!session.tenant && !enrolment) {
     if (!session.user.isPlatformAdmin) return <NoAccessScreen />;
-    if (location.pathname !== '/platform') return <Navigate to="/platform" replace />;
+    if (!/^\/platform(\/|$)/.test(location.pathname)) return <Navigate to="/platform" replace />;
   }
   return children;
 }

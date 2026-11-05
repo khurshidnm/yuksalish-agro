@@ -1,3 +1,4 @@
+import '@fontsource-variable/manrope';
 import '@fontsource-variable/onest';
 import './index.css';
 import './lib/i18n';

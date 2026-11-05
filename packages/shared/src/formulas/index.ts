@@ -362,16 +362,10 @@ export function weightedAverageCost(batches: Pick<BatchLike, 'qtyRemaining' | 'u
 }
 
 /**
- * Consume `qty` from batches, which must already be sorted oldest first.
- * Quantity always leaves the oldest batches. The method only changes the cost: FIFO uses
- * each batch's own cost, AVG uses the weighted average of all remaining stock.
+ * Consume `qty` from batches, which must already be sorted oldest first (FIFO).
+ * Average costing has its own rule: consumeInProportion in formulas/stock.ts.
  */
-export function consumeBatches(
-  batches: BatchLike[],
-  qty: number,
-  method: 'fifo' | 'avg' = 'fifo',
-): ConsumptionResult {
-  const avg = method === 'avg' ? weightedAverageCost(batches) : 0;
+export function consumeBatches(batches: BatchLike[], qty: number): ConsumptionResult {
   const lines: BatchConsumption[] = [];
   let left = qty;
   let totalCost = 0;
@@ -380,9 +374,8 @@ export function consumeBatches(
     if (left <= 0) break;
     const take = Math.min(left, batch.qtyRemaining);
     if (take <= 0) continue;
-    const unitCost = method === 'avg' ? avg : batch.unitCost;
-    lines.push({ batchId: batch.id, qty: take, unitCost });
-    totalCost += take * unitCost;
+    lines.push({ batchId: batch.id, qty: take, unitCost: batch.unitCost });
+    totalCost += take * batch.unitCost;
     left -= take;
   }
   return { lines, totalCost: round(totalCost, 2), shortage: left > 1e-9 ? left : 0 };

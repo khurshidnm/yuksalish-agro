@@ -12,7 +12,9 @@
     "db:seed": "tsx --env-file=../../.env src/seed/index.ts",
     "db:reset": "tsx --env-file=../../.env src/db/setup.ts --reset && tsx --env-file=../../.env src/seed/index.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx --env-file-if-exists=../../.env src/db/migrate.ts"
+    "db:migrate": "tsx --env-file-if-exists=../../.env src/db/migrate.ts",
+    "ai:check": "tsx --env-file=../../.env src/modules/ai/provider/check.ts",
+    "ai:eval": "tsx --env-file=../../.env eval/assistant.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.4.0",
@@ -25,6 +27,7 @@
     "@fastify/static": "^10.1.8",
     "@fastify/swagger": "^9.9.3",
     "@fastify/swagger-ui": "^6.1.2",
+    "@google/genai": "^2.32.0",
     "@yap/shared": "workspace:*",
     "bcryptjs": "^3.0.3",
     "bullmq": "^6.5.4",

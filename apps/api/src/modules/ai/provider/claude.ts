@@ -41,6 +41,8 @@ function toParam(block: LlmBlock): Param {
       };
     case 'document':
       return { type: 'document', source: { type: 'base64', media_type: block.mediaType, data: block.dataBase64 } };
+    case 'audio':
+      throw new AppError(501, 'AI_AUDIO_NOT_SUPPORTED', 'This AI provider cannot read audio');
   }
 }
 

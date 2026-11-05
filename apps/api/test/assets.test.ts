@@ -1,7 +1,7 @@
 import { addDays, monthOf, monthRange, todayIso } from '@yap/shared';
 import { and, eq, sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
-import { tx } from '../src/core/context';
+import { tx, withPlatform } from '../src/core/context';
 import { ensureCostCenter } from '../src/core/costCenters';
 import { receiveStock, stockOnHand } from '../src/core/inventory';
 import { postTransaction } from '../src/core/ledger';
@@ -601,6 +601,30 @@ describe('depreciation (spec 12.5)', () => {
     expect((await f.run(() => runDepreciation(twoMonthsAgo))).posted).toBe(0);
   });
 
+  it('two months posted at the same moment stop at what is left to depreciate', async () => {
+    const { f, owner } = await setup();
+    // 1 000 000 / 10 h = 100 000 per hour, so 7 h in each month would come to 1 400 000.
+    const asset = await newAsset(owner, {
+      purchasePrice: 1_000_000,
+      purchaseDate: '2025-01-15',
+      depreciationMethod: 'units',
+      totalUnits: 10,
+    });
+    await owner.post(`/assets/${asset.id}/usage`, { date: monthRange(twoMonthsAgo).from, motoHours: 7 });
+    await owner.post(`/assets/${asset.id}/usage`, { date: monthRange(lastMonth).from, motoHours: 7 });
+
+    let second: Promise<unknown> = Promise.resolve();
+    await f.run(async () => {
+      await runDepreciation(twoMonthsAgo);
+      second = f.run(() => runDepreciation(lastMonth));
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    });
+    await second;
+
+    const rows = await f.run(() => tx().select().from(depreciationEntries).where(eq(depreciationEntries.assetId, asset.id)));
+    expect(rows.map((r) => [r.month, r.amount]).sort()).toEqual([[twoMonthsAgo, 700_000], [lastMonth, 300_000]]);
+  });
+
   it('refuses a month that has not ended', async () => {
     const { f } = await setup();
     await expect(f.run(() => runDepreciation(monthOf(today)))).rejects.toMatchObject({ code: 'MONTH_NOT_CLOSED' });
@@ -838,6 +862,142 @@ describe('rented machinery (spec 12.6)', () => {
     const { asset } = await rented(f, owner);
     const mechanic = await f.as('mechanic');
     expect((await mechanic.post(`/assets/${asset.id}/rental-act`, { from: today, to: today })).status).toBe(403);
+  });
+});
+
+describe('a rental act as one document', () => {
+  /** 500 000 a hectare on two fields, so each row alone can stay under the 5 000 000 threshold. */
+  async function hired(f: Fixture, owner: Awaited<ReturnType<Fixture['as']>>, hectares: [number, number]) {
+    const { counterpartyId } = await moneyRefs(f);
+    const asset = await newAsset(owner, {
+      name: 'Kombayn (ijara)', type: 'combine', rented: true, rentalCounterpartyId: counterpartyId, rentalPrice: 500_000, rentalUnit: 'ha',
+    });
+    const one = await field(f, '1');
+    const two = await field(f, '2');
+    await owner.post(`/assets/${asset.id}/usage`, { date: today, fieldId: one.fieldId, volumeHa: hectares[0] });
+    await owner.post(`/assets/${asset.id}/usage`, { date: today, fieldId: two.fieldId, volumeHa: hectares[1] });
+    return asset;
+  }
+  const bill = (owner: Awaited<ReturnType<Fixture['as']>>, assetId: string) => owner.post(`/assets/${assetId}/rental-act`, { from: today, to: today });
+  const statuses = (res: { data: { lines: { status: string }[] } }) => res.data.lines.map((line) => line.status);
+
+  it('waits for a second person on its total, though no field reaches the threshold', async () => {
+    const { f, owner } = await setup();
+    // 6 ha x 500 000 = 3 000 000 twice: 6 000 000 together.
+    const asset = await hired(f, owner, [6, 6]);
+    const res = await bill(owner, asset.id);
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    expect(res.data.total).toBe(6_000_000);
+    expect(statuses(res)).toEqual(['pending', 'pending']);
+  });
+
+  it('counts exactly at the threshold', async () => {
+    const { f, owner } = await setup();
+    // 5 ha + 5 ha = 10 ha x 500 000 = 5 000 000.
+    const asset = await hired(f, owner, [5, 5]);
+    expect(statuses(await bill(owner, asset.id))).toEqual(['pending', 'pending']);
+  });
+
+  it('just under it goes straight through', async () => {
+    const { f, owner } = await setup();
+    // 2 500 000 + 4.9999 ha x 500 000 = 2 499 950: 4 999 950 together.
+    const asset = await hired(f, owner, [5, 4.9999]);
+    const res = await bill(owner, asset.id);
+    expect(res.data.total).toBe(4_999_950);
+    expect(statuses(res)).toEqual(['approved', 'approved']);
+  });
+
+  it('each row still carries only its own amount', async () => {
+    const { f, owner } = await setup();
+    const asset = await hired(f, owner, [6, 6]);
+    await bill(owner, asset.id);
+    const rows = await f.run(() => tx().select().from(transactions).where(eq(transactions.sourceType, 'rental_act')));
+    expect(rows.map((row) => row.amountBase)).toEqual([3_000_000, 3_000_000]);
+  });
+
+  it('a refused field can be billed again on its own, and the other field stays billed', async () => {
+    const { f, owner } = await setup();
+    const director = await f.as('director');
+    const asset = await hired(f, owner, [6, 6]);
+    const { data: act } = await bill(owner, asset.id);
+    const [refused, kept] = act.lines;
+    expect((await director.post(`/finance/transactions/${refused.transactionId}/reject`, { reason: 'xato' })).status).toBe(200);
+
+    const again = await bill(owner, asset.id);
+    expect(again.status, JSON.stringify(again.body)).toBe(201);
+    expect(again.data.total).toBe(3_000_000);
+    expect(again.data.lines[0].fieldId).toBe(refused.fieldId);
+    expect(again.data.lines[0].fieldId).not.toBe(kept.fieldId);
+  });
+});
+
+describe('references on a rented machine', () => {
+  const secondFarm = (f: Fixture) =>
+    withPlatform(async (trx) => {
+      const [row] = await trx.insert(schema.farms).values({ tenantId: f.tenantId, name: 'Ikkinchi ferma' }).returning();
+      return row.id;
+    });
+
+  it('a contractor of another farm is refused, on a new machine and on an edit', async () => {
+    const { f, owner } = await setup();
+    const farmId = await secondFarm(f);
+    const theirs = await f.run(async () => {
+      const [row] = await tx().insert(counterparties).values({ tenantId: f.tenantId, farmId, name: 'Boshqa', type: 'service' }).returning();
+      return row.id;
+    });
+    const created = await owner.post('/assets', { name: 'Kombayn', type: 'combine', rented: true, rentalCounterpartyId: theirs });
+    expect(created.status).toBe(404);
+    const asset = await newAsset(owner);
+    expect((await owner.patch(`/assets/${asset.id}`, { rentalCounterpartyId: theirs })).status).toBe(404);
+  });
+
+  it('a contractor or contract of another tenant is refused', async () => {
+    const { owner } = await setup();
+    const other = await createFixture();
+    const { counterpartyId } = await moneyRefs(other);
+    const contractId = await other.run(async () => {
+      const [row] = await tx()
+        .insert(schema.contracts)
+        .values({ tenantId: other.tenantId, farmId: other.farmId, number: 'K-1', title: 'Ijara', counterpartyId })
+        .returning();
+      return row.id;
+    });
+    expect((await owner.post('/assets', { name: 'Kombayn', type: 'combine', rentalCounterpartyId: counterpartyId })).status).toBe(404);
+    expect((await owner.post('/assets', { name: 'Kombayn', type: 'combine', rentalContractId: contractId })).status).toBe(404);
+  });
+
+  it('a contractor of this farm is taken', async () => {
+    const { f, owner } = await setup();
+    const { counterpartyId } = await moneyRefs(f);
+    const asset = await newAsset(owner, { name: 'Kombayn', type: 'combine', rented: true, rentalCounterpartyId: counterpartyId });
+    expect(asset.rentalCounterpartyId).toBe(counterpartyId);
+  });
+
+  it('a repair cannot name a counterparty of another farm', async () => {
+    const { f, owner } = await setup();
+    const farmId = await secondFarm(f);
+    const { accountId } = await moneyRefs(f);
+    const theirs = await f.run(async () => {
+      const [row] = await tx().insert(counterparties).values({ tenantId: f.tenantId, farmId, name: 'Boshqa', type: 'service' }).returning();
+      return row.id;
+    });
+    const asset = await newAsset(owner);
+    const res = await owner.post(`/assets/${asset.id}/maintenance`, {
+      date: today, type: 'repair', cost: 900_000, payment: { paymentMethod: 'cash', accountId, counterpartyId: theirs },
+    });
+    expect(res.status).toBe(404);
+    expect((await f.run(() => tx().select().from(transactions))).length).toBe(0);
+  });
+
+  it('a shift cannot name a field of another farm, so an act cannot charge it', async () => {
+    const { f, owner } = await setup();
+    const farmId = await secondFarm(f);
+    const theirs = await f.run(async () => {
+      const [row] = await tx().insert(fields).values({ tenantId: f.tenantId, farmId, number: '9', areaHa: 5 }).returning();
+      return row.id;
+    });
+    const asset = await newAsset(owner);
+    expect((await owner.post(`/assets/${asset.id}/usage`, { date: today, fieldId: theirs, motoHours: 1 })).status).toBe(404);
   });
 });
 

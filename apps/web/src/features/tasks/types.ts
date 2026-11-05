@@ -5,6 +5,9 @@ export const ENTITY_TYPES = ['field', 'herd', 'animal', 'asset'] as const;
 export const RECORD_TYPES = ['health_record', 'field_operation', 'daily_log', 'weight_record'] as const;
 export const DIVISIONS = ['crops', 'livestock', 'machinery', 'admin'] as const;
 
+/** Red, orange, green: the same three pills everywhere a priority shows. */
+export const PRIORITY_TONE = { low: 'success', normal: 'warning', high: 'danger' } as const;
+
 export interface Task {
   id: string;
   title: string;

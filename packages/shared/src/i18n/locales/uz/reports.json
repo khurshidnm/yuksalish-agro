@@ -88,7 +88,7 @@
         "description": "Nobud bo'lgan va yo'qolgan hayvonlar, sabablari bilan"
       },
       "exits": {
-        "title": "Chiqib ketish",
+        "title": "Hayvon chiqimi",
         "description": "Sotuv, so'yish, nobud bo'lish va yo'qolish"
       },
       "weight_gain": {

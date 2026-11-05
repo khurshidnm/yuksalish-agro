@@ -133,17 +133,97 @@
     "tasks": "Ochiq vazifalar: {{count}}"
   },
   "bot": {
-    "linked": "Hisobingiz Telegramga ulandi. {{status}} bugungi holatni, {{alerts}} ochiq ogohlantirishlarni ko'rsatadi.",
+    "linked": "Hisobingiz Telegramga ulandi. {{status}} bugungi holatni, {{alerts}} ochiq ogohlantirishlarni, {{help}} barcha imkoniyatlarni ko'rsatadi.",
     "linkFailed": "Kod noto'g'ri yoki muddati o'tgan. Platformadagi Bildirishnomalar sahifasidan yangi kod oling.",
     "notLinked": "Bu chat hisobingizga ulanmagan. Platformadagi Bildirishnomalar sahifasidan ulash kodini oling.",
-    "help": "Buyruqlar: {{status}} bugungi holat, {{alerts}} ochiq ogohlantirishlar.",
+    "help": "Menga oddiy so'zlar bilan yozing: ferma holatini so'rang yoki pul haqida ayting, men yozuv tayyorlayman, siz tasdiqlaysiz. Ovozli xabar va chek rasmini ham yuborishingiz mumkin.\n\n{{status}} bugungi holat\n{{alerts}} ochiq ogohlantirishlar\n{{pending}} tasdiqingizni kutayotgan yozuvlar\n{{new}} yangi suhbat boshlash\n{{farm}} fermani tanlash\n{{help}} shu yordam",
     "noAlerts": "Ochiq ogohlantirishlar yo'q.",
-    "noFarm": "Hisobingiz hech qaysi fermaga biriktirilmagan."
+    "noFarm": "Hisobingiz hech qaysi fermaga biriktirilmagan.",
+    "blocked": "Kirishingiz bloklangan. Administratorga murojaat qiling.",
+    "groupOnly": "Men faqat shaxsiy chatda ishlayman. Menga to'g'ridan-to'g'ri yozing.",
+    "enroll2fa": "Lavozimingiz uchun ikki bosqichli himoya majburiy. Uni veb-ilovada yoqing, keyin qaytib keling.",
+    "noAssistant": "Yordamchi sizning lavozimingiz uchun ochilmagan. {{status}} va {{alerts}} buyruqlari ishlaydi.",
+    "newConversation": "Yangi suhbat boshlandi.",
+    "apology": "Kechirasiz, xatolik yuz berdi. Birozdan keyin qayta urinib ko'ring.",
+    "rateLimited": "Xabarlar juda ko'p. Taxminan {{minutes}} daqiqa kutib, qayta yozing.",
+    "tooLong": "Xabar juda uzun. Iltimos, {{limit}} belgidan oshmasin.",
+    "fileTooLarge": "Fayl juda katta. Chegara: {{limit}} MB.",
+    "voiceTooLong": "Ovozli xabar juda uzun. Iltimos, {{limit}} daqiqadan oshmasin.",
+    "unsupported": "Men matn, ovozli xabar, rasm va PDF fayllarni o'qiy olaman.",
+    "heard": "Eshitganim:",
+    "nothingHeard": "Hech narsani ajrata olmadim. Qayta ayting yoki yozib yuboring.",
+    "documentPrompt": "Shu hujjatni o'qib ber.",
+    "noPending": "Tasdiqingizni kutayotgan yozuv yo'q.",
+    "pendingCount": "Tasdiqingizni kutmoqda: {{count}}",
+    "changePrompt": "Nimani o'zgartiray?",
+    "recorded": "Yozib qo'yildi.",
+    "waitingApproval": "Yozib qo'yildi. Endi ikkinchi odam tasdiqlashini kutmoqda.",
+    "cancelled": "Bekor qilindi.",
+    "expired": "Bu qoralamaning muddati tugagan.",
+    "failed": "Buni yozib bo'lmadi.",
+    "undone": "Yozuv qaytarib olindi.",
+    "stale": "Bu tugma eskirgan.",
+    "cardChanged": "Bu yozuv o'zgargan. Tekshirib, qayta tasdiqlang.",
+    "moneyHidden": "Bu yozuvda lavozimingiz ko'ra olmaydigan pul ma'lumotlari bor.",
+    "buttons": {
+      "confirm": "Tasdiqlash",
+      "change": "O'zgartirish",
+      "cancel": "Bekor qilish",
+      "undo": "Qaytarish",
+      "yesRecord": "Ha, yozilsin",
+      "moveYes": "Ha, {{next}} hisobiga o'tkazilsin",
+      "moveNo": "Yo'q, {{current}} qolsin"
+    },
+    "commands": {
+      "status": "Bugungi holat",
+      "alerts": "Ochiq ogohlantirishlar",
+      "pending": "Tasdiq kutayotgan yozuvlar",
+      "new": "Yangi suhbat",
+      "help": "Yordam",
+      "farm": "Fermani tanlash"
+    },
+    "acknowledgeAsk": "Bu yozuvda tekshirilishi kerak bo'lgan narsa bor, yuqorida ko'rsatilgan. Shunga qaramay yozaymi?",
+    "needsAnswer": "Bu karta bo'yicha javobingiz kutilmoqda. Avval savolga javob bering.",
+    "cardStale": "Kartadagi nimadir o'zgardi yoki yopildi, shuning uchun u yozilmadi. O'zgartiring yoki bekor qiling.",
+    "chooseFarm": "Siz bir nechta fermada ishlaysiz. Bu chat qaysi ferma uchun ishlashini tanlang, keyin xabaringizni qayta yuboring.",
+    "oneFarm": "Siz bitta fermada ishlaysiz: {{farm}}.",
+    "currentFarm": "Bu chat hozir shu ferma uchun ishlaydi: {{farm}}. Boshqasini quyida tanlang.",
+    "farmChosen": "Endi bu chat shu ferma uchun ishlaydi: {{farm}}.",
+    "otherFarm": "Bu karta boshqa fermaga tegishli. {{farm}} orqali o'sha fermaga o'ting va qayta bosing.",
+    "notInBooks": "Bu yozuv hisobda yo'q: u rad etilgan yoki bekor qilingan.",
+    "pendingMore": "Yana {{count}} ta kutmoqda. Avval shularni hal qiling yoki veb-ilovada oching.",
+    "moveAsk": "Bu chat {{current}} hisobiga ulangan, kod esa {{next}} hisobi uchun. Chatni {{next}} hisobiga o'tkazaymi? Shunda {{current}} bu yerda xabar olmaydi va tasdiqlay olmaydi.",
+    "moved": "Bu chat endi {{next}} hisobiga tegishli. {{current}} bu yerdan uzildi.",
+    "moveKept": "Hech narsa o'zgarmadi.",
+    "movedAway": "Hisobingiz boshqa Telegram chatiga ulandi, shuning uchun bu chat endi u uchun ishlamaydi. Agar bu siz bo'lmasangiz, Bildirishnomalar sahifasida yangi chatni uzing va parolni o'zgartiring.",
+    "unlinked": "Bu chat hisobingizdan uzildi.",
+    "editIgnored": "Tahrirlangan xabarlarni o'qimayman. Yozuvni tuzatish uchun kartadagi O'zgartirish tugmasini bosing yoki yangi xabar yozing.",
+    "helpBasic": "{{status}} bugungi holat\n{{alerts}} ochiq ogohlantirishlar\n{{farm}} fermani tanlash\n{{help}} shu yordam",
+    "linkNotice": {
+      "title": "Telegram ulandi",
+      "body": "{{name}} endi hisobingiz nomidan Telegram orqali ishlay oladi. Agar bu siz bo'lmasangiz, Bildirishnomalar sahifasida uzing va parolni o'zgartiring."
+    },
+    "checkThis": "Bu yozuvni tekshirib ko'ring.",
+    "sendAsPhoto": "Bu turdagi faylni o'qiy olmayman. Rasm sifatida yuboring.",
+    "unlinkedBlocked": "Hisobingiz bloklandi, shuning uchun bu chat uzildi. Endi bu yerga ogohlantirishlar kelmaydi. Administratorga murojaat qiling.",
+    "unlinkNotice": {
+      "title": "Telegram uzildi",
+      "body": "Bu hisob endi Telegramda ogohlantirish olmaydi va u yerdan tasdiqlay olmaydi. Bildirishnomalar sahifasida qayta ulang."
+    },
+    "passwordNotice": {
+      "title": "Parol o'zgartirildi",
+      "body": "Hisobingiz paroli o'zgartirildi va boshqa qurilmalardan chiqildi. Bu Telegram chati ulanganicha qoladi. Agar bu siz bo'lmasangiz, darhol administratorga murojaat qiling."
+    },
+    "waitForAnswer": "Oldingi xabaringizga javob tayyorlanyapti. Javobni kuting, kartani tekshiring, keyin tasdiqlang.",
+    "farmAfterTurn": "Avval yozganingizga javob beraman, keyin ferma almashadi.",
+    "sentLate": "Kechikib yetkazildi. Asl vaqti: {{time}}."
   },
   "errors": {
     "ALERT_NOT_OPEN": "Bu ogohlantirish allaqachon ko'rib chiqilgan",
     "ALERT_ALREADY_RESOLVED": "Bu ogohlantirish allaqachon yopilgan",
-    "TELEGRAM_NOT_CONFIGURED": "Telegram bot hali sozlanmagan. Administratorga murojaat qiling."
+    "TELEGRAM_NOT_CONFIGURED": "Telegram bot hali sozlanmagan. Administratorga murojaat qiling.",
+    "AI_AUDIO_NOT_SUPPORTED": "Hozirgi AI provayder ovozli xabarni o'qiy olmaydi. Iltimos, matn bilan yozing.",
+    "AI_TRANSCRIPTION_FAILED": "Ovozli xabarni o'qib bo'lmadi. Qayta ayting yoki yozib yuboring."
   },
   "title": "Ogohlantirishlar",
   "description": "Qoidalar va AI aniqlagan og'ishlar bir ro'yxatda, muhimlik darajasi bilan.",
@@ -191,7 +271,8 @@
       "alert_attention": "E'tibor talab qiladigan ogohlantirishlar",
       "alert_info": "Ma'lumot uchun xabarlar",
       "task_assigned": "Menga biriktirilgan vazifalar",
-      "daily_summary": "Kunlik xulosa"
+      "daily_summary": "Kunlik xulosa",
+      "assistant_recap": "Yordamchining kechki xulosasi"
     }
   },
   "telegram": {

@@ -5,13 +5,14 @@ import { v7 as uuidv7 } from 'uuid';
 import { ROLES_REQUIRING_2FA, type RoleKey } from '@yap/shared';
 import { config } from '../../config';
 import { db, schema } from '../../db/client';
-import { withPlatform } from '../../core/context';
+import { tx, withPlatform } from '../../core/context';
 import { randomToken, seal, sha256, unseal } from '../../core/crypto';
 import { badRequest, conflict, forbidden, unauthorized } from '../../core/errors';
 import { mergeSettings } from '../../core/settings';
 import { signAccessToken, signChallengeToken, verifyChallengeToken } from '../../core/tokens';
+import { notifyAccount, PASSWORD_NOTICE } from '../notifications/notifications.service';
 
-const { farms, memberships, refreshTokens, roles, tenants, users } = schema;
+const { farms, memberships, refreshTokens, roles, telegramLinkCodes, tenants, users } = schema;
 
 type User = typeof users.$inferSelect;
 export interface ClientMeta {
@@ -218,10 +219,8 @@ export async function changePassword(userId: string, current: string, next: stri
   const passwordHash = await bcrypt.hash(next, config.BCRYPT_ROUNDS);
   await db.update(users).set({ passwordHash }).where(eq(users.id, userId));
   // Other devices must sign in again.
-  await db
-    .update(refreshTokens)
-    .set({ revokedAt: new Date() })
-    .where(and(eq(refreshTokens.userId, userId), isNull(refreshTokens.revokedAt)));
+  await revokeAllSessions(userId);
+  await notifyAccount(userId, PASSWORD_NOTICE);
 }
 
 export async function setupTwoFactor(userId: string) {
@@ -251,10 +250,27 @@ export async function disableTwoFactor(userId: string, membershipId: string | nu
   await db.update(users).set({ totpEnabled: false, totpSecret: null }).where(eq(users.id, userId));
 }
 
-/** Sign out every device, e.g. when an employee leaves (spec 5.1). */
+/** Inside a request the codes burn with it, and roll back with it. */
+function requestTx() {
+  try {
+    return tx();
+  } catch {
+    return db;
+  }
+}
+
+/**
+ * Sign out every device, e.g. when an employee leaves (spec 5.1). A linked Telegram chat stays: each
+ * update checks the memberships, and it may be how a fire on their other farm reaches them. Only
+ * unlinking it themselves, or blocking the account, ends it (dropTelegramLink).
+ */
 export async function revokeAllSessions(userId: string): Promise<void> {
   await db
     .update(refreshTokens)
     .set({ revokedAt: new Date() })
     .where(and(eq(refreshTokens.userId, userId), isNull(refreshTokens.revokedAt)));
+  await requestTx()
+    .update(telegramLinkCodes)
+    .set({ usedAt: new Date() })
+    .where(and(eq(telegramLinkCodes.userId, userId), isNull(telegramLinkCodes.usedAt)));
 }

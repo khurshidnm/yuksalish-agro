@@ -1,0 +1,521 @@
+{
+  "meta": {
+    "title": "Ferma boshqaruv dasturi: chorvachilik, ekin, moliya | Yuksalish Agro",
+    "description": "Dalalar, chorva, ombor, moliya va xodimlarni bitta tizimda yuriting. Telefonda ishlaydi, dalada internetsiz ham qayd olinadi. Demo so'rang.",
+    "keywords": "ferma boshqaruv dasturi, fermer uchun dastur, chorvachilik dasturi, chorva hisobi, qoramol hisobi, qo'y hisobi, qishloq xo'jaligi dasturi, ekin hisobi, tannarx hisobi, O'zbekiston",
+    "ogImageAlt": "Yuksalish Agro ferma boshqaruv platformasi"
+  },
+  "nav": {
+    "features": "Imkoniyatlar",
+    "product": "Ko'rinishi",
+    "how": "Qanday boshlanadi",
+    "faq": "Savollar",
+    "contact": "Aloqa",
+    "login": "Kirish",
+    "cta": "Demo so'rash",
+    "language": "Til",
+    "menu": "Menyu"
+  },
+  "hero": {
+    "eyebrow": "Fermerlar uchun boshqaruv platformasi",
+    "titleMuted": "Daftar va Excel o'rniga",
+    "title": "fermangiz bitta tizimda",
+    "lead": "Dalalar, chorva, ozuqa, pul va xodimlar bir joyda. Har bir so'm qaysi dala yoki podaga ketganini ko'rasiz, chorvador esa kunlik qaydni telefonidan yuboradi.",
+    "cta": "Demo so'rash",
+    "secondary": "Imkoniyatlarni ko'rish",
+    "points": [
+      "Telefonda ishlaydi",
+      "Dalada internetsiz qayd",
+      "O'zbek va rus tilida"
+    ],
+    "imageAlt": "Yuksalish Agro boshqaruv paneli: kassa, xarajat, poda soni va ozuqa zaxirasi bir ekranda",
+    "phoneAlt": "Telefondagi Bugun ekrani: chorvador uchun kunlik qayd va tezkor amallar"
+  },
+  "problem": {
+    "label": "Muammo",
+    "titleMuted": "Ferma ishlaydi,",
+    "title": "lekin raqamlar tarqoq",
+    "lead": "Ma'lumot daftarda, Excel faylda va Telegram guruhlarda. Xulosa chiqarish uchun esa oy oxirini kutishga to'g'ri keladi.",
+    "items": [
+      {
+        "title": "Tannarx noma'lum",
+        "body": "Bir bosh chorva yoki bir tonna bug'doy aslida necha pulga tushganini aniq aytish qiyin. Foyda taxmin bo'lib qoladi."
+      },
+      {
+        "title": "Ozuqa kutilmaganda tugaydi",
+        "body": "Omborda nima qolgani va qishga yetish-yetmasligi kech bilinadi. Shoshilinch xarid qimmatga tushadi."
+      },
+      {
+        "title": "Dalada yozilgan narsa yo'qoladi",
+        "body": "Tug'ilish, kasallik va o'lim haqidagi qaydlar kechikadi yoki umuman tizimga tushmaydi."
+      }
+    ]
+  },
+  "modules": {
+    "label": "Imkoniyatlar",
+    "titleMuted": "Fermaning har bir ishi",
+    "title": "bitta platformada",
+    "lead": "Faqat kerakli modullarni yoqasiz. Hammasi bir-biriga bog'langan: ombordan chiqqan ozuqa avtomatik ravishda podaning tannarxiga yoziladi.",
+    "items": [
+      {
+        "key": "land",
+        "title": "Yer va dalalar",
+        "body": "Fermangizning raqamli pasporti va sun'iy yo'ldosh xaritasi.",
+        "points": [
+          "Dalani xaritada chizish, maydon o'zi hisoblanadi",
+          "Tuproq tahlili va almashlab ekish tarixi",
+          "Sug'orish tugunlari va suv limiti",
+          "Hujjatlar va muddat ogohlantirishi"
+        ]
+      },
+      {
+        "key": "crops",
+        "title": "O'simlikchilik",
+        "body": "Ekin rejasidan hosilgacha bo'lgan butun mavsum.",
+        "points": [
+          "Mavsum va dala bo'yicha ekin rejasi",
+          "Agrotexnik tadbirlar jurnali",
+          "Hosil va hosildorlik hisobi",
+          "Ob-havo prognozi va sovuq ogohlantirishi"
+        ]
+      },
+      {
+        "key": "livestock",
+        "title": "Chorvachilik",
+        "body": "Qoramol, qo'y, echki, ot va boshqa chorva: har bir boshning tug'ilishidan sotilishigacha bo'lgan tarixi.",
+        "points": [
+          "Birka bo'yicha hayvon kartasi",
+          "Podalar va ko'chirishlar",
+          "Vazn dinamikasi va kunlik qaydlar",
+          "Sotuv, so'yish va nobud bo'lish hisobi"
+        ]
+      },
+      {
+        "key": "breeding",
+        "title": "Urchitish va tug'ish",
+        "body": "Podaning kelajagini rejalashtiring.",
+        "points": [
+          "Bo'g'ozlik nazorati",
+          "Tug'ish kalendari va haftalik reja",
+          "Yangi tug'ilganlarni avtomatik ro'yxatga olish",
+          "Naslchi erkaklar reytingi"
+        ]
+      },
+      {
+        "key": "vet",
+        "title": "Veterinariya",
+        "body": "Emlash va davolash nazorat ostida.",
+        "points": [
+          "Emlash kalendari",
+          "Davolash jurnali",
+          "Dori ombordan avtomatik chiqim bo'ladi",
+          "Kasal va karantindagi hayvonlar"
+        ]
+      },
+      {
+        "key": "feed",
+        "title": "Ozuqa va ratsion",
+        "body": "Ozuqa necha kunga yetishini doim bilib turing.",
+        "points": [
+          "Podalar uchun ratsion",
+          "Zaxira necha kunga yetishi",
+          "Ozuqa balansi",
+          "Qishki yem-xashak rejasi"
+        ]
+      },
+      {
+        "key": "inventory",
+        "title": "Ombor",
+        "body": "Har bir qop va litr hisobda.",
+        "points": [
+          "Kirim, chiqim va ko'chirish",
+          "Partiyalar va tannarx (FIFO yoki o'rtacha)",
+          "Inventarizatsiya",
+          "Kam qoldiq haqida ogohlantirish"
+        ]
+      },
+      {
+        "key": "finance",
+        "title": "Moliya",
+        "body": "Pul qayerdan kelib, qayerga ketayotganini ko'ring.",
+        "points": [
+          "Kassa, bank va kontragentlar",
+          "Qarzlar, kreditlar va to'lov grafigi",
+          "Budjet ijrosi",
+          "Pul oqimi prognozi va ikki bosqichli tasdiq"
+        ]
+      },
+      {
+        "key": "costs",
+        "title": "Tannarx va foyda",
+        "body": "Fermer uchun eng muhim savolga aniq javob.",
+        "points": [
+          "Bir bosh chorva tannarxi",
+          "Bir tonna hosil tannarxi",
+          "Bir kg tirik vazn tannarxi",
+          "Rentabellik: dala va poda kesimida"
+        ]
+      },
+      {
+        "key": "sales",
+        "title": "Sotuv va xarid",
+        "body": "Mijoz va yetkazib beruvchilar bilan ishlash.",
+        "points": [
+          "Sotuv buyurtmalari",
+          "Xaridlar va omborga kirim",
+          "Xaridor va yetkazib beruvchilar ro'yxati",
+          "To'lanmagan qarzlar nazorati"
+        ]
+      },
+      {
+        "key": "people",
+        "title": "Xodimlar va ish haqi",
+        "body": "Kim qachon kelgani va qancha ishlagani aniq.",
+        "points": [
+          "Telefondan ishga kelishni belgilash",
+          "Tabel",
+          "Ish haqi va avanslar",
+          "Xavfsizlik yo'riqnomalari"
+        ]
+      },
+      {
+        "key": "machinery",
+        "title": "Texnika",
+        "body": "Traktor va uskunalar nazoratda.",
+        "points": [
+          "Texnika reyestri",
+          "Texnik xizmat muddatlari",
+          "Yoqilg'i sarfi",
+          "Amortizatsiya"
+        ]
+      },
+      {
+        "key": "tasks",
+        "title": "Vazifalar va kalendar",
+        "body": "Har kim bugun nima qilishini biladi.",
+        "points": [
+          "Vazifalar doskasi",
+          "Takrorlanuvchi ishlar",
+          "Foto bilan tasdiqlash",
+          "Telegram orqali bildirishnoma"
+        ]
+      },
+      {
+        "key": "cameras",
+        "title": "Kameralar va sensorlar",
+        "body": "Molxona va omborni masofadan kuzating.",
+        "points": [
+          "Jonli ko'rish",
+          "Hodisalar jurnali",
+          "Qurilmalar reyestri",
+          "Tashqi tizimlar uchun API"
+        ]
+      },
+      {
+        "key": "reports",
+        "title": "Hisobotlar va KPI",
+        "body": "64 ta tayyor hisobot bir bosishda.",
+        "points": [
+          "Moliya, chorva, ekin va ombor hisobotlari",
+          "Excel, CSV va PDF'ga yuklab olish",
+          "Egasi uchun KPI paneli",
+          "Investor uchun alohida hisobot"
+        ]
+      },
+      {
+        "key": "ai",
+        "title": "AI yordamchi",
+        "body": "Fermangiz haqida oddiy tilda so'rang.",
+        "points": [
+          "Savolga raqamlar bilan javob",
+          "Telegramda ovozli xabar qabul qiladi",
+          "Muammolarni o'zi topib ogohlantiradi",
+          "Yozuvni faqat siz tasdiqlaganingizdan keyin saqlaydi"
+        ]
+      }
+    ]
+  },
+  "showcase": {
+    "label": "Ko'rinishi",
+    "titleMuted": "Murakkab emas.",
+    "title": "Hamma narsa ko'z oldingizda",
+    "lead": "Bu yerdagi rasmlar haqiqiy dasturdan olingan.",
+    "items": [
+      {
+        "key": "dashboard",
+        "title": "Fermangiz bir qarashda",
+        "body": "Kassa, xarajat, poda soni va ozuqa zaxirasi bitta ekranda. Muammo bo'lsa, tizim o'zi ogohlantiradi.",
+        "points": [
+          "Ogohlantirishlar birinchi o'rinda",
+          "Har bir raqam batafsil hisobotga olib boradi",
+          "Rolingizga mos ko'rinish"
+        ],
+        "alt": "Boshqaruv paneli: holat, asosiy ko'rsatkichlar va AI tahlili"
+      },
+      {
+        "key": "fields",
+        "title": "Dalalar haqiqiy xaritada",
+        "body": "Dalani sun'iy yo'ldosh rasmida chizasiz, maydon o'zi hisoblanadi. Har bir dalaning ekini, tuprog'i va sug'orish manbai yonida turadi.",
+        "points": [
+          "Xaritada chizish va tahrirlash",
+          "Ekin va yer turi bo'yicha ranglar",
+          "Har bir dala uchun alohida karta"
+        ],
+        "alt": "Dalalar ro'yxati, dala shakli va aerofoto ko'rinishi"
+      },
+      {
+        "key": "tasks",
+        "title": "Ishlar kimga topshirilgani aniq",
+        "body": "Vazifalar doskasida kim nima qilayotgani va nima kechikayotgani ko'rinadi. Xodim bajarilganini telefondan belgilaydi.",
+        "points": [
+          "Muddat va muhimlik darajasi",
+          "Foto bilan tasdiqlash",
+          "Takrorlanuvchi vazifalar"
+        ],
+        "alt": "Vazifalar doskasi: ochiq, bajarilmoqda va bajarilgan ishlar"
+      },
+      {
+        "key": "phone",
+        "title": "Dalada qo'lqop bilan ham qulay",
+        "body": "Chorvadorlar va dala xodimlari uchun katta tugmali oddiy ekran. Internet bo'lmasa, qayd telefonda saqlanadi va aloqa tiklanganda o'zi yuboriladi.",
+        "points": [
+          "Kunlik qayd bir daqiqada",
+          "Kasal hayvon, nobud bo'lish, tug'ilish",
+          "Internetsiz ishlaydi"
+        ],
+        "alt": "Telefondagi Bugun ekrani katta tugmalar bilan"
+      }
+    ]
+  },
+  "roles": {
+    "label": "Kimlar uchun",
+    "titleMuted": "Har kim o'z ishini ko'radi.",
+    "title": "Ortig'ini emas",
+    "lead": "Har bir xodimga roliga mos ekran ochiladi. Chorvador moliyani ko'rmaydi, investor esa faqat umumiy natijani ko'radi.",
+    "items": [
+      {
+        "key": "owner",
+        "title": "Fermer va direktor",
+        "body": "Butun ferma, foyda, qarzlar va ogohlantirishlar."
+      },
+      {
+        "key": "agronomist",
+        "title": "Agronom",
+        "body": "Dalalar, ekin rejasi, tadbirlar va hosil."
+      },
+      {
+        "key": "zootechnician",
+        "title": "Zootexnik",
+        "body": "Podalar, urchitish, ratsion va vazn."
+      },
+      {
+        "key": "veterinarian",
+        "title": "Veterinar",
+        "body": "Emlash, davolash va dori sarfi."
+      },
+      {
+        "key": "storekeeper",
+        "title": "Omborchi",
+        "body": "Kirim, chiqim, qoldiq va inventarizatsiya."
+      },
+      {
+        "key": "accountant",
+        "title": "Hisobchi",
+        "body": "Operatsiyalar, qarzlar, budjet va hisobotlar."
+      },
+      {
+        "key": "shepherd",
+        "title": "Chorvador",
+        "body": "Kunlik qayd va tezkor amallar, narxlarsiz."
+      },
+      {
+        "key": "mechanic",
+        "title": "Mexanik",
+        "body": "Texnika holati, xizmat va yoqilg'i."
+      }
+    ]
+  },
+  "trust": {
+    "label": "Ishonch",
+    "titleMuted": "Ma'lumotingiz",
+    "title": "faqat sizniki",
+    "lead": "Fermangiz ma'lumoti tijorat siri. Shuning uchun xavfsizlik dasturning asosiga qurilgan.",
+    "items": [
+      {
+        "key": "isolation",
+        "title": "Har bir ferma alohida",
+        "body": "Fermalar ma'lumoti ma'lumotlar bazasi darajasida ajratilgan. Boshqa mijoz sizning raqamlaringizni ko'ra olmaydi."
+      },
+      {
+        "key": "money",
+        "title": "Moliya yopiq",
+        "body": "Narx va xarajatlarni faqat ruxsati bor xodim ko'radi. Bu server darajasida tekshiriladi."
+      },
+      {
+        "key": "approval",
+        "title": "Ikki bosqichli tasdiq",
+        "body": "Katta to'lovni boshqa xodim tasdiqlamaguncha u hisobga kirmaydi."
+      },
+      {
+        "key": "audit",
+        "title": "Har bir o'zgarish yoziladi",
+        "body": "Kim, qachon va nimani o'zgartirgani saqlanib boradi."
+      },
+      {
+        "key": "twofactor",
+        "title": "Ikki bosqichli kirish",
+        "body": "Hisobingizni parol va tasdiqlash kodi bilan himoyalaysiz."
+      },
+      {
+        "key": "ai",
+        "title": "AI o'zi yozmaydi",
+        "body": "Yordamchi faqat taklif beradi. Ma'lumotni siz tasdiqlaganingizdan keyingina saqlanadi."
+      }
+    ]
+  },
+  "how": {
+    "label": "Qanday boshlanadi",
+    "titleMuted": "To'rt qadamda",
+    "title": "ishga tushiramiz",
+    "lead": "Daftar va Excel'dagi ma'lumotlaringiz yo'qolmaydi, ularni tizimga ko'chiramiz.",
+    "items": [
+      {
+        "title": "Ariza qoldiring",
+        "body": "Formani to'ldiring yoki qo'ng'iroq qiling. Biz siz bilan bog'lanamiz."
+      },
+      {
+        "title": "Demo ko'ring",
+        "body": "Dasturni aynan sizning fermangiz misolida ko'rsatamiz va kerakli modullarni tanlaymiz."
+      },
+      {
+        "title": "Ma'lumotni ko'chiring",
+        "body": "Dalalar, hayvonlar, ombor, xodimlar va texnikani Excel'dan yuklaysiz."
+      },
+      {
+        "title": "Ishlashni boshlang",
+        "body": "Har bir xodim o'z roli bilan kiradi va ishni shu yerda yuritadi."
+      }
+    ]
+  },
+  "pilot": {
+    "label": "Haqiqiy fermada",
+    "title": "Haqiqiy ferma uchun yaratilgan",
+    "lead": "Platforma Buxoro viloyati Qorovulbozor tumanidagi Yuksalish Agro fermasining kundalik jarayonlari asosida ishlab chiqilmoqda.",
+    "facts": [
+      {
+        "value": "210 ga",
+        "label": "umumiy yer maydoni"
+      },
+      {
+        "value": "70 ga",
+        "label": "ekin maydoni"
+      },
+      {
+        "value": "500 bosh",
+        "label": "Hisori zotli sovliq"
+      },
+      {
+        "value": "64 ta",
+        "label": "tayyor hisobot"
+      }
+    ]
+  },
+  "cta": {
+    "title": "Fermangizni raqamlar bilan boshqarishga tayyormisiz?",
+    "lead": "Ariza qoldiring, dasturni fermangiz misolida ko'rsatamiz.",
+    "button": "Demo so'rash"
+  },
+  "faq": {
+    "label": "Savollar",
+    "titleMuted": "Ko'p so'raladigan",
+    "title": "savollar",
+    "items": [
+      {
+        "q": "Dastur qaysi fermalar uchun mos?",
+        "a": "Chorvachilik, o'simlikchilik va aralash xo'jaliklar uchun: qoramol, qo'y, echki, ot va boshqa chorva. Bir nechta fermani bitta hisobda yuritish mumkin."
+      },
+      {
+        "q": "Internet bo'lmasa ishlaydimi?",
+        "a": "Ha. Dalada kunlik qayd, kasal hayvon, nobud bo'lish, vazn va tug'ish qaydlari telefonda saqlanadi va aloqa tiklanganda o'zi yuboriladi."
+      },
+      {
+        "q": "Telefonga ilova o'rnatish kerakmi?",
+        "a": "Yo'q. Dastur brauzerda ochiladi va xohlasangiz, telefon ekraniga ilova kabi qo'shib qo'yiladi. Kompyuterda ham ishlaydi."
+      },
+      {
+        "q": "Dastur qancha turadi?",
+        "a": "Narx fermangiz hajmi va kerakli modullarga bog'liq. Ariza qoldiring, sizga mos taklifni aytamiz."
+      },
+      {
+        "q": "Excel'dagi ma'lumotlarim nima bo'ladi?",
+        "a": "Dalalar, hayvonlar, ozuqa qoldig'i, xodimlar, texnika va kontragentlarni tayyor andozalar orqali yuklaysiz."
+      },
+      {
+        "q": "Ma'lumotlarim xavfsizmi?",
+        "a": "Har bir ferma ma'lumoti alohida saqlanadi, kirish rollar bilan cheklanadi, har bir o'zgarish yozib boriladi va zaxira nusxalar olinadi."
+      },
+      {
+        "q": "Xodimlar pulni ko'rib qolmaydimi?",
+        "a": "Yo'q. Chorvadorlar va boshqa xodimlar narx va xarajatlarni ko'rmaydi. Bu faqat ekranda emas, serverda ham tekshiriladi."
+      },
+      {
+        "q": "Qaysi tillarda ishlaydi?",
+        "a": "O'zbek (lotin va kirill), rus va ingliz tillarida. Har bir xodim o'z tilini tanlaydi."
+      },
+      {
+        "q": "AI yordamchi ma'lumotlarimni o'zgartira oladimi?",
+        "a": "Yo'q. U savollarga javob beradi va yozuv tayyorlab beradi, lekin hech narsa siz tasdiqlamaguningizcha saqlanmaydi."
+      }
+    ]
+  },
+  "contact": {
+    "label": "Aloqa",
+    "titleMuted": "Keling,",
+    "title": "fermangiz haqida gaplashamiz",
+    "lead": "Ma'lumotlaringizni qoldiring, siz bilan bog'lanib dasturni ko'rsatamiz.",
+    "phoneLabel": "Qo'ng'iroq qiling",
+    "telegramLabel": "Telegramda yozing",
+    "points": [
+      "Dasturni fermangiz misolida ko'rsatamiz",
+      "Sizga kerakli modullarni tanlaymiz",
+      "Narxni aniq aytamiz"
+    ]
+  },
+  "form": {
+    "title": "Demo so'rash",
+    "name": "Ismingiz",
+    "namePlaceholder": "Ism va familiya",
+    "phone": "Telefon raqamingiz",
+    "phonePlaceholder": "+998 90 123 45 67",
+    "farmType": "Xo'jalik yo'nalishi",
+    "farmTypePlaceholder": "Tanlang",
+    "size": "Xo'jalik hajmi",
+    "sizePlaceholder": "Masalan: 50 ga, 300 bosh chorva",
+    "region": "Hudud",
+    "regionPlaceholder": "Viloyat yoki tuman",
+    "message": "Xabar",
+    "messagePlaceholder": "Nima sizni qiziqtiradi?",
+    "consent": "Ma'lumotlarim men bilan bog'lanish uchun ishlatilishiga roziman",
+    "submit": "Ariza yuborish",
+    "sending": "Yuborilmoqda...",
+    "successTitle": "Rahmat! Arizangiz qabul qilindi",
+    "successBody": "Tez orada siz bilan bog'lanamiz.",
+    "again": "Yana ariza yuborish",
+    "errorName": "Ismingizni kiriting",
+    "errorPhone": "Telefon raqamini to'g'ri kiriting",
+    "errorConsent": "Davom etish uchun roziligingiz kerak",
+    "errorGeneric": "Yuborib bo'lmadi. Qayta urinib ko'ring yoki bizga qo'ng'iroq qiling.",
+    "errorRate": "Ko'p urinish bo'ldi. Bir ozdan keyin qayta urinib ko'ring.",
+    "optional": "ixtiyoriy",
+    "types": {
+      "livestock": "Chorvachilik",
+      "crops": "O'simlikchilik",
+      "mixed": "Aralash",
+      "other": "Boshqa"
+    }
+  },
+  "footer": {
+    "tagline": "Fermerlar uchun boshqaruv platformasi",
+    "rights": "Barcha huquqlar himoyalangan."
+  }
+}

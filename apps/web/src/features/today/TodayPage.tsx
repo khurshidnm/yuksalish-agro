@@ -114,6 +114,12 @@ function taskIsQueued(task: TodayTask, records: OutboxRecord[], sent: SentRecord
   return records.some(mine) || sent.some(mine);
 }
 
+const PRIORITY_CHIP: Record<string, string> = {
+  high: 'bg-danger-soft text-danger',
+  normal: 'bg-secondary text-secondary-foreground',
+  low: 'bg-muted text-muted-foreground',
+};
+
 function TaskRow({ task, date, queued }: { task: TodayTask; date: string; queued: boolean }) {
   const { t } = useTranslation('today');
   const camera = useRef<HTMLInputElement>(null);
@@ -136,10 +142,18 @@ function TaskRow({ task, date, queued }: { task: TodayTask; date: string; queued
 
   return (
     <li className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3">
+      <span className={cn('flex size-11 shrink-0 items-center justify-center rounded-xl', PRIORITY_CHIP[task.priority] ?? PRIORITY_CHIP.normal)}>
+        {task.requiresPhoto ? <Camera className="size-5" aria-hidden /> : <ClipboardCheck className="size-5" aria-hidden />}
+      </span>
       <div className={cn('min-w-0 flex-1', queued && 'text-muted-foreground line-through')}>
         <p className="text-base leading-snug font-semibold break-words">{task.title}</p>
         {task.entityLabel && <p className="text-sm text-muted-foreground">{task.entityLabel}</p>}
-        {overdue && !queued && <Badge variant="danger">{t('tasks.overdue')}</Badge>}
+        {!queued && (overdue || task.priority === 'high') && (
+          <span className="mt-1 flex flex-wrap gap-1">
+            {overdue && <Badge variant="danger">{t('tasks.overdue')}</Badge>}
+            {task.priority === 'high' && <Badge variant="danger">{t('enums:priority.high')}</Badge>}
+          </span>
+        )}
       </div>
       {task.requiresRecord ? (
         <Button variant="outline" size="lg" className="min-h-14 shrink-0" asChild>
@@ -230,7 +244,7 @@ export default function TodayPage() {
   return (
     <div className="mx-auto flex w-full max-w-xl flex-col gap-5">
       <header>
-        <h1 className="text-2xl font-bold">{t('title')}</h1>
+        <h1 className="text-2xl font-bold text-heading">{t('title')}</h1>
         <p className="text-base text-muted-foreground">{formatDateLong(date)}</p>
         {session.farm && <p className="text-sm text-muted-foreground">{session.farm.name}</p>}
       </header>

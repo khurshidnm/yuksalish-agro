@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import { CompleteTaskDialog } from './CompleteTaskDialog';
 import { TaskBoard } from './TaskBoard';
 import { TaskFormDialog, memberOptions } from './TaskFormDialog';
-import { DIVISIONS, entityText, isClosed, type Task } from './types';
+import { DIVISIONS, entityText, isClosed, PRIORITY_TONE, type Task } from './types';
 import { useTaskActions } from './useTaskActions';
 
 const STATUS_TONE: Record<Task['status'], BadgeVariant> = {
@@ -24,7 +24,6 @@ const STATUS_TONE: Record<Task['status'], BadgeVariant> = {
   cancelled: 'outline',
 };
 
-const PRIORITY_TONE: Record<Task['priority'], BadgeVariant> = { low: 'outline', normal: 'neutral', high: 'warning' };
 
 function QuickAdd() {
   const { t } = useTranslation('tasks');

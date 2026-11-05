@@ -24,10 +24,14 @@ import {
 import { api } from '@/lib/api';
 import { usePermission } from '@/lib/auth';
 import { useApiMutation, useDetail } from '@/lib/query';
+import { cn } from '@/lib/utils';
+import { AssistantBar } from '@/features/ai/AssistantBar';
 import { FACILITY_PATHS, FacilityFormDialog } from './FacilityFormDialog';
 import { FIELD_PATHS, FieldFormDialog, type SavedField, warnAboutOverlaps } from './FieldFormDialog';
+import { FieldPhoto } from './FieldPhoto';
+import { outerRings } from './geometry';
 import { type BaseLayer, type ColorBy, CROP_SLOT, type DrawShape, type DrawnShape, FarmMapCanvas, type FarmMapHandle, LAND_USE_SLOT, slotToken } from './map/FarmMapCanvas';
-import type { FarmMapData, I18nName, MapProps, UnmappedField } from './types';
+import type { FarmMapData, FieldProps, I18nName, MapFeature, MapProps, UnmappedField } from './types';
 import { fieldTitle, formatHa, useLocalName } from './utils';
 
 /** What the map is doing. Each drawing target decides where the finished shape goes. */
@@ -67,47 +71,84 @@ function Legend({ data, colorBy }: { data: FarmMapData | undefined; colorBy: Col
   );
 }
 
-function SelectedPanel({ feature, canEdit, onEdit, onClose }: { feature: MapProps; canEdit: boolean; onEdit: () => void; onClose: () => void }) {
+/** Every field as a floating card along the map's bottom edge. Tapping one flies the map to it. */
+function FieldStrip({ fields, onPick }: { fields: MapFeature[]; onPick: (feature: MapFeature) => void }) {
+  const { t } = useTranslation('farm');
+  const localName = useLocalName();
+  return (
+    <ul aria-label={t('map.fieldCards')} data-testid="field-strip" className="pointer-events-auto flex snap-x gap-2 overflow-x-auto pb-1 [scrollbar-width:none] max-md:mr-16 [&::-webkit-scrollbar]:hidden">
+      {fields.map((feature) => {
+        const field = feature.properties as FieldProps;
+        return (
+          <li key={feature.id} className="w-60 shrink-0 snap-start">
+            <button
+              type="button"
+              onClick={() => onPick(feature)}
+              className="focus-ring block w-full rounded-xl bg-popover p-2.5 text-left text-popover-foreground shadow-pop transition-colors hover:bg-muted"
+            >
+              <span className="block truncate px-0.5 text-sm font-semibold text-heading">{fieldTitle(field)}</span>
+              <span className="mt-1.5 flex items-center gap-3">
+                <FieldPhoto geometry={feature.geometry} width={176} aspect={1.25} className="w-20 shrink-0 rounded-lg" />
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <span className={cn('size-2 shrink-0 rounded-full', field.cropName ? 'bg-accent' : 'bg-input')} aria-hidden />
+                    <span className="truncate">{field.cropName ? localName(field.cropName) : t(`enums:landUse.${field.landUse}`)}</span>
+                  </span>
+                  <span className="mt-0.5 block text-xl leading-tight font-medium tracking-tight">{formatHa(field.areaHa, 1)}</span>
+                </span>
+              </span>
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function SelectedPanel({ feature, geometry, canEdit, onEdit, onClose }: { feature: MapProps; geometry?: Geometry; canEdit: boolean; onEdit: () => void; onClose: () => void }) {
   const { t } = useTranslation('farm');
   const localName = useLocalName();
   const isField = feature.kind === 'field';
 
   return (
-    <Card className="pointer-events-auto w-full p-3 shadow-pop md:w-80">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="font-semibold break-words">{isField ? fieldTitle(feature) : feature.name}</p>
-          <p className="text-sm text-muted-foreground">
-            {isField ? t(`enums:landUse.${feature.landUse}`) : t(`enums:facilityType.${feature.facilityType}`)}
-            {feature.areaHa != null && ` · ${formatHa(feature.areaHa)}`}
-          </p>
-        </div>
-        <Button variant="ghost" size="icon-sm" aria-label={t('common:actions.close')} onClick={onClose}>
-          <X aria-hidden />
-        </Button>
-      </div>
-      {isField && feature.cropName && (
-        <p className="mt-1 flex flex-wrap items-center gap-2 text-sm">
-          {localName(feature.cropName)}
-          {feature.cropStatus && <Badge variant="success">{t(`enums:cropPlanStatus.${feature.cropStatus}`)}</Badge>}
-        </p>
-      )}
-      {!isField && feature.capacity != null && (
-        <p className="mt-1 text-sm">{t('facilities.capacityValue', { value: feature.capacity, unit: feature.capacityUnit ?? '' })}</p>
-      )}
-      <div className="mt-3 flex flex-wrap gap-2">
-        <Button variant="outline" size="sm" asChild>
-          <Link to={isField ? `/farm/fields/${feature.id}` : '/farm/facilities'}>
-            <ExternalLink aria-hidden />
-            {isField ? t('map.openCard') : t('map.openFacilities')}
-          </Link>
-        </Button>
-        {canEdit && (
-          <Button variant="outline" size="sm" onClick={onEdit}>
-            <Pencil aria-hidden />
-            {t('map.editOutline')}
+    <Card className="pointer-events-auto w-full overflow-hidden bg-popover shadow-pop md:w-80">
+      {outerRings(geometry).length > 0 && <FieldPhoto geometry={geometry} width={640} aspect={2.4} />}
+      <div className="p-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="font-semibold break-words">{isField ? fieldTitle(feature) : feature.name}</p>
+            <p className="text-sm text-muted-foreground">
+              {isField ? t(`enums:landUse.${feature.landUse}`) : t(`enums:facilityType.${feature.facilityType}`)}
+              {feature.areaHa != null && ` · ${formatHa(feature.areaHa)}`}
+            </p>
+          </div>
+          <Button variant="ghost" size="icon-sm" aria-label={t('common:actions.close')} onClick={onClose}>
+            <X aria-hidden />
           </Button>
+        </div>
+        {isField && feature.cropName && (
+          <p className="mt-1 flex flex-wrap items-center gap-2 text-sm">
+            {localName(feature.cropName)}
+            {feature.cropStatus && <Badge variant="success">{t(`enums:cropPlanStatus.${feature.cropStatus}`)}</Badge>}
+          </p>
         )}
+        {!isField && feature.capacity != null && (
+          <p className="mt-1 text-sm">{t('facilities.capacityValue', { value: feature.capacity, unit: feature.capacityUnit ?? '' })}</p>
+        )}
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link to={isField ? `/farm/fields/${feature.id}` : '/farm/facilities'}>
+              <ExternalLink aria-hidden />
+              {isField ? t('map.openCard') : t('map.openFacilities')}
+            </Link>
+          </Button>
+          {canEdit && (
+            <Button variant="outline" size="sm" onClick={onEdit}>
+              <Pencil aria-hidden />
+              {t('map.editOutline')}
+            </Button>
+          )}
+        </div>
       </div>
     </Card>
   );
@@ -209,13 +250,21 @@ export default function FarmMapPage() {
 
   const unmapped = query.data?.unmappedFields ?? [];
   const busy = mode.kind !== 'view';
+  const fields = useMemo(
+    () => (query.data?.features ?? []).filter((feature) => feature.properties.kind === 'field').sort((a, b) => (b.properties.areaHa ?? 0) - (a.properties.areaHa ?? 0)),
+    [query.data],
+  );
+  const pickField = (feature: MapFeature) => {
+    setSelected(feature.properties);
+    canvas.current?.focus(feature.id);
+  };
   const selectedEditable = selected !== null && canDraw && canUpdate && (selected.kind === 'field' || selected.areaHa != null);
 
   return (
     <>
       <PageHeader
         title={t('map.title')}
-        description={t('map.description')}
+        description={<span className="hidden md:inline">{t('map.description')}</span>}
         actions={
           <>
             <Button variant="outline" asChild>
@@ -280,7 +329,7 @@ export default function FarmMapPage() {
                 ]}
                 className="md:w-44"
               />
-              <div className="col-span-2 min-w-0 md:ml-1 md:flex-1 md:basis-64">
+              <div className="hidden min-w-0 md:ml-1 md:block md:flex-1 md:basis-64">
                 <Legend data={query.data} colorBy={colorBy as ColorBy} />
               </div>
             </div>
@@ -295,7 +344,7 @@ export default function FarmMapPage() {
                   baseLayer={baseLayer as BaseLayer}
                   colorBy={colorBy as ColorBy}
                   selectedId={mode.kind === 'edit' ? mode.feature.id : (selected?.id ?? null)}
-                  className="h-[62dvh] min-h-96 w-full lg:h-[calc(100dvh-20rem)]"
+                  className="h-[calc(100dvh-20rem)] min-h-96 w-full"
                   onSelect={setSelected}
                   onDrawn={onDrawn}
                   onLiveArea={setLiveArea}
@@ -307,9 +356,24 @@ export default function FarmMapPage() {
               </div>
 
               {/* On phones this floats above the bottom nav, so Finish is reachable however far the page has scrolled. */}
-              <div className="pointer-events-none fixed inset-x-2 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-40 flex flex-col items-start gap-2 lg:absolute lg:bottom-2 lg:z-10 lg:pr-14">
+              {!selected && !busy && (
+                <div className="pointer-events-none absolute inset-x-2 bottom-6 z-10 flex flex-col gap-2">
+                  {fields.length > 0 && <FieldStrip fields={fields} onPick={pickField} />}
+                  <div className="pointer-events-auto hidden md:block md:max-w-xl">
+                    <AssistantBar compact className="shadow-pop" />
+                  </div>
+                </div>
+              )}
+
+              <div className="pointer-events-none fixed inset-x-2 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-40 flex flex-col items-start gap-2 lg:absolute lg:bottom-6 lg:z-10">
                 {selected && !busy && (
-                  <SelectedPanel feature={selected} canEdit={selectedEditable} onEdit={() => startEdit(selected)} onClose={() => setSelected(null)} />
+                  <SelectedPanel
+                    feature={selected}
+                    geometry={query.data?.features.find((feature) => feature.id === selected.id)?.geometry}
+                    canEdit={selectedEditable}
+                    onEdit={() => startEdit(selected)}
+                    onClose={() => setSelected(null)}
+                  />
                 )}
 
                 {busy && (
@@ -361,6 +425,10 @@ export default function FarmMapPage() {
                   </Card>
                 )}
               </div>
+            </div>
+
+            <div className="border-t border-border p-2 md:hidden">
+              <Legend data={query.data} colorBy={colorBy as ColorBy} />
             </div>
           </Card>
 

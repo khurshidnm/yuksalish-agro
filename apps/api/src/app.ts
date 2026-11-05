@@ -15,10 +15,31 @@ import {
 } from 'fastify-type-provider-zod';
 import { config, isProd, isTest } from './config';
 import { db } from './db/client';
-import { AppError } from './core/errors';
+import { AppError, safeError } from './core/errors';
 import { MODULE_PLUGINS } from './modules';
 
 const MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
+
+export interface LogStream {
+  write(line: string): void;
+}
+
+/**
+ * Every line the API logs through pino passes through these, Fastify's own and the jobs' included.
+ * The defaults would write a failed query's parameters, which can be a person's words, and the query
+ * string, which can be a searched name or phone, or the token of a file link.
+ */
+const LOG_SERIALIZERS = {
+  // Fastify's type asks for pino's default shape, but pino writes whatever comes back.
+  err: (err: unknown) => (err instanceof Error ? safeError(err) : err) as { type: string; message: string; stack: string },
+  req: (req: FastifyRequest) => ({ method: req.method, url: req.url.split('?')[0], remoteAddress: req.ip }),
+};
+
+function loggerOptions(stream?: LogStream) {
+  if (stream) return { stream, serializers: LOG_SERIALIZERS };
+  if (isTest) return false;
+  return { serializers: LOG_SERIALIZERS, ...(isProd ? {} : { transport: { target: 'pino-pretty' }, level: 'info' }) };
+}
 
 /** Drizzle wraps driver errors; the Postgres error is the cause. */
 function postgresError(err: unknown): { code: string; detail?: string; constraint?: string } | null {
@@ -83,14 +104,15 @@ function errorHandler(error: FastifyError, req: FastifyRequest, reply: FastifyRe
     return reply.code(error.statusCode).send({ error: { code: error.code ?? 'BAD_REQUEST', message: error.message } });
   }
 
-  // Unknown failures are logged in full, and the client gets nothing internal.
+  // Unknown failures go to the log, and the client gets nothing internal.
   req.log.error({ err: error }, 'unhandled error');
   return reply.code(500).send({ error: { code: 'INTERNAL_ERROR', message: 'Something went wrong on the server' } });
 }
 
-export async function buildApp(): Promise<FastifyInstance> {
+/** `logStream` lets a test read what would reach the log; tests otherwise run with the logger off. */
+export async function buildApp(logStream?: LogStream): Promise<FastifyInstance> {
   const app = Fastify({
-    logger: isTest ? false : isProd ? true : { transport: { target: 'pino-pretty' }, level: 'info' },
+    logger: loggerOptions(logStream),
     trustProxy: true,
     bodyLimit: 5 * 1024 * 1024,
   });

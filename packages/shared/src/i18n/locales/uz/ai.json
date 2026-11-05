@@ -57,7 +57,30 @@
     "refused": "Bu savolga javob bera olmayman. Savolni boshqacha yozib ko'ring.",
     "truncated": "Javob juda uzun bo'lib ketdi va to'liq chiqmadi. Savolni qisqaroq bering.",
     "noAnswer": "Javob tayyorlay olmadim. Savolni boshqacha yozib ko'ring.",
-    "gaveUp": "Bu savol juda ko'p qadam talab qildi va javob tayyorlay olmadim. Savolni kichikroq qismlarga bo'ling."
+    "gaveUp": "Bu savol juda ko'p qadam talab qildi va javob tayyorlay olmadim. Savolni kichikroq qismlarga bo'ling.",
+    "cardReady": "Kartani tekshirib, tasdiqlang.",
+    "cardsReady": "{{count}} ta kartani tekshirib, tasdiqlang.",
+    "nothingSaved": "Hech narsa yozilmadi. Yozish uchun summa va nima uchun ekanini ayting.",
+    "ask": {
+      "default": "Bu yozuvni tayyorlash uchun yana bir oz ma'lumot kerak. Batafsilroq ayting, iltimos.",
+      "USE_OTHER_MODULE": "Bu yozuv boshqa bo'limda kiritiladi, aks holda ikki marta hisoblanadi.",
+      "NOT_HAPPENED": "Bu pul allaqachon to'langanmi?",
+      "AMOUNT_REQUIRED": "Summa qancha edi?",
+      "AMOUNT_NOT_STATED": "Summani aniq ayting, iltimos.",
+      "PAYMENT_METHOD_REQUIRED": "Qanday to'landi: naqd, bank yoki qarzga?",
+      "DATE_UNCLEAR": "Bu qaysi kuni bo'lgan edi?",
+      "DIRECTION_REQUIRED": "Kim kimga to'ladi: biz ularga yoki ular bizga?",
+      "QUANTITY_REQUIRED": "Qancha olindi?",
+      "WAGE_OR_SERVICE": "Bu ish haqimi yoki xizmat uchun to'lovmi?",
+      "TARGET_REQUIRED": "Bu qaysi dala, suruv yoki texnika uchun?",
+      "COUNTERPARTY_REQUIRED": "Bu kim bilan bo'lgan?",
+      "AMOUNT_ALREADY_USED": "Bu summa bir marta aytildi va allaqachon kartada. Bunisi qancha edi, yoki har biri shuncha edimi?",
+      "KIND_UNCLEAR": "Bu pul kirdimi yoki chiqdimi?",
+      "TRANSFER_SIDES": "Pul qaysi hisobdan chiqdi va qaysi hisobga tushdi?"
+    },
+    "notDone": "Bu bajarilmadi. Kartadagi tugmadan foydalaning yoki qayta urinib ko'ring.",
+    "pressConfirm": "Karta hali yozilmadi. Yozish uchun kartadagi tasdiqlash tugmasini bosing.",
+    "hiddenAnswer": "Bu javobda moliyaviy ma'lumot bor edi, endi uni ko'ra olmaysiz."
   },
   "summary": {
     "title": {
@@ -101,7 +124,7 @@
     "description": "Farmangiz ma'lumotlari bo'yicha savol-javob, avtomatik tahlillar va tavsiyalar",
     "notConfiguredTitle": "AI yordamchi hali sozlanmagan",
     "notConfiguredBody": "Savol-javob va hujjat o'qish hozircha ishlamaydi. Statistik tahlillar va tavsiyalar kalitsiz ham ishlayveradi.",
-    "notConfiguredHow": "Yoqish uchun server sozlamalarida ANTHROPIC_API_KEY qiymatini kiriting va API xizmatini qayta ishga tushiring.",
+    "notConfiguredHow": "Yoqish uchun server sozlamalarida GEMINI_API_KEY (to'lov ulangan Google loyihasidan) yoki ANTHROPIC_API_KEY ni kiriting va API ni qayta ishga tushiring.",
     "tabs": {
       "assistant": "Yordamchi",
       "insights": "Tahlillar",
@@ -387,7 +410,18 @@
     "AI_DOCUMENT_UNREADABLE": "Hujjatni o'qib bo'lmadi. Tiniqroq foto yuboring.",
     "AI_UNSUPPORTED_FILE": "Faqat foto va PDF fayllarni o'qish mumkin.",
     "ALREADY_DECIDED": "Bu tavsiya bo'yicha qaror allaqachon qabul qilingan.",
-    "NOT_DECIDED": "Avval qaror qabul qiling, keyin natijani yozing."
+    "NOT_DECIDED": "Avval qaror qabul qiling, keyin natijani yozing.",
+    "PROPOSAL_NOT_PENDING": "Bu allaqachon ko'rib chiqilgan.",
+    "PROPOSAL_EXPIRED": "Qoralama muddati tugagan. Qaytadan ayting.",
+    "NOT_YOUR_PROPOSAL": "Bu boshqa odamning qoralamasi.",
+    "DUPLICATE_NOT_ACKNOWLEDGED": "Bu takrorga o'xshaydi. Alohida yozuv ekanini tasdiqlang.",
+    "PROPOSAL_NOT_CONFIRMED": "Faqat tasdiqlangan yozuvni bekor qilish mumkin.",
+    "UNDO_EXPIRED": "Bekor qilish vaqti o'tgan.",
+    "PROPOSAL_CHANGED": "Karta siz o'qiganingizdan keyin o'zgardi. Yangisini tekshiring.",
+    "PROPOSAL_NEEDS_ANSWER": "Bu kartaga tuzatish javobingizni kutmoqda.",
+    "PROPOSAL_STALE": "Kartadagi narsa o'zgardi, masalan hisob yopilgan. Kartani tekshiring.",
+    "NOT_ACKNOWLEDGED": "Bu yozuv uchun alohida roziligingiz kerak.",
+    "UNDO_IMPOSSIBLE": "Bu yozuvni bu yerda bekor qilib bo'lmaydi."
   },
   "sourceValues": {
     "actual": "haqiqiy sarf",
@@ -396,5 +430,335 @@
     "farm_history": "fermaning o'z tarixi",
     "assumed_default": "ferma 30 ta qo'zilashni qayd etguncha taxminiy qiymat",
     "planned_figures": "Foyda reja ko'rsatkichlariga asoslangan, o'tgan hosil natijalariga emas."
+  },
+  "records": {
+    "emptyTitle": "Savol bering yoki yozuvni ayting",
+    "emptyDescription": "Yordamchi ferma haqidagi savollarga javob beradi, xarajat, xarid yoki daromadni yozishga tayyorlab beradi. Siz tasdiqlamaguningizcha hech narsa yozilmaydi.",
+    "composerPlaceholder": "Savol yoki yozuv: 3 mln yoqilg'i",
+    "kind": {
+      "expense": "Xarajat",
+      "stock_purchase": "Omborga xarid",
+      "income": "Daromad",
+      "debt_payment": "Qarz to'lovi",
+      "transfer": "O'tkazma"
+    },
+    "channel": {
+      "telegram": "Telegram"
+    },
+    "fields": {
+      "amount": "Summa",
+      "date": "Sana",
+      "category": "Modda",
+      "target": "Qayerga yoziladi",
+      "item": "Mahsulot",
+      "qty": "Miqdori",
+      "unitPrice": "Birlik narxi",
+      "warehouse": "Ombor",
+      "account": "Hisob",
+      "counterparty": "Kontragent",
+      "description": "Izoh",
+      "fromAccount": "Qaysi hisobdan",
+      "toAccount": "Qaysi hisobga",
+      "direction": "Kim to'ladi"
+    },
+    "card": {
+      "targetDefaulted": "Aniq aytilmagani uchun shu joy tanlandi. To'g'ri kelmasa, o'zgartiring.",
+      "willNeedApproval": "Summa katta: siz tasdiqlaganingizdan keyin ikkinchi xodim ham tasdiqlashi kerak.",
+      "noPermission": "Bu yozuvni tasdiqlash uchun sizda ruxsat yo'q.",
+      "expires": "{{time}} gacha amal qiladi",
+      "fxRate": "kurs: 1 {{currency}} = {{rate}} {{base}}",
+      "notApplied": "Bu o'zgarish siz kiritgandek saqlanmadi: {{fields}}. Tasdiqlashdan oldin tekshiring yoki suhbatda yozib to'g'rilang.",
+      "masked": "Siz endi pul ma'lumotlarini ko'ra olmaysiz, shuning uchun bu kartada summalar ko'rsatilmaydi va uni bu yerda tasdiqlab yoki o'zgartirib bo'lmaydi.",
+      "learningTitle": "Eslab qoladi",
+      "learning": "\"{{phrase}}\" — bu {{name}}",
+      "learningBody": "Tasdiqlasangiz, yordamchi keyingi safar bu so'zlarni shunday tushunadi. So'zni Iboralar bo'limida o'chirishingiz mumkin."
+    },
+    "actions": {
+      "confirm": "Tasdiqlash",
+      "change": "O'zgartirish",
+      "cancel": "Bekor qilish",
+      "undo": "Ortga qaytarish ({{time}})",
+      "open": "Yozuvni ochish",
+      "back": "Orqaga"
+    },
+    "notice": {
+      "changedTitle": "Karta o'zgardi",
+      "changed": "Siz o'qiganingizdan keyin o'zgardi: {{fields}}. Kartani tekshirib, qaytadan tasdiqlang.",
+      "changedUnnamed": "Siz o'qiganingizdan keyin o'zgardi. Kartani tekshirib, qaytadan tasdiqlang.",
+      "staleTitle": "Kartadagi ma'lumot endi to'g'ri kelmaydi",
+      "stale": "Karta tuzilgandan keyin unda ko'rsatilgan narsa o'zgardi, masalan, hisob yopildi. Kartani o'zgartiring yoki bekor qiling.",
+      "needsAnswerTitle": "Tuzatish javobingizni kutmoqda",
+      "needsAnswer": "Savolga suhbatda javob bering yoki kartani shu yerda o'zgartiring. Ungacha uni tasdiqlab bo'lmaydi."
+    },
+    "acknowledge": {
+      "several": "Ha, hammasini tekshirdim",
+      "POSSIBLE_DUPLICATE": {
+        "title": "Bu takroriy yozuv emasmi?",
+        "booked": "Xuddi shunday yozuv 3 kun ichida hisobga kiritilgan. Faqat bu alohida yozuv bo'lsa, tasdiqlang.",
+        "open": "Xuddi shunday yozuv boshqa kartada tasdiq kutmoqda. Agar bu o'sha narsa bo'lsa, ulardan birini bekor qiling.",
+        "yes": "Ha, bu alohida yozuv"
+      },
+      "OTHER_AMOUNT": {
+        "title": "Xabarda boshqa summa ham bor",
+        "body": "Xabarda {{amounts}} ham bor, u hech qaysi kartada yo'q, masalan, qaytim yoki chegirma. Bu karta shu holicha to'g'riligini tekshiring.",
+        "yes": "Ha, karta to'g'ri"
+      },
+      "AMOUNT_FROM_DOCUMENT": {
+        "title": "Summa hujjatdan olindi",
+        "body": "{{amount}} hujjatdan yoki uzatilgan xabardan o'qildi, o'z so'zlaringizda esa u yo'q. Hujjat bilan solishtirib ko'ring.",
+        "yes": "Ha, summa to'g'ri"
+      },
+      "CURRENCY_CONVERTED": {
+        "title": "Hisob boshqa valyutada",
+        "body": "{{account}} hisobining valyutasi: {{currency}}. Shuning uchun bu kartadagi kurs bo'yicha shu valyutadagi qiymati bilan yoziladi. Shunday bo'lganini tekshiring.",
+        "yes": "Ha, shunday yozilsin"
+      }
+    },
+    "outcome": {
+      "confirmedTitle": "Yozildi",
+      "waitingTitle": "Tasdiq kutilmoqda",
+      "waitingBody": "Ikkinchi xodim tasdiqlagach, hisobotlarga tushadi.",
+      "failedTitle": "Yozib bo'lmadi",
+      "failedBody": "Hech narsa yozilmadi. Qaytadan urinib ko'ring yoki tegishli sahifada qo'lda kiriting.",
+      "rejectedTitle": "Bekor qilindi",
+      "rejectedBody": "Hech narsa yozilmadi.",
+      "expiredTitle": "Muddati o'tdi",
+      "expiredBody": "Hech narsa yozilmadi. Kerak bo'lsa, qaytadan ayting.",
+      "undoneTitle": "Ortga qaytarildi",
+      "undoneBody": "Yozuv bekor qilindi, hisoblar avvalgi holiga qaytdi.",
+      "refusedTitle": "Hisobda rad etildi",
+      "refusedBody": "Ikkinchi xodim bu yozuvni rad etdi yoki moliya bo'limi uni bekor qildi. U qoldiqlar va hisobotlarda hisoblanmaydi."
+    },
+    "edit": {
+      "title": "Yozuvni o'zgartirish",
+      "description": "Siz tasdiqlamaguningizcha hech narsa yozilmaydi.",
+      "save": "Saqlash",
+      "unitPriceHint": "Birlik narxi summa va miqdordan hisoblanadi."
+    },
+    "question": {
+      "choose": "Javobni tanlang",
+      "generic": "Bir narsani aniqlashtirish kerak. Javobni tanlang yoki yozuvni o'zgartiring.",
+      "notSaved": "O'zgarish hali saqlanmadi.",
+      "typeAnswer": "Javobingizni pastdagi maydonga yozing."
+    },
+    "warnings": {
+      "generic": "Tasdiqlashdan oldin tekshirib ko'ring.",
+      "OVER_BALANCE": "Summa {{account}} qoldig'idan ko'p: {{balance}}.",
+      "UNUSUALLY_LARGE": "Bu modda bo'yicha odatdagidan ancha katta summa, odatda taxminan {{median}}.",
+      "UNUSUAL_PRICE": "Bu birlik narxi odatdagidan ancha farq qiladi, odatda taxminan {{median}}.",
+      "OLD_DATE": "Sana, {{date}}, 30 kundan ko'proq oldin.",
+      "STALE_RATE": "Saqlangan valyuta kursi, {{rate}}, {{date}} sanasiga tegishli: bir haftadan eski. Tekshirib ko'ring.",
+      "PHRASE_USED": "\"{{phrase}}\" avval o'rgatganingizdek {{name}} deb tushunildi.",
+      "CURRENCY_CONVERTED": "{{account}} so'mda yuritiladi, shuning uchun bu so'mdagi qiymati bilan yoziladi. Tekshirib ko'ring."
+    },
+    "pending": {
+      "tab": "Kutilmoqda",
+      "intro": "Hali tasdiqlanmagan yozuvlar, Telegramda boshlanganlari ham shu yerda.",
+      "emptyTitle": "Kutayotgan yozuv yo'q",
+      "emptyBody": "Yordamchi tayyorlagan, lekin hali tasdiqlanmagan yozuvlar shu yerda ko'rinadi."
+    },
+    "help": {
+      "open": "Nima deyish mumkin?",
+      "title": "Nima deyish mumkin?",
+      "intro": "Hamkasbingizga aytgandek oddiy gapiring. Nimadir yetishmasa, yordamchi o'zi so'raydi.",
+      "groups": {
+        "expense": "Xarajat",
+        "stock": "Omborga xarid",
+        "income": "Daromad",
+        "debt": "Qarz",
+        "transfer": "Hisoblar orasida",
+        "several": "Bir nechtasi birga",
+        "ask": "Savollar"
+      },
+      "examples": {
+        "fuelShort": "3 mln yoqilg'i, naqd",
+        "repair": "Traktor ta'miriga 800 ming bankdan to'ladim",
+        "feed": "5 tonna arpa oldim, kilosi 3 500 so'mdan, naqd",
+        "diesel": "200 litr solyarka, 2,4 mln, qarzga",
+        "subsidy": "Davlat subsidiyasi 12 mln bankka tushdi",
+        "supplier": "Akmal akaga 2 mln qarzimizni naqd berdim",
+        "bank": "Bankdan kassaga 5 mln o'tkazdim",
+        "two": "500 ming tushlik, 200 ming aloqa, ikkalasi naqd",
+        "status": "Bugun fermada ahvol qanday?",
+        "cash": "Kassada qancha pul bor?"
+      },
+      "safetyTitle": "Siz tasdiqlamaguningizcha hech narsa yozilmaydi",
+      "safetyBody": "Yordamchi faqat tayyorlab beradi. Xato bo'lsa, o'zgartiring yoki bekor qiling. Tasdiqlash chegarasidan past yozuvni 15 daqiqa ichida ortga qaytarish mumkin.",
+      "elsewhere": "Ish haqi, kredit to'lovi va sotuvlar o'z bo'limlarida kiritiladi: bu yerda yozilsa, ikki marta hisoblanib ketadi.",
+      "telegram": "Telegramda ovozli xabar yoki chek rasmini ham yuborsa bo'ladi.",
+      "tapHint": "Misolni bossangiz, yozish maydoniga tushadi."
+    },
+    "sheet": {
+      "title": "Yordamchi",
+      "description": "Savol bering yoki yozuvni ayting",
+      "chat": "Suhbat",
+      "help": "Yordam",
+      "openPage": "To'liq sahifada ochish"
+    },
+    "launcher": {
+      "open": "Yordamchini ochish",
+      "pending": "Yordamchi: {{count}} ta yozuv kutmoqda"
+    },
+    "direction": {
+      "payable": "Biz to'ladik",
+      "receivable": "Ular to'ladi"
+    },
+    "options": {
+      "stock": "Omborga kirdi",
+      "direct": "Darhol ishlatildi",
+      "wage": "Ish haqi",
+      "service": "Xizmat uchun to'lov",
+      "per_ton": "Tonnasi uchun",
+      "per_kg": "Kilosi uchun"
+    },
+    "questions": {
+      "field": {
+        "amount": "Summa qancha?",
+        "unitPrice": "Birlik narxi qancha?",
+        "qty": "Miqdori qancha?",
+        "date": "Qaysi kun edi?",
+        "category": "Bu nima uchun edi?",
+        "target": "Qayerga yozilsin?",
+        "account": "Qaysi hisob?",
+        "toAccount": "Qaysi hisobga o'tkazildi?",
+        "counterparty": "Qaysi kontragent?",
+        "item": "Qaysi mahsulot?",
+        "warehouse": "Qaysi omborga?",
+        "paymentMethod": "Qanday to'landi?",
+        "direction": "Biz to'ladikmi yoki ular to'ladimi? Buni suhbatda yozing.",
+        "direct": "Bu tovar omborga kirdimi yoki darhol ishlatildimi? Buni suhbatda yozing.",
+        "currency": "Qaysi valyutada?",
+        "fxRate": "Kurs qancha?"
+      },
+      "code": {
+        "USE_OTHER_MODULE": "Bu o'z bo'limida kiritiladi: bu yerda yozilsa, ikki marta hisoblanib ketadi.",
+        "SAME_ACCOUNT": "Ikkala hisob bir xil. Qaysi hisobga o'tkazildi?",
+        "NO_ACCOUNT": "Hali hisob qo'shilmagan. Avval Moliya bo'limida hisob qo'shing.",
+        "UNIT_MISMATCH": "Miqdor yoki narx mahsulot yuritiladigan birlikda emas. Uni mahsulot birligida ayting yoki umumiy summani ayting.",
+        "DATE_IN_FUTURE": "Sana kelajakda bo'lishi mumkin emas. Qaysi kun edi?",
+        "DATE_UNCLEAR": "Aniq qaysi kun edi?",
+        "AMOUNT_CONFLICT": "So'zlaringiz va hujjatdagi summa har xil. Qaysi biri to'g'ri?",
+        "AMOUNT_AMBIGUOUS": "Bu narxda miqdor boshqa summaga to'g'ri keladi. Qaysi summa to'g'ri?",
+        "AMOUNT_UNCLEAR": "Qaysi summani nazarda tutdingiz?",
+        "AMOUNT_NOT_STATED": "So'zlaringizda bu summa yo'q. Qancha edi?",
+        "QUANTITY_NOT_STATED": "So'zlaringizda bu miqdor yo'q. Qancha edi?",
+        "PRICE_UNIT_UNCLEAR": "Bu narx tonnasi uchunmi yoki kilosi uchunmi?",
+        "NOT_HAPPENED": "Bu pul allaqachon to'langanmi? To'langan bo'lsa, qachonligini ayting.",
+        "WAGE_OR_SERVICE": "Bu kimningdir ish haqimi yoki xizmat uchun to'lovmi? Ish haqi o'z bo'limida kiritiladi.",
+        "NO_OPEN_DEBT": "U bilan bu yo'nalishda ochiq qarz yo'q. Bu qanday to'lov edi?",
+        "MORE_THAN_OWED": "Bu qarzdan ko'p. Qolgani nima uchun edi?",
+        "ACCOUNT_CURRENCY": "Bu hisob boshqa valyutada yuritiladi. Qaysi hisob edi yoki uning valyutasida qancha?",
+        "CURRENCY_NOT_SUPPORTED": "Bu yerda faqat bitta valyutada yoziladi. Valyuta ayirboshlash Moliya bo'limida kiritiladi.",
+        "CURRENCY_UNSUPPORTED": "Bu valyuta bu yerda yuritilmaydi. Summani xo'jalik valyutasida, {{base}}da ayting.",
+        "CURRENCY_UNCLEAR": "Qaysi valyutada edi?",
+        "FX_RATE_REQUIRED": "Valyuta kursi qancha edi?"
+      }
+    },
+    "tools": {
+      "find_records": "Ma'lumot qidirish",
+      "farm_status": "Ferma holati",
+      "draft_expense": "Xarajat tayyorlash",
+      "draft_stock_purchase": "Xarid tayyorlash",
+      "draft_income": "Daromad tayyorlash",
+      "draft_debt_payment": "Qarz to'lovini tayyorlash",
+      "draft_transfer": "O'tkazma tayyorlash",
+      "update_draft": "Yozuvni o'zgartirish",
+      "cancel_draft": "Yozuvni bekor qilish"
+    },
+    "tables": {
+      "ai_proposals": "tayyorlangan yozuvlar",
+      "expense_categories": "xarajat moddalari",
+      "income_categories": "daromad moddalari",
+      "warehouses": "omborlar",
+      "machines": "texnika"
+    },
+    "phrases": {
+      "tab": "Iboralar",
+      "intro": "Yordamchi siz aytgan so'zlarni eslab qoladi. Noto'g'ri bog'langanini o'chirsangiz, keyingi safar yana so'raydi.",
+      "emptyTitle": "Hali iboralar yo'q",
+      "emptyBody": "Yordamchi so'rab, siz javob berganingizda, sizning so'zingiz shu yerda saqlanadi.",
+      "delete": "\"{{phrase}}\" iborasini o'chirish",
+      "deleteTitle": "\"{{phrase}}\" iborasi o'chirilsinmi?",
+      "deleteBody": "Yordamchi keyingi safar bu so'zni yana so'raydi.",
+      "deleted": "Ibora o'chirildi",
+      "types": {
+        "category": "Modda",
+        "cost_center": "Xarajat markazi",
+        "account": "Hisob",
+        "counterparty": "Kontragent",
+        "item": "Mahsulot",
+        "warehouse": "Ombor"
+      }
+    }
+  },
+  "recordText": {
+    "kind": {
+      "expense": "Xarajat",
+      "stock_purchase": "Omborga xarid",
+      "income": "Daromad",
+      "debt_payment": "Qarz to'lovi",
+      "transfer": "Pul o'tkazmasi"
+    },
+    "category": "Modda",
+    "item": "Mahsulot",
+    "warehouse": "Ombor",
+    "target": "Qayerga",
+    "account": "Hisob",
+    "toAccount": "Qayerga o'tkazildi",
+    "counterparty": "Kontragent",
+    "date": "Sana",
+    "description": "Izoh",
+    "defaulted": "umumiy, siz aytmadingiz",
+    "onDebt": "qarzga",
+    "needsApproval": "Tasdiqlagandan keyin ikkinchi odamning roziligini kutadi.",
+    "warnings": {
+      "POSSIBLE_DUPLICATE": "Shunga o'xshash yozuv yaqinda kiritilgan.",
+      "UNUSUALLY_LARGE": "Bu odatdagidan ancha katta summa.",
+      "OVER_BALANCE": "Summa hisobdagi qoldiqdan ko'p.",
+      "OLD_DATE": "Sana 30 kundan eski.",
+      "AMOUNT_FROM_DOCUMENT": "Summa hujjatdan o'qildi, tekshirib ko'ring.",
+      "NO_OPEN_DEBT": "Bu kontragentda ochiq qarz topilmadi.",
+      "MORE_THAN_OWED": "Summa qarzdan ko'p.",
+      "OTHER_AMOUNT": "Xabarda kartada yo'q boshqa summa ham bor. Tekshirib ko'ring.",
+      "STALE_RATE": "Valyuta kursi eski. Tekshirib ko'ring.",
+      "UNUSUAL_PRICE": "Bu narx odatdagidan ancha farq qiladi.",
+      "PHRASE_USED": "Bu tanlov avval o'rgatilgan so'z bo'yicha qilindi.",
+      "CURRENCY_CONVERTED": "Bu hisob so'mda yuritiladi, shuning uchun bu so'mdagi qiymati bilan yoziladi. Tekshirib ko'ring."
+    },
+    "direction": {
+      "payable": "Qarzni to'ladik",
+      "receivable": "Qarzni bizga to'lashdi"
+    },
+    "farm": "Ferma",
+    "rate": "Kurs",
+    "onlyOne": "yagonasi, siz aytmadingiz",
+    "learning": "Eslab qolaman",
+    "registerAnimals": {
+      "title": "Hayvonlarni ro'yxatga oling",
+      "body": "Xarid yozildi. Endi sotib olingan hayvonlarni chorva bo'limida ro'yxatga oling."
+    }
+  },
+  "recap": {
+    "title": "Bugungi yozuvlar, {{date}}",
+    "recorded": "Tasdiqlangan yozuvlar: {{count}}",
+    "moneyOut": "Chiqim: {{amount}}",
+    "moneyIn": "Kirim: {{amount}}",
+    "more": "va yana {{count}} ta",
+    "awaitingSecond": "Ikkinchi odam tasdig'ini kutmoqda: {{count}}",
+    "waiting": "Sizning tasdig'ingizni kutmoqda: {{count}}. Muddati o'tsa, bekor bo'ladi."
+  },
+  "bar": {
+    "label": "Yordamchiga savol bering",
+    "placeholder": "Savol bering yoki yozing...",
+    "send": "Yordamchiga yuborish",
+    "chips": {
+      "attention": "Bugungi muhim ishlar",
+      "lambing": "Bu hafta qo'zilash",
+      "feed": "Ozuqa zaxirasi"
+    }
+  },
+  "insightStrip": {
+    "title": "AI tahlili",
+    "open": "Barcha tahlillarni ochish"
   }
 }

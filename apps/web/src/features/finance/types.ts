@@ -37,6 +37,8 @@ export interface Transaction {
   createdByName: string | null;
   approvedByName: string | null;
   createdAt: string;
+  /** Sent back with an edit or a decision, so the server knows which version the person read. */
+  updatedAt: string;
 }
 
 export interface Totals {

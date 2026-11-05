@@ -113,6 +113,8 @@ GRANT SELECT ON tenants TO yap_ai;
 GRANT SELECT, INSERT, UPDATE ON users TO yap_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON refresh_tokens, telegram_link_codes TO yap_app;
 GRANT SELECT ON plans TO yap_app, yap_ai;
+-- Not to yap_ai: the assistant has no business reading a prospect's phone number.
+GRANT SELECT, INSERT, UPDATE, DELETE ON leads TO yap_app;
 GRANT INSERT, UPDATE ON plans TO yap_app;
 -- AI may resolve names, but never sees credentials.
 GRANT SELECT (id, full_name, locale, status) ON users TO yap_ai;
@@ -124,6 +126,7 @@ REVOKE INSERT, UPDATE, DELETE ON audit_logs FROM yap_app;
 -- The only tables AI writes to (spec 4.1 p.8, 15.2).
 GRANT INSERT, UPDATE ON ai_insights TO yap_ai;
 GRANT SELECT, INSERT ON ai_messages, ai_conversations TO yap_ai;
+GRANT SELECT, INSERT, UPDATE ON ai_proposals TO yap_ai;
 
 -- ─── Cross-tenant references ───────────────────────────────────────────────
 -- Foreign key checks run as the table owner and ignore RLS, so a plain FK accepts another

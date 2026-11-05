@@ -17,7 +17,16 @@ x-api-env: &api-env
   S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
   S3_SECRET_KEY: ${S3_SECRET_KEY:-}
   TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+  LEADS_TELEGRAM_CHAT_ID: ${LEADS_TELEGRAM_CHAT_ID:-}
+  GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+  GEMINI_PAID_TIER: ${GEMINI_PAID_TIER:-}
   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  AI_PROVIDER: ${AI_PROVIDER:-}
+  AI_MODEL: ${AI_MODEL:-}
+  AI_THINKING_BUDGET: ${AI_THINKING_BUDGET:-}
+  AI_EFFORT: ${AI_EFFORT:-}
+  AI_CHAT_PER_MINUTE: ${AI_CHAT_PER_MINUTE:-}
+  AI_CHAT_PER_DAY: ${AI_CHAT_PER_DAY:-}
 
 services:
   db:
@@ -71,6 +80,8 @@ services:
   api:
     image: yap/api:latest
     restart: unless-stopped
+    # Stopping waits up to 20 s for Telegram turns in hand (bot.ts), then for jobs and open requests.
+    stop_grace_period: 30s
     environment: *api-env
     volumes:
       - files:/data/storage
@@ -90,6 +101,10 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      args:
+        VITE_SITE_URL: ${VITE_SITE_URL:-}
+        VITE_CONTACT_PHONE: ${VITE_CONTACT_PHONE:-}
+        VITE_CONTACT_TELEGRAM: ${VITE_CONTACT_TELEGRAM:-}
     image: yap/web:latest
     restart: unless-stopped
     ports:

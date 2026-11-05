@@ -59,5 +59,7 @@
   "documentType": { "land": "Документ на землю", "construction": "Строительный документ", "permit": "Разрешение", "contract": "Договор", "invoice": "Счёт-фактура", "vet_certificate": "Ветеринарное свидетельство", "act": "Акт", "other": "Другое" },
   "role": { "owner": "Владелец", "director": "Директор", "accountant": "Бухгалтер", "agronomist": "Агроном", "zootechnician": "Зоотехник", "veterinarian": "Ветеринар", "storekeeper": "Кладовщик", "mechanic": "Бригадир / механизатор", "shepherd": "Чабан", "investor": "Инвестор", "auditor": "Аудитор" },
   "module": { "dashboard": "Панель управления", "farm": "Ферма и земля", "crops": "Растениеводство", "livestock": "Животноводство", "health": "Ветеринария", "inventory": "Склад", "feed": "Корма", "finance": "Финансы", "payroll": "Зарплата", "hr": "Сотрудники", "assets": "Техника", "sales": "Продажи", "reports": "Отчёты", "ai": "ИИ-анализ", "cameras": "Камеры", "tasks": "Задачи", "users": "Пользователи", "settings": "Настройки", "audit": "Аудит" },
-  "action": { "view": "Просмотр", "create": "Создание", "update": "Редактирование", "approve": "Подтверждение", "delete": "Удаление" }
+  "action": { "view": "Просмотр", "create": "Создание", "update": "Редактирование", "approve": "Подтверждение", "delete": "Удаление" },
+  "leadStatus": { "new": "Новая", "contacted": "Связались", "qualified": "Заинтересован", "won": "Стал клиентом", "lost": "Отказ" },
+  "leadFarmType": { "livestock": "Животноводство", "crops": "Растениеводство", "mixed": "Смешанное", "other": "Другое" }
 }

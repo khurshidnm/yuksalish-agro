@@ -12,6 +12,7 @@ import { TextField } from '@/components/FormField';
 import { ErrorCard } from '@/components/ErrorCard';
 import { Alert, Button, Card, Skeleton } from '@/components/ui';
 import { api } from '@/lib/api';
+import { useSignOut } from '@/app/useSignOut';
 import { useAuth, useSession } from '@/lib/auth';
 import { errorMessage } from '@/lib/query';
 
@@ -25,7 +26,8 @@ interface SetupData {
 export default function TwoFactorSetupPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { reloadSession, logout } = useAuth();
+  const { reloadSession } = useAuth();
+  const signOut = useSignOut();
   const session = useSession();
   const [error, setError] = useState<string | null>(null);
   const form = useForm({ resolver: zodResolver(schema), defaultValues: { code: '' } });
@@ -103,7 +105,7 @@ export default function TwoFactorSetupPage() {
           <Button type="submit" size="lg" loading={form.formState.isSubmitting} disabled={!setup.data}>
             {t('auth:twoFactor.enable')}
           </Button>
-          <Button variant="ghost" onClick={() => void logout()}>
+          <Button variant="ghost" onClick={() => void signOut()}>
             {t('auth:twoFactor.signOutInstead')}
           </Button>
         </form>

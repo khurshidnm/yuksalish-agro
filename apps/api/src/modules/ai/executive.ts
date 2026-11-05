@@ -3,6 +3,7 @@
  * what is bad, what to do. The figures are always the same; the LLM, when configured, only
  * words them. Without it, or when it fails, a deterministic template does.
  */
+import { safeError } from '../../core/errors';
 import { and, count, eq, gte, lte } from 'drizzle-orm';
 import { z } from 'zod';
 import { addDays, monthOf, monthRange, round } from '@yap/shared';
@@ -204,7 +205,7 @@ async function llmSections(
     const text = response.content.flatMap((b) => (b.type === 'text' ? [b.text] : [])).join('');
     return sectionsSchema.parse(JSON.parse(text));
   } catch (error) {
-    console.error('[ai] summary wording failed, using the template', error);
+    console.error('[ai] summary wording failed, using the template', safeError(error));
     return null;
   }
 }

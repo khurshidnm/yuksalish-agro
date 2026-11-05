@@ -102,7 +102,8 @@
     "emptyTitle": "Tasdiqlash kutayotgan operatsiya yo'q",
     "emptyBody": "Belgilangan summadan katta xarajatlar shu yerga tushadi.",
     "enteredBy": "Kiritgan: {{name}}",
-    "ownEntry": "Buni o'zingiz kiritgansiz, shuning uchun boshqa xodim tasdiqlashi kerak."
+    "ownEntry": "Buni o'zingiz kiritgansiz, shuning uchun boshqa xodim tasdiqlashi kerak.",
+    "ownVoid": "Buni o'zingiz kiritgansiz, shuning uchun boshqa xodim bekor qilishi kerak."
   },
   "accounts": {
     "title": "Kassa va bank",
@@ -177,6 +178,7 @@
     "pay": "To'lash",
     "receive": "To'lovni qabul qilish",
     "settleHint": "{{name}}: to'lanishi mumkin bo'lgan qoldiq {{amount}}.",
+    "amountInAccountCurrency": "Summani hisob valyutasida ({{currency}}) kiriting. U saqlangan kurs bo'yicha hisoblanadi.",
     "pendingSettlement": "{{amount}} miqdoridagi to'lov tasdiqlash kutmoqda.",
     "empty": {
       "payable": "Biz hech kimdan qarz emasmiz",
@@ -368,6 +370,9 @@
     }
   },
   "errors": {
+    "TRANSACTION_CHANGED": "Bu yozuv siz ochganingizdan keyin o'zgartirildi. Hozir unda {{amount}} {{currency}}. Hech narsa saqlanmadi: qayta o'qib, keyin qaror qiling.",
+    "ACCOUNT_CLOSED": "Bu hisob yopilgan. Boshqa hisobni tanlang.",
+    "ACCOUNT_CURRENCY_MISMATCH": "Bu hisob boshqa valyutada yuritiladi.",
     "ACCOUNT_NOT_EMPTY": "Hisobda {{balance}} qoldiq bor. Avval pulni boshqa hisobga o'tkazing.",
     "ACCOUNT_REQUIRED": "Kassa yoki bank hisobini tanlang.",
     "ACCOUNTS_REQUIRED": "O'tkazma uchun ikkala hisobni tanlang.",
@@ -375,10 +380,12 @@
     "AMOUNT_EXCEEDS_DEBT": "Summa qarzdan ko'p. To'lash mumkin bo'lgan qoldiq: {{outstanding}}.",
     "CATEGORY_KIND_MISMATCH": "Bu modda operatsiya turiga mos emas.",
     "CATEGORY_REQUIRED": "Moddani tanlang.",
+    "COST_CENTER_CLOSED": "Bu xarajat markazi yopilgan. Boshqasini tanlang.",
     "COST_CENTER_REQUIRED": "Xarajat markazini tanlang.",
     "COUNTERPARTY_REQUIRED": "Qarz uchun kontragentni tanlang.",
-    "CURRENCY_MISMATCH": "Bu hisob boshqa valyutada yuritiladi.",
+    "DEBT_ALREADY_SETTLED": "Bu qarz bo'yicha to'lov qilingan. Avval to'lovni bekor qiling.",
     "EARLIER_INSTALMENT_UNPAID": "Avval oldingi to'lovni amalga oshiring.",
+    "FX_RATE_OUT_OF_RANGE": "Bu kurs saqlangan {{stored}} kursidan juda uzoq. Uni tekshiring yoki saqlangan kursni tuzating.",
     "FX_RATE_REQUIRED": "Bu sana uchun valyuta kursi yo'q. Kursni kiriting.",
     "INVALID_AMOUNT": "Summa noldan katta bo'lishi kerak.",
     "INVALID_PAYMENT_METHOD": "To'lov usuli bu operatsiyaga mos emas.",
@@ -390,6 +397,8 @@
     "SAME_MAKER_CHECKER": "Operatsiyani kiritgan xodim uni o'zi tasdiqlay olmaydi.",
     "SETTLEMENT_NOT_EDITABLE": "Qarz to'lovini tahrirlab bo'lmaydi: o'chirib, qayta kiriting.",
     "TRANSACTION_APPROVED": "Tasdiqlangan operatsiyani o'zgartirib bo'lmaydi. Uni bekor qiling.",
-    "TRANSACTION_HAS_SOURCE": "Bu yozuv boshqa moduldan kelgan. Uni o'sha yerda o'zgartiring."
+    "TRANSACTION_HAS_SOURCE": "Bu yozuv boshqa moduldan kelgan. Uni o'sha yerda o'zgartiring.",
+    "TRANSACTION_REJECTED": "Rad etilgan yoki bekor qilingan operatsiya jurnalda qoladi. Yangisini kiriting.",
+    "ACCOUNT_CURRENCY_LOCKED": "Bu hisobda pul harakati bor, valyutasini o'zgartirib bo'lmaydi."
   }
 }

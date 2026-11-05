@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { ChartCard } from '@/components/ChartCard';
 import { TBody, THead, Table, Td, Th, Tr } from '@/components/ui';
 import { formatDate, formatNumber } from '@/lib/format';
+import { ProposalCard } from './ProposalCard';
 import { cellText, fieldLabel } from './text';
 import type { Attachment } from './types';
 
@@ -60,17 +61,27 @@ function ChartAttachment({ attachment }: { attachment: Extract<Attachment, { typ
   );
 }
 
-/** Tables and charts below an answer. Their rows come from real tool results on the server. */
+function AttachmentView({ attachment }: { attachment: Attachment }) {
+  switch (attachment.type) {
+    case 'table':
+      return <TableAttachment attachment={attachment} />;
+    case 'chart':
+      return <ChartAttachment attachment={attachment} />;
+    case 'proposal':
+      return <ProposalCard proposal={attachment.proposal} />;
+    default:
+      // Questions are shown by the message, as answers only make sense on the latest one.
+      return null;
+  }
+}
+
+/** What comes below an answer: tables and charts from real tool results, and prepared records. */
 export function Attachments({ attachments }: { attachments: Attachment[] }) {
   return (
-    <div className="flex flex-col gap-3">
-      {attachments.map((attachment, i) =>
-        attachment.type === 'table' ? (
-          <TableAttachment key={i} attachment={attachment} />
-        ) : (
-          <ChartAttachment key={i} attachment={attachment} />
-        ),
-      )}
+    <div className="flex min-w-0 flex-col gap-3">
+      {attachments.map((attachment, i) => (
+        <AttachmentView key={i} attachment={attachment} />
+      ))}
     </div>
   );
 }

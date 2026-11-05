@@ -1,4 +1,4 @@
-import { boolean, doublePrecision, index, jsonb, pgTable, primaryKey, text, unique, uuid, integer } from 'drizzle-orm/pg-core';
+import { boolean, doublePrecision, index, jsonb, pgTable, primaryKey, text, unique, uuid, integer, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import { dec, money, pk, ts } from './_helpers';
 
 /** Tariff plans: a plan is a set of modules (spec 4.1 p.2). */
@@ -44,6 +44,8 @@ export const users = pgTable('users', {
   totpEnabled: boolean().notNull().default(false),
   isPlatformAdmin: boolean().notNull().default(false),
   telegramChatId: text(),
+  /** The farm Telegram works on, chosen in the bot by someone on several farms. */
+  telegramMembershipId: uuid().references((): AnyPgColumn => memberships.id, { onDelete: 'set null' }),
   lastLoginAt: ts(),
   createdAt: ts().notNull().defaultNow(),
   updatedAt: ts().notNull().defaultNow().$onUpdate(() => new Date()),
@@ -147,9 +149,41 @@ export const idempotencyKeys = pgTable(
     tenantId: uuid().notNull().references(() => tenants.id),
     key: text().notNull(),
     path: text().notNull(),
+    userId: uuid(),
     statusCode: integer().notNull(),
     response: jsonb(),
     createdAt: ts().notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.tenantId, t.key] })],
+);
+
+/**
+ * Enquiries from the public website. No tenant_id: a prospect has no tenant yet. The assistant has
+ * no grant on this table, so it can never read a prospect's phone number.
+ */
+export const leads = pgTable(
+  'leads',
+  {
+    id: pk(),
+    fullName: text().notNull(),
+    phone: text().notNull(),
+    farmName: text(),
+    region: text(),
+    farmType: text(),
+    farmSize: text(),
+    message: text(),
+    language: text().notNull().default('uz'),
+    /** The page the form was sent from. */
+    source: text(),
+    utm: jsonb().$type<Record<string, string>>(),
+    status: text().notNull().default('new'),
+    notes: text(),
+    /** A repeat enquiry from the same phone joins the open lead and adds to this. */
+    submissions: integer().notNull().default(1),
+    consentAt: ts().notNull(),
+    contactedAt: ts(),
+    createdAt: ts().notNull().defaultNow(),
+    updatedAt: ts().notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  (t) => [index().on(t.status, t.createdAt), index().on(t.phone)],
 );

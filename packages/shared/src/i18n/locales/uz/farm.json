@@ -40,6 +40,8 @@
     "overAssignedBody": "Konturlar yig'indisi umumiy maydondan {{area}} ortiq. Maydonlarni tekshiring."
   },
   "map": {
+    "imageryCredit": "© Esri",
+    "fieldCards": "Xaritadagi dalalar",
     "title": "Ferma xaritasi",
     "description": "Dalalar va obyektlarni xaritada chizing. Maydon avtomatik hisoblanadi.",
     "add": "Qo'shish",

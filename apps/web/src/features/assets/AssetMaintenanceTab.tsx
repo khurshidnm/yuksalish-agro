@@ -109,7 +109,7 @@ export function AssetMaintenanceTab({ assetId }: { assetId: string }) {
 
   const save = useApiMutation<Output>({
     mutationFn: ({ paymentMethod, accountId, counterpartyId, cost, ...values }) =>
-      api.post(path, {
+      api.postOnce(path, {
         ...values,
         ...(cost ? { cost } : {}),
         ...(paymentMethod ? { payment: { paymentMethod, accountId, counterpartyId } } : {}),
@@ -202,7 +202,7 @@ export function AssetMaintenanceTab({ assetId }: { assetId: string }) {
               <DateField form={form} name="nextDueDate" label={t('maintenance.nextDate')} />
               <NumberField form={form} name="nextDueMotoHours" label={t('maintenance.nextHours')} suffix={t('unit.hours')} />
               <NumberField form={form} name="downtimeHours" label={t('maintenance.downtime')} suffix={t('unit.hours')} />
-              {seesMoney && <NumberField form={form} name="cost" label={t('maintenance.cost')} />}
+              {seesMoney && <NumberField money form={form} name="cost" label={t('maintenance.cost')} />}
             </FormGrid>
             <Separator />
             <PartsEditor form={form} />

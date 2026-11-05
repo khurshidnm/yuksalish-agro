@@ -8,6 +8,34 @@
       "when": 1793747485120,
       "tag": "0000_baseline",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793765397097,
+      "tag": "0001_assistant_records",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793793587202,
+      "tag": "0002_leads",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793823648251,
+      "tag": "0003_close_cost_centers",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793880005112,
+      "tag": "0004_assistant_hardening",
+      "breakpoints": true
     }
   ]
 }

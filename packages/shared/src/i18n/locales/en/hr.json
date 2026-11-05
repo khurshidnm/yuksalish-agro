@@ -262,6 +262,8 @@
     "ALREADY_APPROVED": "This payroll has already been approved",
     "ALREADY_PAID": "This payroll has already been paid",
     "PAYROLL_EMPTY": "This payroll has no employees",
+    "PAYROLL_ADVANCES_WAITING": "An advance for this month is still waiting for approval. Approve or reject it first",
+    "PAYROLL_ADVANCES_CHANGED": "An advance was paid after this payroll was worked out. Recalculate it first",
     "SAME_MAKER_CHECKER": "The person who prepared it cannot approve it"
   }
 }

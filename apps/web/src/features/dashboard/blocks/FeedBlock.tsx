@@ -20,7 +20,7 @@ function FeedMeter({ item, horizon, to }: { item: FeedItem; horizon: number; to?
         <NoData />
       ) : (
         <>
-          <Meter value={(item.days / horizon) * 100} tone={item.belowMinimum ? 'danger' : 'primary'} label={label} />
+          <Meter value={(item.days / horizon) * 100} tone={item.belowMinimum ? 'danger' : 'primary'} label={label} ticks />
           <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
             {t('feed.stock', { value: formatQty(item.stockQty, item.unit, 0) })}
             {item.basis && <span>· {t(`feed.basis.${item.basis}`)}</span>}
@@ -100,7 +100,7 @@ export function FeedBlock({ data, link }: { data: FeedData; link: LinkTo }) {
         className="lg:col-span-3"
         title={t('feed.consumption')}
         description={data.avgDailyKg === null ? undefined : t('feed.averagePerDay', { value: formatQty(data.avgDailyKg, 'kg', 0) })}
-        kind="bar"
+        kind="block-bar"
         data={data.consumption.some((day) => day.qty > 0) ? data.consumption : []}
         xKey="date"
         series={[{ key: 'qty', label: t('feed.fed') }]}
@@ -108,7 +108,7 @@ export function FeedBlock({ data, link }: { data: FeedData; link: LinkTo }) {
         formatAxis={(v) => formatNumber(v, 0)}
         formatX={dayMonth}
         emptyText={t('noData')}
-        height={180}
+        height={200}
       />
     </div>
   );

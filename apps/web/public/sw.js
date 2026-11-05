@@ -16,12 +16,14 @@
  *
  * Deploy note: serve this file with Cache-Control: no-cache, or updates reach phones late.
  */
-const SHELL_CACHE = 'yap-shell-v1';
+const SHELL_CACHE = 'yap-shell-v3';
 const ASSET_CACHE = 'yap-assets-v1';
 const SESSION_CACHE = 'yap-session-v1';
 const KNOWN_CACHES = [SHELL_CACHE, ASSET_CACHE, SESSION_CACHE];
 
-const SHELL_KEY = '/';
+const SHELL_KEY = '/app';
+/** Public pages are never the app shell, however they are reached. */
+const PUBLIC_PAGES = new Set(['/', '/ru', '/en', '/uz-cyrl']);
 const SESSION_KEY = '/__yap/session';
 const SHELL_FILES = [SHELL_KEY, '/manifest.webmanifest', '/favicon.svg', '/icons/icon-192.png', '/icons/icon-512.png'];
 
@@ -75,7 +77,8 @@ async function shellFirstIfSlow(event) {
   const network = (async () => {
     const response = await fetch(event.request);
     if (response.status >= 500) throw new Error(`Server error ${response.status}`);
-    if (response.ok && (response.headers.get('content-type') ?? '').includes('text/html')) {
+    const isShell = !PUBLIC_PAGES.has(new URL(event.request.url).pathname);
+    if (isShell && response.ok && (response.headers.get('content-type') ?? '').includes('text/html')) {
       await cache.put(SHELL_KEY, response.clone());
     }
     return response;

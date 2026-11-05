@@ -40,7 +40,7 @@ export function ShearingPanel() {
   const [adding, setAdding] = useState(false);
 
   const invalidate = [PATH, '/inventory'];
-  const add = useApiMutation<Output>({ mutationFn: (values) => api.post(PATH, values), invalidate, silentError: true });
+  const add = useApiMutation<Output>({ mutationFn: (values) => api.postOnce(PATH, values), invalidate, silentError: true });
   const remove = useApiMutation<string>({ mutationFn: (id) => api.delete(`${PATH}/${id}`), invalidate, successMessage: 'common:toast.deleted' });
 
   const columns: Column<ShearingRow>[] = [

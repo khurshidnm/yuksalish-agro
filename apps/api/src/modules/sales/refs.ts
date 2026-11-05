@@ -8,7 +8,7 @@ import { schema } from '../../db/client';
 import { ctx, tx } from '../../core/context';
 import { notFound } from '../../core/errors';
 
-const { accounts, costCenters, counterparties, files, financeCategories, warehouses } = schema;
+const { accounts, counterparties, files, financeCategories, warehouses } = schema;
 
 type FarmTable = typeof accounts;
 
@@ -26,7 +26,6 @@ async function assertFarmRows(table: unknown, ids: (string | null | undefined)[]
 export const assertAccount = (id: string | null | undefined) => assertFarmRows(accounts, [id], 'Account');
 export const assertCounterparty = (id: string | null | undefined) => assertFarmRows(counterparties, [id], 'Counterparty');
 export const assertWarehouses = (ids: (string | null | undefined)[]) => assertFarmRows(warehouses, ids, 'Warehouse');
-export const assertCostCenters = (ids: (string | null | undefined)[]) => assertFarmRows(costCenters, ids, 'Cost center');
 export const assertFile = (id: string | null | undefined) => assertFarmRows(files, [id], 'File');
 
 /** Categories belong to the tenant, not a farm, so RLS alone limits what this can see. */

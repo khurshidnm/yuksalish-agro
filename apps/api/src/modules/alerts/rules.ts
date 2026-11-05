@@ -7,6 +7,7 @@
  * A failing rule is isolated by a savepoint, so one broken module cannot silence the alerts of
  * another. Figures with an owner, like days of feed, come from that module's own function.
  */
+import { safeError } from '../../core/errors';
 import { and, eq, inArray, ne, sql, type SQL } from 'drizzle-orm';
 import {
   ANIMAL_ON_FARM_STATUSES,
@@ -471,7 +472,7 @@ export async function evaluateRules(): Promise<EvaluationResult> {
       findings = await tx().transaction(() => rule.run(context));
     } catch (err) {
       result.failedRules.push(rule.key);
-      console.error(`[alerts] rule ${rule.key} failed: ${(err as Error).message}`);
+      console.error(`[alerts] rule ${rule.key} failed`, safeError(err));
       continue;
     }
     for (const finding of findings) {

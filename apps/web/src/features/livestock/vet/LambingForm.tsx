@@ -8,7 +8,7 @@ import { api } from '@/lib/api';
 import { formatDate } from '@/lib/format';
 import { errorMessage, useApiMutation, useList } from '@/lib/query';
 import { cn } from '@/lib/utils';
-import { ANIMALS_PATH, BREEDING_PATH, LAMBINGS_PATH, newRequestKey } from './options';
+import { ANIMALS_PATH, BREEDING_PATH, LAMBINGS_PATH } from './options';
 import type { Lambing, Pregnancy } from './types';
 
 type Sex = (typeof SEXES)[number];
@@ -98,7 +98,6 @@ export function LambingForm({ presetEwe, onDone }: { presetEwe?: PickedEwe | nul
   const [complications, setComplications] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
-  const [requestKey, setRequestKey] = useState(newRequestKey);
 
   useEffect(() => {
     if (presetEwe) setEwe(presetEwe);
@@ -110,17 +109,13 @@ export function LambingForm({ presetEwe, onDone }: { presetEwe?: PickedEwe | nul
   const submit = useApiMutation<void, Lambing>({
     mutationFn: () => {
       const complicationText = [...complications.map((key) => t(`lambing.complication.${key}`)), notes.trim()].filter(Boolean).join('; ');
-      return api.post<Lambing>(
-        LAMBINGS_PATH,
-        {
-          eweId: ewe!.id,
-          breedingId: ewe!.breedingId,
-          date,
-          lambs: lambs.map((lamb) => ({ sex: lamb.sex, birthWeightKg: lamb.birthWeightKg, alive: lamb.alive })),
-          complications: complicationText || null,
-        },
-        { idempotencyKey: requestKey },
-      );
+      return api.postOnce<Lambing>(LAMBINGS_PATH, {
+        eweId: ewe!.id,
+        breedingId: ewe!.breedingId,
+        date,
+        lambs: lambs.map((lamb) => ({ sex: lamb.sex, birthWeightKg: lamb.birthWeightKg, alive: lamb.alive })),
+        complications: complicationText || null,
+      });
     },
     invalidate: [LAMBINGS_PATH, BREEDING_PATH, ANIMALS_PATH],
     silentError: true,
@@ -130,14 +125,9 @@ export function LambingForm({ presetEwe, onDone }: { presetEwe?: PickedEwe | nul
       setLambs([emptyLamb()]);
       setComplications([]);
       setNotes('');
-      setRequestKey(newRequestKey());
       onDone?.();
     },
-    onError: (error) => {
-      setProblem(errorMessage(error));
-      // A new key: the server rejected this attempt, and it never ran.
-      setRequestKey(newRequestKey());
-    },
+    onError: (error) => setProblem(errorMessage(error)),
   });
 
   const setCount = (count: number) => {

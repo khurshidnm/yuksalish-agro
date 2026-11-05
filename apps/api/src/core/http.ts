@@ -8,11 +8,11 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { and, eq } from 'drizzle-orm';
 import { z, type ZodType } from 'zod';
-import { ROLES_REQUIRING_2FA, type Permission, type RoleKey } from '@yap/shared';
+import { MODULES, ROLES_REQUIRING_2FA, type Permission, type RoleKey } from '@yap/shared';
 import { db, schema } from '../db/client';
 import { ctx, tx, updateCtx, withPlatform, withTenant, type Identity } from './context';
 import { sha256 } from './crypto';
-import { AppError, forbidden, unauthorized } from './errors';
+import { AppError, conflict, forbidden, unauthorized } from './errors';
 import { isPage } from './query';
 import { mergeSettings } from './settings';
 import { verifyAccessToken } from './tokens';
@@ -36,6 +36,8 @@ export type Req<Q, B, P> = Omit<FastifyRequest, 'query' | 'body' | 'params'> & {
   params: Infer<P>;
   /** Set when the route uses `transaction: false`: pass to withTenant() around each DB step. */
   identity: Identity;
+  /** Set on 'platform' routes: the administrator making the request. */
+  adminId?: string;
 };
 
 export interface RouteDef<Q, B, P> {
@@ -67,6 +69,13 @@ function bearer(req: FastifyRequest): string {
 
 /** Modules that cannot be switched off, because the app does not work without them. */
 const ALWAYS_ON = new Set(['dashboard', 'users', 'settings', 'audit', 'tasks']);
+
+/** What a role can really do: a module switched off for the workspace grants nothing. */
+export const enabledPermissions = (permissions: string[], modules: string[]) =>
+  permissions.filter((p) => {
+    const module = p.split('.')[0];
+    return !(MODULES as readonly string[]).includes(module) || ALWAYS_ON.has(module) || modules.includes(module);
+  });
 
 /** Load who is calling. Runs on every request, so blocking someone takes effect immediately. */
 async function loadMember(membershipId: string) {
@@ -103,9 +112,11 @@ function requiredPermissions(access: Access): Permission[] | null {
 
 async function authorize(access: Access, member: Awaited<ReturnType<typeof loadMember>>) {
   const settings = mergeSettings(member.tenantSettings);
+  const enabled = new Set(enabledPermissions(member.permissions, member.tenantModules));
   updateCtx({
     roleKey: member.roleKey,
-    permissions: new Set(member.permissions),
+    permissions: enabled,
+    withheld: new Set(member.permissions.filter((p) => !enabled.has(p))),
     settings,
     currency: member.currency,
     timezone: member.timezone,
@@ -120,13 +131,10 @@ async function authorize(access: Access, member: Awaited<ReturnType<typeof loadM
     ROLES_REQUIRING_2FA.includes(member.roleKey as RoleKey);
   if (mustEnroll) throw forbidden('Two-factor authentication is required', 'TWO_FACTOR_ENROLLMENT_REQUIRED');
 
-  const granted = required.find((p) => ctx().permissions.has(p));
-  if (!granted) throw forbidden(undefined, 'FORBIDDEN', { required });
-
-  const module = granted.split('.')[0];
-  if (!ALWAYS_ON.has(module) && !member.tenantModules.includes(module)) {
-    throw forbidden('This module is not enabled for your workspace', 'MODULE_DISABLED', { module });
-  }
+  if (required.some((p) => ctx().permissions.has(p))) return;
+  const held = required.find((p) => member.permissions.includes(p));
+  if (!held) throw forbidden(undefined, 'FORBIDDEN', { required });
+  throw forbidden('This module is not enabled for your workspace', 'MODULE_DISABLED', { module: held.split('.')[0] });
 }
 
 async function identityFromKey(req: FastifyRequest, scope: string): Promise<Identity> {
@@ -180,7 +188,12 @@ async function runIdempotent(
     .select()
     .from(idempotencyKeys)
     .where(and(eq(idempotencyKeys.tenantId, c.tenantId), eq(idempotencyKeys.key, key)));
+  const path = req.url.split('?')[0];
   if (stored) {
+    // A key belongs to one request by one person. Replaying it elsewhere would answer for something else.
+    if (stored.path !== path || stored.userId !== c.userId) {
+      throw conflict('IDEMPOTENCY_KEY_REUSED', 'This Idempotency-Key was already used for a different request');
+    }
     reply.code(stored.statusCode).header('idempotent-replay', 'true');
     return stored.response;
   }
@@ -189,7 +202,8 @@ async function runIdempotent(
   await tx().insert(idempotencyKeys).values({
     tenantId: c.tenantId,
     key,
-    path: req.url.split('?')[0],
+    path,
+    userId: c.userId,
     statusCode: reply.statusCode,
     response: result,
   });
@@ -214,6 +228,7 @@ function wrap<Q, B, P>(def: RouteDef<Q, B, P>) {
       if (def.access === 'platform') {
         const [user] = await db.select({ admin: users.isPlatformAdmin, status: users.status }).from(users).where(eq(users.id, claims.userId));
         if (!user?.admin || user.status !== 'active') throw forbidden();
+        req.adminId = claims.userId;
         const result = await def.handler(req, reply);
         return result === reply || reply.sent ? reply : envelope(result);
       }

@@ -98,7 +98,7 @@ export function ExitForm({ open, onOpenChange, animal, defaultType }: ExitFormPr
 
   const save = useApiMutation<Output>({
     mutationFn: (values) =>
-      api.post('/livestock/exits', { ...values, id: clientId.current, photoFileIds: photos.current }, { idempotencyKey: clientId.current }),
+      api.postOnce('/livestock/exits', { ...values, id: clientId.current, photoFileIds: photos.current }),
     invalidate: ['/livestock/exits', '/livestock/animals', '/livestock/herds', '/livestock/summary'],
     silentError: true,
     onSuccess: () => {
@@ -152,9 +152,9 @@ export function ExitForm({ open, onOpenChange, animal, defaultType }: ExitFormPr
                 />
                 <FormGrid>
                   <NumberField form={form} name="liveWeightKg" label={t('exits.liveWeight')} suffix="kg" maxDigits={2} />
-                  <NumberField form={form} name="pricePerKg" label={t('exits.pricePerKg')} />
+                  <NumberField money form={form} name="pricePerKg" label={t('exits.pricePerKg')} />
                 </FormGrid>
-                <NumberField form={form} name="amount" label={t('exits.amount')} hint={t('exits.amountHint')} />
+                <NumberField money form={form} name="amount" label={t('exits.amount')} hint={t('exits.amountHint')} />
                 <FormGrid>
                   <SelectField form={form} name="paymentMethod" label={t('exits.paymentMethod')} required options={enumOptions('paymentMethod', PAYMENT_OPTIONS)} />
                   {method === 'debt' ? (

@@ -4,7 +4,10 @@ import L from 'leaflet';
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import type { FarmMapData, MapProps } from '../types';
 import { loadGeoman } from './geoman';
+import { CROP_SLOT, LAND_USE_SLOT } from './slots';
 import './farm-map.css';
+
+export { CROP_SLOT, LAND_USE_SLOT };
 
 export type BaseLayer = 'satellite' | 'streets';
 export type ColorBy = 'landUse' | 'crop';
@@ -22,10 +25,6 @@ const BASE_LAYERS: Record<BaseLayer, { url: string; attribution: string; maxZoom
     maxZoom: 19,
   },
 };
-
-/** Colour slots of the chart palette. Fixed, so a land use keeps its colour between farms. */
-export const LAND_USE_SLOT: Record<string, number> = { arable: 1, pasture: 7, reserve: 5, yard: 4, infrastructure: 8 };
-export const CROP_SLOT: Record<string, number> = { wheat: 2, barley: 7, rice: 3, alfalfa: 1, corn: 6, cotton: 8 };
 
 const FALLBACK_CENTER: [number, number] = [39.5, 64.8];
 
@@ -141,7 +140,9 @@ export const FarmMapCanvas = forwardRef<FarmMapHandle, FarmMapCanvasProps>(funct
       .then((canDraw) => {
         if (cancelled || !container.current) return;
         const instance = L.map(container.current, { center: FALLBACK_CENTER, zoom: 14, zoomControl: false });
-        L.control.zoom({ position: 'bottomright' }).addTo(instance);
+        L.control.zoom({ position: 'topright' }).addTo(instance);
+        // On the left, where the assistant button can never cover the imagery credit.
+        instance.attributionControl.setPosition('bottomleft');
         instance.on('click', () => {
           if (mode.current === 'view') latest.current.onSelect(null);
         });

@@ -89,6 +89,8 @@ export const DEVICE_TYPES = e(['camera', 'sensor', 'rfid_reader', 'scale', 'gps_
 export const DEVICE_STATUSES = e(['planned', 'online', 'offline']);
 export const AI_DECISIONS = e(['pending', 'accepted', 'rejected']);
 export const DOCUMENT_TYPES = e(['land', 'construction', 'permit', 'contract', 'invoice', 'vet_certificate', 'act', 'other']);
+export const LEAD_STATUSES = e(['new', 'contacted', 'qualified', 'won', 'lost']);
+export const LEAD_FARM_TYPES = e(['livestock', 'crops', 'mixed', 'other']);
 
 export type Severity = (typeof SEVERITIES)[number];
 export type TransactionType = (typeof TRANSACTION_TYPES)[number];

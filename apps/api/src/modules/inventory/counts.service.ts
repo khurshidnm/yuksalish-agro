@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { schema } from '../../db/client';
 import { ctx, tx } from '../../core/context';
 import { conflict, notFound } from '../../core/errors';
-import { adjustStock, getItemOrThrow } from '../../core/inventory';
+import { adjustStock, DOCUMENT_REVERSED_EVENT, getItemOrThrow } from '../../core/inventory';
 import { recordEvent } from '../../core/journal';
 import { hideMoney } from '../../core/privacy';
 import { isoDate, listQuery, paged, sortBy, sumOf } from '../../core/query';
@@ -47,11 +47,12 @@ async function systemQty(warehouseId: string, itemIds?: string[]) {
   return new Map(rows.map((r) => [r.itemId, r.qty]));
 }
 
-async function getHeader(id: string) {
-  const [row] = await tx()
+async function getHeader(id: string, opts: { lock?: boolean } = {}) {
+  const query = tx()
     .select()
     .from(counts)
     .where(and(eq(counts.id, id), eq(counts.farmId, ctx().farmId)));
+  const [row] = await (opts.lock ? query.for('update') : query);
   if (!row) throw notFound('Stock count');
   return row;
 }
@@ -175,7 +176,7 @@ export async function create(input: z.infer<typeof countCreateInput>) {
 }
 
 export async function update(id: string, input: z.infer<typeof countUpdateInput>) {
-  const count = await getHeader(id);
+  const count = await getHeader(id, { lock: true });
   assertDraft(count);
   const c = ctx();
 
@@ -210,12 +211,7 @@ export async function update(id: string, input: z.infer<typeof countUpdateInput>
 
 /** Apply the counted quantities. The difference goes to the general cost center. */
 export async function approve(id: string) {
-  const [count] = await tx()
-    .select()
-    .from(counts)
-    .where(and(eq(counts.id, id), eq(counts.farmId, ctx().farmId)))
-    .for('update');
-  if (!count) throw notFound('Stock count');
+  const count = await getHeader(id, { lock: true });
   assertDraft(count);
 
   const rows = await tx().select().from(lines).where(eq(lines.countId, id));
@@ -250,9 +246,11 @@ export async function approve(id: string) {
   return get(id);
 }
 
+/** The journal keeps the number from coming back: nextDocNo reads this event. */
 export async function remove(id: string) {
-  const count = await getHeader(id);
+  const count = await getHeader(id, { lock: true });
   assertDraft(count);
   await tx().delete(counts).where(eq(counts.id, id));
+  await recordEvent({ type: DOCUMENT_REVERSED_EVENT, entityType: 'stock_count', entityId: id, data: { docNo: count.docNo } });
   return { id };
 }

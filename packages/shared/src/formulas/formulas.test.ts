@@ -250,7 +250,7 @@ describe('inventory costing', () => {
   ];
 
   it('FIFO takes the oldest batch first at its own cost', () => {
-    const r = f.consumeBatches(batches, 150, 'fifo');
+    const r = f.consumeBatches(batches, 150);
     expect(r.lines).toEqual([
       { batchId: 'a', qty: 100, unitCost: 10 },
       { batchId: 'b', qty: 50, unitCost: 20 },
@@ -259,14 +259,8 @@ describe('inventory costing', () => {
     expect(r.shortage).toBe(0);
   });
 
-  it('AVG values every unit at the weighted average', () => {
-    const r = f.consumeBatches(batches, 150, 'avg');
-    expect(r.totalCost).toBe(2250);
-    expect(r.lines[0]).toEqual({ batchId: 'a', qty: 100, unitCost: 15 });
-  });
-
   it('reports a shortage instead of going negative', () => {
-    const r = f.consumeBatches(batches, 250, 'fifo');
+    const r = f.consumeBatches(batches, 250);
     expect(r.shortage).toBe(50);
     expect(r.totalCost).toBe(3000);
   });

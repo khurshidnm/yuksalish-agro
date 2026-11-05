@@ -1,7 +1,7 @@
 # Data model
 
 Generated from `apps/api/src/db/schema` by `apps/api/src/db/erd.ts`. Do not edit by hand; run
-`pnpm --filter @yap/api exec tsx src/db/erd.ts` after a schema change. 92 tables.
+`pnpm --filter @yap/api exec tsx src/db/erd.ts` after a schema change. 95 tables.
 
 Links to `tenants`, `farms` and `users` (`tenant_id`, `farm_id`, `created_by`) are on almost every
 table and are left out of the lines to keep the diagrams readable. A table from another domain appears
@@ -45,9 +45,30 @@ erDiagram
     uuid tenant_id FK
     text key
     text path
+    uuid user_id
     integer status_code
     jsonb response
     timestamp_with_time_zone created_at
+  }
+  leads {
+    uuid id PK
+    text full_name
+    text phone
+    text farm_name
+    text region
+    text farm_type
+    text farm_size
+    text message
+    text language
+    text source
+    jsonb utm
+    text status
+    text notes
+    integer submissions
+    timestamp_with_time_zone consent_at
+    timestamp_with_time_zone contacted_at
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
   }
   memberships {
     uuid id PK
@@ -120,11 +141,13 @@ erDiagram
     boolean totp_enabled
     boolean is_platform_admin
     text telegram_chat_id
+    uuid telegram_membership_id FK
     timestamp_with_time_zone last_login_at
     timestamp_with_time_zone created_at
     timestamp_with_time_zone updated_at
   }
   memberships ||--o{ refresh_tokens : "membership_id"
+  memberships ||--o{ users : "telegram_membership_id"
   plans ||--o{ tenants : "plan_id"
   roles ||--o{ memberships : "role_id"
 ```
@@ -1539,6 +1562,7 @@ erDiagram
     text body
     text link
     uuid alert_id
+    text permission
     jsonb deliveries
     timestamp_with_time_zone read_at
     timestamp_with_time_zone created_at
@@ -1644,6 +1668,17 @@ erDiagram
 
 ```mermaid
 erDiagram
+  ai_aliases {
+    uuid id PK
+    uuid tenant_id FK
+    uuid farm_id FK
+    uuid created_by FK
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+    text phrase
+    text target_type
+    uuid target_id
+  }
   ai_conversations {
     uuid id PK
     uuid tenant_id FK
@@ -1653,6 +1688,7 @@ erDiagram
     timestamp_with_time_zone updated_at
     uuid user_id FK
     text title
+    text channel
   }
   ai_insights {
     uuid id PK
@@ -1689,7 +1725,31 @@ erDiagram
     jsonb content
     timestamp_with_time_zone created_at
   }
+  ai_proposals {
+    uuid id PK
+    uuid tenant_id FK
+    uuid farm_id FK
+    uuid created_by FK
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+    uuid user_id FK
+    uuid conversation_id FK
+    text kind
+    text status
+    text channel
+    text source_text
+    jsonb fields
+    jsonb warnings
+    jsonb learn
+    timestamp_with_time_zone expires_at
+    timestamp_with_time_zone confirmed_at
+    timestamp_with_time_zone undo_until
+    text result_type
+    uuid result_id
+    text result_status
+  }
   ai_conversations ||--o{ ai_messages : "conversation_id"
+  ai_conversations ||--o{ ai_proposals : "conversation_id"
 ```
 
 ## Reports and import

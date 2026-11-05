@@ -10,9 +10,9 @@ import { recordEvent } from '../../core/journal';
 import { postTransaction } from '../../core/ledger';
 import { hideMoney } from '../../core/privacy';
 import { clientId, isoDate, listQuery, paged, sortBy } from '../../core/query';
-import { assetCostCenter, dueState, getAssetRow } from './assets.service';
+import { assertOnFarm, assetCostCenter, dueState, getAssetRow } from './assets.service';
 
-const { assets, financeCategories, maintenanceRecords: t } = schema;
+const { assets, counterparties, financeCategories, maintenanceRecords: t } = schema;
 
 export const maintenanceInput = z.object({
   id: clientId,
@@ -79,6 +79,7 @@ export async function createMaintenance(assetId: string, input: MaintenanceInput
   let transactionId: string | null = null;
   if (input.payment) {
     assertPermission('finance.create');
+    await assertOnFarm(counterparties, input.payment.counterpartyId, 'Counterparty');
     const transaction = await postTransaction({
       date: input.date,
       type: 'expense',

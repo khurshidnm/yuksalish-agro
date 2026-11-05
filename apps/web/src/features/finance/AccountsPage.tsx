@@ -202,7 +202,7 @@ function AccountsTab() {
     successMessage: 'common:toast.deleted',
   });
   const save = useApiMutation<z.output<typeof accountSchema>>({
-    mutationFn: (values) => (editing ? api.patch(`${PATH}/${editing.id}`, values) : api.post(PATH, values)),
+    mutationFn: (values) => (editing ? api.patch(`${PATH}/${editing.id}`, values) : api.postOnce(PATH, values)),
     invalidate: MONEY_QUERIES,
     silentError: true,
   });
@@ -291,7 +291,7 @@ function AccountsTab() {
             <FormGrid>
               <SelectField form={form} name="type" label={t('accounts.fields.type')} required options={enumOptions('accountType', ACCOUNT_TYPES)} />
               <SelectField form={form} name="currency" label={t('accounts.fields.currency')} required options={enumOptions('currency', CURRENCIES)} />
-              <NumberField form={form} name="openingBalance" label={t('accounts.fields.openingBalance')} allowNegative />
+              <NumberField money form={form} name="openingBalance" label={t('accounts.fields.openingBalance')} allowNegative />
               <DateField form={form} name="openingDate" label={t('accounts.fields.openingDate')} hint={t('accounts.fields.openingHint')} />
             </FormGrid>
             <TextField form={form} name="bankName" label={t('accounts.fields.bankName')} />
@@ -383,7 +383,7 @@ function RatesTab() {
           <FormGrid>
             <DateField form={form} name="date" label={t('fx.date')} required />
             <SelectField form={form} name="currency" label={t('fx.currency')} required options={enumOptions('currency', ['USD', 'RUB', 'EUR'])} />
-            <NumberField form={form} name="rate" label={t('fx.rate')} required maxDigits={4} />
+            <NumberField money form={form} name="rate" label={t('fx.rate')} required maxDigits={4} />
           </FormGrid>
         )}
       </FormDialog>

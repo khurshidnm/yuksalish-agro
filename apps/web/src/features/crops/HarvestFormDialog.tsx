@@ -1,5 +1,5 @@
 import { todayIso } from '@yap/shared';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { type UseFormReturn, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -19,7 +19,6 @@ import {
   employeeOptions,
   fieldOptions,
   itemOptions,
-  newIdempotencyKey,
   warehouseOptions,
 } from './options';
 import type { Harvest, Operation } from './types';
@@ -53,7 +52,6 @@ interface HarvestFormDialogProps {
 
 export function HarvestFormDialog({ open, onOpenChange, harvest, planned }: HarvestFormDialogProps) {
   const { t } = useTranslation('crops');
-  const key = useMemo(() => newIdempotencyKey(), [open]);
   const [unit, setUnit] = useState<string | null>(harvest?.unit ?? null);
   const needsCount = unit !== null && unit !== 'kg' && unit !== 't';
 
@@ -71,7 +69,7 @@ export function HarvestFormDialog({ open, onOpenChange, harvest, planned }: Harv
             notes: values.notes,
             ...(values.stockQty ? { stockQty: values.stockQty } : {}),
           })
-        : api.post<Harvest>(HARVESTS, { ...values, operationId: planned?.id ?? null }, { idempotencyKey: key }),
+        : api.postOnce<Harvest>(HARVESTS, { ...values, operationId: planned?.id ?? null }),
     invalidate: AFFECTED_BY_WORK,
     silentError: true,
     onSuccess: (result) => {

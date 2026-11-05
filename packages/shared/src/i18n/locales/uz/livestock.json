@@ -252,7 +252,7 @@
     "emptyBody": "Birinchi junqirqishni qayd eting."
   },
   "exits": {
-    "title": "Chiqimlar",
+    "title": "Hayvon chiqimi",
     "description": "Sotuv, so'yish, nobud bo'lish va yo'qolish.",
     "add": "Chiqim qayd etish",
     "addFor": "{{tag}}: chiqim",

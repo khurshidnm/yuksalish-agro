@@ -387,10 +387,13 @@ export function createOutbox(deps: OutboxDeps) {
         const blob = await store.getPhoto(photo.id);
         // A photo lost from storage must not hold back the feed record that carries the stock change.
         if (!blob) continue;
+        if (!owned(record)) return false;
         const fileId = await transport.upload(photo, blob);
         record = { ...record, photos: record.photos.map((p) => (p.id === photo.id ? { ...p, fileId } : p)) };
         await store.put(record);
       }
+      // The token is whoever signed in last, and a slow photo may have outlasted this record's person.
+      if (!owned(record)) return false;
       await transport.send(record, bodyWithPhotos(record));
       await delivered(record);
       return true;

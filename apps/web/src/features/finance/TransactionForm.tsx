@@ -214,13 +214,13 @@ function Fields({
       <FormGrid>
         <DateField form={form} name="date" label={t('journal.fields.date')} required />
         <div className="grid grid-cols-[1fr_6rem] gap-2">
-          <NumberField form={form} name="amount" label={t('journal.fields.amount')} required />
+          <NumberField money form={form} name="amount" label={t('journal.fields.amount')} required />
           <SelectField form={form} name="currency" label={t('journal.fields.currency')} options={enumOptions('currency', CURRENCIES)} />
         </div>
       </FormGrid>
 
       {currency !== baseCurrency && (
-        <NumberField form={form} name="fxRate" label={t('journal.fields.fxRate')} hint={t('journal.fxHint')} maxDigits={4} />
+        <NumberField money form={form} name="fxRate" label={t('journal.fields.fxRate')} hint={t('journal.fxHint')} maxDigits={4} />
       )}
 
       {isTransfer ? (
@@ -312,7 +312,9 @@ export function TransactionFormDialog({ open, onOpenChange, editing, defaultType
   const save = useApiMutation<FormOutput, Transaction>({
     mutationFn: (values) => {
       const payload = toPayload(values, accounts);
-      return editing ? api.patch(`${FINANCE_PATHS.transactions}/${editing.id}`, payload) : api.post(FINANCE_PATHS.transactions, payload);
+      return editing
+        ? api.patch(`${FINANCE_PATHS.transactions}/${editing.id}`, { ...payload, baseUpdatedAt: editing.updatedAt })
+        : api.postOnce(FINANCE_PATHS.transactions, payload);
     },
     invalidate: MONEY_QUERIES,
     silentError: true,

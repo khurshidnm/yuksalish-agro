@@ -207,6 +207,7 @@ function LineDialog({ run, line, editable, onClose }: { run: PayrollRun; line: P
           {line && <BasisFacts line={line} />}
           {(['base', 'piecework', 'bonus', 'advance', 'deductions'] as const).map((field) => (
             <NumberField
+              money
               key={field}
               form={form}
               name={field}
@@ -284,12 +285,12 @@ export function RunDetail({ runId, onBack }: { runId: string; onBack: () => void
     onSuccess: onBack,
   });
   const sendBack = useApiMutation<z.output<typeof returnSchema>>({
-    mutationFn: (values) => api.post(`${url}/return`, values),
+    mutationFn: (values) => api.postOnce(`${url}/return`, values),
     invalidate: [PATH],
     silentError: true,
   });
   const pay = useApiMutation<z.output<typeof paySchema>>({
-    mutationFn: (values) => api.post(`${url}/pay`, values),
+    mutationFn: (values) => api.postOnce(`${url}/pay`, values),
     invalidate: [PATH, '/finance'],
     silentError: true,
   });

@@ -8,7 +8,7 @@ export const Tabs = RTabs.Root;
 export function TabsList({ className, ...props }: ComponentProps<typeof RTabs.List>) {
   return (
     <RTabs.List
-      className={cn('flex max-w-full gap-1 overflow-x-auto border-b border-border [scrollbar-width:none] [&::-webkit-scrollbar]:hidden', className)}
+      className={cn('flex max-w-full gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden', className)}
       {...props}
     />
   );
@@ -18,7 +18,7 @@ export function TabsTrigger({ className, ...props }: ComponentProps<typeof RTabs
   return (
     <RTabs.Trigger
       className={cn(
-        'focus-ring -mb-px min-h-11 shrink-0 border-b-2 border-transparent px-3 text-sm font-medium whitespace-nowrap text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-foreground',
+        'focus-ring min-h-11 shrink-0 rounded-lg px-3.5 md:min-h-9 text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-accent-foreground',
         className,
       )}
       {...props}

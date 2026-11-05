@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from './api';
 import {
   backoffMs,
@@ -520,5 +520,96 @@ describe('uuidv7', () => {
     expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
     expect(uuidv7(1_800_000_000_001) > id).toBe(true);
     expect(id.startsWith((1_800_000_000_000).toString(16).padStart(12, '0').slice(0, 8))).toBe(true);
+  });
+});
+
+describe('one phone, two people', () => {
+  const A = { userId: 'A', farmId: 'F' };
+  const B = { userId: 'B', farmId: 'F' };
+
+  function phoneWithRecords(photos: OutboxPhoto[] = []) {
+    const store = memoryStore();
+    const record = (id: string, createdAt: number): OutboxRecord => ({
+      id, kind: 'daily_log', method: 'POST', path: '/x', body: {}, idempotencyKey: id, photos, photoField: 'photoFileIds', title: id, meta: {},
+      status: 'pending', attempts: 0, nextAttemptAt: 0, error: null, serverId: null, createdAt, userId: 'A', farmId: 'F',
+    });
+    store.records.set('one', record('one', 1));
+    store.records.set('two', record('two', 2));
+    /** api.ts sends whichever token is signed in at that moment. */
+    const phone = { signedIn: 'A' };
+    const sent: [string, string][] = [];
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    return { store, phone, sent, held, release: () => release() };
+  }
+
+  async function signOutAndIn(outbox: Outbox, phone: { signedIn: string }) {
+    await outbox.setOwner(null);
+    phone.signedIn = 'B';
+    void outbox.setOwner(B);
+  }
+
+  it('the next record of a running delivery waits for its own person', async () => {
+    const { store, phone, sent, held, release } = phoneWithRecords();
+    const transport = {
+      send: async (record: OutboxRecord) => {
+        sent.push([record.id, phone.signedIn]);
+        if (record.id === 'one') await held;
+      },
+      upload: async () => 'file',
+      inspectConflict: async () => ({ applied: false, serverId: null }),
+    };
+    const outbox = createOutbox({ store, transport, setTimer: () => () => undefined });
+    const delivering = outbox.setOwner(A);
+    await vi.waitFor(() => expect(sent).toHaveLength(1));
+
+    await signOutAndIn(outbox, phone);
+    release();
+    await delivering;
+    expect(sent).toEqual([['one', 'A']]);
+    expect(store.records.has('two'), 'it waits on the phone, as the file header promises').toBe(true);
+  });
+
+  it('a record whose photo outlasted its person is not sent by the next one', async () => {
+    const { store, phone, sent, held, release } = phoneWithRecords([{ id: 'p', name: 'p.jpg', type: 'image/jpeg' }]);
+    store.photos.set('p', new Blob(['x']));
+    let uploading = false;
+    const transport = {
+      send: async (record: OutboxRecord) => void sent.push([record.id, phone.signedIn]),
+      upload: async () => {
+        uploading = true;
+        await held;
+        return 'file';
+      },
+      inspectConflict: async () => ({ applied: false, serverId: null }),
+    };
+    const outbox = createOutbox({ store, transport, setTimer: () => () => undefined });
+    const delivering = outbox.setOwner(A);
+    await vi.waitFor(() => expect(uploading).toBe(true));
+
+    await signOutAndIn(outbox, phone);
+    release();
+    await delivering;
+    expect(sent).toEqual([]);
+    expect(store.records.get('one')?.photos[0].fileId, 'the upload is kept, so it is not repeated').toBe('file');
+  });
+
+  it('the records go out when their person signs in again', async () => {
+    const { store, phone, sent } = phoneWithRecords();
+    const transport = {
+      send: async (record: OutboxRecord) => void sent.push([record.id, phone.signedIn]),
+      upload: async () => 'file',
+      inspectConflict: async () => ({ applied: false, serverId: null }),
+    };
+    const outbox = createOutbox({ store, transport, setTimer: () => () => undefined });
+    phone.signedIn = 'B';
+    await outbox.setOwner(B);
+    expect(sent).toEqual([]);
+    expect(outbox.getState().records).toEqual([]);
+    expect(outbox.getState().others).toBe(2);
+    await outbox.setOwner(null);
+    phone.signedIn = 'A';
+    await outbox.setOwner(A);
+    expect(sent).toEqual([['one', 'A'], ['two', 'A']]);
   });
 });

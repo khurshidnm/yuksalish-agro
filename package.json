@@ -20,6 +20,11 @@
     "db:seed": "pnpm --filter @yap/api db:seed",
     "db:reset": "pnpm --filter @yap/api db:reset",
     "db:generate": "pnpm --filter @yap/api db:generate",
-    "db:migrate": "pnpm --filter @yap/api db:migrate"
+    "db:migrate": "pnpm --filter @yap/api db:migrate",
+    "camera:up": "docker compose -f infra/camera-sim/docker-compose.yml up -d",
+    "camera:down": "docker compose -f infra/camera-sim/docker-compose.yml down",
+    "camera:setup": "node infra/camera-sim/sim.mjs setup",
+    "camera:run": "node infra/camera-sim/sim.mjs run",
+    "camera:event": "node infra/camera-sim/sim.mjs event"
   }
 }

@@ -45,7 +45,7 @@ z.config({
     switch (issue.code) {
       case 'invalid_type':
         if (issue.input === undefined || issue.input === null || issue.input === '') return t('common:validation.required');
-        return t('common:validation.invalid');
+        return t(Number.isNaN(issue.input) ? 'common:validation.unreadableNumber' : 'common:validation.invalid');
       case 'too_small': {
         const min = Number(issue.minimum);
         if (issue.origin === 'string') {

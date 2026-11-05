@@ -26,7 +26,8 @@
     "required": "Bu maydonni to'ldiring", "invalid": "Qiymat noto'g'ri", "format": "Format noto'g'ri",
     "min": "Kamida {{min}} bo'lishi kerak", "max": "Ko'pi bilan {{max}} bo'lishi kerak",
     "greaterThan": "{{min}} dan katta bo'lishi kerak",
-    "minLength": "Kamida {{min}} ta belgi kiriting", "maxLength": "Ko'pi bilan {{max}} ta belgi kiriting"
+    "minLength": "Kamida {{min}} ta belgi kiriting", "maxLength": "Ko'pi bilan {{max}} ta belgi kiriting",
+    "unreadableNumber": "Bu sonni o'qib bo'lmadi. 1500000 yoki 1 500 000 kabi yozing."
   },
   "errors": {
     "title": "Ma'lumotni yuklab bo'lmadi", "generic": "Xatolik yuz berdi. Qayta urinib ko'ring.",
@@ -63,7 +64,9 @@
     "NOT_PENDING": "Bu operatsiya tasdiqlash kutmayapti.",
     "SAME_MAKER_CHECKER": "Operatsiyani kiritgan xodim uni tasdiqlay olmaydi.",
     "FX_RATE_REQUIRED": "Shu sana uchun valyuta kursi kiritilmagan.",
-    "INVALID_PAYMENT_METHOD": "To'lov usuli noto'g'ri."
+    "INVALID_PAYMENT_METHOD": "To'lov usuli noto'g'ri.",
+    "IDEMPOTENCY_KEY_REUSED": "Bu so'rov boshqa amal uchun ishlatilgan.",
+    "SAVED_EARLIER": "Avvalgi bosish boshqa raqamlar bilan hisobga tushgan, bu esa saqlanmadi. Avval ro'yxatni tekshiring. Buni ham kiritish uchun yana Saqlash tugmasini bosing."
   },
   "pages": {
     "notFoundTitle": "Sahifa topilmadi", "notFoundBody": "Bunday sahifa yo'q yoki u ko'chirilgan.",
@@ -78,7 +81,7 @@
   "language": { "label": "Til" },
   "toast": { "saved": "Saqlandi", "created": "Yaratildi", "updated": "Yangilandi", "deleted": "O'chirildi" },
   "chart": { "showTable": "Jadval ko'rinishi", "showChart": "Grafik ko'rinishi", "noData": "Grafik uchun ma'lumot yo'q", "period": "Davr" },
-  "number": {"thousand": "{{value}} ming", "million": "{{value}} mln", "billion": "{{value}} mlrd", "trillion": "{{value}} trln"},
+  "number": {"thousand": "{{value}} ming", "million": "{{value}} mln", "billion": "{{value}} mlrd", "trillion": "{{value}} trln", "readAs": "{{value}} deb o'qildi", "readAsNot": "{{value}} deb o'qildi, {{other}} emas"},
   "date": {
     "months": ["Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun", "Iyul", "Avgust", "Sentabr", "Oktabr", "Noyabr", "Dekabr"],
     "monthsOf": ["yanvar", "fevral", "mart", "aprel", "may", "iyun", "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr"],

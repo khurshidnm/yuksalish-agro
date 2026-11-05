@@ -664,6 +664,112 @@ describe('transactions through the API', () => {
     expect((await owner.post(`/finance/transactions/${created.data.id}/approve`)).status).toBe(200);
   });
 
+  describe('an edit or a decision stands for what the person read', () => {
+    /** A 150 mln entry waiting for approval, as the queue reads it. */
+    const waiting = async () => {
+      const made = await accountant.post('/finance/transactions', expense({ amount: 150_000_000 }));
+      expect(made.data.status).toBe('pending');
+      const queue = await director.get('/finance/transactions', { status: 'pending', pageSize: 200 });
+      return queue.data.find((row: { id: string }) => row.id === made.data.id) as { id: string; updatedAt: string; amount: number };
+    };
+    const edit = (id: string, changes: object) => accountant.patch(`/finance/transactions/${id}`, changes);
+    const reread = async (id: string) => (await director.get(`/finance/transactions/${id}`)).data;
+
+    it('the queue says which version it holds', async () => {
+      const row = await waiting();
+      expect(Date.parse(row.updatedAt)).not.toBeNaN();
+      expect(row.amount).toBe(150_000_000);
+    });
+
+    it('an approval from a stale queue is refused, with the figure it would have booked', async () => {
+      const read = await waiting();
+      expect((await edit(read.id, { amount: 480_000_000 })).status).toBe(200);
+
+      const res = await director.post(`/finance/transactions/${read.id}/approve`, { baseUpdatedAt: read.updatedAt });
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('TRANSACTION_CHANGED');
+      expect(res.body.error.details).toMatchObject({ amount: 480_000_000, currency: 'UZS' });
+      expect(res.body.error.details.transaction).toMatchObject({ id: read.id, amount: 480_000_000, status: 'pending' });
+      expect((await reread(read.id)).status).toBe('pending');
+    });
+
+    it('the same approval passes once the new figure has been read', async () => {
+      const read = await waiting();
+      await edit(read.id, { amount: 480_000_000 });
+      const stale = await director.post(`/finance/transactions/${read.id}/approve`, { baseUpdatedAt: read.updatedAt });
+      const fresh = stale.body.error.details.transaction.updatedAt as string;
+      const res = await director.post(`/finance/transactions/${read.id}/approve`, { baseUpdatedAt: fresh });
+      expect(res.status).toBe(200);
+      expect(res.data).toMatchObject({ status: 'approved', amount: 480_000_000 });
+    });
+
+    it('a change that leaves the amount alone counts too: the screen named another account', async () => {
+      const read = await waiting();
+      const other = await director.post('/finance/accounts', { name: 'Zaxira', type: 'cash', currency: 'UZS', openingBalance: 0 });
+      expect(other.status).toBe(201);
+      expect((await edit(read.id, { accountId: other.data.id })).status).toBe(200);
+      const res = await director.post(`/finance/transactions/${read.id}/approve`, { baseUpdatedAt: read.updatedAt });
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('TRANSACTION_CHANGED');
+    });
+
+    it('a refusal is decided on the same version, and leaves a changed entry waiting', async () => {
+      const read = await waiting();
+      await edit(read.id, { amount: 180_000_000 });
+      const stale = await director.post(`/finance/transactions/${read.id}/reject`, { reason: 'Hujjat yo\'q', baseUpdatedAt: read.updatedAt });
+      expect(stale.status).toBe(409);
+      expect(stale.body.error.code).toBe('TRANSACTION_CHANGED');
+      expect((await reread(read.id)).status).toBe('pending');
+
+      const { updatedAt } = await reread(read.id);
+      const res = await director.post(`/finance/transactions/${read.id}/reject`, { reason: 'Hujjat yo\'q', baseUpdatedAt: updatedAt });
+      expect(res.status).toBe(200);
+      expect(res.data.status).toBe('rejected');
+    });
+
+    it('an Edit form opened before a correction does not put the old amount back', async () => {
+      const read = await waiting();
+      expect((await director.patch(`/finance/transactions/${read.id}`, { amount: 180_000_000 })).status).toBe(200);
+      const res = await edit(read.id, { amount: 150_000_000, description: 'izoh', baseUpdatedAt: read.updatedAt });
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('TRANSACTION_CHANGED');
+      expect(res.body.error.details.amount).toBe(180_000_000);
+      expect(await reread(read.id)).toMatchObject({ amount: 180_000_000, description: null });
+    });
+
+    it('an Edit form that read the current version saves', async () => {
+      const read = await waiting();
+      const res = await edit(read.id, { description: 'izoh', baseUpdatedAt: read.updatedAt });
+      expect(res.status).toBe(200);
+      expect(await reread(read.id)).toMatchObject({ amount: 150_000_000, description: 'izoh' });
+    });
+
+    it('an entry already decided answers as before: the version is no longer the point', async () => {
+      const read = await waiting();
+      expect((await director.post(`/finance/transactions/${read.id}/approve`, { baseUpdatedAt: read.updatedAt })).status).toBe(200);
+      const again = await (await w.f.as('owner')).post(`/finance/transactions/${read.id}/approve`, { baseUpdatedAt: read.updatedAt });
+      expect(again.status).toBe(409);
+      expect(again.body.error.code).toBe('NOT_PENDING');
+    });
+
+    it('the maker cannot approve through a fresh version either', async () => {
+      const read = await waiting();
+      const res = await accountant.post(`/finance/transactions/${read.id}/approve`, { baseUpdatedAt: read.updatedAt });
+      expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe('SAME_MAKER_CHECKER');
+    });
+
+    it('a refusal shows no figures to someone without finance.view', async () => {
+      const read = await waiting();
+      await edit(read.id, { amount: 480_000_000 });
+      await w.f.run(() => tx().update(schema.roles).set({ permissions: ['finance.approve'] }).where(eq(schema.roles.id, w.f.roleIds.agronomist)));
+      const limited = await w.f.as('agronomist');
+      const res = await limited.post(`/finance/transactions/${read.id}/approve`, { baseUpdatedAt: read.updatedAt });
+      expect(res.status).toBe(409);
+      expect(JSON.stringify(res.body)).not.toContain('480000000');
+    });
+  });
+
   it('refuses to edit or delete an approved entry', async () => {
     const created = await accountant.post('/finance/transactions', expense());
     expect(created.data.status).toBe('approved');
@@ -729,13 +835,13 @@ describe('transactions through the API', () => {
     const usd = await director.post('/finance/accounts', { name: 'Dollar', type: 'bank', currency: 'USD' });
     const res = await accountant.post('/finance/transactions', expense({ accountId: usd.data.id, currency: 'RUB', fxRate: 150 }));
     expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe('CURRENCY_MISMATCH');
+    expect(res.body.error.code).toBe('ACCOUNT_CURRENCY_MISMATCH');
 
     const transfer = await accountant.post('/finance/transactions', {
       date: DAY, type: 'transfer', amount: 10, paymentMethod: 'bank', accountId: w.accountId, toAccountId: usd.data.id,
     });
     expect(transfer.status).toBe(400);
-    expect(transfer.body.error.code).toBe('CURRENCY_MISMATCH');
+    expect(transfer.body.error.code).toBe('ACCOUNT_CURRENCY_MISMATCH');
   });
 
   it('refuses a cost center from another tenant', async () => {
@@ -1486,7 +1592,9 @@ describe('Keeping export', () => {
     categoryGroup: 'livestock',
     categoryName: { uz: 'Ozuqa' },
     accountName: 'Kassa',
+    accountType: 'cash',
     toAccountName: null,
+    toAccountType: null,
     counterpartyName: null,
     counterpartyTin: null,
     costCenterName: null,
@@ -1495,16 +1603,18 @@ describe('Keeping export', () => {
   it.each([
     [{ type: 'expense', paymentMethod: 'cash', costTreatment: 'expense' }, '2010', '5010'],
     [{ type: 'expense', paymentMethod: 'debt', costTreatment: 'inventory' }, '1000', '6010'],
-    [{ type: 'expense', paymentMethod: 'bank', costTreatment: 'animal' }, '1200', '5110'],
-    [{ type: 'expense', paymentMethod: 'bank', costTreatment: 'capex' }, '0800', '5110'],
+    [{ type: 'expense', paymentMethod: 'bank', costTreatment: 'animal', accountType: 'bank' }, '1200', '5110'],
+    [{ type: 'expense', paymentMethod: 'bank', costTreatment: 'capex', accountType: 'bank' }, '0800', '5110'],
     [{ type: 'expense', paymentMethod: 'non_cash', costTreatment: 'expense' }, '2010', '0200'],
     [{ type: 'income', paymentMethod: 'cash', costTreatment: 'expense' }, '5010', '9010'],
     [{ type: 'income', paymentMethod: 'debt', costTreatment: 'expense' }, '4010', '9010'],
-    [{ type: 'income', paymentMethod: 'bank', costTreatment: 'expense', categoryGroup: 'subsidy' }, '5110', '9390'],
-    [{ type: 'debt_payment', paymentMethod: 'bank', costTreatment: 'expense' }, '6010', '5110'],
+    [{ type: 'income', paymentMethod: 'bank', costTreatment: 'expense', categoryGroup: 'subsidy', accountType: 'bank' }, '5110', '9390'],
+    [{ type: 'debt_payment', paymentMethod: 'bank', costTreatment: 'expense', accountType: 'bank' }, '6010', '5110'],
     [{ type: 'debt_receipt', paymentMethod: 'cash', costTreatment: 'expense' }, '5010', '4010'],
-    [{ type: 'debt_receipt', paymentMethod: 'bank', costTreatment: 'expense', sourceType: 'loan' }, '5110', '7810'],
-    [{ type: 'debt_payment', paymentMethod: 'bank', costTreatment: 'expense', sourceType: 'loan_instalment' }, '7810', '5110'],
+    [{ type: 'debt_receipt', paymentMethod: 'bank', costTreatment: 'expense', sourceType: 'loan', accountType: 'bank' }, '5110', '7810'],
+    [{ type: 'debt_payment', paymentMethod: 'bank', costTreatment: 'expense', sourceType: 'loan_instalment', accountType: 'bank' }, '7810', '5110'],
+    [{ type: 'transfer', paymentMethod: 'bank', costTreatment: 'expense', accountType: 'bank', toAccountType: 'cash' }, '5010', '5110'],
+    [{ type: 'transfer', paymentMethod: 'cash', costTreatment: 'expense', accountType: 'cash', toAccountType: 'card' }, '5210', '5010'],
   ])('%j → Dt %s Ct %s', (over, debit, credit) => {
     expect(doubleEntry({ ...base, ...over } as never)).toEqual({ debit, credit });
   });

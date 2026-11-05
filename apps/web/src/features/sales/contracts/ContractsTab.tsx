@@ -84,7 +84,7 @@ export function ContractsTab() {
   const [editing, setEditing] = useState<ContractRow | null>(null);
 
   const save = useApiMutation<z.output<typeof schema>>({
-    mutationFn: (values) => (editing ? api.patch(`${PATH}/${editing.id}`, values) : api.post(PATH, values)),
+    mutationFn: (values) => (editing ? api.patch(`${PATH}/${editing.id}`, values) : api.postOnce(PATH, values)),
     invalidate: [PATH],
     silentError: true,
   });
@@ -236,7 +236,7 @@ export function ContractsTab() {
             <FormGrid>
               <DateField form={form} name="startDate" label={t('contracts.fields.startDate')} />
               <DateField form={form} name="endDate" label={t('contracts.fields.endDate')} />
-              <NumberField form={form} name="amount" label={t('contracts.fields.amount')} />
+              <NumberField money form={form} name="amount" label={t('contracts.fields.amount')} />
               <SelectField form={form} name="currency" label={t('contracts.fields.currency')} required options={enumOptions('currency', CURRENCIES)} />
             </FormGrid>
             <TextareaField form={form} name="terms" label={t('contracts.fields.terms')} rows={3} />

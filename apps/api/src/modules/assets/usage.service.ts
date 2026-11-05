@@ -11,7 +11,7 @@ import { recordEvent } from '../../core/journal';
 import { hideMoney } from '../../core/privacy';
 import { clientId, isoDate, listQuery, paged, sortBy } from '../../core/query';
 import { raiseAlert } from '../alerts/alerts.service';
-import { assertNotWrittenOff, assetCostCenter, getAssetRow } from './assets.service';
+import { assertNotWrittenOff, assertOnFarm, assetCostCenter, getAssetRow } from './assets.service';
 import { bestEffort } from './best-effort';
 
 const { assets, assetUsageLogs: t, employees, fields, items, stockBatches } = schema;
@@ -88,6 +88,7 @@ function fuelCheck(asset: typeof assets.$inferSelect, row: Pick<UsageRow, 'motoH
 export async function logUsage(input: UsageInput & { assetId: string; operationId?: string | null }) {
   const asset = await getAssetRow(input.assetId);
   await assertNotWrittenOff(asset);
+  await assertOnFarm(fields, input.fieldId, 'Field');
   const c = ctx();
   const id = input.id ?? uuidv7();
   const liters = input.fuelL ?? 0;
@@ -180,11 +181,13 @@ export async function logUsage(input: UsageInput & { assetId: string; operationI
   return { ...hideMoney([row], ['fuelCost'])[0], ...check };
 }
 
+/** Locked, so a rental act billing this shift at this moment is seen before it is changed. */
 async function getLog(assetId: string, logId: string): Promise<UsageRow> {
   const [row] = await tx()
     .select()
     .from(t)
-    .where(and(eq(t.id, logId), eq(t.assetId, assetId), eq(t.farmId, ctx().farmId)));
+    .where(and(eq(t.id, logId), eq(t.assetId, assetId), eq(t.farmId, ctx().farmId)))
+    .for('update');
   if (!row) throw notFound('Usage log');
   return row;
 }
@@ -246,7 +249,8 @@ export async function removeUsageForOperation(operationId: string): Promise<Usag
   const rows = await tx()
     .select()
     .from(t)
-    .where(and(eq(t.operationId, operationId), eq(t.farmId, ctx().farmId)));
+    .where(and(eq(t.operationId, operationId), eq(t.farmId, ctx().farmId)))
+    .for('update');
   for (const row of rows) await undoUsage(row);
   return rows[0] ?? null;
 }

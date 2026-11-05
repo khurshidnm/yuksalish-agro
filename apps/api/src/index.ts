@@ -6,21 +6,14 @@ import { startTelegramBot } from './modules/notifications/bot';
 
 const app = await buildApp();
 
-let stopJobs: (() => Promise<void>) | undefined;
-if (config.JOBS_ENABLED === 'true') {
-  try {
-    stopJobs = await startJobs(app.log);
-  } catch (err) {
-    // The API stays useful without Redis; only scheduled work pauses.
-    app.log.error({ err }, 'background jobs did not start');
-  }
-}
+// Connects in the background: the API stays useful without Redis, and only scheduled work pauses.
+const stopJobs = config.JOBS_ENABLED === 'true' ? startJobs(app.log) : undefined;
 
 // Polls getUpdates, so it must run on one API instance only. Does nothing without a bot token.
 const stopTelegram = startTelegramBot(app.log);
 
 async function shutdown() {
-  stopTelegram();
+  await stopTelegram();
   await stopJobs?.();
   await app.close();
   await closeDb();

@@ -59,5 +59,7 @@
   "documentType": { "land": "Land document", "construction": "Construction document", "permit": "Permit", "contract": "Contract", "invoice": "Invoice", "vet_certificate": "Veterinary certificate", "act": "Act", "other": "Other" },
   "role": { "owner": "Owner", "director": "Director", "accountant": "Accountant", "agronomist": "Agronomist", "zootechnician": "Zootechnician", "veterinarian": "Veterinarian", "storekeeper": "Storekeeper", "mechanic": "Foreman / machine operator", "shepherd": "Shepherd", "investor": "Investor", "auditor": "Auditor" },
   "module": { "dashboard": "Dashboard", "farm": "Farm and land", "crops": "Crops", "livestock": "Livestock", "health": "Veterinary", "inventory": "Warehouse", "feed": "Feed", "finance": "Finance", "payroll": "Payroll", "hr": "People", "assets": "Machinery", "sales": "Sales", "reports": "Reports", "ai": "AI analysis", "cameras": "Cameras", "tasks": "Tasks", "users": "Users", "settings": "Settings", "audit": "Audit" },
-  "action": { "view": "View", "create": "Create", "update": "Edit", "approve": "Approve", "delete": "Delete" }
+  "action": { "view": "View", "create": "Create", "update": "Edit", "approve": "Approve", "delete": "Delete" },
+  "leadStatus": { "new": "New", "contacted": "Contacted", "qualified": "Interested", "won": "Became a customer", "lost": "Lost" },
+  "leadFarmType": { "livestock": "Livestock", "crops": "Crops", "mixed": "Mixed", "other": "Other" }
 }

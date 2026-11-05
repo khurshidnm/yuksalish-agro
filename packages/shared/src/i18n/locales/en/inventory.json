@@ -12,8 +12,10 @@
     "FX_RATE_REQUIRED": "Enter the exchange rate",
     "SAME_WAREHOUSE": "The two warehouses must differ",
     "BATCH_ALREADY_USED": "This batch has been used, so the receipt cannot be reversed",
+    "AVERAGE_COST_USED": "Stock issued after this receipt was priced on an average that includes it, so the receipt cannot be reversed",
     "DOCUMENT_HAS_PAYMENT": "This receipt has a payment. Cancel it in finance first",
     "DOCUMENT_NOT_REVERSIBLE": "This document cannot be reversed here",
+    "DOCUMENT_NUMBER_AMBIGUOUS": "Two documents share this number, so it cannot be reversed by number",
     "COUNT_NOT_DRAFT": "This stock count is already approved",
     "COUNT_EMPTY": "Add at least one item to the count"
   },
@@ -48,6 +50,8 @@
     "payNow": "Record the payment too",
     "payNowHint": "The cost reaches a cost center when stock is issued",
     "paymentMethod": "Payment method",
+    "category": "Expense category",
+    "categoryHint": "Some items here have no category of their own. This one is used for the whole receipt.",
     "dueDate": "Payment due",
     "account": "Cash or bank account"
   },

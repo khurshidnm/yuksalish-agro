@@ -252,7 +252,7 @@
     "emptyBody": "Record the first shearing."
   },
   "exits": {
-    "title": "Exits",
+    "title": "Animal exits",
     "description": "Sales, slaughter, deaths and losses.",
     "add": "Record an exit",
     "addFor": "{{tag}}: exit",

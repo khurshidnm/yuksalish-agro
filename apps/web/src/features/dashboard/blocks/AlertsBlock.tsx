@@ -25,7 +25,7 @@ export function AlertsBlock({ data }: { data: AlertsData }) {
   return (
     <Card>
       <CardContent className="pt-2 md:pt-2">
-        <ul className="divide-y divide-border">
+        <ul className="divide-y divide-dashed divide-border">
           {data.items.map((alert) => {
             const { variant, icon: Icon } = SEVERITY[alert.severity] ?? SEVERITY.info;
             const text = alertText(alert, t);

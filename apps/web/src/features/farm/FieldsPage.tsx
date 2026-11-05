@@ -1,6 +1,6 @@
 import { LAND_USES } from '@yap/shared';
 import { Archive, Check, Map as MapIcon, Pencil, Plus, Sprout } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { type Column, DataTable, PageHeader, StatCard, useConfirm, useUrlParam } from '@/components';
@@ -10,8 +10,12 @@ import { usePermission } from '@/lib/auth';
 import { formatNumber } from '@/lib/format';
 import { enumOptions } from '@/lib/i18n';
 import { useApiMutation, useDetail } from '@/lib/query';
+import { useMediaQuery } from '@/lib/useMediaQuery';
 import { FIELD_PATHS, FieldFormDialog } from './FieldFormDialog';
-import type { FieldRow, Passport } from './types';
+import { FieldPreview } from './FieldPreview';
+import { FieldShape } from './FieldShape';
+import { LAND_USE_SLOT } from './map/slots';
+import type { FarmMapData, FieldRow, Passport } from './types';
 import { fieldTitle, formatHa, useLocalName } from './utils';
 
 const PATH = '/farm/fields';
@@ -32,6 +36,18 @@ export default function FieldsPage() {
   const balance = passport.data?.areaBalance;
   const arable = balance?.byLandUse.find((row) => row.landUse === 'arable');
 
+  // Side by side only where both fit. Narrower screens open the field card, as they always did.
+  const wide = useMediaQuery('(min-width: 80rem)');
+  const [picked, setPicked] = useState<string | null>(null);
+  const outlines = useDetail<FarmMapData>('/farm/map');
+  const mappedFields = useMemo(() => (outlines.data?.features ?? []).filter((feature) => feature.properties.kind === 'field'), [outlines.data]);
+  const geometryOf = useMemo(() => new Map(mappedFields.map((feature) => [feature.id, feature.geometry])), [mappedFields]);
+  const largest = useMemo(
+    () => mappedFields.reduce<(typeof mappedFields)[number] | null>((best, feature) => ((feature.properties.areaHa ?? 0) > (best?.properties.areaHa ?? 0) ? feature : best), null),
+    [mappedFields],
+  );
+  const previewId = picked ?? largest?.id ?? null;
+
   const archive = useApiMutation<string>({
     mutationFn: (id) => api.delete(`${PATH}/${id}`),
     invalidate: FIELD_PATHS,
@@ -39,7 +55,17 @@ export default function FieldsPage() {
   });
 
   const columns: Column<FieldRow>[] = [
-    { key: 'number', header: t('fields.contour'), cell: (row) => fieldTitle(row), mobile: 'title' },
+    {
+      key: 'number',
+      header: t('fields.contour'),
+      cell: (row) => (
+        <span className="inline-flex items-center gap-2.5">
+          <FieldShape geometry={geometryOf.get(row.id)} slot={LAND_USE_SLOT[row.landUse]} />
+          {fieldTitle(row)}
+        </span>
+      ),
+      mobile: 'title',
+    },
     {
       key: 'landUse',
       header: t('fields.landUse'),
@@ -61,8 +87,13 @@ export default function FieldsPage() {
           '—'
         ),
     },
-    { key: 'soilType', header: t('fields.soilType'), cell: (row) => row.soilType ?? '—', mobile: 'hidden' },
-    { key: 'irrigationSource', header: t('fields.irrigationSource'), cell: (row) => row.irrigationSource ?? '—', mobile: 'hidden' },
+    // With the side panel open these two live there, and the table keeps its width.
+    ...(wide
+      ? []
+      : ([
+          { key: 'soilType', header: t('fields.soilType'), cell: (row) => row.soilType ?? '—', mobile: 'hidden' },
+          { key: 'irrigationSource', header: t('fields.irrigationSource'), cell: (row) => row.irrigationSource ?? '—', mobile: 'hidden' },
+        ] satisfies Column<FieldRow>[])),
     {
       key: 'hasBoundary',
       header: t('fields.onMap'),
@@ -118,54 +149,59 @@ export default function FieldsPage() {
         />
       </div>
 
-      <DataTable<FieldRow>
-        path={PATH}
-        params={{ landUse: landUse || undefined }}
-        columns={columns}
-        rowHref={(row) => `/farm/fields/${row.id}`}
-        searchPlaceholder={t('fields.searchPlaceholder')}
-        filters={
-          <Select
-            aria-label={t('fields.landUseFilter')}
-            value={landUse}
-            onChange={(e) => setLandUse(e.target.value)}
-            options={enumOptions('landUse', LAND_USES)}
-            placeholder={t('fields.allLandUses')}
-            className="md:w-56"
-          />
-        }
-        empty={{
-          icon: Sprout,
-          title: t('fields.emptyTitle'),
-          description: t('fields.emptyBody'),
-          action: canCreate && (
-            <Button asChild>
-              <Link to="/farm/map">
-                <MapIcon aria-hidden />
-                {t('fields.openMap')}
-              </Link>
-            </Button>
-          ),
-        }}
-        rowActions={(row) => [
-          { label: t('common:actions.edit'), icon: Pencil, hidden: !canUpdate, onClick: () => setEditing(row) },
-          {
-            label: t('fields.archive'),
-            icon: Archive,
-            destructive: true,
-            hidden: !canDelete,
-            onClick: async () => {
-              const ok = await confirm({
-                title: t('fields.archiveTitle'),
-                description: t('fields.archiveBody', { name: fieldTitle(row) }),
-                confirmLabel: t('fields.archive'),
-                destructive: true,
-              });
-              if (ok) archive.mutate(row.id);
+      <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-start xl:gap-4">
+        <DataTable<FieldRow>
+          path={PATH}
+          params={{ landUse: landUse || undefined }}
+          columns={columns}
+          rowHref={(row) => `/farm/fields/${row.id}`}
+          onRowPreview={wide ? (row) => setPicked(row.id) : undefined}
+          isRowSelected={wide ? (row) => row.id === previewId : undefined}
+          searchPlaceholder={t('fields.searchPlaceholder')}
+          filters={
+            <Select
+              aria-label={t('fields.landUseFilter')}
+              value={landUse}
+              onChange={(e) => setLandUse(e.target.value)}
+              options={enumOptions('landUse', LAND_USES)}
+              placeholder={t('fields.allLandUses')}
+              className="md:w-56"
+            />
+          }
+          empty={{
+            icon: Sprout,
+            title: t('fields.emptyTitle'),
+            description: t('fields.emptyBody'),
+            action: canCreate && (
+              <Button asChild>
+                <Link to="/farm/map">
+                  <MapIcon aria-hidden />
+                  {t('fields.openMap')}
+                </Link>
+              </Button>
+            ),
+          }}
+          rowActions={(row) => [
+            { label: t('common:actions.edit'), icon: Pencil, hidden: !canUpdate, onClick: () => setEditing(row) },
+            {
+              label: t('fields.archive'),
+              icon: Archive,
+              destructive: true,
+              hidden: !canDelete,
+              onClick: async () => {
+                const ok = await confirm({
+                  title: t('fields.archiveTitle'),
+                  description: t('fields.archiveBody', { name: fieldTitle(row) }),
+                  confirmLabel: t('fields.archive'),
+                  destructive: true,
+                });
+                if (ok) archive.mutate(row.id);
+              },
             },
-          },
-        ]}
-      />
+          ]}
+        />
+        {wide && previewId && <FieldPreview id={previewId} />}
+      </div>
 
       <FieldFormDialog
         open={creating || editing !== null}

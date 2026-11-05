@@ -72,7 +72,7 @@ export function IssueDialog({ open, onOpenChange }: { open: boolean; onOpenChang
   const { t } = useTranslation('inventory');
   const mutation = useApiMutation<FormOut, DocumentResult>({
     mutationFn: ({ lines, ...values }) =>
-      api.post('/inventory/issues', { ...values, lines: lines.map(({ itemId, qty }) => ({ itemId, qty })) }),
+      api.postOnce('/inventory/issues', { ...values, lines: lines.map(({ itemId, qty }) => ({ itemId, qty })) }),
     invalidate: STOCK_PATHS,
     silentError: true,
     onSuccess: (result) =>

@@ -74,10 +74,14 @@ export async function runDepreciation(month: string): Promise<{ month: string; p
     .where(and(eq(financeCategories.tenantId, c.tenantId), eq(financeCategories.key, 'depreciation')));
   if (!category) throw badRequest('CATEGORY_NOT_FOUND', 'Finance category depreciation does not exist');
 
+  // Locked, because each amount is capped by what is already posted: two months at once would
+  // both see the same amount left and go past it.
   const rows = await tx()
     .select()
     .from(assets)
-    .where(and(eq(assets.farmId, c.farmId), sql`${assets.status} <> 'written_off'`));
+    .where(and(eq(assets.farmId, c.farmId), sql`${assets.status} <> 'written_off'`))
+    .orderBy(assets.id)
+    .for('update');
 
   let posted = 0;
   let total = 0;

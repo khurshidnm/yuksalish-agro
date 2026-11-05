@@ -57,7 +57,30 @@
     "refused": "I can't answer that. Please try asking in a different way.",
     "truncated": "The answer ran too long and was cut off. Please ask a shorter question.",
     "noAnswer": "I couldn't put an answer together. Please try asking in a different way.",
-    "gaveUp": "That question took too many steps, so I couldn't finish. Please split it into smaller questions."
+    "gaveUp": "That question took too many steps, so I couldn't finish. Please split it into smaller questions.",
+    "cardReady": "Check the card and confirm it.",
+    "cardsReady": "Check the {{count}} cards and confirm them.",
+    "nothingSaved": "Nothing has been recorded. To record it, tell me the amount and what it was for.",
+    "ask": {
+      "default": "I need a little more to prepare this record. Please tell me more.",
+      "USE_OTHER_MODULE": "This is entered in another section, otherwise it would be counted twice.",
+      "NOT_HAPPENED": "Has this money already been paid?",
+      "AMOUNT_REQUIRED": "How much was it?",
+      "AMOUNT_NOT_STATED": "Please state the exact amount.",
+      "PAYMENT_METHOD_REQUIRED": "How was it paid: cash, bank or on debt?",
+      "DATE_UNCLEAR": "Which day was this?",
+      "DIRECTION_REQUIRED": "Who paid whom: we paid them, or they paid us?",
+      "QUANTITY_REQUIRED": "How much was bought?",
+      "WAGE_OR_SERVICE": "Is this a wage, or payment for a service?",
+      "TARGET_REQUIRED": "Which field, herd or machine was this for?",
+      "COUNTERPARTY_REQUIRED": "Who was this with?",
+      "AMOUNT_ALREADY_USED": "That amount was said once and is already on a card. How much was this one, or was it that much each?",
+      "KIND_UNCLEAR": "Did this money come in, or go out?",
+      "TRANSFER_SIDES": "Which account did the money leave, and which did it go to?"
+    },
+    "notDone": "That was not done. Please use the button on the card, or try again.",
+    "pressConfirm": "The card is not recorded yet. To record it, press the confirm button on the card.",
+    "hiddenAnswer": "This answer held financial figures you can no longer see."
   },
   "summary": {
     "title": {
@@ -101,7 +124,7 @@
     "description": "Questions about your farm data, automatic analysis and recommendations",
     "notConfiguredTitle": "The AI assistant is not set up yet",
     "notConfiguredBody": "Questions and document reading are unavailable for now. Statistical analysis and recommendations work without a key.",
-    "notConfiguredHow": "To turn it on, set ANTHROPIC_API_KEY in the server settings and restart the API.",
+    "notConfiguredHow": "To turn it on, set GEMINI_API_KEY (from a billing-enabled Google project) or ANTHROPIC_API_KEY in the server settings and restart the API.",
     "tabs": {
       "assistant": "Assistant",
       "insights": "Analysis",
@@ -387,7 +410,18 @@
     "AI_DOCUMENT_UNREADABLE": "The document could not be read. Please send a clearer photo.",
     "AI_UNSUPPORTED_FILE": "Only photos and PDF files can be read.",
     "ALREADY_DECIDED": "A decision on this recommendation has already been recorded.",
-    "NOT_DECIDED": "Record a decision first, then the outcome."
+    "NOT_DECIDED": "Record a decision first, then the outcome.",
+    "PROPOSAL_NOT_PENDING": "This has already been handled.",
+    "PROPOSAL_EXPIRED": "This draft has expired. Please say it again.",
+    "NOT_YOUR_PROPOSAL": "This draft belongs to someone else.",
+    "DUPLICATE_NOT_ACKNOWLEDGED": "This looks like a duplicate. Confirm that it is a separate record.",
+    "PROPOSAL_NOT_CONFIRMED": "Only a confirmed record can be undone.",
+    "UNDO_EXPIRED": "It is too late to undo this.",
+    "PROPOSAL_CHANGED": "This card changed after you read it. Please check the new one.",
+    "PROPOSAL_NEEDS_ANSWER": "A correction to this card is waiting for your answer.",
+    "PROPOSAL_STALE": "Something on this card has changed, for example an account was closed. Please check it.",
+    "NOT_ACKNOWLEDGED": "This record needs your explicit yes.",
+    "UNDO_IMPOSSIBLE": "This record cannot be undone here."
   },
   "sourceValues": {
     "actual": "actual use",
@@ -396,5 +430,335 @@
     "farm_history": "the farm's own history",
     "assumed_default": "assumed until the farm has 30 lambings",
     "planned_figures": "Margins use planned figures, not results of past harvests."
+  },
+  "records": {
+    "emptyTitle": "Ask something or tell it a record",
+    "emptyDescription": "The assistant answers questions about the farm and prepares expenses, purchases and income for recording. Nothing is written until you confirm.",
+    "composerPlaceholder": "A question or a record: 3 mln fuel",
+    "kind": {
+      "expense": "Expense",
+      "stock_purchase": "Purchase for stock",
+      "income": "Income",
+      "debt_payment": "Debt payment",
+      "transfer": "Transfer"
+    },
+    "channel": {
+      "telegram": "Telegram"
+    },
+    "fields": {
+      "amount": "Amount",
+      "date": "Date",
+      "category": "Category",
+      "target": "Filed under",
+      "item": "Item",
+      "qty": "Quantity",
+      "unitPrice": "Unit price",
+      "warehouse": "Warehouse",
+      "account": "Account",
+      "counterparty": "Counterparty",
+      "description": "Note",
+      "fromAccount": "From account",
+      "toAccount": "To account",
+      "direction": "Who paid"
+    },
+    "card": {
+      "targetDefaulted": "Chosen by default, because it was not stated. Change it if this is wrong.",
+      "willNeedApproval": "This is a large amount: after you confirm, a second person must approve it.",
+      "noPermission": "You do not have permission to confirm this record.",
+      "expires": "Valid until {{time}}",
+      "fxRate": "rate: 1 {{currency}} = {{rate}} {{base}}",
+      "notApplied": "This change was not saved as you entered it: {{fields}}. Check it before confirming, or correct it in the chat.",
+      "masked": "You can no longer see money, so this card shows no amounts and cannot be confirmed or changed here.",
+      "learningTitle": "It will remember",
+      "learning": "\"{{phrase}}\" means {{name}}",
+      "learningBody": "Once you confirm, the assistant reads these words this way next time. You can delete a word under Phrases."
+    },
+    "actions": {
+      "confirm": "Confirm",
+      "change": "Change",
+      "cancel": "Cancel",
+      "undo": "Undo ({{time}})",
+      "open": "Open the record",
+      "back": "Back"
+    },
+    "notice": {
+      "changedTitle": "The card has changed",
+      "changed": "Changed since you read it: {{fields}}. Check the card and confirm again.",
+      "changedUnnamed": "It changed since you read it. Check the card and confirm again.",
+      "staleTitle": "Something on this card no longer holds",
+      "stale": "Something it points at has changed since it was made, for example an account was closed. Change the card, or cancel it.",
+      "needsAnswerTitle": "A correction is waiting for your answer",
+      "needsAnswer": "Answer the question in the chat, or change the card here. Until then it cannot be confirmed."
+    },
+    "acknowledge": {
+      "several": "Yes, I checked all of this",
+      "POSSIBLE_DUPLICATE": {
+        "title": "Is this a repeat?",
+        "booked": "The same record is already in the books within 3 days. Confirm only if this is a separate one.",
+        "open": "The same record is waiting on another card. If it is the same thing, cancel one of them.",
+        "yes": "Yes, this is a separate record"
+      },
+      "OTHER_AMOUNT": {
+        "title": "Another amount in the message",
+        "body": "The message also has {{amounts}}, which no card shows, for example change or a discount. Check that this card is right as it is.",
+        "yes": "Yes, the card is right"
+      },
+      "AMOUNT_FROM_DOCUMENT": {
+        "title": "The amount comes from a document",
+        "body": "{{amount}} was read from a document or a forwarded message, and your own words do not give it. Check it against the document.",
+        "yes": "Yes, the amount is right"
+      },
+      "CURRENCY_CONVERTED": {
+        "title": "The account holds another currency",
+        "body": "{{account}} is kept in {{currency}}, so this is recorded at its value in that currency, at the rate on the card. Check that this is what happened.",
+        "yes": "Yes, record it this way"
+      }
+    },
+    "outcome": {
+      "confirmedTitle": "Recorded",
+      "waitingTitle": "Waiting for approval",
+      "waitingBody": "It reaches the reports once a second person approves it.",
+      "failedTitle": "Could not be recorded",
+      "failedBody": "Nothing was written. Try again, or enter it by hand on the right page.",
+      "rejectedTitle": "Cancelled",
+      "rejectedBody": "Nothing was written.",
+      "expiredTitle": "Expired",
+      "expiredBody": "Nothing was written. Say it again if you still need it.",
+      "undoneTitle": "Undone",
+      "undoneBody": "The record was reversed and the balances are back as they were.",
+      "refusedTitle": "Refused in the books",
+      "refusedBody": "A second person refused this record, or finance voided it. It does not count in balances or reports."
+    },
+    "edit": {
+      "title": "Change the record",
+      "description": "Nothing is written until you confirm.",
+      "save": "Save",
+      "unitPriceHint": "The unit price is worked out from the amount and quantity."
+    },
+    "question": {
+      "choose": "Choose an answer",
+      "generic": "Something needs clearing up. Choose an answer or change the record.",
+      "notSaved": "This change is not saved yet.",
+      "typeAnswer": "Type your answer in the box below."
+    },
+    "warnings": {
+      "generic": "Please check this before confirming.",
+      "OVER_BALANCE": "This is more than {{account}} holds: {{balance}}.",
+      "UNUSUALLY_LARGE": "This is much larger than usual for this category, which is about {{median}}.",
+      "UNUSUAL_PRICE": "This unit price is far from the usual one, about {{median}}.",
+      "OLD_DATE": "The date, {{date}}, is more than 30 days ago.",
+      "STALE_RATE": "The stored exchange rate, {{rate}}, is from {{date}}: more than a week old. Check it.",
+      "PHRASE_USED": "\"{{phrase}}\" was taken to mean {{name}}, as you taught earlier.",
+      "CURRENCY_CONVERTED": "{{account}} is kept in so'm, so this is recorded at its so'm value. Please check."
+    },
+    "pending": {
+      "tab": "Pending",
+      "intro": "Records not confirmed yet, including those started in Telegram.",
+      "emptyTitle": "Nothing is waiting",
+      "emptyBody": "Records the assistant prepared and you have not confirmed yet appear here."
+    },
+    "help": {
+      "open": "What can I say?",
+      "title": "What can I say?",
+      "intro": "Say it plainly, as you would to a colleague. If something is missing, the assistant asks.",
+      "groups": {
+        "expense": "Expense",
+        "stock": "Purchase for stock",
+        "income": "Income",
+        "debt": "Debt",
+        "transfer": "Between accounts",
+        "several": "Several at once",
+        "ask": "Questions"
+      },
+      "examples": {
+        "fuelShort": "3 mln fuel, cash",
+        "repair": "Paid 800 thousand from the bank for the tractor repair",
+        "feed": "Bought 5,000 kg of barley at 3,500 so'm a kilo, cash",
+        "diesel": "200 litres of diesel, 2.4 mln, on credit",
+        "subsidy": "State subsidy of 12 mln reached the bank",
+        "supplier": "Paid Akmal aka the 2 mln we owed, in cash",
+        "bank": "Moved 5 mln from the bank to the cash desk",
+        "two": "500 thousand lunch, 200 thousand phone bill, both cash",
+        "status": "How is the farm doing today?",
+        "cash": "How much cash do we have?"
+      },
+      "safetyTitle": "Nothing is written until you confirm",
+      "safetyBody": "The assistant only prepares a record. If something is wrong, change or cancel it. A record below the approval threshold can be undone for 15 minutes.",
+      "elsewhere": "Salaries, loan instalments and sales are entered in their own sections: recorded here, they would count twice.",
+      "telegram": "In Telegram you can also send a voice note or a photo of a receipt.",
+      "tapHint": "Tap an example to put it in the message box."
+    },
+    "sheet": {
+      "title": "Assistant",
+      "description": "Ask something or tell it a record",
+      "chat": "Chat",
+      "help": "Help",
+      "openPage": "Open the full page"
+    },
+    "launcher": {
+      "open": "Open the assistant",
+      "pending": "Assistant: {{count}} records waiting"
+    },
+    "direction": {
+      "payable": "We paid",
+      "receivable": "They paid"
+    },
+    "options": {
+      "stock": "Went into the warehouse",
+      "direct": "Used straight away",
+      "wage": "A wage",
+      "service": "Payment for a service",
+      "per_ton": "Per tonne",
+      "per_kg": "Per kilo"
+    },
+    "questions": {
+      "field": {
+        "amount": "How much was it?",
+        "unitPrice": "What was the unit price?",
+        "qty": "How much was it in quantity?",
+        "date": "Which day was it?",
+        "category": "What was it for?",
+        "target": "Where should it be filed?",
+        "account": "Which account?",
+        "toAccount": "Which account did it go to?",
+        "counterparty": "Which counterparty?",
+        "item": "Which item?",
+        "warehouse": "Which warehouse?",
+        "paymentMethod": "How was it paid?",
+        "direction": "Did we pay, or did they pay? Say so in the chat.",
+        "direct": "Did these goods go into the warehouse, or were they used straight away? Say so in the chat.",
+        "currency": "Which currency?",
+        "fxRate": "What was the rate?"
+      },
+      "code": {
+        "USE_OTHER_MODULE": "This is entered in its own section: recorded here, it would count twice.",
+        "SAME_ACCOUNT": "Both accounts are the same. Which account did it go to?",
+        "NO_ACCOUNT": "No account has been added yet. Add one in Finance first.",
+        "UNIT_MISMATCH": "The quantity or price is in another unit than the item is kept in. Give it in the item's unit, or give the total.",
+        "DATE_IN_FUTURE": "The date cannot be in the future. Which day was it?",
+        "DATE_UNCLEAR": "Which day exactly was it?",
+        "AMOUNT_CONFLICT": "Your words and the document give different amounts. Which is right?",
+        "AMOUNT_AMBIGUOUS": "The quantity at that price comes to another total. Which amount is right?",
+        "AMOUNT_UNCLEAR": "Which amount did you mean?",
+        "AMOUNT_NOT_STATED": "Your words do not give this amount. How much was it?",
+        "QUANTITY_NOT_STATED": "Your words do not give this quantity. How much was it?",
+        "PRICE_UNIT_UNCLEAR": "Is that price per tonne or per kilo?",
+        "NOT_HAPPENED": "Has this money already been paid? If so, say when.",
+        "WAGE_OR_SERVICE": "Is this someone's wage, or payment for a service? Wages are entered in Payroll.",
+        "NO_OPEN_DEBT": "There is no open debt with them in that direction. What was this payment?",
+        "MORE_THAN_OWED": "That is more than is owed. What was the rest for?",
+        "ACCOUNT_CURRENCY": "This account is kept in another currency. Which account was it, or how much in its currency?",
+        "CURRENCY_NOT_SUPPORTED": "This is recorded here in one currency only. An exchange between currencies is entered in Finance.",
+        "CURRENCY_UNSUPPORTED": "This currency is not kept here. Give the amount in the farm's currency, {{base}}.",
+        "CURRENCY_UNCLEAR": "Which currency was it?",
+        "FX_RATE_REQUIRED": "What was the exchange rate?"
+      }
+    },
+    "tools": {
+      "find_records": "Looking up records",
+      "farm_status": "Farm status",
+      "draft_expense": "Preparing an expense",
+      "draft_stock_purchase": "Preparing a purchase",
+      "draft_income": "Preparing income",
+      "draft_debt_payment": "Preparing a debt payment",
+      "draft_transfer": "Preparing a transfer",
+      "update_draft": "Changing the record",
+      "cancel_draft": "Cancelling the record"
+    },
+    "tables": {
+      "ai_proposals": "prepared records",
+      "expense_categories": "expense categories",
+      "income_categories": "income categories",
+      "warehouses": "warehouses",
+      "machines": "machinery"
+    },
+    "phrases": {
+      "tab": "Phrases",
+      "intro": "The assistant remembers the words you use. Delete a wrong one and it will ask again next time.",
+      "emptyTitle": "No phrases yet",
+      "emptyBody": "When the assistant asks something and you answer, your word is saved here.",
+      "delete": "Delete the phrase \"{{phrase}}\"",
+      "deleteTitle": "Delete the phrase \"{{phrase}}\"?",
+      "deleteBody": "The assistant will ask about this word again next time.",
+      "deleted": "Phrase deleted",
+      "types": {
+        "category": "Category",
+        "cost_center": "Cost center",
+        "account": "Account",
+        "counterparty": "Counterparty",
+        "item": "Item",
+        "warehouse": "Warehouse"
+      }
+    }
+  },
+  "recordText": {
+    "kind": {
+      "expense": "Expense",
+      "stock_purchase": "Stock purchase",
+      "income": "Income",
+      "debt_payment": "Debt payment",
+      "transfer": "Transfer"
+    },
+    "category": "Category",
+    "item": "Item",
+    "warehouse": "Warehouse",
+    "target": "Charged to",
+    "account": "Account",
+    "toAccount": "Moved to",
+    "counterparty": "Counterparty",
+    "date": "Date",
+    "description": "Note",
+    "defaulted": "general, you did not say",
+    "onDebt": "on debt",
+    "needsApproval": "After you confirm, it waits for a second person.",
+    "warnings": {
+      "POSSIBLE_DUPLICATE": "A similar record was entered recently.",
+      "UNUSUALLY_LARGE": "This is much larger than usual.",
+      "OVER_BALANCE": "This is more than the account holds.",
+      "OLD_DATE": "The date is more than 30 days ago.",
+      "AMOUNT_FROM_DOCUMENT": "The amount was read from the document, please check it.",
+      "NO_OPEN_DEBT": "No open debt was found for this counterparty.",
+      "MORE_THAN_OWED": "This is more than is owed.",
+      "OTHER_AMOUNT": "The message has another amount that is not on this card. Please check.",
+      "STALE_RATE": "The exchange rate is old. Please check it.",
+      "UNUSUAL_PRICE": "This price is far from the usual one.",
+      "PHRASE_USED": "This was chosen from a word taught earlier.",
+      "CURRENCY_CONVERTED": "This account is kept in so'm, so this is recorded at its so'm value. Please check."
+    },
+    "direction": {
+      "payable": "We paid off a debt",
+      "receivable": "They paid off a debt to us"
+    },
+    "farm": "Farm",
+    "rate": "Rate",
+    "onlyOne": "the only one, you did not say",
+    "learning": "Will remember",
+    "registerAnimals": {
+      "title": "Register the animals",
+      "body": "The purchase is recorded. Now register the animals you bought in the livestock section."
+    }
+  },
+  "recap": {
+    "title": "Today's records, {{date}}",
+    "recorded": "Confirmed records: {{count}}",
+    "moneyOut": "Money out: {{amount}}",
+    "moneyIn": "Money in: {{amount}}",
+    "more": "and {{count}} more",
+    "awaitingSecond": "Waiting for a second person: {{count}}",
+    "waiting": "Waiting for your confirmation: {{count}}. They expire if left."
+  },
+  "bar": {
+    "label": "Ask the assistant",
+    "placeholder": "Ask or record something...",
+    "send": "Send to the assistant",
+    "chips": {
+      "attention": "Today's priorities",
+      "lambing": "Lambing this week",
+      "feed": "Feed reserve"
+    }
+  },
+  "insightStrip": {
+    "title": "AI insight",
+    "open": "Open all insights"
   }
 }

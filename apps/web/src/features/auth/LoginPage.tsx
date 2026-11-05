@@ -116,9 +116,9 @@ function FieldRows() {
           <path d={FIELD_EDGE} />
         </clipPath>
       </defs>
-      <path d="M0 60 C 180 16 340 110 640 34 V300 H0Z" className="fill-sidebar-hover" />
-      <path d={FIELD_EDGE} className="fill-sidebar-border" />
-      <g clipPath="url(#field-edge)" className="stroke-sidebar-active" strokeWidth="2" opacity="0.5">
+      <path d="M0 60 C 180 16 340 110 640 34 V300 H0Z" className="fill-secondary" />
+      <path d={FIELD_EDGE} className="fill-accent" />
+      <g clipPath="url(#field-edge)" className="stroke-primary" strokeWidth="2" opacity="0.35">
         {Array.from({ length: 15 }, (_, i) => (
           <line key={i} x1={470} y1={30} x2={-420 + i * 150} y2={300} />
         ))}
@@ -133,14 +133,14 @@ export default function LoginPage() {
 
   return (
     <div className="grid min-h-dvh lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
-      <section className="relative hidden flex-col overflow-hidden bg-sidebar p-10 text-sidebar-foreground lg:flex">
+      <section className="relative hidden flex-col overflow-hidden bg-muted p-10 text-foreground lg:flex">
         <div className="flex items-center gap-3">
           <LogoMark />
           <span className="text-lg font-semibold">{t('common:app.name')}</span>
         </div>
         <div className="relative z-10 mt-20 max-w-md">
-          <p className="text-4xl leading-tight font-semibold tracking-tight">{t('auth:login.brandTitle')}</p>
-          <p className="mt-4 text-sidebar-muted">{t('auth:login.brandBody')}</p>
+          <p className="text-4xl leading-tight font-semibold tracking-tight text-heading">{t('auth:login.brandTitle')}</p>
+          <p className="mt-4 text-muted-foreground">{t('auth:login.brandBody')}</p>
         </div>
         <FieldRows />
       </section>

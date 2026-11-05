@@ -65,7 +65,7 @@ function PayDialog({ row, onClose }: { row: PurchaseRow; onClose: () => void }) 
   const { t } = useTranslation('sales');
   const schema = buildPaySchema(t);
   const pay = useApiMutation<z.output<typeof schema>>({
-    mutationFn: (values) => api.post(`${PATH}/${row.id}/pay`, values),
+    mutationFn: (values) => api.postOnce(`${PATH}/${row.id}/pay`, values),
     invalidate: AFFECTED,
     silentError: true,
   });
@@ -103,7 +103,7 @@ function PayFields({ form, row, estimate }: { form: PayForm; row: PurchaseRow; e
   return (
     <>
       <FormGrid>
-        <NumberField form={form} name="amount" label={t('purchases.fields.amount')} required />
+        <NumberField money form={form} name="amount" label={t('purchases.fields.amount')} required />
         <DateField form={form} name="date" label={t('purchases.fields.payDate')} required />
       </FormGrid>
       {estimate !== null && amount > estimate && <Alert tone="warning">{t('purchases.overEstimate', { estimate: formatMoney(estimate) })}</Alert>}
@@ -124,7 +124,7 @@ function PayFields({ form, row, estimate }: { form: PayForm; row: PurchaseRow; e
 function ReceiveDialog({ row, onClose }: { row: PurchaseRow; onClose: () => void }) {
   const { t } = useTranslation('sales');
   const receive = useApiMutation<z.output<typeof receiveSchema>>({
-    mutationFn: (values) => api.post(`${PATH}/${row.id}/receive`, values),
+    mutationFn: (values) => api.postOnce(`${PATH}/${row.id}/receive`, values),
     invalidate: AFFECTED,
     silentError: true,
   });
@@ -356,7 +356,7 @@ export function RequestsTab() {
             />
             <FormGrid>
               <NumberField form={form} name="qty" label={t('purchases.fields.qty')} required />
-              <NumberField form={form} name="expectedPrice" label={t('purchases.fields.expectedPrice')} hint={t('purchases.fields.expectedPriceHint')} />
+              <NumberField money form={form} name="expectedPrice" label={t('purchases.fields.expectedPrice')} hint={t('purchases.fields.expectedPriceHint')} />
             </FormGrid>
             <FormGrid>
               <ComboboxField form={form} name="counterpartyId" label={t('purchases.fields.supplier')} loadOptions={counterpartyOptions} selectedLabel={editing?.counterpartyName} />

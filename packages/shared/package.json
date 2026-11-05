@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./i18n": "./src/i18n/index.ts",
+    "./landing": "./src/i18n/landing.ts",
     "./formulas/*": "./src/formulas/*.ts"
   },
   "scripts": {

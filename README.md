@@ -89,13 +89,15 @@ why stock and money only change through the kernel.
 | `pnpm db:up` / `pnpm db:down` | Start or stop Postgres and Redis |
 | `pnpm db:reset` | Rebuild and reseed the development database |
 | `pnpm db:generate` | Create a migration after a schema change |
-| `pnpm db:migrate` | Apply committed migrations, as production does |
+| `pnpm db:migrate` | Apply committed migrations, as production does. A database built with `db:setup` has no history: see [Deployment](docs/deployment.md#a-database-built-with-pnpm-dbsetup) |
 | `pnpm --filter @yap/api exec tsx src/db/erd.ts` | Regenerate `docs/erd.md` |
 
 API tests create a uniquely named database for each run and drop it afterwards, so they need Postgres up but
 never touch your development data.
 
 After changing `apps/api/src/db/schema`, run `pnpm db:generate` and commit the new file in `apps/api/drizzle`.
+
+To try cameras without hardware, see [infra/camera-sim](infra/camera-sim/README.md).
 
 ## Environment variables
 
@@ -104,7 +106,7 @@ Development values are in `.env.example`. Production values are in `infra/env.pr
 | Variable | Purpose |
 | --- | --- |
 | `DATABASE_URL` | API connection. Must be the `yap_app` role, which row-level security applies to. |
-| `DATABASE_OWNER_URL` | Owner role, for schema changes and seeding only. |
+| `DATABASE_OWNER_URL` | Owner role, for schema changes and seeding only. Must be a superuser or have BYPASSRLS. |
 | `AI_DATABASE_URL` | Read-only `yap_ai` role. Set it in production: the default uses the development password. |
 | `REDIS_URL` | Background job queue. |
 | `API_PORT` | API port. |
@@ -115,8 +117,12 @@ Development values are in `.env.example`. Production values are in `infra/env.pr
 | `STORAGE_DRIVER`, `STORAGE_DIR` | `local` keeps uploads on disk; `s3` uses the settings below. |
 | `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` | Any S3-compatible store. |
 | `TELEGRAM_BOT_TOKEN` | Optional. Without it, messages go to the API log. |
-| `ANTHROPIC_API_KEY` | Optional. Without it, the assistant says it is not configured; statistical insights still run. |
-| `AI_MODEL`, `AI_EFFORT`, `AI_CHAT_PER_MINUTE`, `AI_CHAT_PER_DAY` | Optional AI tuning. |
+| `LEADS_TELEGRAM_CHAT_ID` | Optional. Telegram chat told about each new enquiry from the website. Needs the bot token. |
+| `GEMINI_API_KEY` | Optional, enables the AI assistant. Must come from a billing-enabled Google project: on the free tier Google may use prompts to improve its products. Prove it works with `pnpm --filter @yap/api ai:check`. |
+| `GEMINI_PAID_TIER` | Set to `true` once the key is on a paid project. Production refuses Gemini without it. |
+| `ANTHROPIC_API_KEY` | Optional alternative to Gemini. With neither key, the assistant says it is not configured; statistical insights still run. |
+| `AI_PROVIDER` | `gemini` or `claude`. Only needed when both keys are set; Gemini is the default. |
+| `AI_MODEL`, `AI_THINKING_BUDGET`, `AI_EFFORT`, `AI_CHAT_PER_MINUTE`, `AI_CHAT_PER_DAY` | Optional AI tuning. `AI_THINKING_BUDGET` is Gemini only, `AI_EFFORT` Claude only. |
 | `JOBS_ENABLED` | Set to `false` to run the API without background jobs. |
 | `PLATFORM_ADMIN_PHONE`, `PLATFORM_ADMIN_PASSWORD` | Read by the migrate step: create the first platform admin. |
 
@@ -124,19 +130,24 @@ Development values are in `.env.example`. Production values are in `infra/env.pr
 
 - Mobile app. Offline work is done through the web app instead.
 - Live camera video. Cameras can be registered and can send events, but there is no stream gateway.
-- Camera AI, IoT sensors beyond the events API, GPS trackers, and voice input.
+- Camera AI, IoT sensors beyond the events API, and GPS trackers.
+- Speaking to the assistant in the web app. Voice notes work in Telegram.
 - Real connections to Keeping, Didox, banks and state systems. Keeping is a CSV export whose account
   mapping is an assumption and has not been checked against Keeping.
 - Push, SMS and email notifications. Those channels are stubs reported as not configured.
 - Camera barcode scanning. Tags and barcodes are typed.
 - OAuth 2.0. Users have JWT sessions and machines have API keys.
-- AI herd growth forecast and market price monitoring. Claude is the only LLM provider implemented.
+- AI herd growth forecast and market price monitoring.
 - Forced password change for one-time passwords, payslip PDFs, and Excel for the full tenant export, which
   is JSON and CSV. The main lists do export to Excel.
 
 ## Not yet tested for real
 
-- Telegram has only run against a mocked API. The AI assistant has only run against a mocked model.
+- Telegram: a real bot delivered a daily summary and an urgent alert on 2026-11-04 (see
+  [the acceptance record](docs/acceptance.md)). Scheduled delivery has not yet run unattended, and the
+  assistant in the bot, with its cards, voice notes and receipts, has only run against a mocked API.
+- The AI assistant's automated tests use a scripted model. `ai:check` and `ai:eval` use the real one, and no
+  score from them is recorded here.
 - Offline mode has run in headless Chromium, not on a real phone, and not on Safari or iOS.
 
 ## Documentation
@@ -144,7 +155,9 @@ Development values are in `.env.example`. Production values are in `infra/env.pr
 - [Architecture](docs/architecture.md)
 - [Data model](docs/erd.md)
 - [API](docs/api.md), with the interactive reference at `/api/docs`
+- [Conversational assistant](docs/assistant.md)
 - [Deployment](docs/deployment.md)
+- [Acceptance record](docs/acceptance.md)
 - [Cross-module contracts](docs/contracts.md)
 - [Device events](docs/device-events.md)
 - User guides: [o'zbekcha](docs/user-guide.uz.md), [русский](docs/user-guide.ru.md)

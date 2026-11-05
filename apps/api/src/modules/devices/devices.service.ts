@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNotNull, lt, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, lt, ne, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { DEVICE_STATUSES, DEVICE_TYPES, SEVERITIES } from '@yap/shared';
 import { schema } from '../../db/client';
@@ -16,6 +16,12 @@ type Device = typeof devices.$inferSelect;
 
 /** Minutes without a signal before a device counts as offline, unless it sets its own. */
 export const DEFAULT_OFFLINE_MINUTES = 10;
+
+/**
+ * Frames of one event come seconds apart, or once a minute from a slow reporter. Past this gap it is
+ * a new event, even if the last one was acknowledged, and someone must hear about it now.
+ */
+const EVENT_BURST_MS = 2 * 60_000;
 
 export const CAMERA_ZONES = ['barn', 'feed_store', 'gate', 'pump'] as const;
 export type CameraZone = (typeof CAMERA_ZONES)[number];
@@ -311,6 +317,7 @@ async function store(device: Device, e: DeviceEvent): Promise<void> {
       ruleKey: 'device_event',
       // One alert per device and type while it is open: a burst of smoke frames is one problem.
       dedupKey: `device_event:${device.id}:${e.type}`,
+      newAfterMs: EVENT_BURST_MS,
       severity: 'urgent',
       title: `${device.name}: ${label}`,
       link: '/cameras',
@@ -399,6 +406,8 @@ export async function eventFeed(q: z.infer<typeof eventFeedQuery>) {
   const where = and(
     eq(events.farmId, ctx().farmId),
     q.source ? eq(events.source, q.source) : inArray(events.source, ['camera', 'sensor']),
+    // The platform's own note that an alert was raised is not something a device reported.
+    ne(events.type, 'alert.raised'),
     q.deviceId ? eq(events.deviceId, q.deviceId) : undefined,
     q.type ? eq(events.type, q.type) : undefined,
     q.severity ? eq(events.severity, q.severity) : undefined,

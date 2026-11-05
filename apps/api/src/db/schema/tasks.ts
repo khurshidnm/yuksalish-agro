@@ -111,6 +111,8 @@ export const notifications = pgTable(
     body: text(),
     link: text(),
     alertId: uuid(),
+    /** The reader must still hold this when it goes out or is read, e.g. 'finance.view' when the text shows money. */
+    permission: text(),
     /** Delivery state per external channel, e.g. { telegram: 'sent' }. */
     deliveries: jsonb().$type<Record<string, string>>().notNull().default({}),
     readAt: ts(),

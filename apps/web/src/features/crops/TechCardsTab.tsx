@@ -62,7 +62,7 @@ function LinesEditor({ form, seesMoney }: { form: UseFormReturn<Values, unknown,
             <NumberField form={form} name={`lines.${index}.fertilizerKgHa`} label={t('techCards.fields.fertilizer')} suffix={t('unit.kgPerHa')} />
             <NumberField form={form} name={`lines.${index}.waterM3Ha`} label={t('techCards.fields.water')} suffix={t('unit.m3PerHa')} />
             <NumberField form={form} name={`lines.${index}.laborDaysHa`} label={t('techCards.fields.labor')} />
-            {seesMoney && <NumberField form={form} name={`lines.${index}.costPerHa`} label={t('techCards.fields.cost')} />}
+            {seesMoney && <NumberField money form={form} name={`lines.${index}.costPerHa`} label={t('techCards.fields.cost')} />}
           </FormGrid>
           <Button type="button" variant="ghost" className="text-destructive" onClick={() => remove(index)}>
             <Trash2 aria-hidden />

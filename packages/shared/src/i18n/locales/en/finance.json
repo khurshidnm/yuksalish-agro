@@ -102,7 +102,8 @@
     "emptyTitle": "Nothing is waiting for approval",
     "emptyBody": "Expenses above the set amount land here.",
     "enteredBy": "Entered by {{name}}",
-    "ownEntry": "You entered this one, so someone else has to approve it."
+    "ownEntry": "You entered this one, so someone else has to approve it.",
+    "ownVoid": "You entered this one, so someone else has to void it."
   },
   "accounts": {
     "title": "Cash and bank",
@@ -177,6 +178,7 @@
     "pay": "Pay",
     "receive": "Receive payment",
     "settleHint": "{{name}}: up to {{amount}} can be settled.",
+    "amountInAccountCurrency": "Enter the amount in the account's currency ({{currency}}). It is converted at the stored rate.",
     "pendingSettlement": "A payment of {{amount}} is waiting for approval.",
     "empty": {
       "payable": "We owe nobody",
@@ -368,6 +370,9 @@
     }
   },
   "errors": {
+    "TRANSACTION_CHANGED": "This entry was changed after you opened it. It now reads {{amount}} {{currency}}. Nothing was saved: read it again, then decide.",
+    "ACCOUNT_CLOSED": "This account is closed. Choose another one.",
+    "ACCOUNT_CURRENCY_MISMATCH": "This account holds a different currency.",
     "ACCOUNT_NOT_EMPTY": "This account still holds {{balance}}. Move the money out first.",
     "ACCOUNT_REQUIRED": "Choose a cash or bank account.",
     "ACCOUNTS_REQUIRED": "A transfer needs both accounts.",
@@ -375,10 +380,12 @@
     "AMOUNT_EXCEEDS_DEBT": "That is more than the debt. Up to {{outstanding}} can be settled.",
     "CATEGORY_KIND_MISMATCH": "This category does not fit the transaction type.",
     "CATEGORY_REQUIRED": "Choose a category.",
+    "COST_CENTER_CLOSED": "This cost center is closed. Choose another one.",
     "COST_CENTER_REQUIRED": "Choose a cost center.",
     "COUNTERPARTY_REQUIRED": "A debt needs a counterparty.",
-    "CURRENCY_MISMATCH": "This account holds a different currency.",
+    "DEBT_ALREADY_SETTLED": "A payment already covers this debt. Cancel the payment first.",
     "EARLIER_INSTALMENT_UNPAID": "Pay the earlier instalment first.",
+    "FX_RATE_OUT_OF_RANGE": "This rate is too far from the stored rate of {{stored}}. Check it, or correct the stored rate.",
     "FX_RATE_REQUIRED": "There is no exchange rate for this date. Enter one.",
     "INVALID_AMOUNT": "The amount must be greater than zero.",
     "INVALID_PAYMENT_METHOD": "This payment method does not fit the transaction.",
@@ -390,6 +397,8 @@
     "SAME_MAKER_CHECKER": "The person who entered a transaction cannot approve it.",
     "SETTLEMENT_NOT_EDITABLE": "A debt payment cannot be edited. Delete it and enter it again.",
     "TRANSACTION_APPROVED": "An approved transaction cannot be changed. Void it instead.",
-    "TRANSACTION_HAS_SOURCE": "This entry came from another module. Change it there."
+    "TRANSACTION_HAS_SOURCE": "This entry came from another module. Change it there.",
+    "TRANSACTION_REJECTED": "A rejected or voided transaction stays in the journal. Enter a new one.",
+    "ACCOUNT_CURRENCY_LOCKED": "This account already holds money, so its currency cannot change."
   }
 }

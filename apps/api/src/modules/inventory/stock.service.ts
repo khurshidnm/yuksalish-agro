@@ -3,25 +3,31 @@
  * A document is one receipt, issue or transfer with one or more lines. Its lines share a `docNo`,
  * and receipts and issues also share a `refId`, so the whole document can be reversed.
  */
-import { addDays, round } from '@yap/shared';
-import { and, asc, desc, eq, gt, gte, inArray, lte, sql } from 'drizzle-orm';
+import { addDays, CURRENCIES, round, toBaseAmount } from '@yap/shared';
+import { and, asc, desc, eq, gt, gte, inArray, lte, sql, type SQL } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
 import { z } from 'zod';
 import { schema } from '../../db/client';
 import { assertPermission, ctx, today, tx } from '../../core/context';
 import { generalCostCenterId } from '../../core/costCenters';
 import { badRequest, conflict, notFound } from '../../core/errors';
-import { getItemOrThrow, issueStock, receiveStock, reverseMovements, transferStock } from '../../core/inventory';
-import { recordEvent } from '../../core/journal';
-import { postTransaction } from '../../core/ledger';
+import {
+  DOCUMENT_REVERSED_EVENT,
+  getItemOrThrow,
+  issueStock,
+  receiveStock,
+  reverseStockDocument,
+  STOCK_DOC_REF,
+  transferStock,
+} from '../../core/inventory';
+import { assertCostCenterOpen, postTransaction, resolveFxRate } from '../../core/ledger';
 import { hideMoney } from '../../core/privacy';
 import { isoDate, listQuery, searchAny, sortBy, sumOf, type Page } from '../../core/query';
 
-const { accounts, costCenters, counterparties, financeCategories, items, stockBatches, stockMovements, transactions, users, warehouses } =
-  schema;
+const { accounts, costCenters, counterparties, financeCategories, items, stockBatches, stockMovements, users, warehouses } = schema;
 
-/** Reference type of documents created here. reverseDocument only handles these. */
-const DOC_REF_TYPE = 'stock_doc';
+/** Undoes exactly one receipt, by the refId createReceipt returned. */
+export { reverseStockDocument as reverseReceipt } from '../../core/inventory';
 
 export const DOC_PREFIX = { receipt: 'KO', issue: 'CT', transfer: 'KN', count: 'IA' } as const;
 export type DocKind = keyof typeof DOC_PREFIX;
@@ -41,23 +47,25 @@ const CATEGORY_BY_ITEM: Record<string, string | undefined> = {
 
 /**
  * Next number such as KO-2026-0007. The advisory lock serialises numbering per farm, so two
- * people saving at once cannot get the same number.
+ * people saving at once cannot get the same number. A reversal deletes the movements of its
+ * document, so the journal keeps the number from coming back. One statement, because a reversal
+ * committing between two reads could hide its number from both.
  */
 export async function nextDocNo(kind: DocKind, date: string): Promise<string> {
   const c = ctx();
   await tx().execute(sql`select pg_advisory_xact_lock(hashtext(${`docno:${c.farmId}`}))`);
   const prefix = `${DOC_PREFIX[kind]}-${date.slice(0, 4)}-`;
-  const [row] =
-    kind === 'count'
-      ? await tx()
-          .select({ n: sql<number>`count(*)`.mapWith(Number) })
-          .from(schema.stockCounts)
-          .where(and(eq(schema.stockCounts.farmId, c.farmId), sql`${schema.stockCounts.docNo} like ${`${prefix}%`}`))
-      : await tx()
-          .select({ n: sql<number>`count(distinct ${stockMovements.docNo})`.mapWith(Number) })
-          .from(stockMovements)
-          .where(and(eq(stockMovements.farmId, c.farmId), sql`${stockMovements.docNo} like ${`${prefix}%`}`));
-  return `${prefix}${String(row.n + 1).padStart(4, '0')}`;
+  const { rows } = await tx().execute(sql`
+    select coalesce(max(substring(doc_no from '[0-9]+$')::bigint), 0) as last
+    from (
+      select doc_no from stock_movements where farm_id = ${c.farmId}
+      union all
+      select doc_no from stock_counts where farm_id = ${c.farmId}
+      union all
+      select data->>'docNo' from events where farm_id = ${c.farmId} and type = ${DOCUMENT_REVERSED_EVENT}
+    ) numbers
+    where doc_no ~ ${`^${prefix}[0-9]+$`}`);
+  return `${prefix}${String(Number(rows[0].last) + 1).padStart(4, '0')}`;
 }
 
 const positive = z.number().positive();
@@ -87,7 +95,7 @@ export const receiptInput = z.object({
   source: z.enum(['purchase', 'opening', 'return']).default('purchase'),
   counterpartyId: z.uuid().nullish(),
   invoiceNo: z.string().trim().max(60).nullish(),
-  currency: z.string().length(3).optional(),
+  currency: z.enum(CURRENCIES).optional(),
   /** Rate to the base currency, required when `currency` is foreign. */
   fxRate: z.number().positive().nullish(),
   notes: note,
@@ -124,20 +132,26 @@ async function assertWarehouse(id: string): Promise<void> {
   if (!row) throw notFound('Warehouse');
 }
 
-async function categoryIdFor(itemCategory: string, explicit?: string | null): Promise<string> {
-  const key = CATEGORY_BY_ITEM[itemCategory];
-  if (!explicit && !key) throw badRequest('CATEGORY_REQUIRED', 'Choose a category for this purchase');
+async function expenseCategoryId(match: SQL): Promise<string | null> {
   const [row] = await tx()
     .select({ id: financeCategories.id })
     .from(financeCategories)
-    .where(
-      and(
-        eq(financeCategories.tenantId, ctx().tenantId),
-        explicit ? eq(financeCategories.id, explicit) : eq(financeCategories.key, key!),
-      ),
-    );
-  if (!row) throw badRequest('CATEGORY_REQUIRED', 'Choose a category for this purchase');
-  return row.id;
+    .where(and(eq(financeCategories.tenantId, ctx().tenantId), eq(financeCategories.kind, 'expense'), match));
+  return row?.id ?? null;
+}
+
+/** The expense category a purchase of this kind of item posts to, or null when a person must choose. */
+export async function defaultExpenseCategoryId(itemCategory: string): Promise<string | null> {
+  const key = CATEGORY_BY_ITEM[itemCategory];
+  return key ? expenseCategoryId(eq(financeCategories.key, key)) : null;
+}
+
+async function categoryIdFor(item: { id: string; name: string; category: string }, explicit?: string | null): Promise<string> {
+  const id = explicit ? await expenseCategoryId(eq(financeCategories.id, explicit)) : await defaultExpenseCategoryId(item.category);
+  if (!id) {
+    throw badRequest('CATEGORY_REQUIRED', `Choose an expense category for ${item.name}`, { itemId: item.id, itemName: item.name });
+  }
+  return id;
 }
 
 /**
@@ -161,57 +175,66 @@ async function assertAccount(id: string): Promise<void> {
 }
 
 export async function createReceipt(input: ReceiptInput) {
-  if (input.payment) assertPermission('finance.create');
-  if (input.source === 'purchase' && !input.counterpartyId) {
-    throw badRequest('COUNTERPARTY_REQUIRED', 'A purchase needs a supplier');
+  const { payment } = input;
+  if (payment) assertPermission('finance.create');
+  // Paid on the spot, nothing is owed to anyone, so the supplier may stay unnamed.
+  const owed = !payment || payment.paymentMethod === 'debt';
+  if (input.source === 'purchase' && owed && !input.counterpartyId) {
+    throw badRequest('COUNTERPARTY_REQUIRED', 'A purchase on credit needs a supplier');
   }
   await assertWarehouse(input.warehouseId);
   if (input.counterpartyId) await assertCounterparty(input.counterpartyId);
-  if (input.payment?.accountId) await assertAccount(input.payment.accountId);
+  if (payment?.accountId) await assertAccount(payment.accountId);
 
-  const c = ctx();
-  const currency = input.currency ?? c.currency;
-  const foreign = currency !== c.currency;
-  if (foreign && !input.fxRate) throw badRequest('FX_RATE_REQUIRED', `Enter the exchange rate for ${currency}`);
-  const toBase = foreign ? input.fxRate! : 1;
+  const currency = input.currency ?? ctx().currency;
+  if (currency !== ctx().currency && !input.fxRate) throw badRequest('FX_RATE_REQUIRED', `Enter the exchange rate for ${currency}`);
+  const fxRate = await resolveFxRate(currency, input.date, input.fxRate);
 
-  const docId = uuidv7();
-  const docNo = await nextDocNo('receipt', input.date);
   const lines = [];
   for (const line of input.lines) {
     const item = await getItemOrThrow(line.itemId);
+    lines.push({ line, categoryId: payment ? await categoryIdFor(item, payment.categoryId) : null });
+  }
+
+  const refId = uuidv7();
+  const docNo = await nextDocNo('receipt', input.date);
+  const batches = [];
+  // One transaction per expense category, so a mixed invoice lands on the right budget lines.
+  const groups = new Map<string | null, { amount: number; amountBase: number; batchId?: string }>();
+  for (const { line, categoryId } of lines) {
+    const group = groups.get(categoryId) ?? { amount: 0, amountBase: 0 };
+    group.amount = round(group.amount + round(line.qty * line.unitCost, 2), 2);
+    // What this line adds to the group's base amount, so stock costs exactly what the money comes to.
+    const lineBase = round(toBaseAmount(group.amount, fxRate) - group.amountBase, 2);
+    group.amountBase = round(group.amountBase + lineBase, 2);
+    const qty = round(line.qty, 3);
     const { batch } = await receiveStock({
       itemId: line.itemId,
       warehouseId: input.warehouseId,
-      qty: line.qty,
-      unitCost: line.unitCost * toBase,
+      qty,
+      unitCost: lineBase / qty,
       date: input.date,
       source: input.source,
       batchNo: line.batchNo,
       expiryDate: line.expiryDate,
       counterpartyId: input.counterpartyId,
       docNo,
-      refType: DOC_REF_TYPE,
-      refId: docId,
+      refType: STOCK_DOC_REF,
+      refId,
       notes: input.notes,
     });
     if (input.invoiceNo) {
       await tx().update(stockBatches).set({ invoiceNo: input.invoiceNo }).where(eq(stockBatches.id, batch.id));
     }
-    lines.push({ item, batch, amount: round(line.qty * line.unitCost, 2) });
+    batches.push(batch);
+    group.batchId ??= batch.id;
+    groups.set(categoryId, group);
   }
 
-  // One transaction per expense category, so a mixed invoice lands on the right budget lines.
   const paymentRows = [];
-  if (input.payment) {
-    const groups = new Map<string, { amount: number; batchId: string }>();
-    for (const line of lines) {
-      const categoryId = await categoryIdFor(line.item.category, input.payment.categoryId);
-      const group = groups.get(categoryId) ?? { amount: 0, batchId: line.batch.id };
-      group.amount = round(group.amount + line.amount, 2);
-      groups.set(categoryId, group);
-    }
+  if (payment) {
     const costCenterId = await generalCostCenterId();
+    const documentBase = round([...groups.values()].reduce((sum, group) => sum + group.amountBase, 0), 2);
     for (const [categoryId, group] of groups) {
       if (group.amount <= 0) continue;
       paymentRows.push(
@@ -221,16 +244,17 @@ export async function createReceipt(input: ReceiptInput) {
           amount: group.amount,
           categoryId,
           currency,
-          fxRate: input.fxRate,
-          paymentMethod: input.payment.paymentMethod,
-          accountId: input.payment.paymentMethod === 'debt' ? null : input.payment.accountId,
+          fxRate,
+          documentBase,
+          paymentMethod: payment.paymentMethod,
+          accountId: payment.paymentMethod === 'debt' ? null : payment.accountId,
           counterpartyId: input.counterpartyId,
           costCenterId,
           // Reaches a cost center when issued from the warehouse, not now (CLAUDE.md rule 3).
           costTreatment: 'inventory',
-          description: input.invoiceNo ? `${docNo} / ${input.invoiceNo}` : docNo,
-          dueDate: input.payment.dueDate,
-          fileId: input.payment.fileId,
+          description: [docNo, input.invoiceNo, input.notes].filter(Boolean).join(' / '),
+          dueDate: payment.dueDate,
+          fileId: payment.fileId,
           sourceType: 'stock_batch',
           sourceId: group.batchId,
         }),
@@ -240,18 +264,16 @@ export async function createReceipt(input: ReceiptInput) {
 
   return {
     docNo,
-    batches: hideMoney(lines.map((l) => l.batch), ['unitCost']),
+    /** Names exactly this receipt, for reverseReceipt. */
+    refId,
+    batches: hideMoney(batches, ['unitCost']),
     transactions: paymentRows.map((p) => ({ id: p.id, status: p.status })),
   };
 }
 
 export async function createIssue(input: IssueInput) {
   await assertWarehouse(input.warehouseId);
-  const [costCenter] = await tx()
-    .select({ id: costCenters.id })
-    .from(costCenters)
-    .where(and(eq(costCenters.id, input.costCenterId), eq(costCenters.farmId, ctx().farmId)));
-  if (!costCenter) throw notFound('Cost center');
+  await assertCostCenterOpen(input.costCenterId);
 
   const docId = uuidv7();
   const docNo = await nextDocNo('issue', input.date);
@@ -265,7 +287,7 @@ export async function createIssue(input: IssueInput) {
       costCenterId: input.costCenterId,
       reason: input.reason,
       docNo,
-      refType: DOC_REF_TYPE,
+      refType: STOCK_DOC_REF,
       refId: docId,
       notes: input.notes,
     });
@@ -293,63 +315,25 @@ export async function createTransfer(input: TransferInput) {
 }
 
 /**
- * Undo a mistaken receipt or issue. Records from other modules (daily logs, operations) are
- * corrected where they were entered, and a receipt with a live payment goes through finance first.
+ * Undo a mistaken receipt or issue a person names by its number. Records from other modules (daily
+ * logs, operations) are corrected where they were entered, and a receipt with a live payment goes
+ * through finance first. Code holding a refId calls reverseReceipt.
  */
 export async function reverseDocument(docNo: string) {
-  const farmId = ctx().farmId;
-  const rows = await tx()
-    .select({
-      refType: stockMovements.refType,
-      refId: stockMovements.refId,
-      batchId: stockMovements.batchId,
-      type: stockMovements.type,
-    })
+  const documents = await tx()
+    .selectDistinct({ refType: stockMovements.refType, refId: stockMovements.refId })
     .from(stockMovements)
-    .where(and(eq(stockMovements.farmId, farmId), eq(stockMovements.docNo, docNo)));
-  if (rows.length === 0) throw notFound('Document');
-
-  const first = rows[0];
-  if (first.refType !== DOC_REF_TYPE || !first.refId) {
+    .where(and(eq(stockMovements.farmId, ctx().farmId), eq(stockMovements.docNo, docNo)));
+  if (documents.length === 0) throw notFound('Document');
+  // Numbers used to be reissued after a reversal, so older documents can share one.
+  if (documents.length > 1) {
+    throw conflict('DOCUMENT_NUMBER_AMBIGUOUS', 'Two documents share this number', { docNo });
+  }
+  const [{ refType, refId }] = documents;
+  if (refType !== STOCK_DOC_REF || !refId) {
     throw conflict('DOCUMENT_NOT_REVERSIBLE', 'This document cannot be reversed here');
   }
-
-  const batchIds = [...new Set(rows.map((r) => r.batchId))];
-  if (first.type === 'receipt') {
-    const paid = await tx()
-      .select({ id: transactions.id })
-      .from(transactions)
-      .where(
-        and(
-          eq(transactions.farmId, farmId),
-          eq(transactions.sourceType, 'stock_batch'),
-          inArray(transactions.sourceId, batchIds),
-          sql`${transactions.status} <> 'rejected'`,
-        ),
-      );
-    if (paid.length > 0) {
-      throw conflict('DOCUMENT_HAS_PAYMENT', 'Cancel the linked payment in finance first', {
-        transactionIds: paid.map((p) => p.id),
-      });
-    }
-  }
-
-  await reverseMovements(DOC_REF_TYPE, first.refId);
-
-  // A reversed receipt leaves empty batches with no history; they would only clutter the lists.
-  if (first.type === 'receipt') {
-    await tx()
-      .delete(stockBatches)
-      .where(
-        and(
-          inArray(stockBatches.id, batchIds),
-          sql`${stockBatches.qtyRemaining} = 0`,
-          sql`not exists (select 1 from stock_movements m where m.batch_id = ${stockBatches.id})`,
-        ),
-      );
-  }
-  await recordEvent({ type: 'stock.document_reversed', entityType: 'stock_doc', entityId: first.refId, data: { docNo } });
-  return { docNo };
+  return reverseStockDocument(refId);
 }
 
 // ─── Reads ─────────────────────────────────────────────────────────────────

@@ -5,56 +5,69 @@
 
 /*
  * Design tokens. Components use Tailwind classes built from these names only.
- * Text pairs were checked against WCAG AA; input borders against 3:1.
+ * White pages. Green #99E074, deep green #04370E, off-white #F5F7F2, orange #F59C1A and red #CD332A
+ * come straight from the design file; tick and track colours were sampled from it.
+ * Text pairs were checked against WCAG AA (lowest 5.1:1); inputs and data marks against 3:1.
+ * Lime fails 3:1 on white, so it never carries text. As a fill it always sits under deep green text,
+ * or beside the number it stands for. Orange the same.
  * Chart slots were validated in fixed order with the dataviz validator against --card
  * (adjacent pairs in both modes, plus all-pairs for the first three slots).
  */
 :root {
   color-scheme: light;
 
-  --background: #f4f1e8;
-  --foreground: #1c1d17;
-  --card: #fdfcf8;
-  --card-foreground: #1c1d17;
-  --popover: #fffefb;
-  --popover-foreground: #1c1d17;
-  --muted: #ebe7da;
-  --muted-foreground: #57584b;
-  --border: #dcd7c7;
-  --input: #8b8672;
-  --ring: #2a7a4d;
+  --background: #ffffff;
+  --foreground: #1a241c;
+  --heading: #04370e;
+  --card: #ffffff;
+  --card-foreground: #1a241c;
+  --popover: #ffffff;
+  --popover-foreground: #1a241c;
+  --muted: #f5f7f2;
+  --muted-foreground: #59645a;
+  --border: #e9ede5;
+  --input: #858c7b;
+  --ring: #508646;
 
-  --primary: #1d5a38;
-  --primary-hover: #17492d;
-  --primary-foreground: #f8f7ef;
-  --secondary: #e2ebdd;
-  --secondary-hover: #d5e2cf;
-  --secondary-foreground: #1d4a30;
-  --accent: #e8ad3a;
-  --accent-hover: #dd9f26;
-  --accent-foreground: #2a1f05;
-  --destructive: #b3261e;
-  --destructive-hover: #991f18;
+  --primary: #04370e;
+  --primary-hover: #032a0b;
+  --primary-foreground: #ffffff;
+  --secondary: #e9f8e0;
+  --secondary-hover: #dcf2cf;
+  --secondary-foreground: #04370e;
+  --accent: #99e074;
+  --accent-hover: #8ad664;
+  --accent-foreground: #04370e;
+  --destructive: #cd332a;
+  --destructive-hover: #b22a22;
   --destructive-foreground: #ffffff;
 
-  --success: #14652f;
-  --success-soft: #dff0e0;
-  --warning: #7a4a00;
-  --warning-soft: #f9ebc8;
-  --danger: #a11f18;
-  --danger-soft: #fae1dc;
+  --success: #1c6b33;
+  --success-soft: #dff6e0;
+  --warning: #8a5100;
+  --warning-soft: #fdeed3;
+  --warning-fill: #f59c1a;
+  --danger: #b82a22;
+  --danger-soft: #fbe6e4;
   --info: #14568f;
-  --info-soft: #dcebf7;
+  --info-soft: #e3eef8;
 
-  --sidebar: #16392a;
-  --sidebar-foreground: #eaf0e4;
-  --sidebar-muted: #b4c5b4;
-  --sidebar-hover: #204a37;
-  --sidebar-border: #285541;
-  --sidebar-active: #e8ad3a;
-  --sidebar-active-foreground: #2a1f05;
+  --feature: #04370e;
+  --feature-foreground: #ffffff;
+  --feature-muted: #c5e3b6;
 
-  --chart-1: #006f1a;
+  --mark: #508646;
+  --mark-track: #e6eae0;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1a241c;
+  --sidebar-muted: #59645a;
+  --sidebar-hover: #f5f7f2;
+  --sidebar-border: #e9ede5;
+  --sidebar-active: #04370e;
+  --sidebar-active-foreground: #ffffff;
+
+  --chart-1: #2f8f2c;
   --chart-2: #eb9f2c;
   --chart-3: #1c89e4;
   --chart-4: #c95a37;
@@ -62,58 +75,67 @@
   --chart-6: #c25485;
   --chart-7: #a8ad00;
   --chart-8: #864fba;
-  --chart-grid: #e6e2d4;
-  --chart-baseline: #c6c0ae;
-  --chart-text: #57584b;
+  --chart-grid: #eef1ea;
+  --chart-baseline: #d0d6c8;
+  --chart-text: #59645a;
 
-  --shadow-card: 0 1px 2px rgb(61 52 26 / 0.06), 0 1px 3px rgb(61 52 26 / 0.05);
-  --shadow-pop: 0 8px 24px rgb(38 33 18 / 0.16), 0 2px 6px rgb(38 33 18 / 0.08);
+  --shadow-card: 0 1px 2px rgb(4 55 14 / 0.04), 0 8px 24px rgb(4 55 14 / 0.05);
+  --shadow-pop: 0 12px 32px rgb(4 55 14 / 0.14), 0 2px 6px rgb(4 55 14 / 0.06);
 }
 
 [data-theme='dark'] {
   color-scheme: dark;
 
-  --background: #12140f;
-  --foreground: #ecebe0;
-  --card: #1b1e17;
-  --card-foreground: #ecebe0;
-  --popover: #20241c;
-  --popover-foreground: #ecebe0;
-  --muted: #282c23;
-  --muted-foreground: #adb09f;
-  --border: #33382c;
-  --input: #6f7462;
-  --ring: #62c08a;
+  --background: #0b0f0b;
+  --foreground: #e8eee3;
+  --heading: #f1f7ec;
+  --card: #141a13;
+  --card-foreground: #e8eee3;
+  --popover: #1a2119;
+  --popover-foreground: #e8eee3;
+  --muted: #1c231a;
+  --muted-foreground: #adb7a5;
+  --border: #283025;
+  --input: #6e7866;
+  --ring: #99e074;
 
-  --primary: #62c08a;
-  --primary-hover: #76cd9b;
-  --primary-foreground: #0d1f14;
-  --secondary: #263a2d;
-  --secondary-hover: #2f4737;
-  --secondary-foreground: #cfe6d5;
-  --accent: #e9b949;
-  --accent-hover: #efc662;
-  --accent-foreground: #2a1f05;
+  --primary: #99e074;
+  --primary-hover: #aee88e;
+  --primary-foreground: #04370e;
+  --secondary: #1c3320;
+  --secondary-hover: #25402a;
+  --secondary-foreground: #cfeabf;
+  --accent: #99e074;
+  --accent-hover: #aee88e;
+  --accent-foreground: #04370e;
   --destructive: #f0776b;
   --destructive-hover: #f48d83;
   --destructive-foreground: #1f0805;
 
   --success: #8fd6a4;
-  --success-soft: #1c3524;
-  --warning: #f0c677;
-  --warning-soft: #3a2c10;
+  --success-soft: #17321d;
+  --warning: #f5b95a;
+  --warning-soft: #3a2a0e;
+  --warning-fill: #f59c1a;
   --danger: #f5a79e;
-  --danger-soft: #42201b;
+  --danger-soft: #421f1b;
   --info: #9dc9ef;
   --info-soft: #1b3144;
 
-  --sidebar: #0f1c15;
-  --sidebar-foreground: #e6ece0;
-  --sidebar-muted: #a3b5a5;
-  --sidebar-hover: #1a2e23;
-  --sidebar-border: #213629;
-  --sidebar-active: #e9b949;
-  --sidebar-active-foreground: #2a1f05;
+  --feature: #0f3d18;
+  --feature-foreground: #f5fbef;
+  --feature-muted: #bcd6ae;
+
+  --mark: #99e074;
+  --mark-track: #283025;
+
+  --sidebar: #0f140e;
+  --sidebar-foreground: #e8eee3;
+  --sidebar-muted: #a4b09b;
+  --sidebar-hover: #1a2118;
+  --sidebar-border: #222a1f;
+  --sidebar-active: #99e074;
+  --sidebar-active-foreground: #04370e;
 
   --chart-1: #56a76a;
   --chart-2: #ba6b00;
@@ -123,19 +145,20 @@
   --chart-6: #a34e72;
   --chart-7: #7d8118;
   --chart-8: #a67bd4;
-  --chart-grid: #2c3027;
-  --chart-baseline: #454a3c;
-  --chart-text: #adb09f;
+  --chart-grid: #232b20;
+  --chart-baseline: #3d4638;
+  --chart-text: #adb7a5;
 
-  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3);
-  --shadow-pop: 0 8px 24px rgb(0 0 0 / 0.5), 0 2px 6px rgb(0 0 0 / 0.3);
+  --shadow-card: 0 0 0 0 transparent;
+  --shadow-pop: 0 10px 28px rgb(0 0 0 / 0.5), 0 2px 6px rgb(0 0 0 / 0.3);
 }
 
 @theme inline {
-  --font-sans: 'Onest Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-sans: 'Manrope Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-heading: var(--heading);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
@@ -163,10 +186,18 @@
   --color-success-soft: var(--success-soft);
   --color-warning: var(--warning);
   --color-warning-soft: var(--warning-soft);
+  --color-warning-fill: var(--warning-fill);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
   --color-info: var(--info);
   --color-info-soft: var(--info-soft);
+
+  --color-feature: var(--feature);
+  --color-feature-foreground: var(--feature-foreground);
+  --color-feature-muted: var(--feature-muted);
+
+  --color-mark: var(--mark);
+  --color-mark-track: var(--mark-track);
 
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
@@ -188,11 +219,11 @@
   --shadow-card: var(--shadow-card);
   --shadow-pop: var(--shadow-pop);
 
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.625rem;
-  --radius-xl: 0.875rem;
-  --radius-2xl: 1.125rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
 }
 
 @theme {
@@ -263,6 +294,20 @@
   }
 }
 
+/* The one highlighted tile of a row: deep green with a lime glow and ploughed-field rings. */
+@utility feature-surface {
+  background-color: var(--feature);
+  background-image:
+    repeating-radial-gradient(circle at 96% 4%, transparent 0 13px, color-mix(in srgb, var(--accent) 11%, transparent) 13px 14px),
+    radial-gradient(90% 120% at 100% 0%, color-mix(in srgb, var(--accent) 24%, transparent) 0%, transparent 62%);
+}
+
+/* A meter drawn as fine vertical ticks. The mask cuts both the fill and its track. */
+@utility meter-ticks {
+  -webkit-mask-image: repeating-linear-gradient(90deg, black 0 3px, transparent 3px 5px);
+  mask-image: repeating-linear-gradient(90deg, black 0 3px, transparent 3px 5px);
+}
+
 @layer base {
   html {
     font-size: 16px;
@@ -279,6 +324,11 @@
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Manrope has no қ, ғ or ҳ. Uzbek Cyrillic stays in one font rather than mixing two inside a word. */
+  html:lang(uz-Cyrl) body {
+    font-family: 'Onest Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   }
 
   /* No page-level horizontal scrolling at any width. */

@@ -805,8 +805,9 @@ describe('tools by permission', () => {
   });
 
   it('a money tool needs finance.view even if something else matches', () => {
-    expect(toolsFor(new Set(['inventory.view'])).map((t) => t.name)).toEqual(['stock_levels']);
-    expect(toolsFor(new Set())).toEqual(TOOLS.filter((t) => t.anyOf.length === 0));
+    const open = ['find_records', 'farm_status'];
+    expect(toolsFor(new Set(['inventory.view'])).map((t) => t.name)).toEqual(['stock_levels', ...open]);
+    expect(toolsFor(new Set()).map((t) => t.name)).toEqual(open);
   });
 
   it('every tool is read-only: none writes through the AI role', async () => {
@@ -1006,7 +1007,7 @@ describe('assistant', () => {
   it('roles without AI access cannot use the assistant', async () => {
     const f = await createFixture();
     setProvider(new ScriptedProvider([]));
-    for (const role of ['shepherd', 'investor', 'accountant'] as RoleKey[]) {
+    for (const role of ['shepherd', 'investor', 'storekeeper'] as RoleKey[]) {
       const client = await f.as(role);
       expect((await client.post('/ai/chat', { message: 'x' })).status).toBe(403);
     }
@@ -1646,7 +1647,7 @@ describe('data readiness', () => {
   it('needs ai.view', async () => {
     const f = await createFixture();
     expect((await (await f.as('shepherd')).get('/ai/coverage')).status).toBe(403);
-    expect((await (await f.as('accountant')).post('/ai/insights/run')).status).toBe(403);
+    expect((await (await f.as('storekeeper')).post('/ai/insights/run')).status).toBe(403);
   });
 });
 

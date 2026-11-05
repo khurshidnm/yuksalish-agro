@@ -6,6 +6,8 @@
  *   date, document, debit, credit, amount, currency, fx_rate, amount_base,
  *   counterparty, tin, cost_center, category, description
  *
+ * Money accounts follow the account the money really moved through, whatever method it was entered with.
+ *
  *   paid expense       Dt expense account           Ct 5010 cash / 5110 bank / 5210 card
  *   expense on credit  Dt expense account           Ct 6010 payable
  *   bought for stock   Dt 1000 materials            Ct as above
@@ -40,7 +42,9 @@ export interface ExportRow {
   categoryGroup: string | null;
   categoryName: { uz: string } | null;
   accountName: string | null;
+  accountType: string | null;
   toAccountName: string | null;
+  toAccountType: string | null;
   counterpartyName: string | null;
   counterpartyTin: string | null;
   costCenterName: string | null;
@@ -69,28 +73,29 @@ function expenseDebit(row: ExportRow): string {
   return EXPENSE_ACCOUNT[row.categoryGroup ?? ''] ?? '9430';
 }
 
-function moneyAccount(row: ExportRow): string {
-  return MONEY_ACCOUNT[row.paymentMethod] ?? '5110';
+function moneyAccount(accountType: string | null): string {
+  return MONEY_ACCOUNT[accountType ?? ''] ?? '5110';
 }
 
 export function doubleEntry(row: ExportRow): { debit: string; credit: string } {
+  const money = moneyAccount(row.accountType);
   switch (row.type) {
     case 'expense':
       return {
         debit: expenseDebit(row),
-        credit: row.paymentMethod === 'debt' ? PAYABLE : row.paymentMethod === 'non_cash' ? '0200' : moneyAccount(row),
+        credit: row.paymentMethod === 'debt' ? PAYABLE : row.paymentMethod === 'non_cash' ? '0200' : money,
       };
     case 'income':
       return {
-        debit: row.paymentMethod === 'debt' ? RECEIVABLE : moneyAccount(row),
+        debit: row.paymentMethod === 'debt' ? RECEIVABLE : money,
         credit: row.categoryGroup === 'subsidy' || row.categoryGroup === 'other_income' ? '9390' : '9010',
       };
     case 'debt_payment':
-      return { debit: row.sourceType === 'loan_instalment' ? LOAN : PAYABLE, credit: moneyAccount(row) };
+      return { debit: row.sourceType === 'loan_instalment' ? LOAN : PAYABLE, credit: money };
     case 'debt_receipt':
-      return { debit: moneyAccount(row), credit: row.sourceType === 'loan' ? LOAN : RECEIVABLE };
+      return { debit: money, credit: row.sourceType === 'loan' ? LOAN : RECEIVABLE };
     default:
-      return { debit: moneyAccount(row), credit: moneyAccount(row) };
+      return { debit: moneyAccount(row.toAccountType), credit: money };
   }
 }
 

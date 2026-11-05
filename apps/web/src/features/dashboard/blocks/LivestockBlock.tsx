@@ -33,7 +33,7 @@ export function LivestockBlock({ data, link }: { data: LivestockData; link: Link
                 })
               : undefined
           }
-          kind="bar"
+          kind="block-bar"
           data={lambing.weeks}
           xKey="week"
           series={[{ key: 'expected', label: t('livestock.ewes') }]}

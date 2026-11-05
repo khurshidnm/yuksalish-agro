@@ -18,6 +18,7 @@ import {
   SheetDescription,
   SheetTitle,
 } from '@/components/ui';
+import { AssistantLauncher } from '@/features/ai/AssistantLauncher';
 import { ChangePasswordDialog } from '@/features/auth/ChangePasswordDialog';
 import { ProfileDialog } from '@/features/auth/ProfileDialog';
 import { OutboxBar } from '@/features/today/OutboxBar';
@@ -31,6 +32,7 @@ import type { NavItem, NavSection } from './nav';
 import { PageSkeleton } from './pages';
 import { useTheme } from './theme';
 import { useVisibleNav } from './useNav';
+import { useSignOut } from './useSignOut';
 
 const SECTIONS_KEY = 'yap.nav.open';
 
@@ -145,8 +147,8 @@ function Brand() {
 
 function Sidebar() {
   return (
-    <aside data-app-chrome className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col bg-sidebar lg:flex">
-      <div className="border-b border-sidebar-border p-3">
+    <aside data-app-chrome className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar lg:flex">
+      <div className="p-3">
         <Brand />
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -163,7 +165,7 @@ function MobileDrawer({ open, onOpenChange }: { open: boolean; onOpenChange: (op
       <SheetContent side="left" className="border-sidebar-border bg-sidebar text-sidebar-foreground [&>button]:text-sidebar-muted [&>button]:hover:bg-sidebar-hover [&>button]:hover:text-sidebar-foreground">
         <SheetTitle className="sr-only">{t('nav:shell.menu')}</SheetTitle>
         <SheetDescription className="sr-only">{t('nav:shell.mainNav')}</SheetDescription>
-        <div className="border-b border-sidebar-border p-3 pr-14">
+        <div className="p-3 pr-14">
           <Brand />
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto pb-[env(safe-area-inset-bottom)]">
@@ -187,19 +189,23 @@ function BottomNav({ onMenu }: { onMenu: () => void }) {
       data-bottom-nav
       data-app-chrome
       aria-label={t('nav:shell.bottomNav')}
-      className="fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-card pb-[env(safe-area-inset-bottom)] lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-popover/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
     >
       {bottom.map((item) => {
         const active = item === current;
         return (
-          <Link key={item.key} to={item.to} aria-current={active ? 'page' : undefined} className={cn(itemClass, active ? 'text-primary' : 'text-muted-foreground')}>
-            <item.icon className="size-6 shrink-0" aria-hidden />
+          <Link key={item.key} to={item.to} aria-current={active ? 'page' : undefined} className={cn(itemClass, active ? 'text-foreground' : 'text-muted-foreground')}>
+            <span className={cn('flex h-7 w-12 shrink-0 items-center justify-center rounded-full transition-colors', active && 'bg-accent text-accent-foreground')}>
+              <item.icon className="size-5.5" aria-hidden />
+            </span>
             <span className="w-full truncate text-center">{t([`nav:short.${item.key}`, `nav:item.${item.key}`])}</span>
           </Link>
         );
       })}
       <button type="button" onClick={onMenu} className={cn(itemClass, 'text-muted-foreground')}>
-        <Menu className="size-6 shrink-0" aria-hidden />
+        <span className="flex h-7 w-12 shrink-0 items-center justify-center">
+          <Menu className="size-5.5" aria-hidden />
+        </span>
         <span>{t('nav:shell.menu')}</span>
       </button>
     </nav>
@@ -320,7 +326,7 @@ function NotificationBell() {
 
 function UserMenu() {
   const { t } = useTranslation();
-  const { logout } = useAuth();
+  const signOut = useSignOut();
   const session = useSession();
   const { resolved, toggle } = useTheme();
   const [profileOpen, setProfileOpen] = useState(false);
@@ -370,7 +376,7 @@ function UserMenu() {
             <LanguageItems />
           </div>
           <DropdownMenuSeparator />
-          <DropdownMenuItem destructive onSelect={() => void logout()}>
+          <DropdownMenuItem destructive onSelect={() => void signOut()}>
             <LogOut aria-hidden />
             {t('auth:twoFactor.signOutInstead')}
           </DropdownMenuItem>
@@ -384,7 +390,7 @@ function UserMenu() {
 
 function TopBar() {
   return (
-    <header data-app-chrome className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-border bg-background/95 px-3 pt-[env(safe-area-inset-top)] backdrop-blur md:h-16 md:px-4">
+    <header data-app-chrome className="sticky top-0 z-20 flex h-14 items-center gap-2 bg-background/90 px-3 pt-[env(safe-area-inset-top)] backdrop-blur md:h-16 md:px-4">
       <LogoMark className="size-8 lg:hidden" />
       <div className="min-w-0 flex-1">
         <FarmSwitcher />
@@ -435,6 +441,7 @@ export function AppShell() {
             <Outlet />
           </Suspense>
         </main>
+        <AssistantLauncher />
       </div>
       <BottomNav onMenu={() => setDrawerOpen(true)} />
       <MobileDrawer open={drawerOpen} onOpenChange={setDrawerOpen} />

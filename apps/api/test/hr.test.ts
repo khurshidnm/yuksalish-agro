@@ -7,6 +7,7 @@ import { ensureCostCenter, generalCostCenterId } from '../src/core/costCenters';
 import { approveTransaction } from '../src/core/ledger';
 import { addMember } from '../src/core/tenancy';
 import { signAccessToken } from '../src/core/tokens';
+import * as payroll from '../src/modules/hr/payroll.service';
 import { attendanceToday, reminders } from '../src/modules/hr/summary';
 import { seedHr } from '../src/seed/hr';
 import { SEED } from '../src/seed/names';
@@ -1340,6 +1341,146 @@ describe('advances', () => {
     const recalculated = await owner.post(`/hr/payroll/${run.id}/recalculate`);
     expect(line(recalculated.data, e.id).advance).toBe(6_000_000);
     expect(line(recalculated.data, e.id).net).toBe(3_000_000);
+  });
+
+  it('paid after the run was worked out stops its approval until it is recalculated', async () => {
+    const f = await createFixture();
+    const owner = await f.as('owner');
+    const director = await f.as('director');
+    const e = await hire(owner);
+    await fillMonth(owner, [e.id]);
+    const accountId = await makeCashAccount(f);
+    const run = await createRun(owner);
+    expect(line(run, e.id).net).toBe(5_200_000);
+    expect((await owner.post('/hr/advances', { employeeId: e.id, date: '2026-09-15', amount: 1_000_000, accountId })).status).toBe(201);
+
+    const refused = await director.post(`/hr/payroll/${run.id}/approve`);
+    expect(refused.status).toBe(409);
+    expect(refused.body.error.code).toBe('PAYROLL_ADVANCES_CHANGED');
+    expect(await payrollTransactions(f, run.id)).toEqual([]);
+
+    // 5 200 000 less the 1 000 000 already in hand.
+    const recalculated = await owner.post(`/hr/payroll/${run.id}/recalculate`);
+    expect(line(recalculated.data, e.id).net).toBe(4_200_000);
+    expect((await director.post(`/hr/payroll/${run.id}/approve`)).status).toBe(200);
+  });
+
+  it('still waiting for approval stops the run, because approving it later would pay it twice', async () => {
+    const f = await createFixture();
+    const owner = await f.as('owner');
+    const director = await f.as('director');
+    const e = await hire(owner, { baseRate: 9_000_000 });
+    await fillMonth(owner, [e.id]);
+    const accountId = await makeCashAccount(f);
+    const advance = await owner.post('/hr/advances', { employeeId: e.id, date: '2026-09-15', amount: 6_000_000, accountId });
+    expect(advance.data.transactionStatus).toBe('pending');
+    const run = await createRun(owner);
+
+    const refused = await director.post(`/hr/payroll/${run.id}/approve`);
+    expect(refused.status).toBe(409);
+    expect(refused.body.error.code).toBe('PAYROLL_ADVANCES_WAITING');
+
+    expect((await director.post(`/finance/transactions/${advance.data.transactionId}/reject`, { reason: 'xato' })).status).toBe(200);
+    expect((await director.post(`/hr/payroll/${run.id}/approve`)).status).toBe(200);
+  });
+
+  it('typed into a line by hand is that person\'s figure, and does not stop the run', async () => {
+    const f = await createFixture();
+    const owner = await f.as('owner');
+    const director = await f.as('director');
+    const e = await hire(owner);
+    await fillMonth(owner, [e.id]);
+    const accountId = await makeCashAccount(f);
+    const run = await createRun(owner);
+    await owner.post('/hr/advances', { employeeId: e.id, date: '2026-09-15', amount: 1_000_000, accountId });
+    await owner.patch(`/hr/payroll/${run.id}/lines/${line(run, e.id).id}`, { advance: 700_000 });
+    expect((await director.post(`/hr/payroll/${run.id}/approve`)).status).toBe(200);
+  });
+
+  it('and a run being approved at the same moment: one of them sees the other', async () => {
+    const f = await createFixture();
+    const owner = await f.as('owner');
+    const director = await f.as('director');
+    const e = await hire(owner);
+    await fillMonth(owner, [e.id]);
+    const accountId = await makeCashAccount(f);
+    const run = await createRun(owner);
+
+    const [approved, advance] = await Promise.all([
+      director.post(`/hr/payroll/${run.id}/approve`),
+      owner.post('/hr/advances', { employeeId: e.id, date: '2026-09-15', amount: 1_000_000, accountId }),
+    ]);
+    expect([approved.status, advance.status].sort()).toEqual(approved.status === 200 ? [200, 409] : [201, 409]);
+    if (approved.status === 200) expect(advance.body.error.code).toBe('PAYROLL_CLOSED');
+    else expect(approved.body.error.code).toBe('PAYROLL_ADVANCES_CHANGED');
+  });
+
+  describe('while the month has no payroll yet', () => {
+    /** Starts `second` while `first` is still uncommitted, so it has to wait for the outcome. */
+    async function overlapping(f: Fixture, first: () => Promise<unknown>, second: () => Promise<unknown>): Promise<string> {
+      let other: Promise<string> = Promise.resolve('');
+      await f.run(async () => {
+        await first();
+        other = f.run(second).then(
+          () => 'done',
+          (error) => error.code,
+        );
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      });
+      return other;
+    }
+
+    /** One person makes and approves the run here, so the two-person rule is off for these. */
+    async function month() {
+      const f = await createFixture({ settings: { finance: { makerChecker: false } } });
+      const owner = await f.as('owner');
+      const e = await hire(owner);
+      await fillMonth(owner, [e.id]);
+      const accountId = await makeCashAccount(f);
+      const advance = () => payroll.createAdvance({ employeeId: e.id, date: '2026-09-15', amount: 1_000_000, accountId });
+      const approval = async () => payroll.approveRun((await payroll.createRun({ month: MONTH })).id);
+      return { f, e, advance, approval };
+    }
+
+    it('an advance being paid holds off a run made and approved meanwhile', async () => {
+      const { f, e, advance, approval } = await month();
+      expect(await overlapping(f, advance, approval)).toBe('PAYROLL_ADVANCES_CHANGED');
+
+      // The run was undone with its refusal, so the next one deducts the advance: 5 200 000 - 1 000 000.
+      const run = await f.run(approval);
+      expect(run.status).toBe('approved');
+      expect(line(run, e.id)).toMatchObject({ advance: 1_000_000, net: 4_200_000 });
+    });
+
+    it('a run being approved holds off an advance, which then finds the month closed', async () => {
+      const { f, advance, approval } = await month();
+      expect(await overlapping(f, approval, advance)).toBe('PAYROLL_CLOSED');
+
+      const [run] = (await f.run(() => payroll.listRuns({ page: 1, pageSize: 25 }))).data;
+      expect(run.status).toBe('approved');
+      expect(await f.run(() => payroll.listAdvances({ month: MONTH }))).toEqual([]);
+    });
+  });
+
+  it('two first payments at the same moment share one payroll counterparty, or the debt would split', async () => {
+    const f = await createFixture();
+    const e = await hire(await f.as('owner'));
+    const accountId = await makeCashAccount(f);
+    const paid = (date: string) => payroll.createAdvance({ employeeId: e.id, date, amount: 100_000, accountId });
+
+    let second: Promise<unknown> = Promise.resolve();
+    await f.run(async () => {
+      await paid('2026-08-15');
+      second = f.run(() => paid('2026-09-15'));
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    });
+    await second;
+
+    const rows = await f.run(() =>
+      tx().select({ counterpartyId: transactions.counterpartyId }).from(transactions).where(eq(transactions.sourceType, 'payroll_advance')),
+    );
+    expect(rows).toHaveLength(2);
+    expect(new Set(rows.map((row) => row.counterpartyId)).size).toBe(1);
   });
 
   it('cannot be added to a closed month', async () => {

@@ -3,7 +3,7 @@
  * that does both, in a single transaction: stock leaves, animals leave the herd, income is posted.
  * At or above the approval threshold a second person must confirm (spec 5.1).
  */
-import { and, asc, count, desc, eq, gte, ilike, inArray, lte, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { ANIMAL_ON_FARM_STATUSES, CURRENCIES, SALE_STATUSES, UNITS, round, toBaseAmount } from '@yap/shared';
 import { animalBookValue } from '@yap/shared/formulas/livestock';
@@ -14,7 +14,7 @@ import { ensureCostCenter, generalCostCenterId } from '../../core/costCenters';
 import { badRequest, conflict, forbidden, notFound } from '../../core/errors';
 import { getItemOrThrow, issueStock, reverseMovements } from '../../core/inventory';
 import { recordEvent } from '../../core/journal';
-import { postTransaction, voidTransactions } from '../../core/ledger';
+import { assertCostCenterOpen, postTransaction, voidTransactions } from '../../core/ledger';
 import { hideMoney } from '../../core/privacy';
 import { clientId, isoDate, listQuery, searchAny, sortBy } from '../../core/query';
 import { MAX_MONEY, MAX_QTY, SALE_PAYMENT_METHODS } from './constants';
@@ -23,7 +23,7 @@ import { markExited } from '../livestock/animals.service';
 import { undoExit } from '../livestock/exits.service';
 import { animalsUnderWithdrawal } from '../livestock/health.service';
 import { notifySaleSubmitted } from './notify';
-import { assertAccount, assertCategories, assertCostCenters, assertCounterparty, assertFile, assertWarehouses } from './refs';
+import { assertAccount, assertCategories, assertCounterparty, assertFile, assertWarehouses } from './refs';
 
 const {
   animalExits,
@@ -108,17 +108,27 @@ export const saleDocumentInput = z.object({
 const MONEY_FIELDS = ['totalAmount', 'fxRate'] as const;
 const LINE_MONEY_FIELDS = ['price', 'amount', 'costAmount'] as const;
 
-/** Year-based document number. The lock serialises numbering per farm and year. */
+/** Its `number` outlives the draft, so a deleted number is never issued again. */
+const SALE_DELETED_EVENT = 'sale.deleted';
+
+/**
+ * Year-based document number. The lock serialises numbering per farm and year. One statement,
+ * because a deletion committing between two reads could hide its number from both.
+ */
 async function nextNumber(date: string): Promise<string> {
   const farmId = ctx().farmId;
   const year = date.slice(0, 4);
   const prefix = `S-${year}-`;
   await tx().execute(sql`select pg_advisory_xact_lock(hashtext(${`sale-number:${farmId}:${year}`}))`);
-  const [{ last }] = await tx()
-    .select({ last: sql<number>`coalesce(max(substring(${sales.number} from '[0-9]+$')::int), 0)`.mapWith(Number) })
-    .from(sales)
-    .where(and(eq(sales.farmId, farmId), ilike(sales.number, `${prefix}%`)));
-  return `${prefix}${String(last + 1).padStart(4, '0')}`;
+  const { rows } = await tx().execute(sql`
+    select coalesce(max(substring(number from '[0-9]+$')::bigint), 0) as last
+    from (
+      select number from sales where farm_id = ${farmId}
+      union all
+      select data->>'number' from events where farm_id = ${farmId} and type = ${SALE_DELETED_EVENT}
+    ) numbers
+    where number ~ ${`^${prefix}[0-9]+$`}`);
+  return `${prefix}${String(Number(rows[0].last) + 1).padStart(4, '0')}`;
 }
 
 async function loadLineTargets(lines: LineInput[]) {
@@ -179,11 +189,16 @@ async function buildLines(saleId: string, input: LineInput[]) {
 
 const sumAmounts = (rows: { amount: number }[]) => round(rows.reduce((sum, l) => sum + l.amount, 0), 2);
 
+/** A line names a cost center only when a person chose one, so a blank line works it out and skips this. */
+async function assertLineCostCenters(lines: { costCenterId?: string | null }[]): Promise<void> {
+  for (const id of new Set(lines.flatMap((l) => (l.costCenterId ? [l.costCenterId] : [])))) await assertCostCenterOpen(id);
+}
+
 async function assertSaleRefs(input: SalePatch): Promise<void> {
   await assertCounterparty(input.counterpartyId);
   await assertAccount(input.accountId);
   await assertWarehouses((input.lines ?? []).map((l) => l.warehouseId));
-  await assertCostCenters((input.lines ?? []).map((l) => l.costCenterId));
+  await assertLineCostCenters(input.lines ?? []);
   await assertCategories((input.lines ?? []).map((l) => l.categoryId));
 }
 
@@ -392,6 +407,7 @@ export async function remove(id: string) {
   const sale = await lockSale(id);
   if (sale.status !== 'draft') throw conflict('SALE_NOT_EDITABLE', 'Only a draft sale can be deleted');
   await tx().delete(sales).where(eq(sales.id, id));
+  await recordEvent({ type: SALE_DELETED_EVENT, entityType: 'sale', entityId: id, data: { number: sale.number } });
   return { id };
 }
 
@@ -636,6 +652,8 @@ export async function confirm(id: string) {
   if (sale.date > today()) throw badRequest('SALE_DATE_IN_FUTURE', 'A sale dated in the future cannot be confirmed yet');
   const lines = await tx().select().from(saleLines).where(eq(saleLines.saleId, id));
   if (lines.length === 0) throw badRequest('SALE_EMPTY', 'A sale needs at least one line');
+  // It may have closed while the draft waited.
+  await assertLineCostCenters(lines);
 
   const c = ctx();
   const fxRate = await resolveRate(sale);

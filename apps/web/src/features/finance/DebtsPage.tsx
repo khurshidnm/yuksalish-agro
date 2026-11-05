@@ -1,6 +1,7 @@
 import { todayIso } from '@yap/shared';
 import { HandCoins, TriangleAlert } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import type { UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import {
@@ -19,8 +20,8 @@ import {
 } from '@/components';
 import { Alert, Badge, Button, Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui';
 import { api } from '@/lib/api';
-import { usePermission } from '@/lib/auth';
-import { formatDate, formatMoney } from '@/lib/format';
+import { usePermission, useSession } from '@/lib/auth';
+import { currencyLabel, formatDate, formatMoney } from '@/lib/format';
 import { zDate, zOptionalText, zPositive, zRef } from '@/lib/forms';
 import { useApiMutation, useDetail } from '@/lib/query';
 import { FINANCE_PATHS, MONEY_QUERIES } from './lib';
@@ -40,12 +41,60 @@ const AGING_KEYS: (keyof Aging)[] = ['notDue', 'd1_30', 'd31_60', 'd61_90', 'd90
 /** What can still be paid: what is owed, minus settlements already waiting for approval. */
 const payable = (debt: CounterpartyDebt) => Math.max(0, debt.outstanding - debt.pendingSettlement);
 
+function SettleFields({
+  form,
+  accounts,
+  owed,
+  baseCurrency,
+}: {
+  form: UseFormReturn<z.input<typeof settleSchema>, unknown, z.output<typeof settleSchema>>;
+  accounts: AccountOption[];
+  owed: number | null;
+  baseCurrency: string;
+}) {
+  const { t } = useTranslation('finance');
+  // The API reads the amount in the currency of the account it comes from.
+  const currency = accounts.find((a) => a.id === form.watch('accountId'))?.currency;
+  const foreign = currency !== undefined && currency !== baseCurrency;
+
+  // What is owed is a base currency figure, so it must not stand as an amount in another currency.
+  useEffect(() => {
+    if (foreign && form.getValues('amount') === owed) form.setValue('amount', null as unknown as number);
+  }, [foreign, form, owed]);
+
+  return (
+    <>
+      <FormGrid>
+        <NumberField money
+          form={form}
+          name="amount"
+          label={t('journal.fields.amount')}
+          required
+          suffix={currency && currencyLabel(currency)}
+          hint={foreign ? t('debts.amountInAccountCurrency', { currency: currencyLabel(currency) }) : undefined}
+        />
+        <DateField form={form} name="date" label={t('journal.fields.date')} required />
+      </FormGrid>
+      <SelectField
+        form={form}
+        name="accountId"
+        label={t('journal.fields.account')}
+        required
+        options={accounts.map((a) => ({ value: a.id, label: `${a.name} (${currencyLabel(a.currency)})` }))}
+        placeholder={t('journal.chooseAccount')}
+      />
+      <TextField form={form} name="description" label={t('journal.fields.description')} />
+    </>
+  );
+}
+
 function SettleDialog({ debt, onClose }: { debt: CounterpartyDebt | null; onClose: () => void }) {
   const { t } = useTranslation('finance');
+  const baseCurrency = useSession().tenant?.currency ?? 'UZS';
   const accounts = useDetail<AccountOption[]>('/finance/accounts/lookup', undefined, { enabled: debt !== null }).data ?? [];
   const settle = useApiMutation<z.output<typeof settleSchema>>({
     mutationFn: (values) =>
-      api.post(`${PATH}/settle`, { ...values, counterpartyId: debt?.counterpartyId, direction: debt?.direction }),
+      api.postOnce(`${PATH}/settle`, { ...values, counterpartyId: debt?.counterpartyId, direction: debt?.direction }),
     invalidate: MONEY_QUERIES,
     silentError: true,
   });
@@ -57,27 +106,12 @@ function SettleDialog({ debt, onClose }: { debt: CounterpartyDebt | null; onClos
       title={debt?.direction === 'payable' ? t('debts.pay') : t('debts.receive')}
       description={debt ? t('debts.settleHint', { name: debt.counterpartyName, amount: formatMoney(debt ? payable(debt) : 0) }) : undefined}
       schema={settleSchema}
-      defaultValues={{ amount: debt ? payable(debt) : undefined, date: todayIso(), accountId: accounts[0]?.id ?? '' }}
+      // The amount offered is what is owed, which is kept in the base currency.
+      defaultValues={{ amount: debt ? payable(debt) : undefined, date: todayIso(), accountId: accounts.find((a) => a.currency === baseCurrency)?.id ?? '' }}
       onSubmit={(values) => settle.mutateAsync(values)}
       successMessage="common:toast.created"
     >
-      {(form) => (
-        <>
-          <FormGrid>
-            <NumberField form={form} name="amount" label={t('journal.fields.amount')} required />
-            <DateField form={form} name="date" label={t('journal.fields.date')} required />
-          </FormGrid>
-          <SelectField
-            form={form}
-            name="accountId"
-            label={t('journal.fields.account')}
-            required
-            options={accounts.map((a) => ({ value: a.id, label: a.name }))}
-            placeholder={t('journal.chooseAccount')}
-          />
-          <TextField form={form} name="description" label={t('journal.fields.description')} />
-        </>
-      )}
+      {(form) => <SettleFields form={form} accounts={accounts} owed={debt ? payable(debt) : null} baseCurrency={baseCurrency} />}
     </FormDialog>
   );
 }

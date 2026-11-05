@@ -59,5 +59,7 @@
   "documentType": { "land": "Yer hujjati", "construction": "Qurilish hujjati", "permit": "Ruxsatnoma", "contract": "Shartnoma", "invoice": "Hisob-faktura", "vet_certificate": "Veterinariya guvohnomasi", "act": "Akt", "other": "Boshqa" },
   "role": { "owner": "Egasi", "director": "Direktor", "accountant": "Buxgalter", "agronomist": "Agronom", "zootechnician": "Zootexnik", "veterinarian": "Veterinar", "storekeeper": "Omborchi", "mechanic": "Brigadir / mexanizator", "shepherd": "Cho'pon", "investor": "Investor", "auditor": "Auditor" },
   "module": { "dashboard": "Boshqaruv paneli", "farm": "Ferma va yer", "crops": "O'simlikchilik", "livestock": "Chorvachilik", "health": "Veterinariya", "inventory": "Ombor", "feed": "Ozuqa", "finance": "Moliya", "payroll": "Ish haqi", "hr": "Xodimlar", "assets": "Texnika", "sales": "Sotuv", "reports": "Hisobotlar", "ai": "AI-tahlil", "cameras": "Kameralar", "tasks": "Vazifalar", "users": "Foydalanuvchilar", "settings": "Sozlamalar", "audit": "Audit" },
-  "action": { "view": "Ko'rish", "create": "Yaratish", "update": "Tahrirlash", "approve": "Tasdiqlash", "delete": "O'chirish" }
+  "action": { "view": "Ko'rish", "create": "Yaratish", "update": "Tahrirlash", "approve": "Tasdiqlash", "delete": "O'chirish" },
+  "leadStatus": { "new": "Yangi", "contacted": "Bog'lanildi", "qualified": "Qiziqmoqda", "won": "Mijoz bo'ldi", "lost": "Rad etildi" },
+  "leadFarmType": { "livestock": "Chorvachilik", "crops": "O'simlikchilik", "mixed": "Aralash", "other": "Boshqa" }
 }

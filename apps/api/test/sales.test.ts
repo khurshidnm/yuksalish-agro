@@ -6,6 +6,7 @@ import { tx, withPlatform } from '../src/core/context';
 import { generalCostCenterId, ensureCostCenter } from '../src/core/costCenters';
 import { receiveStock, stockOnHand } from '../src/core/inventory';
 import { postTransaction } from '../src/core/ledger';
+import { archiveHerd, createHerd } from '../src/modules/livestock/herds.service';
 import { incomeCategoryKey } from '../src/modules/sales/orders.service';
 import { balanceEffect } from '../src/modules/sales/settlement.service';
 import { addMonths } from '../src/modules/sales/state-reports.service';
@@ -254,6 +255,35 @@ describe('sale documents', () => {
     const three = await user.post('/sales/orders', saleBody(world, [woolLine(world, 1, 1)]));
     expect(two.data.number).toBe('S-2026-0002');
     expect(three.data.number).toBe('S-2026-0003');
+  });
+
+  it('the newest draft deleted keeps its number too, and the journal says so', async () => {
+    const g = await createFixture();
+    const world = await arrange(g);
+    const user = await g.as('accountant');
+    const one = await user.post('/sales/orders', saleBody(world, [woolLine(world, 1, 1)]));
+    await user.delete(`/sales/orders/${one.data.id}`);
+    const two = await user.post('/sales/orders', saleBody(world, [woolLine(world, 1, 1)]));
+    expect(one.data.number).toBe('S-2026-0001');
+    expect(two.data.number).toBe('S-2026-0002');
+
+    const written = await g.run(() => tx().select().from(schema.events).where(eq(schema.events.type, 'sale.deleted')));
+    expect(written).toHaveLength(1);
+    expect(written[0]).toMatchObject({ entityType: 'sale', entityId: one.data.id });
+    expect(written[0].data).toMatchObject({ number: 'S-2026-0001' });
+  });
+
+  it('a deleted number is counted per farm and per year', async () => {
+    const g = await createFixture();
+    const other = await createFixture();
+    const world = await arrange(g);
+    const theirs = await arrange(other);
+    const user = await g.as('accountant');
+    const stranger = await other.as('accountant');
+    const one = await user.post('/sales/orders', saleBody(world, [woolLine(world, 1, 1)]));
+    await user.delete(`/sales/orders/${one.data.id}`);
+    expect((await stranger.post('/sales/orders', saleBody(theirs, [woolLine(theirs, 1, 1)]))).data.number).toBe('S-2026-0001');
+    expect((await user.post('/sales/orders', saleBody(world, [woolLine(world, 1, 1)], { date: '2025-12-30' }))).data.number).toBe('S-2025-0001');
   });
 
   it('lists with filters and search', async () => {
@@ -849,6 +879,95 @@ describe('references to another farm of the same tenant', () => {
     await director.post(`/sales/purchases/${data.id}/approve`);
     const payment = { date: SALE_DATE, amount: 1000, paymentMethod: 'bank', accountId: theirs.accountId };
     expect((await accountant.post(`/sales/purchases/${data.id}/pay`, payment)).status).toBe(404);
+  });
+});
+
+describe('a cost center chosen on a sale line', () => {
+  async function centers(f: Fixture) {
+    return f.run(async () => {
+      const closed = await createHerd({ name: 'Eski' });
+      await archiveHerd(closed.id);
+      const open = await createHerd({ name: 'Yangi' });
+      return { closedId: closed.costCenterId!, open };
+    });
+  }
+  const closes = (f: Fixture, herdId: string) => f.run(() => archiveHerd(herdId));
+
+  it('cannot be a closed one on a new sale', async () => {
+    const f = await createFixture();
+    const w = await arrange(f);
+    const accountant = await f.as('accountant');
+    const { closedId } = await centers(f);
+    const res = await accountant.post('/sales/orders', saleBody(w, [{ ...woolLine(w, 1, 1000), costCenterId: closedId }]));
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('COST_CENTER_CLOSED');
+  });
+
+  it('cannot be changed to a closed one', async () => {
+    const f = await createFixture();
+    const w = await arrange(f);
+    const accountant = await f.as('accountant');
+    const { closedId } = await centers(f);
+    const sale = await accountant.post('/sales/orders', saleBody(w, [woolLine(w, 1, 1000)]));
+    const res = await accountant.patch(`/sales/orders/${sale.data.id}`, { lines: [{ ...woolLine(w, 1, 1000), costCenterId: closedId }] });
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('COST_CENTER_CLOSED');
+    expect((await accountant.get(`/sales/orders/${sale.data.id}`)).data.lines[0].costCenterId).toBeNull();
+  });
+
+  it('that closed while the draft waited stops the confirmation, and nothing moves', async () => {
+    const f = await createFixture();
+    const w = await arrange(f);
+    const accountant = await f.as('accountant');
+    const { open } = await centers(f);
+    const before = await f.run(() => stockOnHand(w.woolId));
+    const sale = await accountant.post('/sales/orders', saleBody(w, [{ ...woolLine(w, 1, 1000), costCenterId: open.costCenterId }]));
+    expect(sale.status).toBe(201);
+    await closes(f, open.id);
+
+    const res = await accountant.post(`/sales/orders/${sale.data.id}/confirm`);
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('COST_CENTER_CLOSED');
+    expect(await f.run(() => stockOnHand(w.woolId))).toBe(before);
+    expect(await saleTransactions(f, sale.data.id)).toEqual([]);
+    expect((await accountant.get(`/sales/orders/${sale.data.id}`)).data.status).toBe('draft');
+
+    const fixed = await accountant.patch(`/sales/orders/${sale.data.id}`, { lines: [{ ...woolLine(w, 1, 1000), costCenterId: w.herdCostCenterId }] });
+    expect(fixed.status).toBe(200);
+    expect((await accountant.post(`/sales/orders/${sale.data.id}/confirm`)).data.status).toBe('confirmed');
+    expect(await saleTransactions(f, sale.data.id)).toMatchObject([{ costCenterId: w.herdCostCenterId, amountBase: 1000 }]);
+  });
+
+  it('cannot go to the second person with a closed cost center either', async () => {
+    const f = await createFixture();
+    const w = await arrange(f);
+    const accountant = await f.as('accountant');
+    const { open } = await centers(f);
+    // 6 t x 1 000 000 = 6 000 000, so it would wait for a second person.
+    const big = { itemId: w.alfalfaId, warehouseId: w.warehouseId, qty: 6, price: 1_000_000, costCenterId: open.costCenterId };
+    const sale = await accountant.post('/sales/orders', saleBody(w, [big]));
+    await closes(f, open.id);
+    const res = await accountant.post(`/sales/orders/${sale.data.id}/confirm`);
+    expect(res.body.error.code).toBe('COST_CENTER_CLOSED');
+    expect((await accountant.get(`/sales/orders/${sale.data.id}`)).data.status).toBe('draft');
+  });
+
+  it('is not needed: one worked out from the record is not a person\'s choice', async () => {
+    const f = await createFixture();
+    const w = await arrange(f);
+    const accountant = await f.as('accountant');
+    const sold = await accountant.post('/sales/orders', saleBody(w, [woolLine(w, 1, 1000)]));
+    expect((await accountant.post(`/sales/orders/${sold.data.id}/confirm`)).data.status).toBe('confirmed');
+  });
+
+  it('answers not found for a cost center of another farm', async () => {
+    const f = await createFixture();
+    const other = await createFixture();
+    const w = await arrange(f);
+    const accountant = await f.as('accountant');
+    const theirs = await other.run(() => generalCostCenterId());
+    const res = await accountant.post('/sales/orders', saleBody(w, [{ ...woolLine(w, 1, 1000), costCenterId: theirs }]));
+    expect(res.status).toBe(404);
   });
 });
 
