@@ -1,6 +1,7 @@
 import { CircleAlert, Info, OctagonAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
+import { useOpenableLink } from '@/app/canOpen';
 import { Badge, type BadgeVariant, Card, CardContent, EmptyState } from '@/components';
 import { alertText } from '@/features/alerts/alertText';
 import { formatDateTime } from '@/lib/format';
@@ -15,6 +16,7 @@ const SEVERITY: Record<string, { variant: BadgeVariant; icon: typeof Info }> = {
 
 export function AlertsBlock({ data }: { data: AlertsData }) {
   const { t } = useTranslation('dashboard');
+  const openable = useOpenableLink();
   if (data.items.length === 0) {
     return (
       <Card>
@@ -43,10 +45,11 @@ export function AlertsBlock({ data }: { data: AlertsData }) {
               </>
             );
             const row = 'flex min-h-11 flex-wrap items-start gap-x-3 gap-y-1 py-2.5';
+            const to = openable(alert.link);
             return (
               <li key={alert.id}>
-                {alert.link ? (
-                  <Link to={alert.link} className={cn(row, 'focus-ring -mx-2 rounded px-2 hover:bg-muted')}>
+                {to ? (
+                  <Link to={to} className={cn(row, 'focus-ring -mx-2 rounded px-2 hover:bg-muted')}>
                     {body}
                   </Link>
                 ) : (

@@ -9,6 +9,9 @@ import { DEVICES, type Device, STATUS_VARIANT } from './types';
 /** Browsers play these directly. Any other address is a gateway's own player page. */
 const isDirectMedia = (url: string) => /\.(m3u8|mp4|webm)(\?|#|$)/i.test(url);
 
+/** An https page may not embed an http address, and a refused iframe stays blank with no error to catch. */
+const refusedByBrowser = (url: string) => window.location.protocol === 'https:' && /^http:/i.test(url);
+
 function Unavailable({ title, hint, url }: { title: string; hint: string; url?: string }) {
   const { t } = useTranslation('cameras');
   return (
@@ -39,6 +42,8 @@ function LiveTile({ device }: { device: Device }) {
         hint={device.status === 'planned' ? t('live.notInstalled') : t('live.notConfiguredHint')}
       />
     );
+  } else if (refusedByBrowser(device.liveUrl)) {
+    view = <Unavailable title={t('live.failedTitle')} hint={t('live.insecureHint')} url={device.liveUrl} />;
   } else if (failed) {
     view = <Unavailable title={t('live.failedTitle')} hint={t('live.failedHint')} url={device.liveUrl} />;
   } else if (isDirectMedia(device.liveUrl)) {

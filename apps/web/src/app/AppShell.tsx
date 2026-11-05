@@ -22,8 +22,11 @@ import { AssistantLauncher } from '@/features/ai/AssistantLauncher';
 import { ChangePasswordDialog } from '@/features/auth/ChangePasswordDialog';
 import { ProfileDialog } from '@/features/auth/ProfileDialog';
 import { OutboxBar } from '@/features/today/OutboxBar';
+import { UpdateBar } from '@/features/today/UpdateBar';
 import { api } from '@/lib/api';
+import { InvitationsDialog } from '@/features/auth/Invitations';
 import { useAuth, useSession } from '@/lib/auth';
+import { useAccountLanguage } from '@/lib/accountLanguage';
 import { LANGUAGES, changeLanguage } from '@/lib/i18n';
 import { errorMessage } from '@/lib/query';
 import { cn, storageGet, storageSet } from '@/lib/utils';
@@ -423,6 +426,7 @@ export function AppShell() {
   const { t } = useTranslation();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const online = useOnline();
+  useAccountLanguage();
 
   return (
     <div className="flex min-h-dvh">
@@ -436,6 +440,7 @@ export function AppShell() {
           </div>
         )}
         <OutboxBar />
+        <UpdateBar />
         <main className="mx-auto w-full max-w-[100rem] flex-1 px-4 pt-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:px-6 md:pt-6 lg:pb-8">
           <Suspense fallback={<PageSkeleton />}>
             <Outlet />
@@ -443,6 +448,7 @@ export function AppShell() {
         </main>
         <AssistantLauncher />
       </div>
+      <InvitationsDialog />
       <BottomNav onMenu={() => setDrawerOpen(true)} />
       <MobileDrawer open={drawerOpen} onOpenChange={setDrawerOpen} />
       <ScrollRestoration />

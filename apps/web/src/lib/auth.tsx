@@ -20,6 +20,16 @@ import { storageGet, storageRemove, storageSet } from './utils';
 /** Who is signed in on this browser: read by the public page before anything loads, and by every other tab. */
 const SIGNED_IN_KEY = 'yap.signedIn';
 
+/** Whether a session could be restored here. Blocked storage holds no mark, and then only the server can tell. */
+function maybeSignedIn(): boolean {
+  if (storageGet(SIGNED_IN_KEY) !== null) return true;
+  const probe = 'yap.storageProbe';
+  storageSet(probe, '1');
+  const blocked = storageGet(probe) === null;
+  storageRemove(probe);
+  return blocked;
+}
+
 export type AuthStatus = 'loading' | 'authenticated' | 'anonymous';
 
 export type LoginOutcome = { status: 'ok' } | { status: 'two-factor'; challengeToken: string };
@@ -28,9 +38,11 @@ interface AuthContextValue {
   status: AuthStatus;
   session: Session | null;
   login(phone: string, password: string): Promise<LoginOutcome>;
-  verifyTwoFactor(challengeToken: string, code: string): Promise<void>;
+  verifyTwoFactor(challengeToken: string, code: string): Promise<Session>;
   logout(): Promise<void>;
   switchFarm(membershipId: string): Promise<void>;
+  /** Join a farm that invited this person, and land on it. */
+  acceptInvitation(id: string): Promise<void>;
   /** Reload the session from the server, e.g. after enabling two-factor. */
   reloadSession(): Promise<void>;
 }
@@ -117,6 +129,10 @@ function useProvideAuth(): AuthContextValue {
   useEffect(() => {
     let cancelled = false;
     void deliverSignOut();
+    if (!maybeSignedIn()) {
+      setStatus('anonymous');
+      return undefined;
+    }
     void refreshSession().then(async (result) => {
       if (cancelled) return;
       if (!result) {
@@ -153,7 +169,9 @@ function useProvideAuth(): AuthContextValue {
 
   const verifyTwoFactor = useCallback(
     async (challengeToken: string, code: string) => {
-      enter(await api.post<AuthResult>('/auth/2fa/verify', { challengeToken, code }));
+      const result = await api.post<AuthResult>('/auth/2fa/verify', { challengeToken, code });
+      enter(result);
+      return result.session;
     },
     [enter],
   );
@@ -165,9 +183,8 @@ function useProvideAuth(): AuthContextValue {
     await deliverSignOut();
   }, [clear]);
 
-  const switchFarm = useCallback(
-    async (membershipId: string) => {
-      const result = await api.post<AuthResult>('/auth/switch-farm', { membershipId });
+  const landOnFarm = useCallback(
+    (result: AuthResult) => {
       setAccessToken(result.accessToken);
       applySession(result.session);
       // Everything cached belongs to the previous farm, and so does an unanswered save.
@@ -177,13 +194,23 @@ function useProvideAuth(): AuthContextValue {
     [applySession],
   );
 
+  const switchFarm = useCallback(
+    async (membershipId: string) => landOnFarm(await api.post<AuthResult>('/auth/switch-farm', { membershipId })),
+    [landOnFarm],
+  );
+
+  const acceptInvitation = useCallback(
+    async (id: string) => landOnFarm(await api.post<AuthResult>(`/auth/invitations/${id}/accept`)),
+    [landOnFarm],
+  );
+
   const reloadSession = useCallback(async () => {
     applySession(await api.get<Session>('/auth/me'));
   }, [applySession]);
 
   return useMemo(
-    () => ({ status, session, login, verifyTwoFactor, logout, switchFarm, reloadSession }),
-    [status, session, login, verifyTwoFactor, logout, switchFarm, reloadSession],
+    () => ({ status, session, login, verifyTwoFactor, logout, switchFarm, acceptInvitation, reloadSession }),
+    [status, session, login, verifyTwoFactor, logout, switchFarm, acceptInvitation, reloadSession],
   );
 }
 

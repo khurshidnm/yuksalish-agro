@@ -26,6 +26,8 @@ import { schema } from '../../db/client';
 import { ctx, today, tx } from '../../core/context';
 import type { TenantSettings } from '../../core/settings';
 import { feedBalance } from '../feed/balance.service';
+import { lowDisk } from '../files/files.service';
+import { allUnpaidReceipts } from '../inventory/stock.service';
 import { tr, type Params } from '../notifications/i18n';
 import { raiseAlert } from './alerts.service';
 
@@ -126,7 +128,7 @@ export const RULES: Rule[] = [
         if (deviation === null || Math.abs(deviation) < threshold) continue;
         findings.push({
           dedupKey: `ration_deviation:${row.herd_id}:${row.date}`,
-          severity: Math.abs(deviation) >= threshold * 2 ? 'urgent' : 'attention',
+          severity: 'attention',
           params: { herd: row.herd, date: row.date, percent: round(deviation, 1), actual: num(row.actual), planned: num(row.planned) },
           link: '/livestock/daily-logs',
           entityType: 'herd',
@@ -289,7 +291,7 @@ export const RULES: Rule[] = [
         const percent = budgetExecutionPercent(num(row.actual), num(row.planned))!;
         return {
           dedupKey: `budget_overrun:${row.id}:${month}`,
-          severity: percent >= 120 ? ('urgent' as const) : ('attention' as const),
+          severity: 'attention' as const,
           params: { category: row.name, percent: round(percent, 1), month },
           link: '/finance/budget',
         };
@@ -325,6 +327,15 @@ export const RULES: Rule[] = [
     },
   },
   {
+    key: 'disk_low',
+    permission: 'settings.update',
+    notify: ['owner'],
+    async run() {
+      const params = await lowDisk();
+      return params ? [{ dedupKey: 'disk_low', severity: 'attention' as const, params, link: '/settings?tab=files' }] : [];
+    },
+  },
+  {
     key: 'document_expiring',
     async run(r) {
       const to = addDays(r.today, 30);
@@ -333,7 +344,7 @@ export const RULES: Rule[] = [
         where farm_id = ${r.farmId} and expiry_date <= ${to}::date`);
       return rows.map((row) => ({
         dedupKey: `document_expiring:${row.id}`,
-        severity: row.expiry_date < r.today ? ('urgent' as const) : ('attention' as const),
+        severity: 'attention' as const,
         textKey: row.expiry_date < r.today ? 'document_expired' : undefined,
         params: { title: row.title, date: row.expiry_date },
         link: '/farm/documents',
@@ -371,7 +382,7 @@ export const RULES: Rule[] = [
         where b.farm_id = ${r.farmId} and b.qty_remaining > 0 and b.expiry_date <= ${to}::date`);
       return rows.map((row) => ({
         dedupKey: `batch_expiring:${row.id}`,
-        severity: row.expiry_date < r.today ? ('urgent' as const) : ('attention' as const),
+        severity: 'attention' as const,
         textKey: row.expiry_date < r.today ? 'batch_expired' : undefined,
         params: { item: row.item, date: row.expiry_date, qty: num(row.qty), unit: row.unit },
         link: '/inventory/stock',
@@ -387,7 +398,23 @@ export const RULES: Rule[] = [
       const [row] = await query<{ n: string }>(sql`
         select count(*) as n from transactions where farm_id = ${r.farmId} and status = 'pending'`);
       if (num(row.n) === 0) return [];
-      return [{ dedupKey: 'approvals_pending', severity: 'attention', params: { count: num(row.n) }, link: '/finance/transactions' }];
+      return [{ dedupKey: 'approvals_pending', severity: 'attention', params: { count: num(row.n) }, link: '/finance/transactions?tab=approval' }];
+    },
+  },
+  {
+    // One alert per receipt, so each delivery reaches the accountant, not only the first of a run.
+    key: 'receipt_unpaid',
+    permission: 'finance.view',
+    notify: ['accountant'],
+    async run() {
+      return (await allUnpaidReceipts()).map((row) => ({
+        dedupKey: `receipt_unpaid:${row.id}`,
+        severity: 'attention' as const,
+        params: { docNo: row.docNo, supplier: row.supplier, goods: row.goods },
+        link: '/finance/debts?tab=receipts',
+        entityType: 'stock_doc',
+        entityId: row.id!,
+      }));
     },
   },
   {
@@ -401,7 +428,7 @@ export const RULES: Rule[] = [
         where i.farm_id = ${r.farmId} and i.paid_date is null and i.due_date <= ${to}::date`);
       return rows.map((row) => ({
         dedupKey: `loan_payment_due:${row.id}`,
-        severity: row.due_date < r.today ? ('urgent' as const) : ('attention' as const),
+        severity: 'attention' as const,
         textKey: row.due_date < r.today ? 'loan_payment_overdue' : undefined,
         params: { loan: row.name, date: row.due_date },
         link: '/finance/loans',

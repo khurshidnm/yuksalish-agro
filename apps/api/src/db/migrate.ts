@@ -9,30 +9,14 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import bcrypt from 'bcryptjs';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import pg from 'pg';
+import { ensurePlatformAdmin } from './platform-admin';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const migrationsFolder = join(here, '..', '..', 'drizzle');
-
-async function ensurePlatformAdmin(client: pg.Client): Promise<void> {
-  const phone = process.env.PLATFORM_ADMIN_PHONE;
-  const password = process.env.PLATFORM_ADMIN_PASSWORD;
-  if (!phone || !password) return;
-  if (password.length < 12) throw new Error('PLATFORM_ADMIN_PASSWORD must be at least 12 characters');
-
-  const passwordHash = await bcrypt.hash(password, Number(process.env.BCRYPT_ROUNDS) || 10);
-  // Never touches an existing user, so a password changed later survives the next deploy.
-  const created = await client.query(
-    `insert into users (id, phone, full_name, password_hash, is_platform_admin)
-     values (gen_random_uuid(), $1, 'Platform Admin', $2, true)
-     on conflict (phone) do nothing`,
-    [phone, passwordHash],
-  );
-  console.log(created.rowCount ? `Platform admin created: ${phone}` : 'Platform admin already exists.');
-}
+const MIGRATION_LOCK_TIMEOUT = '60s';
 
 async function main() {
   const url = process.env.DATABASE_OWNER_URL;
@@ -41,11 +25,13 @@ async function main() {
   const client = new pg.Client({ connectionString: url });
   await client.connect();
   try {
+    // Waiting for a table behind a long read also stops everyone queued behind the migration.
+    await client.query(`set lock_timeout = '${MIGRATION_LOCK_TIMEOUT}'`);
     await migrate(drizzle(client), { migrationsFolder });
     console.log('Migrations applied.');
     await client.query(readFileSync(join(here, 'post-schema.sql'), 'utf8'));
     console.log('Row-level security, audit triggers and grants applied.');
-    await ensurePlatformAdmin(client);
+    await ensurePlatformAdmin(client, process.env.PLATFORM_ADMIN_PHONE, process.env.PLATFORM_ADMIN_PASSWORD);
   } finally {
     await client.end();
   }

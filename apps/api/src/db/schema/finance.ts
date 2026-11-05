@@ -117,7 +117,7 @@ export const transactions = pgTable(
     rejectedReason: text(),
   },
   (t) => [
-    index().on(t.farmId, t.date.desc()),
+    index().on(t.farmId, t.date),
     index().on(t.farmId, t.status),
     index().on(t.costCenterId, t.date),
     index().on(t.categoryId, t.date),

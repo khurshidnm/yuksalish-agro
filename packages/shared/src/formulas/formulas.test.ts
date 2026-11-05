@@ -208,6 +208,10 @@ describe('finance', () => {
     expect(f.straightLineMonthly(1200, 0, 0)).toBeNull();
     expect(f.unitsOfProductionDepreciation(1000, 0, 100, 10)).toBe(100);
     expect(f.unitsOfProductionDepreciation(1000, 0, 0, 10)).toBeNull();
+    // MTZ-82: 29 months in the opening figure, 2 posted, 2 125 000 each.
+    expect(f.assetBookValue(285_000_000, 61_625_000, 4_250_000)).toBe(219_125_000);
+    expect(f.assetBookValue(0.3, 0.1, 0.1)).toBe(0.1);
+    expect(f.assetBookValue(null, 1000, 0)).toBeNull();
   });
 
   it('machineryUnitCost', () => {

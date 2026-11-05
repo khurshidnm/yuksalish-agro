@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build && vite build --ssr src/features/landing/server.tsx --outDir dist-ssr --emptyOutDir && node scripts/prerender.mjs",
+    "build": "tsc --noEmit && vite build && vite build --ssr src/features/landing/server.tsx --outDir dist-ssr --emptyOutDir && node scripts/prerender.mjs && node scripts/shell-files.mjs",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests"

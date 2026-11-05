@@ -1,6 +1,6 @@
 import type { LandingCopy, LandingLanguage } from '@yap/shared/landing';
 import { CircleCheck, Loader2, Send } from 'lucide-react';
-import { type FormEvent, type ReactNode, useRef, useState } from 'react';
+import { type FormEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { telHref } from './site';
 
 type Status = 'idle' | 'sending' | 'done';
@@ -13,6 +13,29 @@ const FARM_TYPES = ['livestock', 'crops', 'mixed', 'other'] as const;
 
 const control =
   'focus-ring block min-h-12 w-full rounded-lg border border-input bg-popover px-3 py-2 text-base text-foreground placeholder:text-muted-foreground aria-invalid:border-destructive';
+
+const TOKEN_TIMEOUT_MS = 10_000;
+
+/** The server times the form from this token. Sent before `sendableAt`, an enquiry counts as a bot's. */
+interface FormStamp {
+  token: string;
+  sendableAt: number;
+}
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function fetchStamp(): Promise<FormStamp | null> {
+  try {
+    const response = await fetch('/api/v1/leads/form-token', { signal: AbortSignal.timeout(TOKEN_TIMEOUT_MS) });
+    if (!response.ok) return null;
+    const { data } = (await response.json()) as { data: { token: string; waitMs: number } };
+    return { token: data.token, sendableAt: Date.now() + data.waitMs };
+  } catch {
+    return null;
+  }
+}
+
+const errorCode = async (response: Response) => ((await response.json().catch(() => null)) as { error?: { code?: string } } | null)?.error?.code;
 
 function campaign(): Record<string, string> | undefined {
   const entries = [...new URLSearchParams(window.location.search)].filter(([name]) => name.startsWith('utm_')).slice(0, 8);
@@ -41,10 +64,14 @@ function Field({ id, label, hint, error, children }: { id: string; label: string
  * libraries and API client so that a visitor on a slow rural connection downloads almost nothing.
  */
 export function LeadForm({ copy, language, phone }: { copy: LandingCopy['form']; language: LandingLanguage; phone?: string }) {
-  const openedAt = useRef(Date.now());
+  const stamp = useRef<Promise<FormStamp | null> | null>(null);
   const [status, setStatus] = useState<Status>('idle');
   const [errors, setErrors] = useState<Partial<Record<FieldName, string>>>({});
   const [failure, setFailure] = useState<string | null>(null);
+
+  useEffect(() => {
+    stamp.current = fetchStamp();
+  }, []);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -62,29 +89,40 @@ export function LeadForm({ copy, language, phone }: { copy: LandingCopy['form'];
 
     setStatus('sending');
     const optional = Object.fromEntries(['farmType', 'farmSize', 'region', 'message'].flatMap((name) => (value(name) ? [[name, value(name)]] : [])));
-    try {
-      const response = await fetch('/api/v1/leads', {
+    const enquiry = {
+      fullName: value('fullName'),
+      phone: value('phone'),
+      ...optional,
+      language,
+      source: window.location.pathname,
+      utm: campaign(),
+      consent: true,
+      website: value('website'),
+    };
+    const send = async () => {
+      const held = await stamp.current;
+      if (held) await wait(held.sendableAt - Date.now());
+      return fetch('/api/v1/leads', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          fullName: value('fullName'),
-          phone: value('phone'),
-          ...optional,
-          language,
-          source: window.location.pathname,
-          utm: campaign(),
-          consent: true,
-          website: value('website'),
-          elapsedMs: Date.now() - openedAt.current,
-        }),
+        body: JSON.stringify({ ...enquiry, formToken: held?.token }),
       });
+    };
+    try {
+      let response = await send();
+      let code = response.ok ? undefined : await errorCode(response);
+      // A tab left open for hours, or a token that could not be fetched when the page loaded.
+      if (code === 'FORM_EXPIRED') {
+        stamp.current = fetchStamp();
+        response = await send();
+        code = response.ok ? undefined : await errorCode(response);
+      }
       if (response.ok) {
         form.reset();
         setStatus('done');
         return;
       }
-      const body = (await response.json().catch(() => null)) as { error?: { code?: string } } | null;
-      if (body?.error?.code === 'INVALID_PHONE') setErrors({ phone: copy.errorPhone });
+      if (code === 'INVALID_PHONE') setErrors({ phone: copy.errorPhone });
       else setFailure(response.status === 429 ? copy.errorRate : copy.errorGeneric);
     } catch {
       setFailure(copy.errorGeneric);

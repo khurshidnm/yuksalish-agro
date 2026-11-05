@@ -2,22 +2,23 @@ import { EMPLOYEE_STATUSES, monthRange, todayIso } from '@yap/shared';
 import { BellRing, Pencil, Plus, RotateCcw, ShieldCheck, Trash2, UserMinus, Users } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { z } from 'zod';
-import { type Column, DataTable, DataTableView, DateField, FormDialog, FormGrid, ComboboxField, MoneyText, PageHeader, TextField, TextareaField, UrlTabs, useConfirm, useUrlParam } from '@/components';
+import { type Column, DataTable, DataTableView, DateField, FormDialog, FormGrid, ComboboxField, MoneyText, PageHeader, SelectField, TextField, TextareaField, UrlTabs, useConfirm, useUrlParam } from '@/components';
 import { Badge, type BadgeVariant, Button, Select, apiOptions } from '@/components/ui';
 import { api } from '@/lib/api';
 import { usePermission } from '@/lib/auth';
 import { formatDate, formatNumber, formatQty } from '@/lib/format';
-import { zDate, zOptionalDate, zOptionalText, zRef, zText } from '@/lib/forms';
+import { zDate, zOptionalDate, zOptionalRef, zOptionalText, zRef, zText } from '@/lib/forms';
 import { enumOptions } from '@/lib/i18n';
 import { useApiMutation, useDetail } from '@/lib/query';
 import { EmployeeCard } from './EmployeeCard';
-import { EmployeeForm } from './EmployeeForm';
+import { EmployeeForm, type LinkableUser } from './EmployeeForm';
 import { EMPLOYEE_STATUS_VARIANT, MonthSwitcher, currentMonth, type Employee, type EmployeeLookup } from './shared';
 
 const PATH = '/hr/employees';
 
-const terminateSchema = z.object({ date: zDate(), reason: zOptionalText(500) });
+const terminateSchema = z.object({ date: zDate(), reason: zOptionalText(500), userId: zOptionalRef() });
 
 function EmployeesTab() {
   const { t } = useTranslation('hr');
@@ -44,10 +45,18 @@ function EmployeesTab() {
     successMessage: 'hr:employees.reinstated',
   });
 
-  const terminate = useApiMutation<z.output<typeof terminateSchema>>({
+  // The list is what a person answers from when the record has no login, so a login on it is still linked to nobody.
+  const logins = useDetail<LinkableUser[]>(leaving && !leaving.userId ? '/hr/linkable-users' : null);
+  const loginOptions = (logins.data ?? [])
+    .filter((user) => user.employeeId === null)
+    .map((user) => ({ value: user.id, label: `${user.fullName} (${t(`enums:role.${user.roleKey}`)})` }));
+
+  const terminate = useApiMutation<z.output<typeof terminateSchema>, { accessEnded: boolean }>({
     mutationFn: (values) => api.post(`${PATH}/${leaving?.id}/terminate`, values),
-    invalidate: [PATH],
+    invalidate: [PATH, '/hr/linkable-users', '/settings/users'],
     silentError: true,
+    // What the server did, not what was hoped for: there may have been no login to end.
+    onSuccess: (result) => toast.success(t(result.accessEnded ? 'employees.terminated' : 'employees.terminatedNoLogin')),
   });
 
   const openForm = (employee: Employee | null) => {
@@ -111,7 +120,10 @@ function EmployeesTab() {
             icon: RotateCcw,
             hidden: !canUpdate || row.status !== 'terminated',
             onClick: async () => {
-              const ok = await confirm({ title: t('employees.reinstateTitle'), description: t('employees.reinstateBody', { name: row.fullName }) });
+              const ok = await confirm({
+                title: t('employees.reinstateTitle'),
+                description: t(row.userId ? 'employees.reinstateBody' : 'employees.reinstateBodyNoLogin', { name: row.fullName }),
+              });
               if (ok) reinstate.mutate(row.id);
             },
           },
@@ -139,11 +151,10 @@ function EmployeesTab() {
         open={leaving !== null}
         onOpenChange={(open) => !open && setLeaving(null)}
         title={t('employees.terminateTitle', { name: leaving?.fullName })}
-        description={t('employees.terminateBody')}
+        description={t(leaving?.userId ? 'employees.terminateBody' : 'employees.terminateBodyNoLogin')}
         schema={terminateSchema}
-        defaultValues={{ date: todayIso(), reason: '' }}
+        defaultValues={{ date: todayIso(), reason: '', userId: '' }}
         onSubmit={(values) => terminate.mutateAsync(values)}
-        successMessage="hr:employees.terminated"
         submitLabel={t('employees.terminate')}
         size="sm"
       >
@@ -151,6 +162,9 @@ function EmployeesTab() {
           <>
             <DateField form={form} name="date" label={t('employees.fields.terminationDate')} required max={todayIso()} />
             <TextareaField form={form} name="reason" label={t('employees.fields.terminationReason')} />
+            {!leaving?.userId && (
+              <SelectField form={form} name="userId" label={t('employees.terminateLogin')} placeholder={t('employees.terminateLoginNone')} options={loginOptions} />
+            )}
           </>
         )}
       </FormDialog>

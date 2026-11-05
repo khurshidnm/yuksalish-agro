@@ -52,6 +52,10 @@
       "title": "Muddati o'tgan agrotexnik tadbirlar: {{count}} ta",
       "body": "Eng eskisi: {{date}}."
     },
+    "disk_low": {
+      "title": "Server diski deyarli to'ldi",
+      "body": "{{freeGb}} GB joy qoldi. {{stopsAtGb}} GB dan kam qolsa, yangi fayllar qabul qilinmaydi, disk to'lsa butun tizim to'xtaydi. Ishlatilmayotgan fayllarni o'chiring yoki administratordan joy qo'shishni so'rang."
+    },
     "document_expiring": {
       "title": "Hujjat muddati tugayapti: {{title}}",
       "body": "Amal qilish muddati: {{date}}."
@@ -63,6 +67,10 @@
     "batch_expiring": {
       "title": "{{item}}: partiya yaroqlilik muddati tugayapti",
       "body": "Muddat: {{date}}. Qoldiq: {{qty}} {{unit}}."
+    },
+    "receipt_unpaid": {
+      "title": "{{docNo}}: tovar keldi, to'lov yoki qarz yozilmagan",
+      "body": "{{supplier}}: {{goods}}. Moliya bo'limida to'lov yoki qarzni qayd eting."
     },
     "approvals_pending": {
       "title": "Tasdiq kutayotgan to'lovlar: {{count}} ta",
@@ -110,12 +118,33 @@
       "title": "{{herd}}: {{date}} kuni uchun ikki xil yozuv",
       "body": "Oflayn kiritilgan yozuv saqlangan yozuvga mos kelmadi. Oflayn yozuvda ozuqa ko'rsatilmagan."
     },
+    "offline_refused": {
+      "title": "{{herd}}: {{date}} kungi yozuv qabul qilinmadi",
+      "body": "Oflayn kiritilgan yozuv rad etildi, uni qo'lda kiritish kerak. Oflayn yozuv: {{summary}}."
+    },
     "asset_fuel_deviation": {
       "title": "Yoqilg'i me'yordan {{percent}}% ortiq: {{name}}",
       "body": "{{date}}: sarf {{fuelL}} l, me'yor {{normL}} l."
     },
     "device_event": {
-      "title": "{{deviceName}}: {{eventType}}"
+      "title": "{{deviceName}}: {{eventType}}",
+      "body": "Asl vaqti: {{happenedAt}}. Xabar serverga kechikib yetib keldi."
+    },
+    "urgent_unreachable_not_configured": {
+      "title": "Shoshilinch ogohlantirishlar ilovadan tashqariga chiqmayapti",
+      "body": "Telegram bot sozlanmagan, shuning uchun yong'in haqidagi xabar faqat shu yerda ko'rinadi. Administratorga murojaat qiling."
+    },
+    "urgent_unreachable_channel_down": {
+      "title": "Telegram bilan aloqa yo'q",
+      "body": "Bot Telegramga ulana olmayapti, shuning uchun yong'in haqidagi xabar faqat shu yerda ko'rinadi. Administratorga murojaat qiling."
+    },
+    "urgent_unreachable_not_linked": {
+      "title": "Yong'in haqidagi xabarlarni oladigan odam yo'q",
+      "body": "Egasi ham, direktor ham shoshilinch xabarlarni Telegramda olmaydi: u ulanmagan yoki o'chirilgan. Bildirishnomalar sahifasida tuzating."
+    },
+    "urgent_unreachable_undelivered": {
+      "title": "Shoshilinch ogohlantirish hech kimga yetib bormadi",
+      "body": "Telegram orqali yuborib bo'lmayapti. Ogohlantirishlarni shu yerda tekshiring va mas'ullarga telefon qiling."
     },
     "device_offline": {
       "title": "{{deviceName}} aloqada emas",
@@ -165,7 +194,9 @@
     "stale": "Bu tugma eskirgan.",
     "cardChanged": "Bu yozuv o'zgargan. Tekshirib, qayta tasdiqlang.",
     "moneyHidden": "Bu yozuvda lavozimingiz ko'ra olmaydigan pul ma'lumotlari bor.",
+    "noRightToAcknowledge": "Lavozimingiz ogohlantirishlarni qabul qilishga ruxsat bermaydi.",
     "buttons": {
+      "acknowledge": "Qabul qilish",
       "confirm": "Tasdiqlash",
       "change": "O'zgartirish",
       "cancel": "Bekor qilish",
@@ -210,12 +241,21 @@
       "title": "Telegram uzildi",
       "body": "Bu hisob endi Telegramda ogohlantirish olmaydi va u yerdan tasdiqlay olmaydi. Bildirishnomalar sahifasida qayta ulang."
     },
+    "twoFactorNotice": {
+      "title": "Ikki bosqichli kirish o'zgardi",
+      "body": "Hisobingizda ikki bosqichli kirish tiklandi yoki almashtirildi, yoxud zaxira kod ishlatildi. Agar bu siz bo'lmasangiz, darhol administratorga murojaat qiling."
+    },
+    "inviteNotice": {
+      "title": "Fermaga taklif",
+      "body": "\"{{workspace}}\" sizni qo'shilishga taklif qildi. Qabul qilish yoki rad etish uchun ilovaga kiring."
+    },
     "passwordNotice": {
       "title": "Parol o'zgartirildi",
       "body": "Hisobingiz paroli o'zgartirildi va boshqa qurilmalardan chiqildi. Bu Telegram chati ulanganicha qoladi. Agar bu siz bo'lmasangiz, darhol administratorga murojaat qiling."
     },
     "waitForAnswer": "Oldingi xabaringizga javob tayyorlanyapti. Javobni kuting, kartani tekshiring, keyin tasdiqlang.",
     "farmAfterTurn": "Avval yozganingizga javob beraman, keyin ferma almashadi.",
+    "escalated": "Sizga yuborildi, chunki mas'ullarga yetkazib bo'lmadi.",
     "sentLate": "Kechikib yetkazildi. Asl vaqti: {{time}}."
   },
   "errors": {
@@ -266,6 +306,10 @@
     "channelsTitle": "Qaysi xabar qayerga keladi",
     "channelsBody": "Platforma ichidagi xabarlar doim yoqilgan. Qolganini o'zingiz tanlaysiz.",
     "notConfigured": "Sozlanmagan",
+    "urgentOffTitle": "Shoshilinch ogohlantirishlarni Telegramda o'chirasizmi?",
+    "urgentOffBody": "Telegram hozir platformadan tashqaridagi yagona kanal. O'chirsangiz, yong'in yoki kasal hayvon haqida faqat ilovani ochganingizda bilasiz.",
+    "urgentOffConfirm": "O'chirish",
+    "urgentOff": "Shoshilinch ogohlantirishlar sizga Telegramda kelmaydi, shuning uchun yong'in haqida faqat ilovada bilasiz. Qayta yoqish uchun Telegram belgisini qo'ying.",
     "event": {
       "alert_urgent": "Shoshilinch ogohlantirishlar",
       "alert_attention": "E'tibor talab qiladigan ogohlantirishlar",
@@ -273,6 +317,27 @@
       "task_assigned": "Menga biriktirilgan vazifalar",
       "daily_summary": "Kunlik xulosa",
       "assistant_recap": "Yordamchining kechki xulosasi"
+    }
+  },
+  "testAlert": {
+    "title": "Sinov ogohlantirishi",
+    "body": "Shoshilinch ogohlantirish kimga yetib borishini tekshiradi. Har bir xodimga sinov deb belgilangan bitta xabar boradi, haqiqiy ogohlantirish yaratilmaydi.",
+    "send": "Sinov xabarini yuborish",
+    "confirmTitle": "Sinov xabarini yuborasizmi?",
+    "confirmBody": "Xabar shu fermaning barcha xodimlariga boradi.",
+    "confirmAction": "Yuborish",
+    "reached": "Yetib bordi: {{count}}",
+    "unreachable": "Yetib bormadi: {{count}}",
+    "nobody": "Bu fermada xabar yuboriladigan xodim yo'q.",
+    "reason": {
+      "not_linked": "Telegram ulanmagan yoki bot bloklangan",
+      "turned_off": "Shoshilinch xabarlar uchun Telegramni o'chirgan",
+      "failed": "Telegram javob bermadi, qayta urinib ko'riladi",
+      "not_configured": "Telegram bot sozlanmagan"
+    },
+    "message": {
+      "title": "SINOV: bu haqiqiy ogohlantirish emas",
+      "body": "Fermada hech narsa bo'lmagan. Bu xabar shoshilinch ogohlantirishlar sizga yetib borishini tekshiradi. Hech narsa qilish shart emas."
     }
   },
   "telegram": {

@@ -10,7 +10,7 @@
   "tenants": {
     "tab": "Workspaces",
     "add": "Add workspace",
-    "addHint": "Standard roles and reference data are created automatically. The owner gets a one-time password.",
+    "addHint": "Standard roles and reference data are created automatically. A new owner gets a one-time password; someone with an account gets an invitation.",
     "edit": "Edit workspace",
     "name": "Name",
     "legalName": "Legal name",
@@ -46,7 +46,7 @@
     "reactivate": "Reactivate",
     "createdTitle": "Workspace created",
     "createdBody": "Give this password to the owner of \"{{name}}\".",
-    "createdExisting": "Workspace created. The owner signs in with their own password.",
+    "createdExisting": "Workspace created. The owner has been invited and joins once they accept.",
     "ownerPassword": "Owner password"
   },
   "plans": {
@@ -71,7 +71,7 @@
   "errors": {
     "STATUS_UNCHANGED": "The workspace already has this status.",
     "USER_STATUS_UNCHANGED": "The user already has this status.",
-    "CANNOT_RESET_SELF": "Change your own password from your profile."
+    "CANNOT_RESET_SELF": "Your own account cannot be reset from here."
   },
   "leads": {
     "title": "Leads",
@@ -98,6 +98,8 @@
     "deleteBody": "The lead from {{name}} will be removed for good. Use this for spam, or when someone asks us to delete their details.",
     "repeat_one": "wrote {{count}} time",
     "repeat_other": "wrote {{count}} times",
+    "repeats": "Later enquiries",
+    "repeatsHint": "Anyone can type a phone number, so these are kept apart and never change the first enquiry.",
     "allStatuses": "All statuses",
     "searchPlaceholder": "Name, phone, farm or region",
     "emptyTitle": "No leads yet",
@@ -128,6 +130,10 @@
     "unblock": "Unblock",
     "blockTitle": "Block this account?",
     "blockBody": "{{name}} will lose access to every farm and be signed out of every device.",
+    "reset2fa": "Reset 2FA",
+    "reset2faTitle": "Reset two-factor sign-in?",
+    "reset2faBody": "{{name}} will connect an authenticator app again at the next sign-in. All their sessions end.",
+    "reset2faDone": "Two-factor sign-in was reset",
     "resetPassword": "Reset password",
     "resetTitle": "Reset the password?",
     "resetBody": "A new one-time password will be created for {{name}}. The old one stops working.",

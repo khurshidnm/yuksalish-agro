@@ -1,7 +1,8 @@
 # API
 
 The full reference is generated from the code: Swagger UI at `/api/docs`, and OpenAPI 3.1 JSON at
-`/api/docs/json`. It lists 473 operations. This page covers what applies to all of them.
+`/api/docs/json`. It lists 473 operations. This page covers what applies to all of them. Production
+serves the reference only with `API_DOCS=true`, because anyone can read it there.
 
 The examples below were run against a seeded server. `$B` is `http://localhost:4000/api/v1`.
 
@@ -26,6 +27,10 @@ curl "$B/finance/counterparties?pageSize=2&sort=name" -H "authorization: Bearer 
   "meta": { "page": 1, "pageSize": 2, "total": 11 }
 }
 ```
+
+`total` is exact up to 10,000 rows past the page you asked for. Beyond that the count stops, `total` is a floor, and
+`meta` adds `"totalCapped": true`. Reading page after page until you hold `total` rows still reaches the end, because
+the floor moves on with the page.
 
 The rows above are shortened. JSON is camelCase, dates are `YYYY-MM-DD`, and ids are UUIDv7.
 
@@ -78,14 +83,40 @@ curl -X POST "$B/auth/login" -H 'content-type: application/json' \
 ```
 
 The response holds `accessToken` (15 minutes) and `session` (`user`, `tenant`, `farm`, `role`, `permissions`,
-`memberships`, `mustEnroll2fa`, `settings`). It also sets the `yap_rt` refresh cookie, which is `HttpOnly`,
-scoped to `/api/v1/auth`, and rotated on each use. If the user has 2FA on, the response is instead
-`{ "twoFactorRequired": true, "challengeToken": "..." }`, followed by `POST /auth/2fa/verify`.
+`memberships`, `invitations`, `mustChangePassword`, `mustEnroll2fa`, `settings`). It also sets the `yap_rt` refresh
+cookie, which is `HttpOnly`, scoped to `/api/v1/auth`, and rotated on each use. If the user has 2FA on, the response
+is instead `{ "twoFactorRequired": true, "challengeToken": "..." }`, followed by `POST /auth/2fa/verify` with `code`.
+A code from the app works once. `code` can also be a recovery code, and the answer then has `recoveryCodeUsed: true`.
+
+Ten failures for one phone from one address in 15 minutes answer `423 ACCOUNT_LOCKED`, with `details.minutes`, for
+at most 15 minutes. Wrong 2FA codes lock the code step of that account the same way, from any address.
+
+An issued password opens nothing but `POST /auth/change-password`: everything else answers
+`403 PASSWORD_CHANGE_REQUIRED`. A new password has at least 10 characters and at most 72 bytes, and common passwords
+and the person's phone are refused. A change signs out every other device, and answers like sign-in, with a new session.
+
+| Route | What it does |
+| --- | --- |
+| `POST /auth/2fa/enable` | Finishes enrolment. `recoveryCodes` holds ten single-use codes, readable only in this answer. |
+| `POST /auth/2fa/recovery-codes` | Replaces the codes. Needs `code`. |
+| `POST /auth/2fa/replace` | Clears the authenticator to enrol a new phone, and signs out other devices. Needs `code`. |
+| `POST /auth/invitations/:id/accept` | Joins the farm that invited this phone, and answers like sign-in on that farm. |
+| `POST /auth/invitations/:id/decline` | Answers with the session. |
+| `POST /settings/users/:id/reset-2fa` | For a person whose whole account belongs to this workspace. |
+| `POST /platform/users/:id/reset-2fa` | For anyone but yourself. |
+
+`POST /settings/users` creates a login for a new phone and answers with `member` and `oneTimePassword`. A phone with
+an account elsewhere answers with `invitation` and `member: null`, and the invitation holds only what the caller
+typed. `GET /settings/invitations` lists the open ones and `DELETE /settings/invitations/:id` cancels one.
+
+Platform routes need 2FA on: without it they answer `403 TWO_FACTOR_ENROLLMENT_REQUIRED`.
 
 Send the token on every request: `authorization: Bearer $TOKEN`. Without one, the API answers 401.
 
-`POST /auth/refresh` gets a new access token from the cookie. Replaying an old refresh token after a 10-second
-grace period signs out every device in that session.
+`POST /auth/refresh` gets a new access token from the cookie. A rotated token still works for 120 seconds. After that,
+a replay is read as a lost reply while nothing newer in the session has been used: the unused tokens are revoked and a
+new one is issued. Once something newer has been used, a replay is theft and ends the session, and so does presenting
+any revoked token. `POST /auth/logout` ends the whole session, so an older token cannot bring it back.
 
 ## Idempotency and client ids
 
@@ -174,5 +205,6 @@ skips events from the last 30 seconds. Delivery history is available from the we
 
 ## Rate limits
 
-Sign-in, 2FA and password routes allow 10 requests a minute per address. The AI chat has per-user limits, set with
+Sign-in, 2FA and password routes allow 10 requests a minute per address, session refresh and sign-out 60, routes
+that take an API key 1200, and adding people 60 an hour. The AI chat has per-user limits, set with
 `AI_CHAT_PER_MINUTE` and `AI_CHAT_PER_DAY` (defaults 10 and 200).

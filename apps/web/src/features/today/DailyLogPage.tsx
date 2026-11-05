@@ -2,64 +2,34 @@ import { todayIso } from '@yap/shared';
 import { CircleAlert, ThumbsUp } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate, useParams } from 'react-router';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 import { Alert, Badge, Button, Select, Textarea } from '@/components/ui';
 import { EmptyState } from '@/components';
 import { useCan, useSession } from '@/lib/auth';
-import { formatNumber, formatQty } from '@/lib/format';
+import { formatDate, formatNumber, formatQty } from '@/lib/format';
 import { canEdit, outbox, useOutbox, uuidv7, type OutboxRecord } from '@/lib/outbox';
 import { useTodayData, type TodayData, type TodayHerd } from './data';
 import { ChoiceButtons, FieldLabel, FieldScreen, FieldSkeleton, PhotoCapture, SaveBar, Stepper, type LocalPhoto } from './field-ui';
-import { dailyLogRecord, notableDeviation, queuedFeed, stepFor } from './logic';
+import { logToOpen, notableDeviation, queuedFeed, startingLines, stepFor, type LogLine, type SavedLogValues } from './logic';
 
 const WATER_STEP = 100;
 
-interface Line {
-  itemId: string;
-  itemName: string;
-  unit: string;
-  plannedQty: number;
-  qtyOnHand: number;
-  actualQty: number | null;
-}
-
-interface SavedValues {
-  lines: { itemId: string; actualQty: number }[];
-  waterL: number | null;
-  condition: string;
-  notes: string | null;
-}
-
-/** The ration prefilled, so an ordinary day takes one tap. A saved day opens with its saved amounts. */
-function startingLines(herd: TodayHerd, feedItems: TodayData['feedItems'], saved: SavedValues | null): Line[] {
-  const lines: Line[] = herd.lines.map((line) => ({
-    ...line,
-    actualQty: saved ? (saved.lines.find((l) => l.itemId === line.itemId)?.actualQty ?? 0) : line.plannedQty,
-  }));
-  for (const extra of saved?.lines ?? []) {
-    if (lines.some((l) => l.itemId === extra.itemId)) continue;
-    const item = feedItems.find((i) => i.id === extra.itemId);
-    if (item) lines.push({ itemId: item.id, itemName: item.name, unit: item.unit, plannedQty: 0, qtyOnHand: item.qtyOnHand, actualQty: extra.actualQty });
-  }
-  return lines;
-}
-
-function queuedValues(record: OutboxRecord): SavedValues {
-  const { lines, waterL, condition, notes } = record.body as unknown as SavedValues;
+function queuedValues(record: OutboxRecord): SavedLogValues {
+  const { lines, waterL, condition, notes } = record.body as unknown as SavedLogValues;
   return { lines, waterL, condition, notes };
 }
 
-function DailyLogForm({ herd, data, queued }: { herd: TodayHerd; data: TodayData; queued: OutboxRecord | undefined }) {
+function DailyLogForm({ herd, data, queued, date }: { herd: TodayHerd; data: TodayData; queued: OutboxRecord | undefined; date: string }) {
   const { t } = useTranslation('today');
   const navigate = useNavigate();
   const session = useSession();
   const { records } = useOutbox();
-  const date = todayIso();
   const serverLog = data.date === date ? herd.log : null;
   const saved = queued ? queuedValues(queued) : serverLog;
+  const earlierDay = date !== todayIso();
 
-  const [lines, setLines] = useState<Line[]>(() => startingLines(herd, data.feedItems, saved));
+  const [lines, setLines] = useState<LogLine[]>(() => startingLines(herd, data.feedItems, saved, queued?.meta.lines as Partial<LogLine>[] | undefined));
   const [waterL, setWaterL] = useState<number | null>(saved?.waterL ?? null);
   const [condition, setCondition] = useState(saved?.condition ?? 'normal');
   const [notes, setNotes] = useState(saved?.notes ?? '');
@@ -125,7 +95,7 @@ function DailyLogForm({ herd, data, queued }: { herd: TodayHerd; data: TodayData
         });
       }
       toast.success(t(navigator.onLine ? 'saved.sending' : 'saved.queued'));
-      void navigate('/today');
+      void navigate(earlierDay ? '/today/sync' : '/today');
     } catch {
       toast.error(t('saved.failed'));
       setSaving(false);
@@ -134,6 +104,7 @@ function DailyLogForm({ herd, data, queued }: { herd: TodayHerd; data: TodayData
 
   return (
     <>
+      {earlierDay && <Alert tone="info">{t('log.forDate', { date: formatDate(date) })}</Alert>}
       {correcting && <Alert tone="info">{t('log.correcting')}</Alert>}
       {lines.length === 0 && <Alert tone="info">{t('log.noRation')}</Alert>}
 
@@ -206,7 +177,7 @@ export default function DailyLogPage() {
   const can = useCan();
   const { data, loading } = useTodayData();
   const { records, ready, sendingId } = useOutbox();
-  const date = todayIso();
+  const [params] = useSearchParams();
 
   if (loading || !ready) return <FieldSkeleton />;
 
@@ -219,7 +190,9 @@ export default function DailyLogPage() {
     );
   }
 
-  const queued = dailyLogRecord(records, herd.id, date);
+  const today = todayIso();
+  const queued = logToOpen(records, herd.id, params.get('date'), today);
+  const date = (queued?.meta.date as string | undefined) ?? today;
   const subtitle = t('herd.head', { n: herd.headCount });
 
   // The first version may be on the server already, so a change here could be lost.
@@ -248,7 +221,7 @@ export default function DailyLogPage() {
 
   return (
     <FieldScreen title={herd.name} subtitle={subtitle}>
-      <DailyLogForm key={`${herd.id}:${queued?.id ?? ''}`} herd={herd} data={data} queued={queued} />
+      <DailyLogForm key={`${herd.id}:${queued?.id ?? ''}`} herd={herd} data={data} queued={queued} date={date} />
     </FieldScreen>
   );
 }

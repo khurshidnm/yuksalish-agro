@@ -14,6 +14,8 @@ export interface EventInput {
   source?: EventSource;
   photoFileId?: string | null;
   deviceId?: string | null;
+  /** The same device and key again is not stored, and the result says so. */
+  dedupKey?: string;
 }
 
 /** Midday at UTC+5, so a business date stays on the same local day in any report. */
@@ -25,21 +27,27 @@ function toTimestamp(value: string | Date | undefined): Date {
   return new Date();
 }
 
-/** Append to the unified journal (spec 4.1 p.4). */
-export async function recordEvent(input: EventInput): Promise<void> {
+/** Append to the unified journal (spec 4.1 p.4). False means this event is already there. */
+export async function recordEvent(input: EventInput): Promise<boolean> {
   const c = ctx();
-  await tx().insert(schema.events).values({
-    tenantId: c.tenantId,
-    farmId: c.farmId,
-    occurredAt: toTimestamp(input.occurredAt),
-    source: input.source ?? c.source,
-    type: input.type,
-    severity: input.severity ?? 'info',
-    entityType: input.entityType,
-    entityId: input.entityId ?? null,
-    data: input.data ?? {},
-    photoFileId: input.photoFileId ?? null,
-    deviceId: input.deviceId ?? null,
-    createdBy: c.userId,
-  });
+  const stored = await tx()
+    .insert(schema.events)
+    .values({
+      tenantId: c.tenantId,
+      farmId: c.farmId,
+      occurredAt: toTimestamp(input.occurredAt),
+      source: input.source ?? c.source,
+      type: input.type,
+      severity: input.severity ?? 'info',
+      entityType: input.entityType,
+      entityId: input.entityId ?? null,
+      data: input.data ?? {},
+      photoFileId: input.photoFileId ?? null,
+      deviceId: input.deviceId ?? null,
+      dedupKey: input.dedupKey,
+      createdBy: c.userId,
+    })
+    .onConflictDoNothing()
+    .returning({ id: schema.events.id });
+  return stored.length > 0;
 }

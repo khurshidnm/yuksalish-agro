@@ -6,6 +6,12 @@
   "cropPlanStatus": { "planned": "Planned", "sown": "Sown", "growing": "Growing", "harvested": "Harvested", "cancelled": "Cancelled" },
   "sex": { "female": "Female", "male": "Male" },
   "animalCategory": { "ewe": "Ewe", "ram": "Ram", "lamb_male": "Ram lamb", "lamb_female": "Ewe lamb", "wether": "Wether", "fattening": "Fattening" },
+  "animalCategoryBySpecies": {
+    "goat": { "ewe": "Doe", "ram": "Buck", "lamb_male": "Kid (male)", "lamb_female": "Kid (female)", "wether": "Wether", "fattening": "Fattening" },
+    "cattle": { "ewe": "Cow", "ram": "Bull", "lamb_male": "Calf (male)", "lamb_female": "Calf (female)", "wether": "Steer", "fattening": "Fattening" },
+    "horse": { "ewe": "Mare", "ram": "Stallion", "lamb_male": "Foal (male)", "lamb_female": "Foal (female)", "wether": "Gelding", "fattening": "Fattening" },
+    "poultry": { "ewe": "Hen", "ram": "Rooster", "lamb_male": "Chick (male)", "lamb_female": "Chick (female)", "wether": "Capon", "fattening": "Fattening" }
+  },
   "animalStatus": { "active": "Active", "pregnant": "Pregnant", "sick": "Sick", "quarantine": "Quarantine", "sold": "Sold", "slaughtered": "Slaughtered", "dead": "Dead", "lost": "Lost" },
   "animalOrigin": { "born": "Born on farm", "purchased": "Purchased" },
   "identifierType": { "ear_tag": "Ear tag", "rfid": "RFID", "qr": "QR code" },

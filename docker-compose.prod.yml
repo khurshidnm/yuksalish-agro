@@ -1,10 +1,20 @@
-# Production stack. Copy infra/env.production.example to .env.production, fill it in, then:
-#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
-# Only `web` is published, on loopback, for the TLS proxy in front of it (docs/deployment.md).
+# Production stack. Start and update it with infra/deploy.sh: see docs/deployment.md.
+# Only `web` is published, on loopback, for the TLS proxy in front of it (docker-compose.tls.yml).
+#
+# Memory: the defaults here suit an 8 GB server. infra/init-env.sh writes values sized for the real
+# server into .env.production, and those win. The pilot sizing they follow is in docs/deployment.md.
 name: yap-prod
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
 
 x-api-env: &api-env
   NODE_ENV: production
+  # A memory limit also shrinks Node's default heap to half of it, so it is set here, to about 75 %.
+  NODE_OPTIONS: --max-old-space-size=${API_HEAP_MB:-1536}
   DATABASE_URL: postgres://yap_app:${YAP_APP_PASSWORD:?}@db:5432/yap
   AI_DATABASE_URL: postgres://yap_ai:${YAP_AI_PASSWORD:?}@db:5432/yap
   REDIS_URL: redis://:${REDIS_PASSWORD:?}@redis:6379
@@ -27,16 +37,52 @@ x-api-env: &api-env
   AI_EFFORT: ${AI_EFFORT:-}
   AI_CHAT_PER_MINUTE: ${AI_CHAT_PER_MINUTE:-}
   AI_CHAT_PER_DAY: ${AI_CHAT_PER_DAY:-}
+  API_DOCS: ${API_DOCS:-}
+  HEARTBEAT_URL: ${HEARTBEAT_URL:-}
 
 services:
   db:
     build: ./infra/postgres
-    image: yap/postgres:17
+    image: ${YAP_IMAGE_PREFIX:-yap}/postgres:17
     restart: unless-stopped
+    # A clean shutdown finishes the checkpoint, so the next start needs no recovery.
+    stop_grace_period: 60s
+    mem_limit: ${DB_MEM_LIMIT:-3g}
+    # Parallel queries share memory through /dev/shm, and Docker's default of 64 MB is too small.
+    shm_size: 512m
+    logging: *logging
+    command:
+      - postgres
+      - -c
+      - shared_buffers=${PG_SHARED_BUFFERS:-768MB}
+      - -c
+      - effective_cache_size=${PG_EFFECTIVE_CACHE_SIZE:-2304MB}
+      - -c
+      - work_mem=${PG_WORK_MEM:-16MB}
+      - -c
+      - maintenance_work_mem=${PG_MAINTENANCE_WORK_MEM:-192MB}
+      - -c
+      - max_wal_size=2GB
+      - -c
+      - min_wal_size=256MB
+      - -c
+      - wal_compression=lz4
+      # The spec's server has SSD storage (21.1).
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - effective_io_concurrency=200
+      # A slow query in the log is the only evidence left after a stall. Its values can be personal data.
+      - -c
+      - log_min_duration_statement=1000
+      - -c
+      - log_parameter_max_length=0
     environment:
       POSTGRES_USER: yap
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
       POSTGRES_DB: yap
+      # Applies when the data volume is first created: disk corruption is then noticed, not read as data.
+      POSTGRES_INITDB_ARGS: --data-checksums
       YAP_APP_PASSWORD: ${YAP_APP_PASSWORD:?}
       YAP_AI_PASSWORD: ${YAP_AI_PASSWORD:?}
     volumes:
@@ -51,7 +97,24 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?}"]
+    stop_grace_period: 30s
+    mem_limit: ${REDIS_MEM_LIMIT:-512m}
+    logging: *logging
+    # noeviction: BullMQ's jobs live here, so when memory runs out Redis must refuse new writes rather
+    # than silently drop scheduled work. maxmemory stays well under the limit: a rewrite of the
+    # append-only file forks the process, and that needs room.
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      - --maxmemory
+      - ${REDIS_MAXMEMORY:-300mb}
+      - --maxmemory-policy
+      - noeviction
+      - --requirepass
+      - ${REDIS_PASSWORD:?}
     volumes:
       - redis:/data
     healthcheck:
@@ -66,9 +129,11 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    image: yap/api:latest
+    image: ${YAP_IMAGE_PREFIX:-yap}/api:latest
     command: ["tsx", "src/db/migrate.ts"]
     restart: "no"
+    mem_limit: ${API_MEM_LIMIT:-2g}
+    logging: *logging
     environment:
       DATABASE_OWNER_URL: postgres://yap:${POSTGRES_PASSWORD:?}@db:5432/yap
       PLATFORM_ADMIN_PHONE: ${PLATFORM_ADMIN_PHONE:-}
@@ -78,10 +143,12 @@ services:
         condition: service_healthy
 
   api:
-    image: yap/api:latest
+    image: ${YAP_IMAGE_PREFIX:-yap}/api:latest
     restart: unless-stopped
     # Stopping waits up to 20 s for Telegram turns in hand (bot.ts), then for jobs and open requests.
     stop_grace_period: 30s
+    mem_limit: ${API_MEM_LIMIT:-2g}
+    logging: *logging
     environment: *api-env
     volumes:
       - files:/data/storage
@@ -105,8 +172,10 @@ services:
         VITE_SITE_URL: ${VITE_SITE_URL:-}
         VITE_CONTACT_PHONE: ${VITE_CONTACT_PHONE:-}
         VITE_CONTACT_TELEGRAM: ${VITE_CONTACT_TELEGRAM:-}
-    image: yap/web:latest
+    image: ${YAP_IMAGE_PREFIX:-yap}/web:latest
     restart: unless-stopped
+    mem_limit: ${WEB_MEM_LIMIT:-256m}
+    logging: *logging
     ports:
       - "127.0.0.1:${WEB_PORT:-8080}:8080"
     depends_on:

@@ -1142,6 +1142,35 @@ describe('assistant', () => {
     });
   });
 
+  it('gives the model one pregnant count, the same one the dashboard shows', async () => {
+    const herd = TOOLS.find((candidate) => candidate.name === 'herd_summary')!;
+    const f = await createFixture();
+    const result = await f.run(() => herd.run({} as never, {} as never));
+    expect(result.data).toHaveProperty('pregnant');
+    expect(result.data).not.toHaveProperty('byStatus');
+  });
+
+  it('a table always says what its numbers are, in the person\'s language', async () => {
+    const f = await createFixture();
+    await f.run(async () => {
+      const [salary] = await tx().select().from(schema.financeCategories).where(sql`key = 'salary' and tenant_id = ${ctx().tenantId}`);
+      await tx().insert(schema.budgets).values({ ...base(f), month: monthOf(todayIso()), categoryId: salary.id, amount: 100 });
+    });
+    const owner = await f.as('owner');
+    setProvider(
+      new ScriptedProvider([
+        callTool('budget_execution'),
+        // The model asks for an internal code and the numbers.
+        callTool('present_result', { resultId: 'r1', kind: 'table', title: 'Byudjet', rowsKey: 'rows', columns: ['key', 'actual', 'planned'] }, 'p'),
+        reply('Mana.'),
+      ]),
+    );
+    const { data } = await owner.post('/ai/chat', { message: 'Budget this month?', language: 'en' });
+    const [table] = data.message.attachments;
+    expect(table.columns).toEqual(['name', 'actual', 'planned']);
+    expect(table.rows[0].name).toBe('Salaries');
+  });
+
   it('limits each person per minute, counted from stored questions', async () => {
     const f = await createFixture();
     const owner = await f.as('owner');

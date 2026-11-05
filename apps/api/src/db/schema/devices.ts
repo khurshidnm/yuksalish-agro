@@ -69,5 +69,5 @@ export const webhookDeliveries = pgTable(
     lastError: text(),
     deliveredAt: ts(),
   },
-  (t) => [index().on(t.farmId, t.status, t.nextAttemptAt), index().on(t.subscriptionId, t.createdAt.desc())],
+  (t) => [index().on(t.farmId, t.status, t.nextAttemptAt), index().on(t.subscriptionId, t.createdAt)],
 );

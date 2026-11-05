@@ -8,7 +8,7 @@ import { round, toBaseAmount, type CostTreatment, type TransactionType } from '@
 import { schema } from '../db/client';
 import { ctx, hasPermission, tx } from './context';
 import { badRequest, conflict, forbidden, notFound } from './errors';
-import { receiptOfBatch, removeEmptyBatches, reverseMovements, reverseStockDocument } from './inventory';
+import { receiptOfBatch, removeEmptyBatches, reverseMovements, reverseStockDocument, STOCK_DOC_REF } from './inventory';
 import { recordEvent } from './journal';
 
 const { accounts, animalExits, assetUsageLogs, costCenters, fxRates, maintenanceRecords, purchaseRequests, transactions } = schema;
@@ -269,9 +269,10 @@ const rejectedAs = (reason: string) => ({
 
 /**
  * Their money can be cancelled in finance. An animal sale, a repair and a rental act are then
- * corrected where they were entered; a purchase request is put right here: see reopenPurchaseRequest.
+ * corrected where they were entered; a purchase request and money entered for a receipt afterwards
+ * are put right here: see reopenPurchaseRequest and releaseReceiptMoney.
  */
-export const SOURCES_RELEASED_BY_CANCEL = ['animal_exit', 'maintenance', 'rental_act', 'purchase_request'];
+export const SOURCES_RELEASED_BY_CANCEL = ['animal_exit', 'maintenance', 'rental_act', 'purchase_request', 'stock_doc'];
 
 /**
  * A purchase request is paid once, so cancelling that payment undoes everything after it: goods
@@ -308,6 +309,31 @@ async function reopenPurchaseRequest(row: Transaction): Promise<void> {
   });
 }
 
+/**
+ * Money entered for a receipt after the goods came goes whole, like a stock purchase, but the goods
+ * stay: they really came, and the receipt is back among those with no money. One entry at a time,
+ * because cancelling the next one comes back here for the one after it.
+ */
+async function releaseReceiptMoney(row: Transaction): Promise<void> {
+  const [next] = await tx()
+    .select({ id: transactions.id, status: transactions.status })
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.farmId, row.farmId),
+        eq(transactions.sourceType, STOCK_DOC_REF),
+        eq(transactions.sourceId, row.sourceId!),
+        inArray(transactions.status, ['pending', 'approved']),
+      ),
+    )
+    .orderBy(asc(transactions.id))
+    .limit(1)
+    .for('update');
+  if (!next) return;
+  if (next.status === 'pending') await rejectPending(next.id, row.rejectedReason!);
+  else await voidTransactions({ id: next.id }, row.rejectedReason!);
+}
+
 /** These records refuse to be undone, billed again or moved on while they point at money. */
 async function releaseSource(row: Transaction): Promise<void> {
   if (row.sourceType === 'animal_exit') {
@@ -318,6 +344,8 @@ async function releaseSource(row: Transaction): Promise<void> {
     await tx().update(assetUsageLogs).set({ billedTransactionId: null }).where(eq(assetUsageLogs.billedTransactionId, row.id));
   } else if (row.sourceType === 'purchase_request') {
     await reopenPurchaseRequest(row);
+  } else if (row.sourceType === STOCK_DOC_REF) {
+    await releaseReceiptMoney(row);
   }
 }
 

@@ -2,10 +2,10 @@ import { addDays, todayIso } from '@yap/shared';
 import { eq, sql } from 'drizzle-orm';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { generalCostCenterId } from '../src/core/costCenters';
-import { stockOnHand } from '../src/core/inventory';
 import { tx } from '../src/core/context';
-import { issueStock } from '../src/core/inventory';
+import { issueStock, stockOnHand } from '../src/core/inventory';
 import { schema } from '../src/db/client';
+import { evaluateRules } from '../src/modules/alerts/rules';
 import { countLayout, documentLayout } from '../src/modules/inventory/documents.service';
 import { feedBalance, feedConsumption, lowStock } from '../src/modules/inventory/summary';
 import { seedInventory } from '../src/seed/inventory';
@@ -13,7 +13,7 @@ import { SEED } from '../src/seed/names';
 import type { SeedContext } from '../src/seed/types';
 import { createFixture, type Client, type Fixture } from './helpers';
 
-const { accounts, animals, crops, financeCategories, herds, species, transactions } = schema;
+const { accounts, animals, crops, financeCategories, herds, notifications, species, transactions } = schema;
 
 const TODAY = todayIso();
 const daysAgo = (n: number) => addDays(TODAY, -n);
@@ -356,6 +356,648 @@ describe('receipts', () => {
     );
     expect(res.status).toBe(404);
     expect((await owner.get('/inventory/items/lookup', { search: 'Atomic' })).data[0].qtyOnHand).toBe(0);
+  });
+});
+
+describe('receipts with no money behind them', () => {
+  const LIST = '/finance/debts/unpaid-receipts';
+  const OPENING_CASH = 20_000_000;
+
+  let f: Fixture;
+  let owner: Client;
+  let director: Client;
+  let accountant: Client;
+  let storekeeper: Client;
+  let w: string;
+  let vendor: string;
+  let cash: string;
+  let dollars: string;
+  let barley: string;
+  let drug: string;
+  let general: string;
+
+  let names = 0;
+  const unique = (name: string) => `${name} ${++names}`;
+  const newSupplier = async (name = 'Buxoro Yem Savdo') =>
+    (await owner.post('/finance/counterparties', { name: unique(name), type: 'supplier' })).data.id as string;
+
+  beforeAll(async () => {
+    f = await createFixture();
+    owner = await f.as('owner');
+    director = await f.as('director');
+    accountant = await f.as('accountant');
+    storekeeper = await f.as('storekeeper');
+    w = await warehouse(owner, 'Asosiy ombor');
+    vendor = await newSupplier();
+    barley = await item(owner, { name: 'Arpa doni' });
+    drug = await item(owner, { name: 'Antibiotik', category: 'vet_drug', unit: 'vial' });
+    [cash, dollars, general] = await f.run(async () => {
+      const base = { tenantId: f.tenantId, farmId: f.farmId };
+      const [till] = await tx().insert(accounts).values({ ...base, name: 'Kassa', type: 'cash', openingBalance: OPENING_CASH }).returning();
+      const [safe] = await tx().insert(accounts).values({ ...base, name: 'Dollar seyf', type: 'cash', currency: 'USD' }).returning();
+      return [till.id, safe.id, await generalCostCenterId()];
+    });
+  });
+
+  /** 1 000 kg x 3 300 = 3 300 000: below the threshold, so money for it is approved at once. */
+  const small = () => [{ itemId: barley, qty: 1000, unitCost: 3300 }];
+  /** 3 000 kg x 3 300 = 9 900 000: the receipt KO-2026-0006 of the first-day check. Needs a second person. */
+  const large = () => [{ itemId: barley, qty: 3000, unitCost: 3300 }];
+  /** 1 000 kg x 4 000 + 100 x 15 000 = 5 500 000. Neither line reaches 5 000 000, together they do. */
+  const mixed = () => [
+    { itemId: barley, qty: 1000, unitCost: 4000 },
+    { itemId: drug, qty: 100, unitCost: 15_000 },
+  ];
+
+  async function received(lines = small(), over: object = {}) {
+    const res = await storekeeper.post('/inventory/receipts', { warehouseId: w, date: TODAY, counterpartyId: vendor, lines, ...over });
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    return res.data as { docNo: string; refId: string; batches: { id: string }[] };
+  }
+
+  const listed = async (refId: string) => (await accountant.get(LIST, { pageSize: 200 })).data.find((row: any) => row.id === refId);
+  const total = async () => (await accountant.get(LIST)).body.meta.total as number;
+  const record = (refId: string, body: object, who = accountant) => who.post(`${LIST}/${refId}/record`, body);
+  const onCredit = { paymentMethod: 'debt' };
+  const paidInCash = () => ({ paymentMethod: 'cash', accountId: cash });
+
+  async function recorded(refId: string, body: object = onCredit) {
+    const res = await record(refId, body);
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    return res.data as { docNo: string; transactions: { id: string; status: string }[] };
+  }
+
+  const moneyOf = (refId: string) => f.run(() => tx().select().from(transactions).where(eq(transactions.sourceId, refId)).orderBy(transactions.id));
+  const owed = async (counterpartyId: string): Promise<number> =>
+    (await accountant.get('/finance/debts', { direction: 'payable' })).data.find((d: any) => d.counterpartyId === counterpartyId)?.outstanding ?? 0;
+  const cashLeft = async (): Promise<number> => (await accountant.get('/finance/accounts')).data.find((a: any) => a.id === cash).balance;
+  const onHand = (itemId: string) => f.run(() => stockOnHand(itemId));
+  const reject = (id: string) => director.post(`/finance/transactions/${id}/reject`, { reason: 'Xato hisob' });
+  const voidEntry = (id: string) => director.post(`/finance/transactions/${id}/void`, { reason: 'Xato hisob' });
+
+  it('shows finance what a storekeeper received: the supplier, the goods and their value', async () => {
+    const supplierId = await newSupplier('Qarshi Don');
+    const { refId, docNo } = await received(
+      [
+        { itemId: barley, qty: 3000, unitCost: 3300 },
+        { itemId: drug, qty: 40, unitCost: 12_500 },
+      ],
+      { counterpartyId: supplierId, invoiceNo: 'HF-12' },
+    );
+    // 9 900 000 + 500 000
+    expect(await listed(refId)).toMatchObject({
+      id: refId,
+      docNo,
+      date: TODAY,
+      counterpartyId: supplierId,
+      supplier: expect.stringContaining('Qarshi Don'),
+      invoiceNo: 'HF-12',
+      value: 10_400_000,
+      goods: 'Arpa doni, Antibiotik',
+      lines: [
+        { itemName: 'Arpa doni', itemCategory: 'feed', unit: 'kg', qty: 3000, value: 9_900_000 },
+        { itemName: 'Antibiotik', itemCategory: 'vet_drug', unit: 'vial', qty: 40, value: 500_000 },
+      ],
+    });
+  });
+
+  it('the first-day story: 2 500 000 + 6 200 000 + 9 900 000 = 18 600 000 really owed', async () => {
+    const supplierId = await newSupplier();
+    const categories = (await accountant.get('/finance/categories', { kind: 'expense' })).data;
+    const feed = categories.find((c: any) => c.key === 'feed').id;
+    const earlier = await accountant.post('/finance/transactions', {
+      date: TODAY, type: 'expense', amount: 2_500_000, categoryId: feed, costCenterId: general, paymentMethod: 'debt', counterpartyId: supplierId,
+    });
+    expect(earlier.status).toBe(201);
+
+    const byOwner = await owner.post('/inventory/receipts', {
+      warehouseId: w, date: TODAY, counterpartyId: supplierId, lines: [{ itemId: barley, qty: 2000, unitCost: 3100 }], payment: { paymentMethod: 'debt' },
+    });
+    expect((await accountant.post(`/finance/transactions/${byOwner.data.transactions[0].id}/approve`)).status).toBe(200);
+    expect(await listed(byOwner.data.refId)).toBeUndefined();
+
+    const { refId } = await received(large(), { counterpartyId: supplierId });
+    expect(await owed(supplierId)).toBe(8_700_000);
+    expect((await listed(refId)).value).toBe(9_900_000);
+
+    const { transactions: [money] } = await recorded(refId);
+    expect(money.status).toBe('pending');
+    expect(await listed(refId)).toBeUndefined();
+    expect(await owed(supplierId)).toBe(8_700_000);
+    expect((await director.post(`/finance/transactions/${money.id}/approve`)).status).toBe(200);
+    expect(await owed(supplierId)).toBe(18_600_000);
+  });
+
+  it('recorded as a debt, it opens the debt, links to the receipt and leaves the list', async () => {
+    const supplierId = await newSupplier();
+    const { refId, docNo } = await received(small(), { counterpartyId: supplierId, invoiceNo: 'HF-7', notes: 'Bahorgi partiya' });
+    const stock = await onHand(barley);
+    const money = await recorded(refId, { paymentMethod: 'debt', dueDate: addDays(TODAY, 30) });
+    expect(money).toMatchObject({ docNo, transactions: [{ status: 'approved' }] });
+
+    const [row] = await moneyOf(refId);
+    const [category] = await f.run(() => tx().select().from(financeCategories).where(eq(financeCategories.id, row.categoryId!)));
+    expect(category.key).toBe('feed');
+    expect(row).toMatchObject({
+      type: 'expense',
+      date: TODAY,
+      amount: 3_300_000,
+      amountBase: 3_300_000,
+      paymentMethod: 'debt',
+      accountId: null,
+      counterpartyId: supplierId,
+      costCenterId: general,
+      costTreatment: 'inventory',
+      dueDate: addDays(TODAY, 30),
+      sourceType: 'stock_doc',
+      sourceId: refId,
+      description: `${docNo} / HF-7 / Bahorgi partiya`,
+      createdBy: accountant.userId,
+    });
+    expect(await listed(refId)).toBeUndefined();
+    expect(await owed(supplierId)).toBe(3_300_000);
+    expect(await onHand(barley)).toBe(stock);
+  });
+
+  it('recorded as paid, the money leaves the account and no debt opens', async () => {
+    const supplierId = await newSupplier();
+    const { refId } = await received(small(), { counterpartyId: supplierId });
+    const before = await cashLeft();
+    await recorded(refId, paidInCash());
+    expect(await cashLeft()).toBe(before - 3_300_000);
+    expect(await owed(supplierId)).toBe(0);
+    expect(await listed(refId)).toBeUndefined();
+    expect((await moneyOf(refId))[0]).toMatchObject({ paymentMethod: 'cash', accountId: cash, costTreatment: 'inventory' });
+  });
+
+  it('the cost still reaches a cost center only when the goods are issued', async () => {
+    const hay = await item(owner, { name: unique('Pichan') });
+    const costs = async (): Promise<number> => (await accountant.get('/finance/costs/centers')).data.find((c: any) => c.costCenterId === general).total;
+    const before = await costs();
+    const { refId } = await received([{ itemId: hay, qty: 1000, unitCost: 3300 }]);
+    await recorded(refId, paidInCash());
+    expect(await costs()).toBe(before);
+    // 250 kg x 3 300
+    await storekeeper.post('/inventory/issues', { warehouseId: w, date: TODAY, costCenterId: general, lines: [{ itemId: hay, qty: 250 }] });
+    expect(await costs()).toBe(before + 825_000);
+  });
+
+  it('stays listed while the goods are being used: the supplier is still owed all of it', async () => {
+    const hay = await item(owner, { name: unique('Somon') });
+    const { refId } = await received([{ itemId: hay, qty: 10, unitCost: 2000 }]);
+    await storekeeper.post('/inventory/issues', { warehouseId: w, date: TODAY, costCenterId: general, lines: [{ itemId: hay, qty: 10 }] });
+    expect((await listed(refId)).value).toBe(20_000);
+    expect((await moneyOf(refId))).toEqual([]);
+    await recorded(refId);
+    expect((await moneyOf(refId))[0].amountBase).toBe(20_000);
+  });
+
+  it('takes the day of the receipt unless told when the money moved', async () => {
+    const debt = await received(small(), { date: daysAgo(5) });
+    await recorded(debt.refId);
+    expect((await moneyOf(debt.refId))[0].date).toBe(daysAgo(5));
+
+    const paid = await received(small(), { date: daysAgo(5) });
+    await recorded(paid.refId, { ...paidInCash(), date: TODAY });
+    expect((await moneyOf(paid.refId))[0].date).toBe(TODAY);
+  });
+
+  it('leaves out everything that is not a purchase from a supplier waiting for money', async () => {
+    const before = await total();
+    const take = (body: object) => owner.post('/inventory/receipts', { warehouseId: w, date: TODAY, lines: small(), ...body });
+
+    expect((await take({ source: 'opening' })).status).toBe(201);
+    expect((await take({ source: 'return', counterpartyId: vendor })).status).toBe(201);
+    expect((await take({ counterpartyId: vendor, payment: paidInCash() })).status).toBe(201);
+    expect((await take({ counterpartyId: vendor, payment: { paymentMethod: 'debt' } })).status).toBe(201);
+    expect((await take({ payment: paidInCash() })).status).toBe(201);
+    expect((await take({ counterpartyId: vendor, lines: [{ itemId: barley, qty: 5, unitCost: 0 }] })).status).toBe(201);
+    expect(await total()).toBe(before);
+  });
+
+  it('a money row on one batch covers the whole receipt, not only that line', async () => {
+    const res = await owner.post('/inventory/receipts', {
+      warehouseId: w, date: TODAY, counterpartyId: vendor, lines: small().concat(small()), payment: { paymentMethod: 'debt' },
+    });
+    expect(res.data.batches).toHaveLength(2);
+    expect(res.data.transactions).toHaveLength(1);
+    expect(await listed(res.data.refId)).toBeUndefined();
+    const again = await record(res.data.refId, onCredit);
+    expect(again.status).toBe(409);
+    expect(again.body.error.code).toBe('RECEIPT_HAS_MONEY');
+  });
+
+  it('goods of a purchase request are paid through the request, so they never show', async () => {
+    const before = await total();
+    const { data: request } = await owner.post('/sales/purchases', { itemId: barley, qty: 100, expectedPrice: 3000, counterpartyId: vendor });
+    expect((await director.post(`/sales/purchases/${request.id}/approve`)).status).toBe(200);
+    const paid = await owner.post(`/sales/purchases/${request.id}/pay`, { date: TODAY, amount: 300_000, paymentMethod: 'cash', accountId: cash });
+    expect(paid.status).toBe(200);
+    const came = await owner.post(`/sales/purchases/${request.id}/receive`, { date: TODAY, qty: 100, warehouseId: w, quality: 'Yaxshi' });
+    expect(came.status, JSON.stringify(came.body)).toBe(200);
+    expect(await total()).toBe(before);
+  });
+
+  describe('goods a paid purchase request is still waiting for', () => {
+    async function paidRequest(itemId: string, counterpartyId: string | null) {
+      const { data: request } = await owner.post('/sales/purchases', { itemId, qty: 10, expectedPrice: 100, counterpartyId });
+      expect((await director.post(`/sales/purchases/${request.id}/approve`)).status).toBe(200);
+      const paid = await owner.post(`/sales/purchases/${request.id}/pay`, { date: TODAY, amount: 1000, paymentMethod: 'cash', accountId: cash });
+      expect(paid.status, JSON.stringify(paid.body)).toBe(200);
+      return request.id as string;
+    }
+    const newItem = () => item(owner, { name: unique('Xarid tovari') });
+
+    it('are flagged when entered as a plain receipt, because money here would count twice', async () => {
+      const goods = await newItem();
+      await paidRequest(goods, vendor);
+      const { refId } = await received([{ itemId: barley, qty: 1, unitCost: 100 }, { itemId: goods, qty: 10, unitCost: 100 }]);
+      expect((await listed(refId)).paidRequest).toBe(true);
+    });
+
+    it('a request that named no supplier could be any delivery of that item', async () => {
+      const goods = await newItem();
+      await paidRequest(goods, null);
+      expect((await listed((await received([{ itemId: goods, qty: 10, unitCost: 100 }])).refId)).paidRequest).toBe(true);
+    });
+
+    it('are not flagged for another supplier, another item, or a request already received', async () => {
+      const goods = await newItem();
+      const id = await paidRequest(goods, vendor);
+      const other = await newItem();
+      expect((await listed((await received([{ itemId: goods, qty: 1, unitCost: 100 }], { counterpartyId: await newSupplier() })).refId)).paidRequest).toBe(false);
+      expect((await listed((await received([{ itemId: other, qty: 1, unitCost: 100 }])).refId)).paidRequest).toBe(false);
+
+      await owner.post(`/sales/purchases/${id}/receive`, { date: TODAY, qty: 10, warehouseId: w, quality: 'Yaxshi' });
+      expect((await listed((await received([{ itemId: goods, qty: 1, unitCost: 100 }])).refId)).paidRequest).toBe(false);
+    });
+
+    it('still leaves the decision to a person', async () => {
+      const goods = await newItem();
+      await paidRequest(goods, vendor);
+      const { refId } = await received([{ itemId: goods, qty: 10, unitCost: 100 }]);
+      expect((await record(refId, onCredit)).status).toBe(201);
+    });
+  });
+
+  it('a receipt that was reversed leaves the list', async () => {
+    const { refId, docNo } = await received();
+    expect(await listed(refId)).toBeDefined();
+    expect((await owner.post(`/inventory/documents/${docNo}/reverse`)).status).toBe(200);
+    expect(await listed(refId)).toBeUndefined();
+    expect((await record(refId, onCredit)).status).toBe(404);
+  });
+
+  it('reads oldest first, pages, and finds by supplier, number or goods', async () => {
+    const supplierId = await newSupplier('Uzoq Savdo');
+    const rare = await item(owner, { name: unique('Noyob yem') });
+    const later = await received(small(), { counterpartyId: supplierId, date: daysAgo(1) });
+    const earlier = await received([{ itemId: rare, qty: 1, unitCost: 100 }], { counterpartyId: supplierId, date: daysAgo(3) });
+
+    const bySupplier = await accountant.get(LIST, { search: 'Uzoq Savdo' });
+    expect(bySupplier.data.map((row: any) => row.id)).toEqual([earlier.refId, later.refId]);
+    expect(bySupplier.body.meta.total).toBe(2);
+    const biggest = await accountant.get(LIST, { search: 'Uzoq Savdo', sort: '-value' });
+    expect(biggest.data[0].id).toBe(later.refId);
+
+    const first = await accountant.get(LIST, { search: 'Uzoq Savdo', pageSize: 1 });
+    expect(first.data.map((row: any) => row.id)).toEqual([earlier.refId]);
+    expect(first.body.meta).toMatchObject({ page: 1, pageSize: 1, total: 2 });
+
+    expect((await accountant.get(LIST, { search: later.docNo })).data.map((row: any) => row.id)).toEqual([later.refId]);
+    expect((await accountant.get(LIST, { search: 'Noyob yem' })).data.map((row: any) => row.id)).toEqual([earlier.refId]);
+  });
+
+  describe('who may see and record it (rule 7)', () => {
+    it('a storekeeper gets no list and cannot record, though they entered the goods', async () => {
+      const { refId } = await received();
+      const seen = await storekeeper.get(LIST);
+      expect(seen.status).toBe(403);
+      expect(JSON.stringify(seen.body)).not.toContain('3300000');
+      expect((await record(refId, onCredit, storekeeper)).status).toBe(403);
+      expect(await moneyOf(refId)).toEqual([]);
+    });
+
+    it('neither do other warehouse users, whatever else they manage', async () => {
+      for (const role of ['agronomist', 'zootechnician', 'veterinarian', 'investor'] as const) {
+        expect((await (await f.as(role)).get(LIST)).status, role).toBe(403);
+      }
+    });
+
+    it('an auditor reads the list and records nothing', async () => {
+      const { refId } = await received();
+      const auditor = await f.as('auditor');
+      expect((await auditor.get(LIST)).status).toBe(200);
+      expect((await record(refId, onCredit, auditor)).status).toBe(403);
+    });
+
+    it('another tenant cannot see it or record it', async () => {
+      const { refId } = await received();
+      const stranger = await (await createFixture()).as('accountant');
+      expect((await stranger.get(LIST)).data).toEqual([]);
+      expect((await record(refId, onCredit, stranger)).status).toBe(404);
+      expect(await moneyOf(refId)).toEqual([]);
+    });
+  });
+
+  describe('the alert', () => {
+    const alertsOf = async (who: Client, refId: string) =>
+      (await who.get('/alerts', { active: 'true', pageSize: 200 })).data.filter((alert: any) => alert.entityId === refId);
+    const toldUsers = async (refId: string) => {
+      const [alert] = await alertsOf(accountant, refId);
+      const rows = await f.run(() => tx().select().from(notifications).where(eq(notifications.alertId, alert.id)));
+      return rows.map((row) => row.userId);
+    };
+
+    it('tells the accountant once, and no one who may not see money', async () => {
+      const { refId, docNo } = await received();
+      await f.run(() => evaluateRules());
+      await f.run(() => evaluateRules());
+
+      const raised = await alertsOf(accountant, refId);
+      expect(raised).toHaveLength(1);
+      expect(raised[0]).toMatchObject({ ruleKey: 'receipt_unpaid', severity: 'attention', link: '/finance/debts?tab=receipts' });
+      expect(raised[0].title).toContain(docNo);
+      expect(raised[0].body).toContain('Buxoro Yem Savdo');
+      expect(raised[0].body).toContain('Arpa doni');
+      expect(await toldUsers(refId)).toEqual([accountant.userId]);
+      expect(await alertsOf(storekeeper, refId)).toEqual([]);
+    });
+
+    it('each new delivery raises its own alert, so the second one is heard as well', async () => {
+      const first = await received();
+      await f.run(() => evaluateRules());
+      const second = await received();
+      await f.run(() => evaluateRules());
+      expect(await alertsOf(accountant, first.refId)).toHaveLength(1);
+      expect(await toldUsers(second.refId)).toEqual([accountant.userId]);
+    });
+
+    it('resolves once the money is recorded, even while it waits for approval', async () => {
+      const { refId } = await received(large());
+      await f.run(() => evaluateRules());
+      expect(await alertsOf(accountant, refId)).toHaveLength(1);
+      await recorded(refId);
+      await f.run(() => evaluateRules());
+      expect(await alertsOf(accountant, refId)).toEqual([]);
+    });
+
+    it('comes back when that money is refused', async () => {
+      const { refId } = await received(large());
+      const { transactions: [money] } = await recorded(refId);
+      expect((await reject(money.id)).status).toBe(200);
+      await f.run(() => evaluateRules());
+      expect(await alertsOf(accountant, refId)).toHaveLength(1);
+    });
+  });
+
+  describe('a mixed invoice', () => {
+    it('lands on one line per category, and approval looks at the whole receipt', async () => {
+      const { refId } = await received(mixed());
+      expect((await listed(refId)).value).toBe(5_500_000);
+      const money = await recorded(refId);
+      expect(money.transactions.map((t) => t.status)).toEqual(['pending', 'pending']);
+
+      const rows = await f.run(() =>
+        tx()
+          .select({ key: financeCategories.key, amount: transactions.amount })
+          .from(transactions)
+          .innerJoin(financeCategories, eq(financeCategories.id, transactions.categoryId))
+          .where(eq(transactions.sourceId, refId)),
+      );
+      expect(rows.sort((a, b) => a.key.localeCompare(b.key))).toEqual([
+        { key: 'feed', amount: 4_000_000 },
+        { key: 'veterinary', amount: 1_500_000 },
+      ]);
+    });
+
+    it('a category chosen by a person takes the whole receipt, as on the receipt form', async () => {
+      const { refId } = await received(mixed());
+      const categories = (await accountant.get('/finance/categories', { kind: 'expense' })).data;
+      const other = categories.find((c: any) => c.key === 'feed').id;
+      await recorded(refId, { ...onCredit, categoryId: other });
+      const rows = await moneyOf(refId);
+      expect(rows.map((row) => [row.categoryId, row.amount])).toEqual([[other, 5_500_000]]);
+    });
+
+    it('refused on one line, the other goes too, and the whole receipt is back', async () => {
+      const { refId } = await received(mixed());
+      const { transactions: [first] } = await recorded(refId);
+      expect((await reject(first.id)).status).toBe(200);
+
+      const rows = await moneyOf(refId);
+      expect(rows.map((row) => row.status)).toEqual(['rejected', 'rejected']);
+      expect(rows.map((row) => row.rejectedReason)).toEqual(['Xato hisob', 'Xato hisob']);
+      expect((await listed(refId)).value).toBe(5_500_000);
+    });
+
+    it('takes a line that was already approved with it', async () => {
+      const supplierId = await newSupplier();
+      const { refId } = await received(mixed(), { counterpartyId: supplierId });
+      const { transactions: [first, second] } = await recorded(refId);
+      expect((await director.post(`/finance/transactions/${first.id}/approve`)).status).toBe(200);
+      expect(await owed(supplierId)).toBeGreaterThan(0);
+
+      expect((await reject(second.id)).status).toBe(200);
+      expect((await moneyOf(refId)).map((row) => row.status)).toEqual(['rejected', 'rejected']);
+      expect(await owed(supplierId)).toBe(0);
+      expect(await listed(refId)).toBeDefined();
+    });
+
+    it('a payment standing on an approved line keeps the whole invoice', async () => {
+      const supplierId = await newSupplier();
+      const { refId } = await received(mixed(), { counterpartyId: supplierId });
+      const { transactions: [first, second] } = await recorded(refId);
+      expect((await director.post(`/finance/transactions/${first.id}/approve`)).status).toBe(200);
+      const settled = await accountant.post('/finance/debts/settle', { counterpartyId: supplierId, direction: 'payable', amount: 1_000_000, date: TODAY, accountId: cash });
+      expect(settled.status, JSON.stringify(settled.body)).toBe(201);
+
+      const refused = await reject(second.id);
+      expect(refused.status).toBe(409);
+      expect(refused.body.error.code).toBe('DEBT_ALREADY_SETTLED');
+      expect((await moneyOf(refId)).filter((row) => row.status === 'rejected')).toEqual([]);
+      expect(await listed(refId)).toBeUndefined();
+    });
+  });
+
+  describe('money entered by mistake', () => {
+    it('refused by the second person, the goods stay and the receipt comes back to be entered again', async () => {
+      const { refId } = await received(large());
+      const stock = await onHand(barley);
+      const { transactions: [money] } = await recorded(refId);
+      expect(await listed(refId)).toBeUndefined();
+
+      expect((await reject(money.id)).status).toBe(200);
+      expect(await onHand(barley)).toBe(stock);
+      expect((await listed(refId)).value).toBe(9_900_000);
+
+      const again = await recorded(refId);
+      expect(again.transactions[0].status).toBe('pending');
+      expect((await moneyOf(refId)).map((row) => row.status)).toEqual(['rejected', 'pending']);
+    });
+
+    it('can be refused even after the goods were used, unlike money posted with the receipt', async () => {
+      const hay = await item(owner, { name: unique('Beda') });
+      const { refId } = await received([{ itemId: hay, qty: 2000, unitCost: 3000 }]);
+      const { transactions: [money] } = await recorded(refId);
+      await storekeeper.post('/inventory/issues', { warehouseId: w, date: TODAY, costCenterId: general, lines: [{ itemId: hay, qty: 500 }] });
+
+      expect((await reject(money.id)).status).toBe(200);
+      expect(await onHand(hay)).toBe(1500);
+      expect((await listed(refId)).value).toBe(6_000_000);
+    });
+
+    it('voided after approval, the debt goes, the goods stay and the receipt comes back', async () => {
+      const supplierId = await newSupplier();
+      const { refId } = await received(small(), { counterpartyId: supplierId });
+      const stock = await onHand(barley);
+      const { transactions: [money] } = await recorded(refId);
+      expect(await owed(supplierId)).toBe(3_300_000);
+
+      expect((await voidEntry(money.id)).status).toBe(200);
+      expect(await owed(supplierId)).toBe(0);
+      expect(await onHand(barley)).toBe(stock);
+      expect((await listed(refId)).value).toBe(3_300_000);
+    });
+
+    it('the void stays with a second person', async () => {
+      const { refId } = await received();
+      const { transactions: [money] } = await recorded(refId);
+      const own = await accountant.post(`/finance/transactions/${money.id}/void`, { reason: 'Xato' });
+      expect(own.status).toBe(403);
+      expect(own.body.error.code).toBe('SAME_MAKER_CHECKER');
+      expect(await listed(refId)).toBeUndefined();
+    });
+
+    it('cannot be changed in the journal, because its amount is the value of the receipt', async () => {
+      const { refId } = await received(large());
+      const { transactions: [money] } = await recorded(refId);
+      expect((await accountant.patch(`/finance/transactions/${money.id}`, { amount: 1 })).body.error.code).toBe('TRANSACTION_HAS_SOURCE');
+      expect((await accountant.delete(`/finance/transactions/${money.id}`)).body.error.code).toBe('TRANSACTION_HAS_SOURCE');
+    });
+  });
+
+  describe('stock and money stay together', () => {
+    it('a receipt with money on it cannot be reversed until the money is cancelled', async () => {
+      const { refId, docNo } = await received();
+      const { transactions: [money] } = await recorded(refId);
+
+      const refused = await owner.post(`/inventory/documents/${docNo}/reverse`);
+      expect(refused.status).toBe(409);
+      expect(refused.body.error.code).toBe('DOCUMENT_HAS_PAYMENT');
+
+      expect((await voidEntry(money.id)).status).toBe(200);
+      expect((await owner.post(`/inventory/documents/${docNo}/reverse`)).status).toBe(200);
+      expect(await listed(refId)).toBeUndefined();
+    });
+
+    it('money waiting for approval holds the receipt too', async () => {
+      const { refId, docNo } = await received(large());
+      await recorded(refId);
+      expect((await owner.post(`/inventory/documents/${docNo}/reverse`)).body.error.code).toBe('DOCUMENT_HAS_PAYMENT');
+    });
+
+    it('cannot be recorded twice', async () => {
+      const { refId, docNo } = await received();
+      await recorded(refId);
+      const twice = await record(refId, paidInCash());
+      expect(twice.status).toBe(409);
+      expect(twice.body.error).toMatchObject({ code: 'RECEIPT_HAS_MONEY', details: { docNo } });
+      expect(await moneyOf(refId)).toHaveLength(1);
+    });
+
+    it('two people at the same moment record it once', async () => {
+      const { refId } = await received();
+      const results = await Promise.all([record(refId, onCredit), record(refId, paidInCash(), owner)]);
+      expect(results.map((res) => res.status).sort()).toEqual([201, 409]);
+      expect(await moneyOf(refId)).toHaveLength(1);
+    });
+
+    it('an entry and a reversal at the same moment: goods and money never part', async () => {
+      const { refId, docNo } = await received();
+      const [entry, reversal] = await Promise.all([record(refId, onCredit), owner.post(`/inventory/documents/${docNo}/reverse`)]);
+      expect([entry.status === 201, reversal.status === 200].filter(Boolean)).toHaveLength(1);
+      const money = await moneyOf(refId);
+      const goods = (await accountant.get('/inventory/movements', { docNo })).data;
+      expect(money.length > 0).toBe(goods.length > 0);
+    });
+  });
+
+  describe('what cannot be recorded', () => {
+    it('an item with no default category needs one chosen, and nothing stays behind', async () => {
+      const product = await item(owner, { name: unique('Tayyor mahsulot'), category: 'product' });
+      const { refId } = await received([{ itemId: product, qty: 1, unitCost: 5000 }]);
+      const missing = await record(refId, onCredit);
+      expect(missing.status).toBe(400);
+      expect(missing.body.error.code).toBe('CATEGORY_REQUIRED');
+      expect(await moneyOf(refId)).toEqual([]);
+
+      const categories = (await accountant.get('/finance/categories', { kind: 'expense' })).data;
+      await recorded(refId, { ...onCredit, categoryId: categories[0].id });
+      expect((await moneyOf(refId))[0].categoryId).toBe(categories[0].id);
+    });
+
+    it('an income category is not an answer', async () => {
+      const product = await item(owner, { name: unique('Tayyor mahsulot'), category: 'product' });
+      const { refId } = await received([{ itemId: product, qty: 1, unitCost: 5000 }]);
+      const income = (await accountant.get('/finance/categories', { kind: 'income' })).data[0].id;
+      expect((await record(refId, { ...onCredit, categoryId: income })).body.error.code).toBe('CATEGORY_REQUIRED');
+    });
+
+    it('a payment needs an account', async () => {
+      const { refId } = await received();
+      const res = await record(refId, { paymentMethod: 'bank' });
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('ACCOUNT_REQUIRED');
+      expect(await moneyOf(refId)).toEqual([]);
+    });
+
+    it('a receipt with no value has nothing to record', async () => {
+      const { refId } = await received([{ itemId: barley, qty: 1, unitCost: 0 }]);
+      const res = await record(refId, onCredit);
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('INVALID_AMOUNT');
+    });
+
+    it('an unknown receipt is not found', async () => {
+      expect((await record('0190a7e2-7b1c-7c3d-8e4f-000000000001', onCredit)).status).toBe(404);
+    });
+
+    it('an issue document is not a receipt', async () => {
+      const hay = await item(owner, { name: unique('Yem') });
+      await received([{ itemId: hay, qty: 10, unitCost: 100 }]);
+      await storekeeper.post('/inventory/issues', { warehouseId: w, date: TODAY, costCenterId: general, lines: [{ itemId: hay, qty: 1 }] });
+      const [{ refId }] = await f.run(() =>
+        tx().select({ refId: schema.stockMovements.refId }).from(schema.stockMovements).where(sql`type = 'issue' and item_id = ${hay}`),
+      );
+      expect((await record(refId!, onCredit)).status).toBe(404);
+    });
+  });
+
+  describe('a purchase priced in dollars', () => {
+    const bought = async () => {
+      const res = await owner.post('/inventory/receipts', {
+        warehouseId: w, date: TODAY, counterpartyId: vendor, currency: 'USD', fxRate: 12_500, lines: [{ itemId: barley, qty: 100, unitCost: 2 }],
+      });
+      expect(res.status, JSON.stringify(res.body)).toBe(201);
+      return res.data.refId as string;
+    };
+
+    it('is recorded at what it put in stock: 100 x 2 x 12 500 = 2 500 000 in so\'m', async () => {
+      const refId = await bought();
+      expect((await listed(refId)).value).toBe(2_500_000);
+      await recorded(refId);
+      expect((await moneyOf(refId))[0]).toMatchObject({ amount: 2_500_000, currency: 'UZS', fxRate: 1, amountBase: 2_500_000 });
+    });
+
+    it('cannot come straight from a dollar account, and nothing stays behind', async () => {
+      const refId = await bought();
+      const res = await record(refId, { paymentMethod: 'cash', accountId: dollars });
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('ACCOUNT_CURRENCY_MISMATCH');
+      expect(await moneyOf(refId)).toEqual([]);
+      expect(await listed(refId)).toBeDefined();
+    });
   });
 });
 

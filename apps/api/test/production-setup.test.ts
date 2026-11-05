@@ -11,7 +11,8 @@ import { confirmProposal } from '../src/modules/ai/records/service';
 import { Scripted, asOwner, call, ready, say, today, world } from './ai-world';
 
 const apiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
-const read = (path: string) => readFileSync(join(apiRoot, '..', '..', path), 'utf8');
+const repoRoot = join(apiRoot, '..', '..');
+const read = (path: string) => readFileSync(join(repoRoot, path), 'utf8');
 const source = (path: string) => readFileSync(join(apiRoot, 'src', path), 'utf8');
 
 const compose = read('docker-compose.prod.yml');
@@ -20,11 +21,18 @@ const nginx = read('infra/nginx.conf');
 describe('settings reach the containers', () => {
   const example = read('infra/env.production.example');
   const offered = [...example.matchAll(/^([A-Z][A-Z0-9_]*)=/gm)].map((m) => m[1]);
-  const passed = [...new Set([...compose.matchAll(/\$\{([A-Z][A-Z0-9_]*)/g)].map((m) => m[1]))];
+  const stack = compose + read('docker-compose.tls.yml');
+  const passed = [...new Set([...stack.matchAll(/\$\{([A-Z][A-Z0-9_]*)/g)].map((m) => m[1]))];
+  const scripts = readdirSync(join(repoRoot, 'infra'))
+    .filter((file) => file.endsWith('.sh'))
+    .map((file) => read(`infra/${file}`))
+    .join('\n');
+  /** A rehearsal on a laptop sets these. Nobody does on a server. */
+  const forRehearsals = ['CADDY_GLOBAL', 'TLS_BIND', 'TLS_HTTPS_PORT', 'TLS_HTTP_PORT', 'YAP_IMAGE_PREFIX', 'YAP_STATE_DIR'];
 
-  it('everything env.production.example offers is used by the stack, and the reverse', () => {
-    expect(offered.filter((name) => !passed.includes(name))).toEqual([]);
-    expect(passed.filter((name) => !offered.includes(name))).toEqual([]);
+  it('everything env.production.example offers is used by the stack or its scripts, and the reverse', () => {
+    expect(offered.filter((name) => !passed.includes(name) && !scripts.includes(name))).toEqual([]);
+    expect(passed.filter((name) => !offered.includes(name) && !forRehearsals.includes(name))).toEqual([]);
   });
 
   it('everything the API reads is passed to it, or is left on its default on purpose', () => {

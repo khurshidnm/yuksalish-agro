@@ -2,15 +2,17 @@ import { eq } from 'drizzle-orm';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import type { Permission } from '@yap/shared';
-import { ctx, tx } from '../../core/context';
-import { AppError, badRequest } from '../../core/errors';
+import { ctx, tx, withTenant } from '../../core/context';
+import { AppError } from '../../core/errors';
 import { routes } from '../../core/http';
 import { idParam, isoDate, listQuery } from '../../core/query';
+import { openUpload, uploadRateLimit, withUploadMemory } from '../../core/storage';
 import { schema } from '../../db/client';
 import { ENTITY_KEYS, exportEntity, listEntities } from './export.service';
+import { readSpreadsheet } from './file';
 import { LANG_CODES, type LanguageCode } from './i18n';
 import * as service from './import.service';
-import { TEMPLATE_KEYS } from './templates';
+import { TEMPLATE_KEYS, templateOf } from './templates';
 
 const XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
@@ -126,11 +128,18 @@ export default async function importModule(app: FastifyInstance) {
     summary: 'Upload a filled template (multipart, field "file"). Validates every row and writes nothing',
     params: z.object({ template: z.enum(TEMPLATE_KEYS) }),
     query: langQuery,
-    handler: async (req) => {
-      const part = await req.file();
-      if (!part) throw badRequest('FILE_REQUIRED', 'No file was sent');
-      const body = await part.toBuffer();
-      return service.preview(req.params.template, { body, name: part.filename }, await languageOf(req.query.lang));
-    },
+    config: uploadRateLimit,
+    // Reading a file can take seconds, and no database connection should wait for that.
+    transaction: false,
+    handler: (req) =>
+      withUploadMemory(req, async () => {
+        const lang = await withTenant(req.identity, async () => {
+          await service.assertTemplate(templateOf(req.params.template));
+          return languageOf(req.query.lang);
+        });
+        const upload = await openUpload(req);
+        const sheets = await readSpreadsheet(await upload.read(), req.log);
+        return withTenant(req.identity, () => service.preview(req.params.template, { sheets, name: upload.name }, lang));
+      }),
   });
 }

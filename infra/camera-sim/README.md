@@ -3,7 +3,9 @@
 Two fake farm cameras for development. A looping sheep video is served over RTSP, the same protocol as
 the IP cameras in spec 16, and the helper acts as the farm's edge device through the real device API.
 It proves the connection, live view, device status, and the path from a detection to alerts and
-Telegram. It proves nothing about detection accuracy in a real barn.
+Telegram. It proves nothing about detection accuracy in a real barn, and it detects nothing: every
+"detection" here is typed by hand. For real fire cover see "Smoke detectors and relays" in
+`docs/device-events.md`.
 
 ## First run
 
@@ -24,7 +26,7 @@ Then open **Cameras → Live view**. `pnpm camera:down` stops the streams.
 
 ```sh
 pnpm camera:event trough_empty attention
-pnpm camera:event smoke urgent       # raises an alert and reaches Telegram, repeating until acknowledged
+pnpm camera:event smoke              # always urgent: raises an alert and reaches Telegram, repeating until acknowledged
 ```
 
 ## Addresses
@@ -34,6 +36,9 @@ pnpm camera:event smoke urgent       # raises an alert and reaches Telegram, rep
 | RTSP, as a real camera or Frigate would use it | `rtsp://localhost:8554/barn-1`, `barn-2` |
 | Browser page, stored as the camera's Live URL | `http://localhost:8889/barn-1` |
 | MediaMTX API | `http://127.0.0.1:9997/v3/paths/list` |
+
+Snapshots appear under **Cameras → Events** as a link here, not a picture: the API fetches frames only
+from public addresses.
 
 Browsers cannot play RTSP, so MediaMTX also acts as the gateway. Production must serve the gateway over
 HTTPS, because the content security policy in `infra/nginx-security-headers.inc` allows only that.

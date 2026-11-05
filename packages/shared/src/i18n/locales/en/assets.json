@@ -53,6 +53,10 @@
     "usefulLife": "Useful life",
     "totalUnits": "Lifetime hours",
     "totalUnitsHint": "Motor-hours over its whole life",
+    "openingDepreciation": "Opening accumulated depreciation",
+    "openingDepreciationHint": "What had already worn off when the farm came onto this system",
+    "openingDepreciationDate": "As of date",
+    "openingDepreciationDateHint": "Months up to this date are in the figure and are not posted again",
     "motoHours": "Motor-hours",
     "motoHoursHint": "Current reading; shifts are added automatically",
     "fuelNormHour": "Fuel rate (per hour)",
@@ -68,6 +72,7 @@
     "shifts": "Shifts",
     "hectares": "Area worked",
     "fuel": "Fuel used",
+    "opening": "Opening depreciation as of {{date}}",
     "accumulated": "Accumulated depreciation",
     "bookValue": "Book value",
     "lastService": "Last service"
@@ -136,6 +141,16 @@
     "noDepreciation": "No depreciation posted yet",
     "noDepreciationBody": "It is posted automatically at the start of each month."
   },
+  "depreciation": {
+    "run": "Post depreciation",
+    "confirmTitle": "Post depreciation now?",
+    "confirmBody": "Every ended month not posted yet goes to the books as a non-cash cost of each machine. A month already posted is not posted again.",
+    "postedTitle": "Depreciation posted",
+    "machines": "machines: {{count}}",
+    "total": "Total",
+    "nothingTitle": "Nothing to post",
+    "nothingBody": "No ended month has anything left to post. {{month}} can be posted once it has ended."
+  },
   "rental": {
     "createAct": "Acceptance act",
     "hint": "Unbilled shifts of the period become a debt to the contractor and are charged to the fields.",
@@ -152,6 +167,10 @@
     "MAINTENANCE_LOCKED_FIELDS": "Parts and payments cannot be changed: delete the record and enter it again",
     "MONTH_NOT_CLOSED": "Depreciation is posted after the month has ended",
     "NOTHING_TO_BILL": "There are no unbilled shifts in this period",
+    "OPENING_DATE_INVALID": "The date must fall between the purchase date and today",
+    "OPENING_DATE_REQUIRED": "Enter the date this depreciation figure stands at",
+    "OPENING_OVERLAPS_POSTED": "A month up to this date is already posted, so this figure would count it twice. Choose an earlier date",
+    "OPENING_TOO_HIGH": "Depreciation cannot be more than the purchase price less the salvage value",
     "RENTAL_QUANTITY_MISSING": "Some shifts have no hectares or hours to bill",
     "RENTAL_TERMS_REQUIRED": "Set the contractor, price and unit on the machine first",
     "USAGE_ALREADY_BILLED": "This shift is already on an act",

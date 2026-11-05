@@ -1,8 +1,13 @@
 import type { FastifyInstance } from 'fastify';
+import { isTest } from '../../config';
 import { routes } from '../../core/http';
 import { idParam } from '../../core/query';
 import * as service from './alerts.service';
+import { sendTestAlert } from './reach';
 import { evaluateRules } from './rules';
+
+// Each one is a message to every member of staff.
+const testLimit = isTest ? {} : { rateLimit: { max: 5, timeWindow: '10 minutes' } };
 
 export default async function alertsModule(app: FastifyInstance) {
   const r = routes(app, 'alerts');
@@ -21,7 +26,7 @@ export default async function alertsModule(app: FastifyInstance) {
   });
 
   r.post('/:id/acknowledge', {
-    access: 'tasks.update',
+    access: service.ACKNOWLEDGE_PERMISSION,
     summary: 'Take responsibility: stops repeat notifications',
     params: idParam,
     handler: (req) => service.acknowledge(req.params.id),
@@ -38,5 +43,12 @@ export default async function alertsModule(app: FastifyInstance) {
     access: 'dashboard.update',
     summary: 'Run the rule engine now',
     handler: () => evaluateRules(),
+  });
+
+  r.post('/test', {
+    access: 'dashboard.update',
+    summary: 'Send one labelled test the way an urgent alert goes, and say who it reached',
+    config: testLimit,
+    handler: () => sendTestAlert(),
   });
 }

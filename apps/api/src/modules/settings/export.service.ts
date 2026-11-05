@@ -125,12 +125,18 @@ export async function writeJsonExport(identity: Identity, stream: PassThrough): 
 }
 
 /** Names and row counts of what the export contains. */
+/** The figures only help someone choose what to download, and an exact one reads all of a long journal. */
+const OVERVIEW_COUNT_LIMIT = 100_000;
+
 export async function exportOverview() {
   const tables = await exportableTables();
-  const rows: { name: string; rows: number }[] = [];
+  const rows: { name: string; rows: number; capped?: true }[] = [];
   for (const table of tables) {
-    const result = await tx().execute(sql`select count(*)::int as n from ${sql.identifier(table.name)} t ${farmScope(table)}`);
-    rows.push({ name: table.name, rows: (result.rows[0] as { n: number }).n });
+    const result = await tx().execute(
+      sql`select count(*)::int as n from (select 1 from ${sql.identifier(table.name)} t ${farmScope(table)} limit ${OVERVIEW_COUNT_LIMIT + 1}) counted`,
+    );
+    const { n } = result.rows[0] as { n: number };
+    rows.push(n > OVERVIEW_COUNT_LIMIT ? { name: table.name, rows: OVERVIEW_COUNT_LIMIT, capped: true } : { name: table.name, rows: n });
   }
   return rows;
 }

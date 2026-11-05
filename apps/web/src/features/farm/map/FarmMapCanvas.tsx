@@ -26,7 +26,9 @@ const BASE_LAYERS: Record<BaseLayer, { url: string; attribution: string; maxZoom
   },
 };
 
-const FALLBACK_CENTER: [number, number] = [39.5, 64.8];
+/** Uzbekistan as a whole: a farm with no location set is not anywhere in particular. */
+const FALLBACK_CENTER: [number, number] = [41.3, 64.6];
+const FALLBACK_ZOOM = 6;
 
 /** Below this zoom only crop fields keep a label. */
 const COMPACT_BELOW_ZOOM = 14;
@@ -139,7 +141,7 @@ export const FarmMapCanvas = forwardRef<FarmMapHandle, FarmMapCanvasProps>(funct
       )
       .then((canDraw) => {
         if (cancelled || !container.current) return;
-        const instance = L.map(container.current, { center: FALLBACK_CENTER, zoom: 14, zoomControl: false });
+        const instance = L.map(container.current, { center: FALLBACK_CENTER, zoom: FALLBACK_ZOOM, zoomControl: false });
         L.control.zoom({ position: 'topright' }).addTo(instance);
         // On the left, where the assistant button can never cover the imagery credit.
         instance.attributionControl.setPosition('bottomleft');

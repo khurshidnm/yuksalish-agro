@@ -18,6 +18,8 @@ export default defineConfig({
     proxy: { '/api': 'http://localhost:4000' },
   },
   build: {
+    // Read by scripts/shell-files.mjs, which then removes it.
+    manifest: true,
     chunkSizeWarningLimit: 900,
     // Never inline: the content security policy allows fonts from this site only, not data: URLs.
     assetsInlineLimit: 0,

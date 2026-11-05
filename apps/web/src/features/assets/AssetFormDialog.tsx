@@ -16,32 +16,40 @@ const RENTAL_UNITS = ['ha', 'hour', 'day'] as const;
 
 const contractorOptions = apiOptions<{ id: string; name: string }>('/finance/counterparties/lookup', (c) => ({ value: c.id, label: c.name }));
 
-const schema = z.object({
-  name: zText(200),
-  type: zEnum(ASSET_TYPES),
-  status: zEnum(ASSET_STATUSES),
-  inventoryNo: zOptionalText(60),
-  purchaseDate: zOptionalDate(),
-  purchasePrice: zOptionalNumber(),
-  salvageValue: zOptionalNumber(),
-  usefulLifeMonths: zOptionalNumber(),
-  depreciationMethod: zEnum(DEPRECIATION_METHODS),
-  totalUnits: zOptionalNumber(),
-  motoHours: zOptionalNumber(),
-  fuelNormLPerHour: zOptionalNumber(),
-  fuelNormLPerHa: zOptionalNumber(),
-  rented: z.boolean(),
-  rentalCounterpartyId: zOptionalRef(),
-  rentalPrice: zOptionalNumber(),
-  rentalUnit: zOptionalEnum(RENTAL_UNITS),
-  notes: zOptionalText(1000),
-});
+const schema = z
+  .object({
+    name: zText(200),
+    type: zEnum(ASSET_TYPES),
+    status: zEnum(ASSET_STATUSES),
+    inventoryNo: zOptionalText(60),
+    purchaseDate: zOptionalDate(),
+    purchasePrice: zOptionalNumber(),
+    salvageValue: zOptionalNumber(),
+    usefulLifeMonths: zOptionalNumber(),
+    depreciationMethod: zEnum(DEPRECIATION_METHODS),
+    totalUnits: zOptionalNumber(),
+    openingDepreciation: zOptionalNumber(),
+    openingDepreciationDate: zOptionalDate(),
+    motoHours: zOptionalNumber(),
+    fuelNormLPerHour: zOptionalNumber(),
+    fuelNormLPerHa: zOptionalNumber(),
+    rented: z.boolean(),
+    rentalCounterpartyId: zOptionalRef(),
+    rentalPrice: zOptionalNumber(),
+    rentalUnit: zOptionalEnum(RENTAL_UNITS),
+    notes: zOptionalText(1000),
+  })
+  .superRefine((v, ctx) => {
+    if (!v.rented && v.openingDepreciation && !v.openingDepreciationDate) {
+      ctx.addIssue({ code: 'custom', path: ['openingDepreciationDate'], message: 'required' });
+    }
+  });
 
 type Values = z.input<typeof schema>;
 type Output = z.output<typeof schema>;
 type Form = UseFormReturn<Values, unknown, Output>;
 
-const MONEY_KEYS = ['purchasePrice', 'salvageValue', 'rentalPrice'] as const;
+const MONEY_KEYS = ['purchasePrice', 'salvageValue', 'rentalPrice', 'openingDepreciation', 'openingDepreciationDate'] as const;
 
 function OwnershipFields({ form, seesMoney }: { form: Form; seesMoney: boolean }) {
   const { t } = useTranslation('assets');
@@ -76,6 +84,8 @@ function OwnershipFields({ form, seesMoney }: { form: Form; seesMoney: boolean }
       ) : (
         <NumberField form={form} name="usefulLifeMonths" label={t('fields.usefulLife')} suffix={t('unit.months')} maxDigits={0} />
       )}
+      {seesMoney && <NumberField money form={form} name="openingDepreciation" label={t('fields.openingDepreciation')} hint={t('fields.openingDepreciationHint')} />}
+      {seesMoney && <DateField form={form} name="openingDepreciationDate" label={t('fields.openingDepreciationDate')} hint={t('fields.openingDepreciationDateHint')} />}
     </FormGrid>
   );
 }
@@ -91,8 +101,8 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
   const seesMoney = usePermission('finance.view');
 
   const save = useApiMutation<Output>({
-    mutationFn: ({ motoHours, salvageValue, ...values }) => {
-      const body: Record<string, unknown> = { ...values, salvageValue: salvageValue ?? 0, motoHours: motoHours ?? 0 };
+    mutationFn: ({ motoHours, salvageValue, openingDepreciation, ...values }) => {
+      const body: Record<string, unknown> = { ...values, salvageValue: salvageValue ?? 0, openingDepreciation: openingDepreciation ?? 0, motoHours: motoHours ?? 0 };
       // Hidden fields come back empty: sending them would erase values this user cannot see.
       if (!seesMoney) for (const key of MONEY_KEYS) delete body[key];
       return asset ? api.patch(`${PATH}/${asset.id}`, body) : api.postOnce(PATH, body);
@@ -112,6 +122,8 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
     usefulLifeMonths: asset?.usefulLifeMonths ?? null,
     depreciationMethod: (asset?.depreciationMethod as Values['depreciationMethod']) ?? 'straight_line',
     totalUnits: asset?.totalUnits ?? null,
+    openingDepreciation: asset?.openingDepreciation ?? null,
+    openingDepreciationDate: asset?.openingDepreciationDate ?? '',
     motoHours: asset?.motoHours ?? null,
     fuelNormLPerHour: asset?.fuelNormLPerHour ?? null,
     fuelNormLPerHa: asset?.fuelNormLPerHa ?? null,

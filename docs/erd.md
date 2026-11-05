@@ -1,7 +1,7 @@
 # Data model
 
 Generated from `apps/api/src/db/schema` by `apps/api/src/db/erd.ts`. Do not edit by hand; run
-`pnpm --filter @yap/api exec tsx src/db/erd.ts` after a schema change. 95 tables.
+`pnpm --filter @yap/api exec tsx src/db/erd.ts` after a schema change. 100 tables.
 
 Links to `tenants`, `farms` and `users` (`tenant_id`, `farm_id`, `created_by`) are on almost every
 table and are left out of the lines to keep the diagrams readable. A table from another domain appears
@@ -22,6 +22,7 @@ erDiagram
     text key_prefix
     jsonb scopes
     timestamp_with_time_zone last_used_at
+    timestamp_with_time_zone expires_at
     timestamp_with_time_zone revoked_at
     uuid created_by FK
     timestamp_with_time_zone created_at
@@ -50,6 +51,19 @@ erDiagram
     jsonb response
     timestamp_with_time_zone created_at
   }
+  invitations {
+    uuid id PK
+    uuid tenant_id FK
+    uuid farm_id FK
+    uuid role_id FK
+    text phone
+    text full_name
+    text status
+    timestamp_with_time_zone expires_at
+    uuid created_by FK
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+  }
   leads {
     uuid id PK
     text full_name
@@ -65,6 +79,7 @@ erDiagram
     text status
     text notes
     integer submissions
+    jsonb repeats
     timestamp_with_time_zone consent_at
     timestamp_with_time_zone contacted_at
     timestamp_with_time_zone created_at
@@ -87,6 +102,22 @@ erDiagram
     jsonb modules
     numeric price_monthly
     boolean active
+    timestamp_with_time_zone created_at
+  }
+  platform_audit {
+    uuid id PK
+    uuid admin_id FK
+    text action
+    text target_id
+    text ip
+    text device
+    timestamp_with_time_zone created_at
+  }
+  recovery_codes {
+    uuid id PK
+    uuid user_id FK
+    text code_hash
+    timestamp_with_time_zone used_at
     timestamp_with_time_zone created_at
   }
   refresh_tokens {
@@ -112,6 +143,13 @@ erDiagram
     timestamp_with_time_zone created_at
     timestamp_with_time_zone updated_at
   }
+  sign_in_failures {
+    text phone
+    text address
+    integer failures
+    timestamp_with_time_zone window_started_at
+    timestamp_with_time_zone locked_until
+  }
   tenants {
     uuid id PK
     text name
@@ -135,10 +173,12 @@ erDiagram
     text email
     text full_name
     text password_hash
+    boolean must_change_password
     text locale
     text status
     text totp_secret
     boolean totp_enabled
+    integer totp_last_step
     boolean is_platform_admin
     text telegram_chat_id
     uuid telegram_membership_id FK
@@ -149,6 +189,7 @@ erDiagram
   memberships ||--o{ refresh_tokens : "membership_id"
   memberships ||--o{ users : "telegram_membership_id"
   plans ||--o{ tenants : "plan_id"
+  roles ||--o{ invitations : "role_id"
   roles ||--o{ memberships : "role_id"
 ```
 
@@ -230,6 +271,7 @@ erDiagram
     jsonb data
     uuid photo_file_id
     uuid device_id
+    text dedup_key
     uuid created_by FK
     timestamp_with_time_zone created_at
   }
@@ -1314,6 +1356,8 @@ erDiagram
     numeric salvage_value
     text depreciation_method
     numeric total_units
+    numeric opening_depreciation
+    date opening_depreciation_date
     numeric moto_hours
     numeric fuel_norm_l_per_hour
     numeric fuel_norm_l_per_ha
@@ -1524,6 +1568,7 @@ erDiagram
     timestamp_with_time_zone resolved_at
     integer notify_count
     timestamp_with_time_zone next_notify_at
+    timestamp_with_time_zone undelivered_since
     jsonb notify_roles
     text permission
   }
@@ -1544,6 +1589,17 @@ erDiagram
     uuid entity_id
     text notes
   }
+  job_runs {
+    uuid id PK
+    uuid tenant_id FK
+    uuid farm_id FK
+    uuid created_by FK
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+    text job
+    timestamp_with_time_zone next_due_at
+    timestamp_with_time_zone last_run_at
+  }
   notification_prefs {
     uuid id PK
     uuid tenant_id FK
@@ -1560,6 +1616,7 @@ erDiagram
     text severity
     text title
     text body
+    jsonb texts
     text link
     uuid alert_id
     text permission

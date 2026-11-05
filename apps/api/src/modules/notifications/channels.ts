@@ -2,7 +2,8 @@
  * Outbound channels (spec 17.3). In-app is the notifications table itself. The rest share this
  * interface, so adding SMS or push means implementing `send` here and nothing else.
  */
-import { sendTelegram, telegramConfigured, TelegramError, type FormattedMessage } from './telegram';
+import { tr } from './i18n';
+import { sendTelegram, telegramConfigured, TelegramError, type FormattedMessage, type ReplyMarkup } from './telegram';
 
 export type OutboundMessage = FormattedMessage;
 
@@ -11,6 +12,7 @@ export interface Recipient {
   telegramChatId?: string | null;
   phone?: string | null;
   email?: string | null;
+  locale?: string | null;
 }
 
 /** Thrown when a message can never be delivered, so retrying is pointless. */
@@ -43,6 +45,12 @@ function notConfigured(key: ExternalChannel): Channel {
   };
 }
 
+/** An urgent alert repeats until someone takes it, and the one who hears it should not need a laptop for that. */
+function acknowledgeButton(to: Recipient, message: OutboundMessage): ReplyMarkup | undefined {
+  if (message.severity !== 'urgent' || !message.alertId) return undefined;
+  return { inline_keyboard: [[{ text: tr(to.locale, 'alerts', 'bot.buttons.acknowledge'), callback_data: `a:${message.alertId}` }]] };
+}
+
 const telegram: Channel = {
   key: 'telegram',
   configured: telegramConfigured,
@@ -53,7 +61,7 @@ const telegram: Channel = {
     }
     if (!to.telegramChatId) throw new PermanentDeliveryError('Telegram is not linked for this user');
     try {
-      await sendTelegram(to.telegramChatId, message);
+      await sendTelegram(to.telegramChatId, message, acknowledgeButton(to, message));
     } catch (err) {
       if (!(err instanceof TelegramError)) throw err;
       if (err.retryAfterMs) throw new RetryLaterError(err.retryAfterMs);

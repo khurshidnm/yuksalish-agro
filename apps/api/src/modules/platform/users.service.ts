@@ -2,17 +2,15 @@
  * Every account on the platform, across tenants. Identity data only: password hashes and 2FA secrets
  * are never selected, and business data stays out of reach through withPlatform().
  */
-import bcrypt from 'bcryptjs';
 import { and, count, desc, eq, ilike, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
-import { config } from '../../config';
 import { schema } from '../../db/client';
 import { withPlatform } from '../../core/context';
-import { randomToken } from '../../core/crypto';
 import { conflict, forbidden, notFound } from '../../core/errors';
 import { listQuery } from '../../core/query';
-import { revokeAllSessions } from '../auth/auth.service';
-import { dropTelegramLink, notifyAccount, PASSWORD_NOTICE } from '../notifications/notifications.service';
+import { clearTwoFactor, issuedPassword, recordAccountEvent, revokeAllSessions } from '../auth/auth.service';
+import { unlockPhone } from '../auth/lockout.service';
+import { dropTelegramLink, notifyAccount, PASSWORD_NOTICE, TWO_FACTOR_NOTICE } from '../notifications/notifications.service';
 
 const { users } = schema;
 
@@ -74,16 +72,30 @@ export async function setUserStatus(id: string, status: 'active' | 'blocked', ad
   return updated;
 }
 
-/** A new one-time password, shown once. Every device has to sign in again with it. */
+/** A new one-time password, shown once. Every device has to sign in again, and it must be replaced there. */
 export async function resetUserPassword(id: string, adminId: string | undefined) {
   if (id === adminId) throw forbidden('Change your own password from your profile', 'CANNOT_RESET_SELF');
-  const oneTimePassword = randomToken(9);
-  const passwordHash = await bcrypt.hash(oneTimePassword, config.BCRYPT_ROUNDS);
-  await withPlatform(async (trx) => {
-    const [row] = await trx.update(users).set({ passwordHash }).where(eq(users.id, id)).returning({ id: users.id });
+  const { oneTimePassword, stored } = await issuedPassword();
+  const phone = await withPlatform(async (trx) => {
+    const [row] = await trx.update(users).set(stored).where(eq(users.id, id)).returning({ phone: users.phone });
     if (!row) throw notFound('User');
+    return row.phone;
   });
+  await unlockPhone(phone);
   await revokeAllSessions(id);
+  await recordAccountEvent(id, { type: 'user.password_reset', severity: 'attention', entityType: 'user', entityId: id, data: { by: 'platform' } });
   await notifyAccount(id, PASSWORD_NOTICE);
   return { oneTimePassword };
+}
+
+/** The way back for an owner with no authenticator and no recovery codes. They enrol again at sign-in. */
+export async function resetUserTwoFactor(id: string, adminId: string | undefined) {
+  if (id === adminId) throw forbidden('Your own account is reset on the server', 'CANNOT_RESET_SELF');
+  const [user] = await withPlatform((trx) => trx.select({ id: users.id }).from(users).where(eq(users.id, id)));
+  if (!user) throw notFound('User');
+  await clearTwoFactor(id);
+  await revokeAllSessions(id);
+  await recordAccountEvent(id, { type: 'user.two_factor_reset', severity: 'attention', entityType: 'user', entityId: id, data: { by: 'platform' } });
+  await notifyAccount(id, TWO_FACTOR_NOTICE);
+  return { id };
 }

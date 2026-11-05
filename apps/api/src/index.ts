@@ -6,6 +6,9 @@ import { startTelegramBot } from './modules/notifications/bot';
 
 const app = await buildApp();
 
+// One promise nobody waits for must not end the API, and the fire alerts with it.
+process.on('unhandledRejection', (reason) => app.log.error({ err: reason }, 'unhandled rejection'));
+
 // Connects in the background: the API stays useful without Redis, and only scheduled work pauses.
 const stopJobs = config.JOBS_ENABLED === 'true' ? startJobs(app.log) : undefined;
 

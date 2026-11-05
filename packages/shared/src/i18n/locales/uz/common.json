@@ -37,6 +37,7 @@
     "VALIDATION_ERROR": "Belgilangan maydonlarni tekshiring.",
     "INVALID_INPUT": "Kiritilgan qiymatlarning ayrimlari noto'g'ri.",
     "ALREADY_EXISTS": "Bunday yozuv allaqachon mavjud.",
+    "FORM_EXPIRED": "Bu shakl eskirib qoldi. Sahifani yangilab, qaytadan yuboring.",
     "IN_USE": "Bu yozuv ishlatilmoqda, uni o'chirib bo'lmaydi.",
     "INVALID_REFERENCE": "Bog'langan yozuv topilmadi.",
     "NOTHING_TO_UPDATE": "O'zgartirish yuborilmadi.",
@@ -48,6 +49,12 @@
     "NO_ACTIVE_FARM": "Faol ferma tanlanmagan.",
     "FILE_REQUIRED": "Fayl tanlanmagan.",
     "FILE_TYPE_NOT_ALLOWED": "Bu turdagi faylni yuklab bo'lmaydi.",
+    "INVALID_UPLOAD": "Yuklash buzilgan. Qayta yuboring.",
+    "FILE_TOO_LARGE": "Fayl juda katta. Eng ko'pi bilan {{maxMb}} MB yuklash mumkin. Faylni kichraytiring yoki qismlarga bo'ling.",
+    "UPLOADS_BUSY": "Server hozir ko'p fayl qabul qilmoqda. Birozdan keyin qayta urinib ko'ring.",
+    "STORAGE_QUOTA_REACHED": "Fermaning fayl xotirasi to'ldi: {{usedMb}} MB, chegara {{quotaMb}} MB. Ishlatilmayotgan fayllarni o'chiring yoki rahbardan chegarani oshirishni so'rang.",
+    "DAILY_UPLOAD_LIMIT_REACHED": "Kunlik yuklash chegarasiga yetdingiz: 24 soatda {{limitMb}} MB. Ertaga qayta urinib ko'ring yoki rahbarga murojaat qiling.",
+    "STORAGE_FULL": "Serverda joy qolmadi, fayl saqlanmadi. Administratorga xabar bering.",
     "FILE_NOT_FOUND": "Fayl topilmadi.",
     "INSUFFICIENT_STOCK": "Omborda yetarli qoldiq yo'q.",
     "BATCH_ALREADY_USED": "Bu partiya ishlatilgan, uni bekor qilib bo'lmaydi.",
@@ -75,6 +82,20 @@
     "errorTitle": "Nimadir noto'g'ri ketdi", "errorBody": "Sahifani qayta yuklab ko'ring. Muammo takrorlansa, qo'llab-quvvatlashga yozing.",
     "backHome": "Bosh sahifaga", "reload": "Qayta yuklash",
     "offlineTitle": "Bu sahifa internetsiz ochilmaydi", "offlineBody": "Internet qaytgach ochiladi. Kunlik ishlarni \"Bugun\" sahifasida davom ettirishingiz mumkin.", "offlineAction": "Bugun sahifasiga"
+  },
+  "update": {
+    "ready": "Yangi versiya tayyor",
+    "apply": "Yangilash",
+    "pageTitle": "Sahifa ochilmadi",
+    "pageBody": "Aloqa zaif yoki ilovaning yangi versiyasi hali yuklanmoqda. Birozdan so'ng qayta urinib ko'ring.",
+    "partFailed": "Sahifaning bir qismi yuklanmadi. Aloqa yaxshilangach sahifani qayta yuklang."
+  },
+  "boot": {
+    "title": "Ilova ochilmayapti",
+    "body": "Aloqa zaif bo'lishi mumkin. Biroz kuting yoki qayta yuklang. Saqlangan yozuvlaringiz o'chmaydi.",
+    "reload": "Qayta yuklash",
+    "oldTitle": "Brauzer juda eski",
+    "oldBody": "Ilova bu brauzerda ishlamaydi. Chrome 111 yoki Safari 16.4 va undan yangisi kerak. Telefondagi brauzerni yangilang."
   },
   "stub": { "title": "Bu bo'lim tayyorlanmoqda", "body": "Tez orada shu yerda ishlash mumkin bo'ladi." },
   "theme": { "toggle": "Mavzuni almashtirish", "light": "Yorug'", "dark": "Qorong'i", "system": "Tizim bo'yicha" },

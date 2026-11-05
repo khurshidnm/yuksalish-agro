@@ -50,6 +50,7 @@
     "expiry": "Yaroqlilik muddati",
     "payNow": "To'lovni ham qayd etish",
     "payNowHint": "Xarajat tannarxga ombordan chiqim qilinganda o'tadi",
+    "financeRecords": "Bu kirim uchun to'lov yoki qarzni buxgalter qayd etadi.",
     "paymentMethod": "To'lov usuli",
     "category": "Xarajat moddasi",
     "categoryHint": "Ba'zi tovarlarning o'z moddasi yo'q. Bu modda butun kirimga qo'llanadi.",

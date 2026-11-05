@@ -7,7 +7,8 @@ import { schema } from '../../db/client';
 import { ctx, tx } from '../../core/context';
 import { badRequest, notFound } from '../../core/errors';
 import { routes } from '../../core/http';
-import { clientId, idParam, isoDate, isoMonth, searchAny } from '../../core/query';
+import { clientId, idParam, isoDate, isoMonth, listQuery, searchAny } from '../../core/query';
+import { receiptMoneyInput, recordReceiptMoney, unpaidReceipts } from '../inventory/stock.service';
 import * as accounts from './accounts.service';
 import * as budget from './budget.service';
 import * as debts from './debts.service';
@@ -299,6 +300,24 @@ export function registerFinance(app: FastifyInstance) {
     handler: async (req, reply) => {
       reply.code(201);
       return debts.settle(req.body);
+    },
+  });
+
+  r.get('/debts/unpaid-receipts', {
+    access: 'finance.view',
+    summary: 'Purchases received from a supplier with no payment or debt recorded',
+    query: listQuery,
+    handler: (req) => unpaidReceipts(req.query),
+  });
+
+  r.post('/debts/unpaid-receipts/:id/record', {
+    access: 'finance.create',
+    summary: 'Record one of them as paid or as a debt, linked to the receipt',
+    params: idParam,
+    body: receiptMoneyInput,
+    handler: async (req, reply) => {
+      reply.code(201);
+      return recordReceiptMoney(req.params.id, req.body);
     },
   });
 

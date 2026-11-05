@@ -23,9 +23,10 @@ import { api } from '@/lib/api';
 import { usePermission, useSession } from '@/lib/auth';
 import { currencyLabel, formatDate, formatMoney } from '@/lib/format';
 import { zDate, zOptionalText, zPositive, zRef } from '@/lib/forms';
-import { useApiMutation, useDetail } from '@/lib/query';
+import { useApiMutation, useDetail, useList } from '@/lib/query';
 import { FINANCE_PATHS, MONEY_QUERIES } from './lib';
-import type { AccountOption, Aging, CounterpartyDebt, DebtSummary } from './types';
+import type { AccountOption, Aging, CounterpartyDebt, DebtSummary, UnpaidReceipt } from './types';
+import { UnpaidReceiptList } from './UnpaidReceipts';
 
 const PATH = FINANCE_PATHS.debts;
 
@@ -272,6 +273,7 @@ export default function DebtsPage() {
   const { t } = useTranslation('finance');
   const summary = useDetail<DebtSummary>(`${PATH}/summary`);
   const s = summary.data;
+  const unpaid = useList<UnpaidReceipt>(FINANCE_PATHS.unpaidReceipts, { pageSize: 1 }).data?.meta.total ?? 0;
 
   return (
     <>
@@ -292,6 +294,17 @@ export default function DebtsPage() {
         tabs={[
           { value: 'payable', label: t('debts.direction.payable'), content: <DebtList direction="payable" /> },
           { value: 'receivable', label: t('debts.direction.receivable'), content: <DebtList direction="receivable" /> },
+          {
+            value: 'receipts',
+            label: (
+              <span className="inline-flex items-center gap-1.5">
+                {/* First, because a phone cuts this tab off at the end of its label. */}
+                {unpaid > 0 && <Badge variant="warning">{unpaid}</Badge>}
+                {t('unpaidReceipts.tab')}
+              </span>
+            ),
+            content: <UnpaidReceiptList />,
+          },
         ]}
       />
     </>

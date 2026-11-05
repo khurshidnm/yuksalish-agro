@@ -1,10 +1,11 @@
-import { Bot, Check, Copy, ExternalLink, Link2Off, Send } from 'lucide-react';
+import { Bell, Bot, Check, Copy, ExternalLink, Link2Off, Send } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { ErrorCard, useConfirm } from '@/components';
 import { Alert, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Checkbox, Skeleton } from '@/components/ui';
 import { api } from '@/lib/api';
+import { usePermission } from '@/lib/auth';
 import { formatDateTime } from '@/lib/format';
 import { useApiMutation, useDetail } from '@/lib/query';
 import type { Preferences, TelegramLink, TelegramStatus } from './types';
@@ -12,8 +13,21 @@ import type { Preferences, TelegramLink, TelegramStatus } from './types';
 const PREFERENCES = '/notifications/preferences';
 const TELEGRAM = '/notifications/telegram';
 
+interface TestPerson {
+  userId: string;
+  /** Null without pii.view. */
+  name: string | null;
+  role: string;
+}
+
+interface TestResult {
+  reached: TestPerson[];
+  unreachable: (TestPerson & { reason: string })[];
+}
+
 function ChannelMatrix() {
   const { t } = useTranslation('alerts');
+  const confirm = useConfirm();
   const { data, isLoading, error, refetch } = useDetail<Preferences>(PREFERENCES);
 
   const save = useApiMutation<{ eventType: string; channels: string[] }>({
@@ -26,9 +40,20 @@ function ChannelMatrix() {
   if (error) return <ErrorCard error={error} onRetry={() => void refetch()} />;
   if (!data) return null;
 
-  const toggle = (eventType: string, current: string[], channel: string, on: boolean) => {
+  const toggle = async (eventType: string, current: string[], channel: string, on: boolean) => {
+    if (eventType === 'alert_urgent' && channel === 'telegram' && !on) {
+      const ok = await confirm({
+        title: t('settings.urgentOffTitle'),
+        description: t('settings.urgentOffBody'),
+        confirmLabel: t('settings.urgentOffConfirm'),
+        destructive: true,
+      });
+      if (!ok) return;
+    }
     save.mutate({ eventType, channels: on ? [...current, channel] : current.filter((c) => c !== channel) });
   };
+
+  const telegramWorks = data.channels.some((channel) => channel.key === 'telegram' && channel.configured);
 
   return (
     <Card>
@@ -50,7 +75,7 @@ function ChannelMatrix() {
                   <Checkbox
                     checked={event.channels.includes(channel.key)}
                     disabled={!channel.configured || save.isPending}
-                    onCheckedChange={(on) => toggle(event.eventType, event.channels, channel.key, on === true)}
+                    onCheckedChange={(on) => void toggle(event.eventType, event.channels, channel.key, on === true)}
                   />
                   <span className={channel.configured ? undefined : 'text-muted-foreground'}>
                     {t(`enums:notificationChannel.${channel.key}`)}
@@ -59,6 +84,11 @@ function ChannelMatrix() {
                 </label>
               ))}
             </div>
+            {event.eventType === 'alert_urgent' && telegramWorks && !event.channels.includes('telegram') && (
+              <Alert tone="warning" className="mt-2">
+                {t('settings.urgentOff')}
+              </Alert>
+            )}
           </fieldset>
         ))}
       </CardContent>
@@ -170,11 +200,80 @@ function TelegramCard() {
   );
 }
 
+function TestAlertCard() {
+  const { t } = useTranslation('alerts');
+  const confirm = useConfirm();
+  const [result, setResult] = useState<TestResult | null>(null);
+  const send = useApiMutation<void, TestResult>({
+    mutationFn: () => api.post('/alerts/test'),
+    onSuccess: setResult,
+  });
+  const who = (person: TestPerson) => person.name ?? t(`enums:role.${person.role}`);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Bell className="size-5" aria-hidden />
+          {t('testAlert.title')}
+        </CardTitle>
+        <CardDescription>{t('testAlert.body')}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <Button
+          variant="outline"
+          loading={send.isPending}
+          onClick={async () => {
+            const ok = await confirm({
+              title: t('testAlert.confirmTitle'),
+              description: t('testAlert.confirmBody'),
+              confirmLabel: t('testAlert.confirmAction'),
+            });
+            if (ok) send.mutate();
+          }}
+        >
+          <Send aria-hidden />
+          {t('testAlert.send')}
+        </Button>
+
+        {result && result.reached.length + result.unreachable.length === 0 && <Alert tone="warning">{t('testAlert.nobody')}</Alert>}
+
+        {result && result.reached.length > 0 && (
+          <Alert tone="success" title={t('testAlert.reached', { count: result.reached.length })}>
+            <ul className="space-y-1">
+              {result.reached.map((person) => (
+                <li key={person.userId}>{who(person)}</li>
+              ))}
+            </ul>
+          </Alert>
+        )}
+
+        {result && result.unreachable.length > 0 && (
+          <Alert tone="danger" title={t('testAlert.unreachable', { count: result.unreachable.length })}>
+            <ul className="space-y-1">
+              {result.unreachable.map((person) => (
+                <li key={person.userId}>
+                  <span className="block font-medium">{who(person)}</span>
+                  {t(`testAlert.reason.${person.reason}`)}
+                </li>
+              ))}
+            </ul>
+          </Alert>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function NotificationSettings() {
+  const canTest = usePermission('dashboard.update');
   return (
     <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
       <ChannelMatrix />
-      <TelegramCard />
+      <div className="grid grid-cols-1 gap-4">
+        <TelegramCard />
+        {canTest && <TestAlertCard />}
+      </div>
     </div>
   );
 }

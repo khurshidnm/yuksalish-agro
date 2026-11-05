@@ -384,6 +384,211 @@ describe('termination', () => {
     expect(events).toHaveLength(1);
   });
 
+  describe('ending the login', () => {
+    const phone = () => `+998${Math.floor(100_000_000 + Math.random() * 899_999_999)}`;
+    /** How a local number is typed in the Excel template. */
+    const handTyped = (p: string) => `${p.slice(4, 6)} ${p.slice(6, 9)}-${p.slice(9, 11)}-${p.slice(11)}`;
+    const dismiss = (owner: Client, id: string, body: object = {}) =>
+      owner.post(`/hr/employees/${id}/terminate`, { date: todayIso(), ...body });
+
+    async function login(f: Fixture, role: RoleKey, p = phone()) {
+      const { userId, membershipId } = await addMember({ tenantId: f.tenantId, farmId: f.farmId, roleId: f.roleIds[role], phone: p, fullName: 'Rustam Sobirov', password: 'Password123!' });
+      const token = await signAccessToken({ userId, membershipId, tenantId: f.tenantId, farmId: f.farmId });
+      const app = await getApp();
+      const stillIn = async () =>
+        (await app.inject({ method: 'GET', url: '/api/v1/hr/employees/lookup', headers: { authorization: `Bearer ${token}` } })).statusCode === 200;
+      return { p, userId, membershipId, stillIn };
+    }
+    const membershipStatus = async (f: Fixture, id: string) => {
+      const [row] = await f.run(() => tx().select().from(schema.memberships).where(eq(schema.memberships.id, id)));
+      return row.status;
+    };
+
+    it('an employee imported with the login\'s phone is dismissed for real', async () => {
+      const f = await createFixture();
+      const owner = await f.as('owner');
+      const worker = await login(f, 'storekeeper');
+      const e = await hire(owner, { phone: handTyped(worker.p) });
+      expect(await worker.stillIn()).toBe(true);
+
+      const res = await dismiss(owner, e.id);
+      expect(res.status).toBe(200);
+      expect(res.data.accessEnded).toBe(true);
+      expect(await worker.stillIn()).toBe(false);
+      expect(await membershipStatus(f, worker.membershipId)).toBe('blocked');
+      const list = await owner.get('/settings/users', { status: 'blocked' });
+      expect(list.data.map((m: any) => m.userId)).toEqual([worker.userId]);
+    });
+
+    it('the link is made when the record comes first, and when the login comes first', async () => {
+      const f = await createFixture();
+      const owner = await f.as('owner');
+
+      const worker = await login(f, 'storekeeper');
+      const afterLogin = await hire(owner, { phone: handTyped(worker.p) });
+      expect((await owner.get(`/hr/employees/${afterLogin.id}`)).data.userId).toBe(worker.userId);
+
+      const p = phone();
+      const beforeLogin = await hire(owner, { phone: handTyped(p) });
+      expect((await owner.get(`/hr/employees/${beforeLogin.id}`)).data.userId).toBeNull();
+      const added = await owner.post('/settings/users', { phone: p, fullName: 'Rustam Sobirov', roleId: f.roleIds.shepherd });
+      expect((await owner.get(`/hr/employees/${beforeLogin.id}`)).data.userId).toBe(added.data.member.userId);
+    });
+
+    it('correcting a phone on the record links it, and a link cleared by hand stays cleared', async () => {
+      const f = await createFixture();
+      const owner = await f.as('owner');
+      const worker = await login(f, 'storekeeper');
+      const e = await hire(owner, { phone: '901112233' });
+      expect((await owner.patch(`/hr/employees/${e.id}`, { phone: worker.p })).data.userId).toBe(worker.userId);
+      expect((await owner.patch(`/hr/employees/${e.id}`, { userId: null, phone: worker.p })).data.userId).toBeNull();
+    });
+
+    it('an invited person who accepts picks up the record waiting for them', async () => {
+      const f = await createFixture();
+      const owner = await f.as('owner');
+      const home = await createFixture();
+      const p = phone();
+      await addMember({ tenantId: home.tenantId, farmId: home.farmId, roleId: home.roleIds.shepherd, phone: p, fullName: 'Bor Xodim', password: 'Password123!' });
+      const e = await hire(owner, { phone: p });
+      const invited = await owner.post('/settings/users', { phone: p, fullName: 'Bor Xodim', roleId: f.roleIds.shepherd });
+      expect((await owner.get(`/hr/employees/${e.id}`)).data.userId).toBeNull();
+
+      const app = await getApp();
+      const signedIn = await app.inject({ method: 'POST', url: '/api/v1/auth/login', payload: { phone: p, password: 'Password123!' } });
+      const accept = await app.inject({
+        method: 'POST',
+        url: `/api/v1/auth/invitations/${invited.data.invitation.id}/accept`,
+        headers: { authorization: `Bearer ${signedIn.json().data.accessToken}` },
+      });
+      expect(accept.statusCode).toBe(200);
+      expect((await owner.get(`/hr/employees/${e.id}`)).data.userId).not.toBeNull();
+    });
+
+    it('a record from before the link is still caught at dismissal', async () => {
+      const f = await createFixture();
+      const owner = await f.as('owner');
+      const worker = await login(f, 'storekeeper');
+      const e = await hire(owner, { phone: worker.p });
+      await f.run(() => tx().update(schema.employees).set({ userId: null }).where(eq(schema.employees.id, e.id)));
+
+      const res = await dismiss(owner, e.id);
+      expect(res.data.accessEnded).toBe(true);
+      expect(res.data.userId).toBe(worker.userId);
+      expect(await worker.stillIn()).toBe(false);
+    });
+
+    it('says so when there was no login to end', async () => {
+      const f = await createFixture();
+      const owner = await f.as('owner');
+      const worker = await login(f, 'storekeeper');
+      const noPhone = await hire(owner);
+      const res = await dismiss(owner, noPhone.id);
+      expect(res.status).toBe(200);
+      expect(res.data.accessEnded).toBe(false);
+      expect(await worker.stillIn()).toBe(true);
+      const [event] = await f.run(() => tx().select().from(schema.events).where(and(eq(schema.events.entityId, noPhone.id), eq(schema.events.type, 'employee.terminated'))));
+      expect(event.data.accessEnded).toBe(false);
+    });
+
+    it('the person dismissing can name the login when no phone matches', async () => {
+      const f = await createFixture();
+      const owner = await f.as('owner');
+      const worker = await login(f, 'storekeeper');
+      const e = await hire(owner, { phone: '901112233' });
+
+      const res = await dismiss(owner, e.id, { userId: worker.userId });
+      expect(res.data.accessEnded).toBe(true);
+      expect(await worker.stillIn()).toBe(false);
+
+      const other = await hire(owner);
+      const stranger = (await createFixture()).as('shepherd');
+      const refused = await dismiss(owner, other.id, { userId: (await stranger).userId });
+      expect(refused.body.error.code).toBe('USER_NOT_ON_FARM');
+    });
+
+    it('two records sharing a phone is a question for a person, not a guess', async () => {
+      const f = await createFixture();
+      const owner = await f.as('owner');
+      const p = phone();
+      const first = await hire(owner, { phone: p });
+      await hire(owner, { phone: handTyped(p), fullName: 'Boshqa Odam' });
+      const added = await owner.post('/settings/users', { phone: p, fullName: 'Rustam Sobirov', roleId: f.roleIds.shepherd });
+      expect(added.status).toBe(201);
+      expect((await owner.get(`/hr/employees/${first.id}`)).data.userId).toBeNull();
+    });
+
+    it('a dismissal cannot do what the users page refuses', async () => {
+      const f = await createFixture();
+      const owner = await f.as('owner');
+      const director = await f.as('director');
+
+      const self = await hire(owner, { userId: director.userId });
+      const refusedSelf = await dismiss(director, self.id);
+      expect(refusedSelf.status).toBe(403);
+      expect(refusedSelf.body.error.code).toBe('CANNOT_BLOCK_SELF');
+
+      const boss = await hire(owner, { userId: owner.userId, fullName: 'Ega' });
+      const refused = await dismiss(director, boss.id);
+      expect(refused.status).toBe(403);
+      expect(refused.body.error.code).toBe('CANNOT_MANAGE_HIGHER_ROLE');
+      expect((await owner.get(`/hr/employees/${boss.id}`)).data.status).toBe('active');
+      expect(await membershipStatus(f, owner.membershipId)).toBe('active');
+    });
+
+    it('the last owner cannot be dismissed out of the workspace', async () => {
+      const f = await createFixture();
+      const owner = await f.as('owner');
+      const roleId = await f.run(async () => {
+        const [role] = await tx()
+          .insert(roles)
+          .values({ tenantId: f.tenantId, key: 'ega_orinbosari', name: "Ega o'rinbosari", permissions: DEFAULT_ROLE_PERMISSIONS.owner })
+          .returning();
+        return role.id;
+      });
+      const { userId, membershipId } = await addMember({ tenantId: f.tenantId, farmId: f.farmId, roleId, phone: phone(), fullName: "Ega O'rinbosari", password: 'Password123!' });
+      const token = await signAccessToken({ userId, membershipId, tenantId: f.tenantId, farmId: f.farmId });
+      const e = await hire(owner, { userId: owner.userId, fullName: 'Ega' });
+
+      const app = await getApp();
+      const refused = await app.inject({
+        method: 'POST',
+        url: `/api/v1/hr/employees/${e.id}/terminate`,
+        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+        payload: JSON.stringify({ date: todayIso() }),
+      });
+      expect(refused.statusCode).toBe(409);
+      expect(refused.json().error.code).toBe('LAST_OWNER');
+      expect((await owner.get(`/hr/employees/${e.id}`)).data.status).toBe('active');
+    });
+
+    it('reinstating brings the login back, and only then says it did', async () => {
+      const f = await createFixture();
+      const owner = await f.as('owner');
+      const worker = await login(f, 'storekeeper');
+      const e = await hire(owner, { phone: worker.p });
+      await dismiss(owner, e.id);
+      expect((await owner.post(`/hr/employees/${e.id}/reinstate`)).status).toBe(200);
+      expect(await worker.stillIn()).toBe(true);
+    });
+
+    it('the phone of a login is personal data on the link list too', async () => {
+      const f = await createFixture();
+      const roleId = await f.run(async () => {
+        const [role] = await tx()
+          .insert(roles)
+          .values({ tenantId: f.tenantId, key: 'kadrlar', name: 'Kadrlar', permissions: ['hr.view', 'hr.update'] })
+          .returning();
+        return role.id;
+      });
+      const { userId, membershipId } = await addMember({ tenantId: f.tenantId, farmId: f.farmId, roleId, phone: phone(), fullName: 'Kadrlar Bolimi', password: 'Password123!' });
+      const token = await signAccessToken({ userId, membershipId, tenantId: f.tenantId, farmId: f.farmId });
+      const app = await getApp();
+      const res = await app.inject({ method: 'GET', url: '/api/v1/hr/linkable-users', headers: { authorization: `Bearer ${token}` } });
+      expect(res.json().data.every((u: any) => u.phone === null)).toBe(true);
+    });
+  });
+
   it('refuses a repeat, a future date and a date before hire', async () => {
     const f = await createFixture();
     const owner = await f.as('owner');

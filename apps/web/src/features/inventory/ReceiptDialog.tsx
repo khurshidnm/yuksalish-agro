@@ -144,6 +144,7 @@ function Fields({
           {pay && (categoryRequired || categoryId) && <CategoryField form={form} required={categoryRequired} />}
         </>
       )}
+      {isPurchase && !pay && <p className="text-sm text-muted-foreground">{t('receipt.financeRecords')}</p>}
       <TextareaField form={form} name="notes" label={t('document.notes')} rows={2} />
     </>
   );

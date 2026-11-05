@@ -2,10 +2,14 @@ import { describe, expect, it } from 'vitest';
 import type { OutboxRecord, SentRecord } from '@/lib/outbox';
 import {
   animalsLeaving,
+  dailyLogLink,
   herdDayStatus,
+  logToOpen,
   matchAnimals,
   notableDeviation,
   queuedFeed,
+  signOutWarning,
+  startingLines,
   stepDown,
   stepFor,
   stepUp,
@@ -134,5 +138,59 @@ describe('animalsLeaving', () => {
   it('collects animals with a queued death', () => {
     const records = [record({ kind: 'death', body: { animalId: 'x' } }), record({ kind: 'weight', body: { animalId: 'y' } })];
     expect([...animalsLeaving(records)]).toEqual(['x']);
+  });
+});
+
+describe('a daily log from an earlier day', () => {
+  const failed = record({ id: 'yesterday', status: 'failed', meta: { herdId: 'h', date: '2026-11-05' } });
+  const todays = record({ id: 'today', meta: { herdId: 'h', date: '2026-11-06' } });
+
+  it('opens for its own date', () => {
+    expect(dailyLogLink(failed)).toBe('/today/daily-log/h?date=2026-11-05');
+    expect(logToOpen([todays, failed], 'h', '2026-11-05', '2026-11-06')?.id).toBe('yesterday');
+  });
+
+  it('does not take the place of today when no date is asked for', () => {
+    expect(logToOpen([failed], 'h', null, '2026-11-06')).toBeUndefined();
+    expect(logToOpen([failed, todays], 'h', null, '2026-11-06')?.id).toBe('today');
+  });
+
+  it('a date with no record behind it opens today, so nothing new can be entered in the past', () => {
+    expect(logToOpen([], 'h', '2026-11-01', '2026-11-06')).toBeUndefined();
+    expect(logToOpen([todays], 'h', '2026-11-01', '2026-11-06')?.id).toBe('today');
+  });
+});
+
+describe('startingLines', () => {
+  const herd = { id: 'h', name: 'Poda', state: 'stall', headCount: 10, log: null, lines: [{ itemId: 'hay', itemName: 'Beda', unit: 'kg', plannedQty: 5, qtyOnHand: 100 }] };
+  const feed = [{ id: 'corn', name: "Makkajo'xori", unit: 'kg', qtyOnHand: 40, defaultWarehouseId: null }];
+
+  it('prefills the ration on a new day', () => {
+    expect(startingLines(herd, feed, null).map((l) => l.actualQty)).toEqual([5]);
+  });
+
+  it('keeps every amount of a saved record, even feed that has left the ration and the lists', () => {
+    const saved = { waterL: null, condition: 'normal', notes: null, lines: [{ itemId: 'hay', actualQty: 4 }, { itemId: 'corn', actualQty: 2 }, { itemId: 'old', actualQty: 7 }] };
+    const lines = startingLines(herd, feed, saved, [{ itemId: 'old', itemName: 'Kepak', unit: 't' }]);
+    expect(lines.map((l) => [l.itemName, l.actualQty, l.unit])).toEqual([
+      ['Beda', 4, 'kg'],
+      ["Makkajo'xori", 2, 'kg'],
+      ['Kepak', 7, 't'],
+    ]);
+  });
+});
+
+describe('signOutWarning', () => {
+  it('says nothing when nothing is at stake', () => {
+    expect(signOutWarning(0, false)).toBeNull();
+  });
+
+  it('with no signal, says nobody can sign in here', () => {
+    expect(signOutWarning(0, true)).toEqual({ title: 'signOut.noSignalTitle', body: ['signOut.noSignalBody'] });
+  });
+
+  it('unsent records and no signal are both said', () => {
+    expect(signOutWarning(2, true)).toEqual({ title: 'signOut.unsentTitle', body: ['signOut.unsentBody', 'signOut.noSignalBody'] });
+    expect(signOutWarning(2, false)).toEqual({ title: 'signOut.unsentTitle', body: ['signOut.unsentBody'] });
   });
 });

@@ -17,7 +17,7 @@ export default async function platformModule(app: FastifyInstance) {
   });
   r.post('/tenants', {
     access: 'platform',
-    summary: 'Create a tenant with its first owner. A new owner\'s password is shown once.',
+    summary: 'Create a tenant. A new owner gets a one-time password, shown once; a phone with an account gets an invitation.',
     body: service.tenantInput,
     handler: async (req, reply) => {
       const result = await service.createTenant(req.body);
@@ -80,6 +80,15 @@ export default async function platformModule(app: FastifyInstance) {
     handler: async (req) => {
       req.log.warn({ userId: req.params.id, adminId: req.adminId }, 'user password reset by platform admin');
       return usersService.resetUserPassword(req.params.id, req.adminId);
+    },
+  });
+  r.post('/users/:id/reset-2fa', {
+    access: 'platform',
+    summary: 'Turn off two-factor sign-in for someone who lost their authenticator and recovery codes',
+    params: idParam,
+    handler: async (req) => {
+      req.log.warn({ userId: req.params.id, adminId: req.adminId }, 'user 2FA reset by platform admin');
+      return usersService.resetUserTwoFactor(req.params.id, req.adminId);
     },
   });
 

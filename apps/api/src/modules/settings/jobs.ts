@@ -1,4 +1,5 @@
 import type { FarmJob } from '../../jobs/types';
+import { retentionJob } from './retention';
 import { collectEvents, deliverDue } from './webhooks.service';
 
 /** Wired in jobs/index.ts next to the other modules' jobs. */
@@ -11,4 +12,5 @@ export const jobs: FarmJob[] = [
       await deliverDue();
     },
   },
+  retentionJob,
 ];

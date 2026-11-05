@@ -72,7 +72,7 @@ export function registerEmployees(app: FastifyInstance) {
 
   r.post('/employees/:id/terminate', {
     access: 'hr.update',
-    summary: 'Record that a person left: blocks their login, keeps their records',
+    summary: 'Record that a person left: blocks their login, keeps their records. accessEnded says whether a login was blocked.',
     params: idParam,
     body: service.terminateInput,
     handler: (req) => service.terminate(req.params.id, req.body),

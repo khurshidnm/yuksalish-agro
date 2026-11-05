@@ -21,7 +21,13 @@ export const clientId = z.uuid().optional();
 
 export interface Page<T> {
   data: T[];
-  meta: { page: number; pageSize: number; total: number };
+  meta: {
+    page: number;
+    pageSize: number;
+    total: number;
+    /** The count stopped at `total`: there are more rows than that. */
+    totalCapped?: true;
+  };
 }
 
 export function isPage(value: unknown): value is Page<unknown> {
@@ -64,7 +70,16 @@ export function sortBy(
   return tieBreaker ? [...order, asc(tieBreaker)] : order;
 }
 
-/** Run the page query plus a count over the same filter. */
+/**
+ * How far a count reads past the page in view. Row-level security makes a count visit every row, so
+ * an exact total costs more the longer a farm runs, and nobody pages through 400 screens by hand.
+ */
+const COUNT_AHEAD = 10_000;
+
+/**
+ * Run the page query plus a count over the same filter. Past COUNT_AHEAD the total is a floor that
+ * moves with the page, so a caller reading until it has `total` rows still reaches the end.
+ */
 export async function paged<T>(
   q: Pick<ListQuery, 'page' | 'pageSize'>,
   table: PgTable,
@@ -72,10 +87,17 @@ export async function paged<T>(
   rows: (limit: number, offset: number) => Promise<T[]>,
 ): Promise<Page<T>> {
   const offset = (q.page - 1) * q.pageSize;
+  const meta = { page: q.page, pageSize: q.pageSize };
   // Sequential on purpose: one transaction is one connection, so Promise.all gains nothing.
   const data = await rows(q.pageSize, offset);
-  const [{ total }] = await tx().select({ total: count() }).from(table).where(where);
-  return { data, meta: { page: q.page, pageSize: q.pageSize, total } };
+  // A page that is not full is the last one, so it already knows the total.
+  const isLast = data.length < q.pageSize && (data.length > 0 || offset === 0);
+  if (isLast) return { data, meta: { ...meta, total: offset + data.length } };
+
+  const limit = offset + q.pageSize + COUNT_AHEAD;
+  const counted = tx().select({ one: sql`1`.as('one') }).from(table).where(where).limit(limit + 1).as('counted');
+  const [{ total }] = await tx().select({ total: count() }).from(counted);
+  return total > limit ? { data, meta: { ...meta, total: limit, totalCapped: true } } : { data, meta: { ...meta, total } };
 }
 
 /** Sum as a number; empty set is 0. */

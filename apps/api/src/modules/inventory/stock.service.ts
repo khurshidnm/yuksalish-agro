@@ -4,7 +4,8 @@
  * and receipts and issues also share a `refId`, so the whole document can be reversed.
  */
 import { addDays, CURRENCIES, round, toBaseAmount } from '@yap/shared';
-import { and, asc, desc, eq, gt, gte, inArray, lte, sql, type SQL } from 'drizzle-orm';
+import { and, asc, count, desc, eq, exists, gt, gte, inArray, isNull, lte, notExists, or, sql, type SQL } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import { v7 as uuidv7 } from 'uuid';
 import { z } from 'zod';
 import { schema } from '../../db/client';
@@ -15,16 +16,17 @@ import {
   DOCUMENT_REVERSED_EVENT,
   getItemOrThrow,
   issueStock,
+  moneyOfReceipt,
   receiveStock,
   reverseStockDocument,
   STOCK_DOC_REF,
   transferStock,
 } from '../../core/inventory';
-import { assertCostCenterOpen, postTransaction, resolveFxRate } from '../../core/ledger';
+import { assertCostCenterOpen, postTransaction, resolveFxRate, type RecordSource } from '../../core/ledger';
 import { hideMoney } from '../../core/privacy';
 import { isoDate, listQuery, searchAny, sortBy, sumOf, type Page } from '../../core/query';
 
-const { accounts, costCenters, counterparties, financeCategories, items, stockBatches, stockMovements, users, warehouses } = schema;
+const { accounts, costCenters, counterparties, financeCategories, items, purchaseRequests, stockBatches, stockMovements, transactions, users, warehouses } = schema;
 
 /** Undoes exactly one receipt, by the refId createReceipt returned. */
 export { reverseStockDocument as reverseReceipt } from '../../core/inventory';
@@ -88,6 +90,8 @@ const paymentInput = z.object({
   dueDate: isoDate.nullish(),
   fileId: z.uuid().nullish(),
 });
+
+type PaymentInput = z.infer<typeof paymentInput>;
 
 export const receiptInput = z.object({
   warehouseId: z.uuid(),
@@ -174,6 +178,63 @@ async function assertAccount(id: string): Promise<void> {
   if (!row) throw notFound('Account');
 }
 
+interface MoneyGroup {
+  categoryId: string;
+  amount: number;
+  amountBase: number;
+  source: RecordSource;
+}
+
+/**
+ * The money of a purchase, one row per expense category, so a mixed invoice lands on the right
+ * budget lines. Approval looks at the whole document, so splitting it cannot dodge the second person.
+ */
+async function postPurchaseMoney(
+  groups: MoneyGroup[],
+  purchase: {
+    date: string;
+    currency: string;
+    fxRate: number;
+    counterpartyId?: string | null;
+    description: string;
+    payment: Pick<PaymentInput, 'paymentMethod' | 'accountId' | 'dueDate' | 'fileId'>;
+  },
+) {
+  const { payment } = purchase;
+  const costCenterId = await generalCostCenterId();
+  const documentBase = round(groups.reduce((sum, group) => sum + group.amountBase, 0), 2);
+  const rows = [];
+  for (const group of groups) {
+    if (group.amount <= 0) continue;
+    rows.push(
+      await postTransaction({
+        date: purchase.date,
+        type: 'expense',
+        amount: group.amount,
+        categoryId: group.categoryId,
+        currency: purchase.currency,
+        fxRate: purchase.fxRate,
+        documentBase,
+        paymentMethod: payment.paymentMethod,
+        accountId: payment.paymentMethod === 'debt' ? null : payment.accountId,
+        counterpartyId: purchase.counterpartyId,
+        costCenterId,
+        // Reaches a cost center when issued from the warehouse, not now (CLAUDE.md rule 3).
+        costTreatment: 'inventory',
+        description: purchase.description,
+        dueDate: payment.dueDate,
+        fileId: payment.fileId,
+        sourceType: group.source.type,
+        sourceId: group.source.id,
+      }),
+    );
+  }
+  return rows;
+}
+
+const describeDocument = (docNo: string | null, invoiceNo?: string | null, notes?: string | null) =>
+  [docNo, invoiceNo, notes].filter(Boolean).join(' / ');
+
 /** Stock moves today or earlier: a later date would leave the cost out of every report up to today. */
 function assertNotFuture(date: string): void {
   if (date > today()) throw badRequest('FUTURE_DATE', 'The date cannot be in the future');
@@ -237,36 +298,19 @@ export async function createReceipt(input: ReceiptInput) {
     groups.set(categoryId, group);
   }
 
-  const paymentRows = [];
-  if (payment) {
-    const costCenterId = await generalCostCenterId();
-    const documentBase = round([...groups.values()].reduce((sum, group) => sum + group.amountBase, 0), 2);
-    for (const [categoryId, group] of groups) {
-      if (group.amount <= 0) continue;
-      paymentRows.push(
-        await postTransaction({
+  const paymentRows = payment
+    ? await postPurchaseMoney(
+        [...groups].map(([categoryId, group]) => ({ ...group, categoryId: categoryId!, source: { type: 'stock_batch', id: group.batchId! } })),
+        {
           date: input.date,
-          type: 'expense',
-          amount: group.amount,
-          categoryId,
           currency,
           fxRate,
-          documentBase,
-          paymentMethod: payment.paymentMethod,
-          accountId: payment.paymentMethod === 'debt' ? null : payment.accountId,
           counterpartyId: input.counterpartyId,
-          costCenterId,
-          // Reaches a cost center when issued from the warehouse, not now (CLAUDE.md rule 3).
-          costTreatment: 'inventory',
-          description: [docNo, input.invoiceNo, input.notes].filter(Boolean).join(' / '),
-          dueDate: payment.dueDate,
-          fileId: payment.fileId,
-          sourceType: 'stock_batch',
-          sourceId: group.batchId,
-        }),
-      );
-    }
-  }
+          description: describeDocument(docNo, input.invoiceNo, input.notes),
+          payment,
+        },
+      )
+    : [];
 
   return {
     docNo,
@@ -275,6 +319,141 @@ export async function createReceipt(input: ReceiptInput) {
     batches: hideMoney(batches, ['unitCost']),
     transactions: paymentRows.map((p) => ({ id: p.id, status: p.status })),
   };
+}
+
+// ─── Receipts with no money ────────────────────────────────────────────────
+
+/**
+ * A storekeeper receives goods but cannot post money, and money is never posted for them: the same
+ * purchase may already be paid. So a purchase from a supplier with nothing recorded stays visible to
+ * finance until a person says what it was. Goods of a purchase request carry its reference, not a
+ * warehouse document, because the request holds their money.
+ */
+function unpaidDocuments() {
+  const m = stockMovements;
+  const line = alias(m, 'line');
+  const batchIds = tx()
+    .select({ id: line.batchId })
+    .from(line)
+    .where(and(eq(line.farmId, m.farmId), eq(line.refType, STOCK_DOC_REF), eq(line.refId, m.refId)));
+  const money = tx()
+    .select({ id: transactions.id })
+    .from(transactions)
+    .where(and(eq(transactions.farmId, m.farmId), moneyOfReceipt(m.refId, batchIds)));
+  const paidRequest = tx()
+    .select({ id: purchaseRequests.id })
+    .from(purchaseRequests)
+    .where(
+      and(
+        eq(purchaseRequests.farmId, m.farmId),
+        eq(purchaseRequests.status, 'paid'),
+        eq(purchaseRequests.itemId, m.itemId),
+        or(isNull(purchaseRequests.counterpartyId), eq(purchaseRequests.counterpartyId, stockBatches.counterpartyId)),
+      ),
+    );
+  return tx()
+    .select({
+      id: m.refId,
+      docNo: m.docNo,
+      date: m.date,
+      counterpartyId: stockBatches.counterpartyId,
+      supplier: counterparties.name,
+      invoiceNo: sql<string | null>`max(${stockBatches.invoiceNo})`.as('invoice_no'),
+      value: sumOf(m.totalCost).as('value'),
+      goods: sql<string>`string_agg(${items.name}, ', ' order by ${m.id})`.as('goods'),
+      lines: sql<{ itemName: string; itemCategory: string; unit: string; qty: number; value: number }[]>`json_agg(
+        json_build_object('itemName', ${items.name}, 'itemCategory', ${items.category}, 'unit', ${items.unit}, 'qty', ${m.qty}, 'value', ${m.totalCost})
+        order by ${m.id})`.as('lines'),
+      /** These may be the goods a request already paid for, entered as a plain receipt: money here would count twice. */
+      paidRequest: sql<boolean>`bool_or(${exists(paidRequest)})`.as('paid_request'),
+    })
+    .from(m)
+    .innerJoin(stockBatches, eq(stockBatches.id, m.batchId))
+    .innerJoin(counterparties, eq(counterparties.id, stockBatches.counterpartyId))
+    .innerJoin(items, eq(items.id, m.itemId))
+    .where(and(eq(m.farmId, ctx().farmId), eq(m.type, 'receipt'), eq(m.reason, 'purchase'), eq(m.refType, STOCK_DOC_REF), notExists(money)))
+    .groupBy(m.refId, m.docNo, m.date, stockBatches.counterpartyId, counterparties.name)
+    // Free goods have nothing to record, so they would stay here for good.
+    .having(sql`sum(${m.totalCost}) > 0`)
+    .as('unpaid');
+}
+
+/** Oldest first: those are the ones a supplier is waiting on. Value is in the base currency. */
+export async function unpaidReceipts(q: z.infer<typeof listQuery>): Promise<Page<Record<string, unknown>>> {
+  const docs = unpaidDocuments();
+  const where = searchAny(q.search, [docs.supplier, docs.docNo, sql`${docs.invoiceNo}`, sql`${docs.goods}`]);
+  const data = await tx()
+    .select()
+    .from(docs)
+    .where(where)
+    .orderBy(...sortBy(q.sort, { date: docs.date, supplier: docs.supplier, value: sql`${docs.value}` }, asc(docs.date), docs.id))
+    .limit(q.pageSize)
+    .offset((q.page - 1) * q.pageSize);
+  const [{ total }] = await tx().select({ total: count() }).from(docs).where(where);
+  return { data, meta: { page: q.page, pageSize: q.pageSize, total } };
+}
+
+/** Every one of them, for the alert rule, which must see them all to resolve what has gone. */
+export const allUnpaidReceipts = () => tx().select().from(unpaidDocuments());
+
+export const receiptMoneyInput = paymentInput.omit({ fileId: true }).extend({
+  /** The day the money moved or the debt arose. The day of the receipt when left out. */
+  date: isoDate.optional(),
+});
+
+/**
+ * Say what an unpaid receipt was: paid, or owed. The amount is what the receipt put in stock, in the
+ * base currency, so stock and money agree. The rows carry the document, not a batch: refusing them
+ * later puts the receipt back on the list and leaves the goods alone (see core/ledger).
+ */
+export async function recordReceiptMoney(refId: string, input: z.infer<typeof receiptMoneyInput>) {
+  const m = stockMovements;
+  const c = ctx();
+  // The lock holds off a second entry and a reversal of this receipt until this one lands.
+  const lines = await tx()
+    .select({
+      batchId: m.batchId,
+      itemId: m.itemId,
+      docNo: m.docNo,
+      date: m.date,
+      value: m.totalCost,
+      notes: m.notes,
+      counterpartyId: stockBatches.counterpartyId,
+      invoiceNo: stockBatches.invoiceNo,
+    })
+    .from(m)
+    .innerJoin(stockBatches, eq(stockBatches.id, m.batchId))
+    .where(and(eq(m.farmId, c.farmId), eq(m.type, 'receipt'), eq(m.reason, 'purchase'), eq(m.refType, STOCK_DOC_REF), eq(m.refId, refId)))
+    .orderBy(asc(m.id))
+    .for('update', { of: m });
+  if (lines.length === 0) throw notFound('Receipt');
+  const [{ docNo, date, counterpartyId, invoiceNo, notes }] = lines;
+
+  const [money] = await tx()
+    .select({ id: transactions.id })
+    .from(transactions)
+    .where(and(eq(transactions.farmId, c.farmId), moneyOfReceipt(refId, lines.map((line) => line.batchId))))
+    .limit(1);
+  if (money) throw conflict('RECEIPT_HAS_MONEY', 'Money is already recorded for this receipt', { docNo });
+
+  const groups = new Map<string, MoneyGroup>();
+  for (const line of lines) {
+    const categoryId = await categoryIdFor(await getItemOrThrow(line.itemId), input.categoryId);
+    const group = groups.get(categoryId) ?? { categoryId, amount: 0, amountBase: 0, source: { type: STOCK_DOC_REF, id: refId } };
+    group.amount = group.amountBase = round(group.amount + line.value, 2);
+    groups.set(categoryId, group);
+  }
+  if (![...groups.values()].some((group) => group.amount > 0)) throw badRequest('INVALID_AMOUNT', 'This receipt has no value to record');
+
+  const rows = await postPurchaseMoney([...groups.values()], {
+    date: input.date ?? date,
+    currency: c.currency,
+    fxRate: 1,
+    counterpartyId,
+    description: describeDocument(docNo, invoiceNo, notes),
+    payment: input,
+  });
+  return { docNo, transactions: rows.map((row) => ({ id: row.id, status: row.status })) };
 }
 
 export async function createIssue(input: IssueInput) {

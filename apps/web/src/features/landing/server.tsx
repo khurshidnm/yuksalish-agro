@@ -1,3 +1,4 @@
+import { LANGUAGES, resources } from '@yap/shared/i18n';
 import { LANDING_LANGUAGES } from '@yap/shared/landing';
 import { renderToString } from 'react-dom/server';
 import { LandingPage } from './LandingPage';
@@ -12,6 +13,11 @@ export function renderPages() {
     head: headFor(language),
     body: renderToString(<LandingPage language={language} />),
   }));
+}
+
+/** The words index.html shows by itself when the app cannot start. */
+export function bootWords() {
+  return Object.fromEntries(LANGUAGES.map(({ code }) => [code, (resources[code].common as { boot: Record<string, string> }).boot]));
 }
 
 export { robotsTxt, sitemapXml, SITE_URL };

@@ -536,8 +536,10 @@ const animalsTemplate: Template<AnimalRefs, AnimalRow> = {
 
     let origin: AnimalRow['origin'] | undefined;
     if (purchaseDate) origin = 'purchased';
-    else if (birth?.date && !birth.estimated) origin = 'born';
-    else if (c.blank('purchaseDate') && birth) c.error('birth', 'originUnknown');
+    else if (birth?.date) {
+      origin = 'born';
+      if (birth.estimated) c.warn('birth', 'assumedBornHere');
+    } else if (c.blank('purchaseDate') && birth) c.error('birth', 'originUnknown');
 
     if (matingDate) {
       if (sex === 'male') c.error('pregnancyDate', 'maleCannotBePregnant');

@@ -36,6 +36,20 @@
       "when": 1793880005112,
       "tag": "0004_assistant_hardening",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793916932935,
+      "tag": "0005_production_hardening",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793919907528,
+      "tag": "0006_asset_opening_and_notification_words",
+      "breakpoints": true
     }
   ]
 }

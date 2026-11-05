@@ -187,6 +187,30 @@
     },
     "emptyBody": "Qarzga kiritilgan xarid va sotuvlar shu yerda ko'rinadi."
   },
+  "unpaidReceipts": {
+    "tab": "To'lanmagan kirimlar",
+    "hint": "Yetkazib beruvchidan tovar kelgan, lekin uning to'lovi yoki qarzi hali yozilmagan.",
+    "document": "Kirim",
+    "documentOn": "{{docNo}}, {{date}}",
+    "documentInvoice": "{{docNo}}, {{date}}, hisob-faktura {{invoiceNo}}",
+    "goods": "Tovarlar",
+    "goodsLine": "{{item}}: {{qty}}",
+    "value": "Qiymati",
+    "recordAs": "Qanday yozish",
+    "asPayment": "To'langan",
+    "asDebt": "Qarzga",
+    "title": {
+      "payment": "To'lovni qayd etish",
+      "debt": "Qarzni qayd etish"
+    },
+    "recordHint": "{{docNo}}, {{supplier}}: {{amount}}",
+    "paidRequest": "To'langan xarid so'rovi hali shu tovarni kutmoqda. Agar bu o'sha yuk bo'lsa, u allaqachon to'langan: bu yerda yozish uni ikki marta hisoblaydi.",
+    "categoryHint": "Ba'zi tovarlarning o'z moddasi yo'q. Bu modda butun kirimga qo'llanadi.",
+    "saved": "Qayd etildi: {{docNo}}",
+    "pendingApproval": "Rahbar tasdig'ini kutmoqda",
+    "empty": "Barcha kirimlarning to'lovi yoki qarzi yozilgan",
+    "emptyBody": "To'lovi yoki qarzi yozilmagan xarid shu yerda ko'rinadi."
+  },
   "budget": {
     "title": "Byudjet",
     "description": "Moddalar va oylar bo'yicha reja, fakt va farq.",
@@ -396,6 +420,7 @@
     "LOAN_HAS_PAYMENTS": "To'lovlari yoki puli o'tgan kreditni o'chirib bo'lmaydi.",
     "NOT_APPROVED": "Faqat tasdiqlangan operatsiyani bekor qilish mumkin.",
     "NOT_PENDING": "Bu operatsiya tasdiqlash kutmayapti.",
+    "RECEIPT_HAS_MONEY": "Bu kirim uchun to'lov yoki qarz allaqachon qayd etilgan.",
     "SAME_ACCOUNT": "Ikkala hisob har xil bo'lishi kerak.",
     "SAME_MAKER_CHECKER": "Operatsiyani kiritgan xodim uni o'zi tasdiqlay olmaydi.",
     "SETTLEMENT_NOT_EDITABLE": "Qarz to'lovini tahrirlab bo'lmaydi: o'chirib, qayta kiriting.",

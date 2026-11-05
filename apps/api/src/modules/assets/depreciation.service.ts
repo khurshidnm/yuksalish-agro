@@ -1,14 +1,14 @@
 import { and, eq, max, sql } from 'drizzle-orm';
-import { addDays, monthOf, monthRange, round, straightLineMonthly, unitsOfProductionDepreciation } from '@yap/shared';
+import { addDays, monthOf, monthRange, round, straightLineMonthly, todayIso, unitsOfProductionDepreciation } from '@yap/shared';
 import { schema } from '../../db/client';
 import { ctx, today, tx } from '../../core/context';
 import { badRequest } from '../../core/errors';
 import { recordEvent } from '../../core/journal';
 import { postTransaction } from '../../core/ledger';
 import { sumOf } from '../../core/query';
-import { assetCostCenter, getAssetRow } from './assets.service';
+import { assetCostCenter, getAssetRow, isInOpening } from './assets.service';
 
-const { assets, assetUsageLogs, depreciationEntries: t, financeCategories } = schema;
+const { assets, assetUsageLogs, depreciationEntries: t, farms, financeCategories } = schema;
 
 type Asset = typeof assets.$inferSelect;
 
@@ -26,18 +26,26 @@ function nextMonth(month: string): string {
   return monthOf(addDays(monthRange(month).to, 1));
 }
 
+/** Every month from `first` to `last`, both included, oldest first. */
+export function monthsFrom(first: string, last: string): string[] {
+  const months: string[] = [];
+  for (let m = first; m <= last; m = nextMonth(m)) months.push(m);
+  return months;
+}
+
 /** Depreciation for one month, never exceeding what is left to depreciate. */
 async function amountFor(asset: Asset, month: string): Promise<number> {
   const price = asset.purchasePrice ?? 0;
   const purchaseMonth = asset.purchaseDate ? monthOf(asset.purchaseDate) : null;
   // Depreciation starts the month after the machine enters service.
   if (asset.rented || price <= 0 || !purchaseMonth || month <= purchaseMonth) return 0;
+  if (isInOpening(asset, month)) return 0;
 
   const [{ posted }] = await tx()
     .select({ posted: sumOf(t.amount) })
     .from(t)
     .where(eq(t.assetId, asset.id));
-  const remaining = Math.max(0, price - asset.salvageValue - posted);
+  const remaining = Math.max(0, price - asset.salvageValue - asset.openingDepreciation - posted);
 
   if (asset.depreciationMethod === 'units') {
     if (!asset.totalUnits) return 0;
@@ -119,21 +127,35 @@ export async function runDepreciation(month: string): Promise<{ month: string; p
   return { month, posted, total: round(total, 2) };
 }
 
+/** Oldest first: each month is capped by what the one before it left. */
+export async function postMonths(months: string[]) {
+  const runs = [];
+  for (const month of months) runs.push(await runDepreciation(month));
+  const posted = runs.filter((run) => run.posted > 0);
+  return {
+    months: posted,
+    posted: posted.reduce((sum, run) => sum + run.posted, 0),
+    total: round(posted.reduce((sum, run) => sum + run.total, 0), 2),
+  };
+}
+
+async function farmStartMonth(): Promise<string> {
+  const c = ctx();
+  const [farm] = await tx().select({ createdAt: farms.createdAt }).from(farms).where(eq(farms.id, c.farmId));
+  return monthOf(todayIso(c.timezone, farm.createdAt));
+}
+
 /**
- * Months to post now: last month, plus any gap since the last posted month, so a server that
- * was down on the 1st catches up. A farm with no entries yet starts from last month rather
- * than back-posting years into a ledger that did not exist then.
+ * Months to post now: every ended month after the last one posted, so a run that failed or a server
+ * that was down catches up. A farm with no entries yet starts from the month it was created, so a
+ * missed first run catches up too, and nothing reaches back into a ledger that did not exist then.
  */
 export async function monthsToRun(): Promise<string[]> {
-  const last = previousMonth(monthOf(today()));
   const [{ latest }] = await tx()
     .select({ latest: max(t.month) })
     .from(t)
     .where(eq(t.farmId, ctx().farmId));
-  if (!latest) return [last];
-  const months: string[] = [];
-  for (let m = nextMonth(latest); m <= last; m = nextMonth(m)) months.push(m);
-  return months;
+  return monthsFrom(latest ? nextMonth(latest) : await farmStartMonth(), previousMonth(monthOf(today())));
 }
 
 export async function listDepreciation(assetId: string) {

@@ -1,6 +1,7 @@
 import { and, asc, count, desc, eq, inArray, isNull, like, lt, ne, or } from 'drizzle-orm';
 import { z } from 'zod';
 import { randomBytes } from 'node:crypto';
+import { LANGUAGES, type LanguageCode } from '@yap/shared/i18n';
 import { schema, db } from '../../db/client';
 import { ctx, tx, withPlatform, withTenant } from '../../core/context';
 import { badRequest, notFound } from '../../core/errors';
@@ -8,12 +9,18 @@ import { recordEvent } from '../../core/journal';
 import { listQuery, paged } from '../../core/query';
 import { CHANNELS, EXTERNAL_CHANNELS, type ExternalChannel } from './channels';
 import { tr } from './i18n';
-import { DEFAULT_CHANNELS, EVENT_TYPES, notifyUser, type EventType, type NotificationInput } from './notify.service';
+import { DEFAULT_CHANNELS, EVENT_TYPES, notifyUser, wordsFor, type EventType, type NotificationInput } from './notify.service';
 import { escapeHtml, getBotUsername, sendHtml, telegramConfigured } from './telegram';
 
 const { idempotencyKeys, memberships, notificationPrefs, notifications, telegramLinkCodes, users } = schema;
 
-export const notificationListQuery = listQuery.extend({ unread: z.stringbool().optional() });
+const LANGUAGE_CODES = LANGUAGES.map((l) => l.code) as [LanguageCode, ...LanguageCode[]];
+
+export const notificationListQuery = listQuery.extend({
+  unread: z.stringbool().optional(),
+  /** The language on the reader's screen. */
+  lang: z.enum(LANGUAGE_CODES).optional(),
+});
 
 /** A text that shows money stays out of sight once its reader loses the right to it (rule 7). */
 const mine = () => {
@@ -27,14 +34,15 @@ const mine = () => {
 
 export async function list(q: z.infer<typeof notificationListQuery>) {
   const where = and(mine(), q.unread ? isNull(notifications.readAt) : undefined);
-  return paged(q, notifications, where, (limit, offset) =>
-    tx()
+  return paged(q, notifications, where, async (limit, offset) => {
+    const rows = await tx()
       .select({
         id: notifications.id,
         eventType: notifications.eventType,
         severity: notifications.severity,
         title: notifications.title,
         body: notifications.body,
+        texts: notifications.texts,
         link: notifications.link,
         readAt: notifications.readAt,
         createdAt: notifications.createdAt,
@@ -43,8 +51,9 @@ export async function list(q: z.infer<typeof notificationListQuery>) {
       .where(where)
       .orderBy(desc(notifications.createdAt), desc(notifications.id))
       .limit(limit)
-      .offset(offset),
-  );
+      .offset(offset);
+    return rows.map(({ texts, ...row }) => ({ ...row, ...wordsFor({ ...row, texts }, q.lang) }));
+  });
 }
 
 export async function unreadCount() {
@@ -103,6 +112,14 @@ export async function setPreference(eventType: EventType, channels: ExternalChan
       set: { channels },
     });
   return getPreferences();
+}
+
+export const languageInput = z.object({ language: z.enum(LANGUAGE_CODES) });
+
+/** Telegram has no screen to read a language from, so the account keeps the one chosen in the app. */
+export async function setLanguage(language: LanguageCode) {
+  await tx().update(users).set({ locale: language }).where(eq(users.id, ctx().userId!));
+  return { language };
 }
 
 // ─── Telegram linking ──────────────────────────────────────────────────────
@@ -228,6 +245,26 @@ export const PASSWORD_NOTICE: NotificationInput = {
   title: (locale) => tr(locale, 'alerts', 'bot.passwordNotice.title'),
   body: (locale) => tr(locale, 'alerts', 'bot.passwordNotice.body'),
 };
+
+/** Two-factor sign-in was reset, replaced, or got past with a recovery code. */
+export const TWO_FACTOR_NOTICE: NotificationInput = {
+  account: true,
+  channels: ['telegram'],
+  eventType: 'alert_attention',
+  severity: 'attention',
+  title: (locale) => tr(locale, 'alerts', 'bot.twoFactorNotice.title'),
+  body: (locale) => tr(locale, 'alerts', 'bot.twoFactorNotice.body'),
+};
+
+/** Says only who asked. The person answers in the app, signed in. */
+export const inviteNotice = (workspace: string): NotificationInput => ({
+  account: true,
+  channels: ['telegram'],
+  eventType: 'alert_attention',
+  severity: 'attention',
+  title: (locale) => tr(locale, 'alerts', 'bot.inviteNotice.title'),
+  body: (locale) => tr(locale, 'alerts', 'bot.inviteNotice.body', { workspace }),
+});
 
 /** For code outside a request, where no farm is at hand. The notice names none, so any of theirs will do. */
 export async function notifyAccount(userId: string, notice: NotificationInput): Promise<void> {

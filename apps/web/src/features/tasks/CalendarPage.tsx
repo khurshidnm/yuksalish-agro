@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { z } from 'zod';
+import { useOpenableLink } from '@/app/canOpen';
 import { ComboboxField, DateField, EmptyState, ErrorCard, FormDialog, FormGrid, PageHeader, SelectField, TextField, TextareaField, useConfirm, useUrlParam } from '@/components';
 import { Badge, type BadgeVariant, Button, Card, CardContent, Combobox, Select, Skeleton, Tabs, TabsList, TabsTrigger } from '@/components/ui';
 import { api } from '@/lib/api';
@@ -71,6 +72,7 @@ function ItemRow({ item, onEdit }: { item: CalendarItem; onEdit: (item: Calendar
   const { t } = useTranslation('tasks');
   const canEdit = usePermission('tasks.update');
   const editable = item.editableId !== null && canEdit;
+  const to = useOpenableLink()(item.link);
 
   const body = (
     <>
@@ -94,8 +96,8 @@ function ItemRow({ item, onEdit }: { item: CalendarItem; onEdit: (item: Calendar
       </button>
     );
   }
-  return item.link ? (
-    <Link to={item.link} className={row}>
+  return to ? (
+    <Link to={to} className={row}>
       {body}
     </Link>
   ) : (

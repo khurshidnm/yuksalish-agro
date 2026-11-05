@@ -41,6 +41,21 @@ export interface Transaction {
   updatedAt: string;
 }
 
+/** A purchase from a supplier with no payment or debt recorded. Its value is in the base currency. */
+export interface UnpaidReceipt {
+  id: string;
+  docNo: string;
+  date: string;
+  counterpartyId: string;
+  supplier: string;
+  invoiceNo: string | null;
+  value: number;
+  goods: string;
+  lines: { itemName: string; itemCategory: string; unit: string; qty: number; value: number }[];
+  /** A paid purchase request is still waiting for these goods, so they may be paid for already. */
+  paidRequest: boolean;
+}
+
 export interface Totals {
   income: number;
   expense: number;

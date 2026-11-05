@@ -7,7 +7,8 @@
  *
  * Types the platform names in every language: animal_count, inactivity, isolation, lambing_activity,
  * trough_empty, person, vehicle, gate_open, smoke, fire. Severity `urgent` raises an alert and reaches
- * Telegram, repeating until acknowledged, so use it on purpose.
+ * Telegram, repeating until acknowledged, so use it on purpose. The server makes smoke and fire urgent
+ * whatever is given here.
  */
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -98,7 +99,7 @@ async function event(type, severity = 'attention') {
     data: { simulated: true, source: 'infra/camera-sim', confidence: 0.91 },
     snapshotUrl,
   });
-  console.log(`Sent ${type} (${severity}): ${JSON.stringify(result.data)}`);
+  console.log(`Sent ${type}: ${JSON.stringify(result.data)}`);
 }
 
 function run() {

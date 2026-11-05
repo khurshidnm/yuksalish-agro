@@ -8,13 +8,23 @@ import { Badge, type BadgeVariant, Button, Select } from '@/components/ui';
 import { api } from '@/lib/api';
 import { formatDateTime, formatNumber } from '@/lib/format';
 import { zOptionalText } from '@/lib/forms';
-import { enumOptions } from '@/lib/i18n';
+import { LANGUAGES, enumOptions } from '@/lib/i18n';
 import { useApiMutation, useDetail } from '@/lib/query';
 
 const LEADS = '/leads';
 const STATS = '/leads/stats';
 
 type LeadStatus = (typeof LEAD_STATUSES)[number];
+
+interface LeadRepeat {
+  at: string;
+  fullName: string;
+  farmName?: string;
+  region?: string;
+  farmType?: string;
+  farmSize?: string;
+  message?: string;
+}
 
 interface Lead {
   id: string;
@@ -30,6 +40,7 @@ interface Lead {
   status: LeadStatus;
   notes: string | null;
   submissions: number;
+  repeats: LeadRepeat[];
   contactedAt: string | null;
   createdAt: string;
 }
@@ -210,7 +221,7 @@ export default function LeadsPage() {
                 <Fact label={t('leads.region')} value={open.region} />
                 <Fact label={t('leads.farmType')} value={open.farmType ? t(`enums:leadFarmType.${open.farmType}`) : null} />
                 <Fact label={t('leads.size')} value={open.farmSize} />
-                <Fact label={t('leads.language')} value={open.language} />
+                <Fact label={t('leads.language')} value={LANGUAGES.find((l) => l.code === open.language)?.label ?? open.language} />
                 <Fact label={t('leads.contactedAt')} value={open.contactedAt ? formatDateTime(open.contactedAt) : null} />
               </dl>
 
@@ -218,6 +229,24 @@ export default function LeadsPage() {
                 <div className="rounded-lg bg-muted p-3 text-sm whitespace-pre-wrap">
                   <p className="mb-1 font-medium text-muted-foreground">{t('leads.message')}</p>
                   {open.message}
+                </div>
+              )}
+
+              {open.repeats.length > 0 && (
+                <div className="rounded-lg border border-border p-3 text-sm">
+                  <p className="font-medium text-muted-foreground">{t('leads.repeats')}</p>
+                  <p className="mb-2 text-xs text-muted-foreground">{t('leads.repeatsHint')}</p>
+                  <ul className="flex flex-col gap-2">
+                    {open.repeats.map((repeat, index) => (
+                      <li key={`${repeat.at}-${index}`} className="border-t border-dashed border-border pt-2">
+                        <p className="font-medium break-words">
+                          {[repeat.fullName, repeat.farmName, repeat.region, repeat.farmType && t(`enums:leadFarmType.${repeat.farmType}`), repeat.farmSize].filter(Boolean).join(' · ')}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{formatDateTime(repeat.at)}</p>
+                        {repeat.message && <p className="mt-1 break-words whitespace-pre-wrap">{repeat.message}</p>}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
 

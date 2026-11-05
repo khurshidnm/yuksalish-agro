@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { type Column, DataTableView, FormDialog, PageHeader, SelectField, TextField, UrlTabs, useConfirm } from '@/components';
 import { Badge, Button } from '@/components/ui';
 import { api } from '@/lib/api';
-import { formatDateTime } from '@/lib/format';
+import { formatDate, formatDateTime } from '@/lib/format';
 import { zText } from '@/lib/forms';
 import { useApiMutation, useDetail } from '@/lib/query';
 import { ShowOnceDialog } from './shared';
@@ -19,11 +19,12 @@ interface ApiKey {
   keyPrefix: string;
   scopes: string[];
   lastUsedAt: string | null;
+  expiresAt: string | null;
   revokedAt: string | null;
   createdAt: string;
 }
 
-const schema = z.object({ name: zText(120), scope: z.enum(['events:write', '*']) });
+const schema = z.object({ name: zText(120), scope: z.enum(['events:write', '*']), expiry: z.enum(['never', '90', '365']) });
 
 function KeysTab() {
   const { t } = useTranslation('settings');
@@ -33,7 +34,7 @@ function KeysTab() {
   const [secret, setSecret] = useState<string | null>(null);
 
   const create = useApiMutation<z.output<typeof schema>, ApiKey & { key: string }>({
-    mutationFn: ({ name, scope }) => api.post(KEYS, { name, scopes: [scope] }),
+    mutationFn: ({ name, scope, expiry }) => api.post(KEYS, { name, scopes: [scope], expiresInDays: expiry === 'never' ? null : Number(expiry) }),
     invalidate: [KEYS],
     silentError: true,
     onSuccess: (result) => setSecret(result.key),
@@ -49,10 +50,15 @@ function KeysTab() {
     { key: 'keyPrefix', header: t('apiKeys.key'), cell: (row) => <code className="font-mono text-sm">{row.keyPrefix}…</code>, mobile: 'subtitle' },
     { key: 'scopes', header: t('apiKeys.scope'), cell: (row) => row.scopes.map((scope) => t(`apiKeys.scopes.${scope === '*' ? 'all' : 'events'}`)).join(', ') },
     { key: 'lastUsedAt', header: t('apiKeys.lastUsed'), cell: (row) => (row.lastUsedAt ? formatDateTime(row.lastUsedAt) : t('apiKeys.neverUsed')) },
+    { key: 'expiresAt', header: t('apiKeys.expires'), cell: (row) => (row.expiresAt ? formatDate(row.expiresAt) : t('apiKeys.expiryNever')), mobile: 'hidden' },
     {
       key: 'status',
       header: t('apiKeys.status'),
-      cell: (row) => (row.revokedAt ? <Badge variant="danger">{t('apiKeys.revoked')}</Badge> : <Badge variant="success">{t('apiKeys.active')}</Badge>),
+      cell: (row) => {
+        if (row.revokedAt) return <Badge variant="danger">{t('apiKeys.revoked')}</Badge>;
+        if (row.expiresAt && new Date(row.expiresAt) <= new Date()) return <Badge variant="danger">{t('apiKeys.expired')}</Badge>;
+        return <Badge variant="success">{t('apiKeys.active')}</Badge>;
+      },
     },
   ];
 
@@ -96,7 +102,7 @@ function KeysTab() {
         onOpenChange={setCreating}
         title={t('apiKeys.add')}
         schema={schema}
-        defaultValues={{ name: '', scope: 'events:write' }}
+        defaultValues={{ name: '', scope: 'events:write', expiry: 'never' }}
         onSubmit={(values) => create.mutateAsync(values)}
       >
         {(form) => (
@@ -109,6 +115,16 @@ function KeysTab() {
               options={[
                 { value: 'events:write', label: t('apiKeys.scopes.events') },
                 { value: '*', label: t('apiKeys.scopes.all') },
+              ]}
+            />
+            <SelectField
+              form={form}
+              name="expiry"
+              label={t('apiKeys.expiry')}
+              options={[
+                { value: 'never', label: t('apiKeys.expiryNever') },
+                { value: '90', label: t('apiKeys.expiry90') },
+                { value: '365', label: t('apiKeys.expiry365') },
               ]}
             />
           </>

@@ -37,6 +37,7 @@
     "VALIDATION_ERROR": "Check the highlighted fields.",
     "INVALID_INPUT": "Some values are not valid.",
     "ALREADY_EXISTS": "This record already exists.",
+    "FORM_EXPIRED": "This form has expired. Please reload the page and send it again.",
     "IN_USE": "This record is in use and cannot be deleted.",
     "INVALID_REFERENCE": "A linked record was not found.",
     "NOTHING_TO_UPDATE": "No changes were sent.",
@@ -48,6 +49,12 @@
     "NO_ACTIVE_FARM": "No active farm is selected.",
     "FILE_REQUIRED": "No file was selected.",
     "FILE_TYPE_NOT_ALLOWED": "This file type can't be uploaded.",
+    "INVALID_UPLOAD": "This upload is broken. Please send it again.",
+    "FILE_TOO_LARGE": "This file is too large. The limit is {{maxMb}} MB. Make it smaller or split it into parts.",
+    "UPLOADS_BUSY": "The server is receiving many files right now. Try again in a moment.",
+    "STORAGE_QUOTA_REACHED": "The farm's file storage is full: {{usedMb}} MB with a limit of {{quotaMb}} MB. Delete files nothing uses, or ask the owner to raise the limit.",
+    "DAILY_UPLOAD_LIMIT_REACHED": "You have reached the daily upload limit of {{limitMb}} MB in 24 hours. Try again tomorrow, or ask the owner.",
+    "STORAGE_FULL": "The server is out of disk space, so the file was not saved. Tell your administrator.",
     "FILE_NOT_FOUND": "File not found.",
     "INSUFFICIENT_STOCK": "Not enough stock in the warehouse.",
     "BATCH_ALREADY_USED": "This batch has been used and can't be reversed.",
@@ -75,6 +82,20 @@
     "errorTitle": "Something went wrong", "errorBody": "Try reloading the page. If it happens again, contact support.",
     "backHome": "Go to home", "reload": "Reload",
     "offlineTitle": "This page needs a connection", "offlineBody": "It will open once you are back online. You can keep working on the Today screen.", "offlineAction": "Go to Today"
+  },
+  "update": {
+    "ready": "A new version is ready",
+    "apply": "Update",
+    "pageTitle": "This page did not open",
+    "pageBody": "The connection is weak, or a new version of the app is still downloading. Try again in a moment.",
+    "partFailed": "Part of this page did not load. Reload it once the connection improves."
+  },
+  "boot": {
+    "title": "The app is not opening",
+    "body": "The connection may be weak. Wait a little or reload. Your saved records are safe.",
+    "reload": "Reload",
+    "oldTitle": "This browser is too old",
+    "oldBody": "The app does not work in this browser. It needs Chrome 111 or Safari 16.4 or newer. Update the browser on this phone."
   },
   "stub": { "title": "This section is being built", "body": "You'll be able to work here soon." },
   "theme": { "toggle": "Change theme", "light": "Light", "dark": "Dark", "system": "System" },

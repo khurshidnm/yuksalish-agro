@@ -79,7 +79,7 @@ function cleanRates(rates: Record<string, number | null>) {
   return Object.fromEntries(Object.entries(rates).filter(([, value]) => value !== null && value > 0));
 }
 
-interface LinkableUser {
+export interface LinkableUser {
   id: string;
   fullName: string;
   phone: string;

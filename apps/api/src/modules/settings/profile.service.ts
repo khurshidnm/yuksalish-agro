@@ -71,6 +71,24 @@ export const policyInput = z
       .partial()
       .strict(),
     security: z.object({ enforce2fa: z.boolean() }).partial().strict(),
+    storage: z
+      .object({
+        quotaMb: z.number().int().min(100).max(10_000_000),
+        dailyUploadMb: z.number().int().min(15).max(1_000_000),
+      })
+      .partial()
+      .strict(),
+    retention: z
+      .object({
+        notificationDays: z.number().int().min(30).max(3650),
+        // Below this, a phone that was offline for weeks could post the same record twice.
+        idempotencyDays: z.number().int().min(30).max(365),
+        webhookDeliveryDays: z.number().int().min(7).max(3650),
+        aiToolDataDays: z.number().int().min(7).max(3650),
+        importDays: z.number().int().min(7).max(3650),
+      })
+      .partial()
+      .strict(),
     currency: z.enum(CURRENCIES),
     timezone: z.string().refine(isTimeZone, 'Unknown time zone'),
   })

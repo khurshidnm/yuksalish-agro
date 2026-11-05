@@ -6,6 +6,12 @@
   "cropPlanStatus": { "planned": "Rejalashtirilgan", "sown": "Ekilgan", "growing": "O'sishda", "harvested": "Yig'ilgan", "cancelled": "Bekor qilingan" },
   "sex": { "female": "Urg'ochi", "male": "Erkak" },
   "animalCategory": { "ewe": "Sovliq", "ram": "Qo'chqor", "lamb_male": "Qo'zi (erkak)", "lamb_female": "Qo'zi (urg'ochi)", "wether": "Bichilgan", "fattening": "Boquvdagi" },
+  "animalCategoryBySpecies": {
+    "goat": { "ewe": "Ona echki", "ram": "Taka", "lamb_male": "Uloq (erkak)", "lamb_female": "Uloq (urg'ochi)", "wether": "Bichilgan", "fattening": "Boquvdagi" },
+    "cattle": { "ewe": "Sigir", "ram": "Buqa", "lamb_male": "Buzoq (erkak)", "lamb_female": "Buzoq (urg'ochi)", "wether": "Ho'kiz", "fattening": "Boquvdagi" },
+    "horse": { "ewe": "Biya", "ram": "Ayg'ir", "lamb_male": "Toy (erkak)", "lamb_female": "Toy (urg'ochi)", "wether": "Axta", "fattening": "Boquvdagi" },
+    "poultry": { "ewe": "Tovuq", "ram": "Xo'roz", "lamb_male": "Jo'ja (erkak)", "lamb_female": "Jo'ja (urg'ochi)", "wether": "Bichilgan", "fattening": "Boquvdagi" }
+  },
   "animalStatus": { "active": "Faol", "pregnant": "Bo'g'oz", "sick": "Kasal", "quarantine": "Karantin", "sold": "Sotilgan", "slaughtered": "So'yilgan", "dead": "Nobud bo'lgan", "lost": "Yo'qolgan" },
   "animalOrigin": { "born": "Tug'ilgan", "purchased": "Sotib olingan" },
   "identifierType": { "ear_tag": "Quloq birkasi", "rfid": "RFID", "qr": "QR-kod" },

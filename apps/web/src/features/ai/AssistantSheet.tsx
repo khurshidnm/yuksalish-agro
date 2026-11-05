@@ -17,6 +17,7 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui';
+import { useSession } from '@/lib/auth';
 import { useDetail } from '@/lib/query';
 import type { AssistantRequest } from './assistant-launch';
 import { ChatView } from './ChatView';
@@ -46,6 +47,7 @@ export default function AssistantSheet({
   const [conversationId, setConversationId] = useState(last.read);
   const [tab, setTab] = useState('chat');
   const status = useDetail<AiStatus>(open ? '/ai/status' : null);
+  const session = useSession();
   const pending = usePendingProposals(open).data?.length ?? 0;
   const configured = status.data?.assistant.configured ?? false;
   const online = useOnline();
@@ -120,7 +122,7 @@ export default function AssistantSheet({
           <div className="border-b border-border p-3">
             <Alert tone="info" title={t('page.notConfiguredTitle')}>
               <p>{t('page.notConfiguredBody')}</p>
-              <p>{t('page.notConfiguredHow')}</p>
+              <p>{t(session.user.isPlatformAdmin ? 'page.notConfiguredHow' : 'page.notConfiguredAsk')}</p>
             </Alert>
           </div>
         )}

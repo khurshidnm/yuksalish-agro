@@ -34,11 +34,19 @@ function displayDate(value: string): string {
   return `${day}.${month}.${year}`;
 }
 
+/** "2026-11" as the web app says it, in the reader's language. */
+function displayMonth(value: string, locale?: string | null): string {
+  const [year, month] = value.split('-');
+  const name = lookup(locale, 'common', `date.months.${Number(month) - 1}`);
+  return name ? `${name} ${year}` : value;
+}
+
 export function interpolate(template: string, params: Params, locale?: string | null): string {
   return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (_, name: string) => {
     const value = localizeValue(params[name], locale);
     if (value === null || value === undefined) return '';
     if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return displayDate(value);
+    if (name === 'month' && typeof value === 'string' && /^\d{4}-\d{2}$/.test(value)) return displayMonth(value, locale);
     if (name === 'unit') return lookup(locale, 'enums', `unit.${String(value)}`) ?? String(value);
     return String(value);
   });

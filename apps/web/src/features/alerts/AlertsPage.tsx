@@ -3,6 +3,7 @@ import { BellOff, Check, CheckCheck, ExternalLink, Info, OctagonAlert, RefreshCw
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
+import { useOpenableLink } from '@/app/canOpen';
 import { type Column, DataTable, PageHeader, StatCard, useUrlParam } from '@/components';
 import { Badge, type BadgeVariant, Button, Select } from '@/components/ui';
 import { api } from '@/lib/api';
@@ -25,6 +26,7 @@ export default function AlertsPage() {
   const navigate = useNavigate();
   const canAct = usePermission('tasks.update');
   const canEvaluate = usePermission('dashboard.update');
+  const openable = useOpenableLink();
 
   const [status, setStatus] = useUrlParam('status', ACTIVE);
   const [severity, setSeverity] = useUrlParam('severity');
@@ -122,7 +124,7 @@ export default function AlertsPage() {
         }}
         columns={columns}
         searchable={false}
-        rowHref={(alert) => alert.link ?? ''}
+        rowHref={(alert) => openable(alert.link)}
         filters={
           <>
             <Select
@@ -144,7 +146,7 @@ export default function AlertsPage() {
         }
         empty={{ icon: BellOff, title: t('emptyTitle'), description: t('emptyBody') }}
         rowActions={(alert) => [
-          { label: t('actions.open'), icon: ExternalLink, hidden: !alert.link, onClick: () => navigate(alert.link!) },
+          { label: t('actions.open'), icon: ExternalLink, hidden: !openable(alert.link), onClick: () => navigate(alert.link!) },
           {
             label: t('actions.acknowledge'),
             icon: Check,

@@ -1,8 +1,9 @@
 import { and, eq, inArray } from 'drizzle-orm';
-import { ctx, tx } from '../../core/context';
+import { ctx, tx, withTenant } from '../../core/context';
 import { schema } from '../../db/client';
-import type { FarmJob } from '../../jobs/types';
+import type { ScheduledJob } from '../../jobs/types';
 import { enabledPermissions } from '../../core/http';
+import { checkReach } from '../alerts/reach';
 import { digestFacts, digestScope, renderDigest } from './digest';
 import { forgetAnswered } from './notifications.service';
 import { dispatchPending, notifyUser } from './notify.service';
@@ -40,12 +41,14 @@ export async function sendDailySummary(): Promise<number> {
   return members.length;
 }
 
-export const jobs: FarmJob[] = [
+export const jobs: ScheduledJob[] = [
   {
     name: 'notifications.dispatch',
     cron: '* * * * *',
-    run: async () => {
-      await dispatchPending();
+    // Two transactions: what was sent stays recorded even if looking at what was not then fails.
+    runDetached: async (farm) => {
+      await withTenant(farm, () => dispatchPending());
+      await withTenant(farm, () => checkReach());
     },
   },
   {

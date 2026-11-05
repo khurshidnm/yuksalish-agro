@@ -29,7 +29,7 @@ type JournalEntry = Pick<Transaction, 'status' | 'sourceType' | 'type'>;
 const ownedByFinance = (row: JournalEntry) => !row.sourceType || row.sourceType === 'ai_proposal';
 
 /** Entries of other modules whose money can be cancelled here. The rest are changed where they were made. */
-const CANCELLED_IN_FINANCE = ['stock_batch', 'animal_exit', 'maintenance', 'rental_act', 'purchase_request'];
+const CANCELLED_IN_FINANCE = ['stock_batch', 'stock_doc', 'animal_exit', 'maintenance', 'rental_act', 'purchase_request'];
 
 /** Only an entry still waiting can change: an approved one is voided, and a rejected one stays as history. */
 export const canDeleteEntry = (row: JournalEntry) => row.status === 'pending' && ownedByFinance(row);
@@ -56,6 +56,7 @@ export const FINANCE_PATHS = {
   transactions: '/finance/transactions',
   accounts: '/finance/accounts',
   debts: '/finance/debts',
+  unpaidReceipts: '/finance/debts/unpaid-receipts',
   budget: '/finance/budget',
   summary: '/finance/summary',
   costs: '/finance/costs',

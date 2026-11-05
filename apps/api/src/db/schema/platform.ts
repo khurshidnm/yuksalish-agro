@@ -1,4 +1,5 @@
-import { boolean, doublePrecision, index, jsonb, pgTable, primaryKey, text, unique, uuid, integer, type AnyPgColumn } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { boolean, doublePrecision, index, jsonb, pgTable, primaryKey, text, unique, uniqueIndex, uuid, integer, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import { dec, money, pk, ts } from './_helpers';
 
 /** Tariff plans: a plan is a set of modules (spec 4.1 p.2). */
@@ -38,10 +39,14 @@ export const users = pgTable('users', {
   email: text(),
   fullName: text().notNull(),
   passwordHash: text().notNull(),
+  /** Someone else issued this password, so it opens nothing until the person chooses their own. */
+  mustChangePassword: boolean().notNull().default(false),
   locale: text().notNull().default('uz'),
   status: text().notNull().default('active'),
   totpSecret: text(),
   totpEnabled: boolean().notNull().default(false),
+  /** The newest time step a code was accepted for. Anything at or before it is refused, so a code works once. */
+  totpLastStep: integer(),
   isPlatformAdmin: boolean().notNull().default(false),
   telegramChatId: text(),
   /** The farm Telegram works on, chosen in the bot by someone on several farms. */
@@ -103,6 +108,77 @@ export const memberships = pgTable(
   (t) => [unique().on(t.userId, t.farmId), index().on(t.tenantId)],
 );
 
+/**
+ * A farm asking someone who already has an account to join. It holds only what the inviter typed,
+ * and nothing points at the account: the person's details reach the farm when they accept, signed in.
+ */
+export const invitations = pgTable(
+  'invitations',
+  {
+    id: pk(),
+    tenantId: uuid().notNull().references(() => tenants.id),
+    farmId: uuid().notNull().references(() => farms.id),
+    roleId: uuid().notNull().references(() => roles.id, { onDelete: 'cascade' }),
+    phone: text().notNull(),
+    fullName: text().notNull(),
+    status: text().notNull().default('pending'),
+    expiresAt: ts().notNull(),
+    createdBy: uuid().references(() => users.id),
+    createdAt: ts().notNull().defaultNow(),
+    updatedAt: ts().notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  (t) => [
+    index().on(t.phone),
+    index().on(t.tenantId),
+    uniqueIndex('invitations_pending_idx').on(t.farmId, t.phone).where(sql`status = 'pending'`),
+  ],
+);
+
+/** Single-use ways in for a lost authenticator. Shown once at enrolment, stored hashed. */
+export const recoveryCodes = pgTable(
+  'recovery_codes',
+  {
+    id: pk(),
+    userId: uuid().notNull().references(() => users.id),
+    codeHash: text().notNull().unique(),
+    usedAt: ts(),
+    createdAt: ts().notNull().defaultNow(),
+  },
+  (t) => [index().on(t.userId)],
+);
+
+/**
+ * Failed tries against one phone from one address. No foreign key to users: an unknown phone
+ * is counted the same way, so the lock cannot reveal which phones have accounts.
+ */
+export const signInFailures = pgTable(
+  'sign_in_failures',
+  {
+    phone: text().notNull(),
+    address: text().notNull(),
+    failures: integer().notNull().default(0),
+    windowStartedAt: ts().notNull().defaultNow(),
+    lockedUntil: ts(),
+  },
+  (t) => [primaryKey({ columns: [t.phone, t.address] }), index().on(t.windowStartedAt)],
+);
+
+/** What platform administrators changed. The API can add to it but never rewrite it (post-schema.sql). */
+export const platformAudit = pgTable(
+  'platform_audit',
+  {
+    id: pk(),
+    /** Null for the server-side reset command, which has no signed-in person. */
+    adminId: uuid().references(() => users.id),
+    action: text().notNull(),
+    targetId: text(),
+    ip: text(),
+    device: text(),
+    createdAt: ts().notNull().defaultNow(),
+  },
+  (t) => [index().on(t.createdAt)],
+);
+
 /** Refresh tokens are stored hashed and rotated; reuse of a rotated token revokes its family. */
 export const refreshTokens = pgTable(
   'refresh_tokens',
@@ -136,6 +212,8 @@ export const apiKeys = pgTable(
     keyPrefix: text().notNull(),
     scopes: jsonb().$type<string[]>().notNull().default([]),
     lastUsedAt: ts(),
+    /** Null: until someone revokes it. */
+    expiresAt: ts(),
     revokedAt: ts(),
     createdBy: uuid().references(() => users.id),
     createdAt: ts().notNull().defaultNow(),
@@ -156,6 +234,16 @@ export const idempotencyKeys = pgTable(
   },
   (t) => [primaryKey({ columns: [t.tenantId, t.key] })],
 );
+
+export interface LeadRepeat {
+  at: string;
+  fullName: string;
+  farmName?: string;
+  region?: string;
+  farmType?: string;
+  farmSize?: string;
+  message?: string;
+}
 
 /**
  * Enquiries from the public website. No tenant_id: a prospect has no tenant yet. The assistant has
@@ -180,6 +268,8 @@ export const leads = pgTable(
     notes: text(),
     /** A repeat enquiry from the same phone joins the open lead and adds to this. */
     submissions: integer().notNull().default(1),
+    /** What repeat enquiries said. The columns above stay as first sent: anyone can type a phone number. */
+    repeats: jsonb().$type<LeadRepeat[]>().notNull().default([]),
     consentAt: ts().notNull(),
     contactedAt: ts(),
     createdAt: ts().notNull().defaultNow(),

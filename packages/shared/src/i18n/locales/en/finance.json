@@ -187,6 +187,30 @@
     },
     "emptyBody": "Purchases and sales on credit appear here."
   },
+  "unpaidReceipts": {
+    "tab": "Unpaid receipts",
+    "hint": "Goods came from a supplier, but no payment or debt is recorded for them yet.",
+    "document": "Receipt",
+    "documentOn": "{{docNo}} of {{date}}",
+    "documentInvoice": "{{docNo}} of {{date}}, invoice {{invoiceNo}}",
+    "goods": "Goods",
+    "goodsLine": "{{item}}: {{qty}}",
+    "value": "Value",
+    "recordAs": "Record as",
+    "asPayment": "Paid",
+    "asDebt": "On credit",
+    "title": {
+      "payment": "Record the payment",
+      "debt": "Record the debt"
+    },
+    "recordHint": "{{docNo}}, {{supplier}}: {{amount}}",
+    "paidRequest": "A paid purchase request is still waiting for these goods. If this is that delivery, it is paid already: recording it here would count it twice.",
+    "categoryHint": "Some goods here have no category of their own. This one is used for the whole receipt.",
+    "saved": "Recorded: {{docNo}}",
+    "pendingApproval": "It is waiting for approval",
+    "empty": "Every receipt has its money recorded",
+    "emptyBody": "A purchase received with no payment or debt appears here."
+  },
   "budget": {
     "title": "Budget",
     "description": "Plan, actual and variance by category and month.",
@@ -396,6 +420,7 @@
     "LOAN_HAS_PAYMENTS": "A loan with payments or received money cannot be deleted.",
     "NOT_APPROVED": "Only an approved transaction can be voided.",
     "NOT_PENDING": "This transaction is not waiting for approval.",
+    "RECEIPT_HAS_MONEY": "Money is already recorded for this receipt.",
     "SAME_ACCOUNT": "The two accounts must differ.",
     "SAME_MAKER_CHECKER": "The person who entered a transaction cannot approve it.",
     "SETTLEMENT_NOT_EDITABLE": "A debt payment cannot be edited. Delete it and enter it again.",

@@ -10,7 +10,7 @@ import { withPlatform, withTenant } from '../core/context';
 import { mergeSettings } from '../core/settings';
 import { addMember, provisionTenant } from '../core/tenancy';
 import { runStatistics } from '../modules/ai/analysis';
-import { seedAssets } from './assets';
+import { seedAssets, seedDepreciation } from './assets';
 import { seedCrops } from './crops';
 import { seedDevices } from './devices';
 import { seedFinance } from './finance';
@@ -128,6 +128,7 @@ async function main() {
     ['field operations', seedCrops],
     ['transactions and budget', seedFinance],
     ['sales', seedSales],
+    ['depreciation', seedDepreciation],
     // Devices come first: the task step ends by evaluating alert rules, including camera checks.
     ['cameras and devices', seedDevices],
     ['tasks and alerts', seedTasks],

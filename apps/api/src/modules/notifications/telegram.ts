@@ -4,6 +4,7 @@
  */
 import type { Severity } from '@yap/shared';
 import { config } from '../../config';
+import type { TelegramAnswer } from '../../core/health';
 
 const API = 'https://api.telegram.org';
 const SEND_ATTEMPTS = 3;
@@ -163,6 +164,8 @@ export interface FormattedMessage {
   farm?: string | null;
   /** Says when it really happened, if it reached them late. */
   note?: string | null;
+  /** The alert it is about, which an urgent message lets its reader take. */
+  alertId?: string | null;
 }
 
 export function formatMessage(m: FormattedMessage): string {
@@ -175,8 +178,8 @@ export function formatMessage(m: FormattedMessage): string {
 }
 
 /** For the outbox, which keeps a rate-limited message for later: the next person's must not wait for it. */
-export async function sendTelegram(chatId: string, message: FormattedMessage): Promise<void> {
-  await sendHtml(chatId, formatMessage(message), undefined, (method, payload) => callWithRetry(method, payload, 0));
+export async function sendTelegram(chatId: string, message: FormattedMessage, markup?: ReplyMarkup): Promise<void> {
+  await sendHtml(chatId, formatMessage(message), markup, (method, payload) => callWithRetry(method, payload, 0));
 }
 
 export type InlineKeyboard = { text: string; callback_data: string }[][];
@@ -382,6 +385,16 @@ export const getUpdates = (offset: number, signal: AbortSignal): Promise<Telegra
 /** For a last word on the way down, when no further poll will say which updates were handled. */
 export const confirmUpdates = (offset: number): Promise<TelegramUpdate[]> =>
   fetchUpdates({ offset, timeout: 0, limit: 1 }, AbortSignal.timeout(REQUEST_TIMEOUT_MS));
+
+/** Whether Telegram takes this token from this server, as one word: nothing of the reply goes further. */
+export async function checkTelegram(): Promise<TelegramAnswer> {
+  try {
+    await call('getMe', {});
+    return 'ok';
+  } catch (err) {
+    return err instanceof TelegramError && (err.status === 401 || err.status === 404) ? 'refused' : 'unreachable';
+  }
+}
 
 let botUsername: string | null | undefined;
 

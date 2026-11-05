@@ -1,9 +1,11 @@
 import bcrypt from 'bcryptjs';
 import { eq, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { config } from '../src/config';
 import { signAccessToken } from '../src/core/tokens';
 import { db, schema } from '../src/db/client';
+import { issueFormToken } from '../src/modules/leads/leads.service';
 import { createFixture, getApp } from './helpers';
 
 const uniquePhone = () => `+99890${String(Math.floor(Math.random() * 1e7)).padStart(7, '0')}`;
@@ -19,7 +21,7 @@ const form = (overrides: Record<string, unknown> = {}) => ({
   language: 'uz',
   source: '/',
   consent: true,
-  elapsedMs: 12_000,
+  formToken: issueFormToken(Date.now() - 12_000),
   ...overrides,
 });
 
@@ -41,7 +43,7 @@ async function send(method: 'GET' | 'POST' | 'PATCH' | 'DELETE', url: string, bo
 async function adminToken() {
   const [user] = await db
     .insert(schema.users)
-    .values({ phone: uniquePhone(), fullName: 'Platform Admin', passwordHash: 'x', isPlatformAdmin: true })
+    .values({ phone: uniquePhone(), fullName: 'Platform Admin', passwordHash: 'x', isPlatformAdmin: true, totpEnabled: true })
     .returning();
   return { id: user.id, token: await signAccessToken({ userId: user.id, membershipId: null, tenantId: null, farmId: null }) };
 }
@@ -73,7 +75,7 @@ describe('contact form', () => {
 
   it('answers a bot like a person but keeps nothing', async () => {
     const filledTrap = form({ website: 'https://spam.example' });
-    const tooFast = form({ elapsedMs: 200 });
+    const tooFast = form({ formToken: issueFormToken() });
 
     expect((await send('POST', '/leads', filledTrap)).data).toEqual({ received: true });
     expect((await send('POST', '/leads', tooFast)).data).toEqual({ received: true });
@@ -82,14 +84,71 @@ describe('contact form', () => {
     expect(await rowsFor(tooFast.phone as string)).toHaveLength(0);
   });
 
-  it('joins a repeat enquiry to the open lead', async () => {
-    const phone = uniquePhone();
-    await send('POST', '/leads', form({ phone, message: 'Birinchi' }));
-    await send('POST', '/leads', form({ phone, message: 'Ikkinchi' }));
+  it.each([
+    ['no token', () => undefined],
+    ['a number the client made up', () => `${Date.now() - 60_000}.not-our-signature`],
+    ['another time under a real signature', () => `${Date.now() - 60_000}.${issueFormToken(Date.now() - 12_000).split('.')[1]}`],
+    ['a token two days old', () => issueFormToken(Date.now() - 2 * 86_400_000)],
+    ['a token from the future', () => issueFormToken(Date.now() + 60_000)],
+  ])('keeps nothing and asks the form to send again with %s', async (_name, token) => {
+    // elapsedMs is what used to prove a person: a client saying so must prove nothing now.
+    const sent = form({ formToken: token(), elapsedMs: 999_999 });
 
+    const answer = await send('POST', '/leads', sent);
+
+    expect(answer.status).toBe(400);
+    expect(answer.body.error.code).toBe('FORM_EXPIRED');
+    expect(await rowsFor(sent.phone as string)).toHaveLength(0);
+  });
+
+  it('takes an enquiry sent with a token from the server once its wait is over', async () => {
+    const phone = uniquePhone();
+    const issued = await send('GET', '/leads/form-token');
+    expect(issued.status).toBe(200);
+
+    expect((await send('POST', '/leads', form({ phone, formToken: issued.data.token }))).status).toBe(201);
+    expect(await rowsFor(phone)).toHaveLength(0);
+
+    await new Promise((resolve) => setTimeout(resolve, issued.data.waitMs + 50));
+    expect((await send('POST', '/leads', form({ phone, formToken: issued.data.token }))).status).toBe(201);
+    expect(await rowsFor(phone)).toHaveLength(1);
+  });
+
+  it('counts a repeat enquiry on the open lead and never lets it replace what was said', async () => {
+    const phone = uniquePhone();
+    const first = form({ phone, fullName: 'Real Farmer', farmName: 'Real Farm', message: 'Please call me about 500 sheep', language: 'ru', source: '/ru', utm: { utm_source: 'radio' } });
+    await send('POST', '/leads', first);
+
+    const stranger = await send('POST', '/leads', form({ phone, fullName: 'Rude Text', farmName: 'Not A Farm', message: 'do not call this number', language: 'en', source: '/en', utm: { utm_source: 'spam' } }));
+
+    expect(stranger.status).toBe(201);
     const rows = await rowsFor(phone);
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ submissions: 2, message: 'Ikkinchi' });
+    expect(rows[0]).toMatchObject({
+      submissions: 2,
+      fullName: 'Real Farmer',
+      farmName: 'Real Farm',
+      message: 'Please call me about 500 sheep',
+      language: 'ru',
+      source: '/ru',
+      utm: { utm_source: 'radio' },
+    });
+    expect(rows[0].repeats).toEqual([
+      expect.objectContaining({ fullName: 'Rude Text', farmName: 'Not A Farm', message: 'do not call this number', at: expect.any(String) }),
+    ]);
+  });
+
+  it('keeps the first repeats and only counts the rest, so a flood cannot push them out or grow the row', async () => {
+    const phone = uniquePhone();
+    await send('POST', '/leads', form({ phone }));
+    for (let n = 1; n <= 23; n += 1) await send('POST', '/leads', form({ phone, message: `Repeat ${n}` }));
+
+    const [lead] = await rowsFor(phone);
+
+    expect(lead.submissions).toBe(24);
+    expect(lead.repeats).toHaveLength(20);
+    expect(lead.repeats[0].message).toBe('Repeat 1');
+    expect(lead.repeats.at(-1)?.message).toBe('Repeat 20');
   });
 
   it('opens a new lead when the earlier one is closed', async () => {
@@ -102,6 +161,36 @@ describe('contact form', () => {
     await send('POST', '/leads', form({ phone }));
 
     expect(await rowsFor(phone)).toHaveLength(2);
+  });
+
+  describe('the team chat', () => {
+    const realChat = config.LEADS_TELEGRAM_CHAT_ID;
+
+    afterEach(() => {
+      config.LEADS_TELEGRAM_CHAT_ID = realChat;
+      vi.unstubAllGlobals();
+      vi.unstubAllEnvs();
+      vi.useRealTimers();
+    });
+
+    it('hears of 20 new enquiries an hour at most, and every one is kept', async () => {
+      const telegram = vi.fn(async () => Response.json({ ok: true, result: { message_id: 1 } }));
+      vi.stubGlobal('fetch', telegram);
+      vi.stubEnv('TELEGRAM_BOT_TOKEN', 'test-token');
+      config.LEADS_TELEGRAM_CHAT_ID = '-100123';
+      const hour = Math.floor(Date.now() / 3_600_000) * 3_600_000;
+      vi.useFakeTimers({ toFake: ['Date'], now: hour + 86_400_000 });
+
+      const phones = Array.from({ length: 23 }, uniquePhone);
+      for (const phone of phones) expect((await send('POST', '/leads', form({ phone }))).status).toBe(201);
+
+      expect(telegram).toHaveBeenCalledTimes(20);
+      for (const phone of phones) expect(await rowsFor(phone)).toHaveLength(1);
+
+      vi.setSystemTime(hour + 86_400_000 + 3_600_000);
+      await send('POST', '/leads', form());
+      expect(telegram).toHaveBeenCalledTimes(21);
+    });
   });
 
   it('keeps leads away from the assistant at the database', async () => {

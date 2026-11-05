@@ -3,6 +3,8 @@ import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+import { useLocation, useNavigate } from 'react-router';
+import { toast } from 'sonner';
 import { z } from 'zod';
 import { LogoMark } from '@/app/Logo';
 import { FormField, TextField } from '@/components/FormField';
@@ -14,7 +16,7 @@ import { zText } from '@/lib/forms';
 import { normalizePhone } from '@/lib/utils';
 
 const passwordSchema = z.object({ phone: zText(32), password: z.string().min(1) });
-const codeSchema = z.object({ code: z.string().trim().regex(/^\d{6}$/) });
+const codeSchema = z.object({ code: z.string().trim().min(6).max(32) });
 
 function LanguagePicker() {
   const { i18n } = useTranslation();
@@ -67,6 +69,7 @@ function PasswordStep({ onChallenge }: { onChallenge: (token: string) => void })
       <Button type="submit" size="lg" loading={form.formState.isSubmitting}>
         {t('auth:login.submit')}
       </Button>
+      <p className="text-center text-sm text-muted-foreground">{t('auth:login.forgot')}</p>
     </form>
   );
 }
@@ -74,28 +77,49 @@ function PasswordStep({ onChallenge }: { onChallenge: (token: string) => void })
 function CodeStep({ challengeToken, onBack }: { challengeToken: string; onBack: () => void }) {
   const { t } = useTranslation();
   const { verifyTwoFactor } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [error, setError] = useState<string | null>(null);
+  const [recovery, setRecovery] = useState(false);
   const form = useForm({ resolver: zodResolver(codeSchema), defaultValues: { code: '' } });
 
   const submit = form.handleSubmit(async ({ code }) => {
     setError(null);
+    const cameFrom = location.state as unknown;
     try {
-      await verifyTwoFactor(challengeToken, code);
+      // Someone without their phone most likely needs a new one. PublicOnly reads this as the session arrives.
+      if (recovery) navigate(location.pathname, { replace: true, state: { from: '/2fa/setup?replace' } });
+      const session = await verifyTwoFactor(challengeToken, code);
+      if (recovery) toast.info(t('auth:otp.recoveryUsed', { count: session.user.recoveryCodesLeft ?? 0 }));
     } catch (cause) {
+      if (recovery) navigate(location.pathname, { replace: true, state: cameFrom });
       setError(errorMessage(cause));
     }
   });
+
+  const switchMode = () => {
+    setRecovery(!recovery);
+    setError(null);
+    form.reset();
+  };
 
   return (
     <form onSubmit={(e) => void submit(e)} noValidate className="flex flex-col gap-4">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{t('auth:otp.title')}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t('auth:otp.subtitle')}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{recovery ? t('auth:otp.recoverySubtitle') : t('auth:otp.subtitle')}</p>
       </div>
       {error && <Alert tone="danger">{error}</Alert>}
-      <TextField form={form} name="code" label={t('auth:otp.code')} inputMode="numeric" autoComplete="one-time-code" maxLength={6} autoFocus />
+      {recovery ? (
+        <TextField key="recovery" form={form} name="code" label={t('auth:otp.recoveryCode')} autoComplete="off" maxLength={32} autoFocus />
+      ) : (
+        <TextField key="app" form={form} name="code" label={t('auth:otp.code')} inputMode="numeric" autoComplete="one-time-code" maxLength={6} autoFocus />
+      )}
       <Button type="submit" size="lg" loading={form.formState.isSubmitting}>
         {t('auth:otp.submit')}
+      </Button>
+      <Button variant="ghost" onClick={switchMode}>
+        {recovery ? t('auth:otp.useApp') : t('auth:otp.useRecovery')}
       </Button>
       <Button variant="ghost" onClick={onBack}>
         <ArrowLeft aria-hidden />

@@ -94,11 +94,13 @@ function resolvePeriod(input: z.output<typeof period>) {
 export const TOOLS: AiTool[] = [
   tool({
     name: 'herd_summary',
-    description: 'Head count of animals on the farm by category and by status (pregnant, sick, quarantine).',
+    description: 'Head count of animals on the farm by category, and how many are pregnant, sick or in quarantine.',
     input: z.object({}),
     anyOf: ['livestock.view'],
     run: async () => {
-      const data = await herdSummary();
+      // Not byStatus: an animal has one status there, so it counts fewer pregnant ewes than `pregnant`
+      // does, and two figures for one question invite the model to pick the wrong one.
+      const { byStatus: _oneStatusEach, ...data } = await herdSummary();
       return { data, tables: ['animals'], rows: data.total, enoughData: data.total > 0 };
     },
   }),

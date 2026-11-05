@@ -271,6 +271,12 @@ export function straightLineMonthly(cost: number, salvage: number, usefulLifeMon
   return Math.max(0, cost - salvage) / usefulLifeMonths;
 }
 
+/** What a machine stands at in the books. Unknown cost means unknown value, not zero. */
+export function assetBookValue(cost: number | null, openingDepreciation: number, postedDepreciation: number): number | null {
+  if (cost === null) return null;
+  return round(cost - openingDepreciation - postedDepreciation, 2);
+}
+
 /** Units-of-production depreciation for a period. */
 export function unitsOfProductionDepreciation(
   cost: number,

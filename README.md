@@ -51,9 +51,10 @@ The password for every demo user is `Yuksalish2026!`.
 | Auditor | +998900000011 | Auditor Demo |
 | Platform admin | +998900000000 | Platform Admin |
 
-Sign-in is limited to 10 attempts a minute per address. The demo data has 2FA enforcement switched off so
-that these logins work without an authenticator app. New tenants have it on, as the specification requires
-for owners, directors and accountants.
+Sign-in is limited to 10 attempts a minute per address, and 10 failures for one phone from one address lock it
+for 15 minutes. The demo data has 2FA enforcement switched off so that these logins work without an authenticator
+app. New tenants have it on, as the specification requires for owners, directors and accountants. The platform
+admin must always enrol, so the demo admin asks for an authenticator at first sign-in.
 
 ## Project layout
 
@@ -71,7 +72,7 @@ apps/web/             React front end
   src/features/       one folder per module
   public/             service worker and manifest for offline use
 packages/shared/      formulas, permissions, enums, dates, translations
-infra/                Postgres image, nginx config, backup and restore scripts
+infra/                Postgres image, nginx config, the scripts that run a server
 docs/                 architecture, data model, API, deployment, user guides
 ```
 
@@ -99,9 +100,33 @@ After changing `apps/api/src/db/schema`, run `pnpm db:generate` and commit the n
 
 To try cameras without hardware, see [infra/camera-sim](infra/camera-sim/README.md).
 
+## Running a server
+
+[Deployment](docs/deployment.md) is the runbook, written for an owner who is not a system administrator. It starts with
+a short path for a first deploy to show people. These scripts run on the server, as root, from the repository:
+
+| Script | Purpose |
+| --- | --- |
+| `infra/server-setup.sh` | Prepares a fresh Ubuntu 24.04, once: Docker, firewall, updates, backups, watchdog. Safe to run again. |
+| `infra/init-env.sh` | Writes `.env.production` with fresh secrets. `--resize` redoes only the memory settings. |
+| `infra/preflight.sh` | Checks the server and the settings, and changes nothing. It asks Telegram whether it accepts the bot token. |
+| `infra/deploy.sh` | Goes live or updates: preflight, backup, build, start, smoke check, and back again if that fails. `--rollback` goes back later. |
+| `infra/status.sh` | One look at everything, including the deep health check, the backups, the saved key and a real question to Telegram. |
+| `infra/backup.sh`, `infra/backup-cron.sh`, `infra/backup-prune.sh` | Encrypted backups, what cron runs, and how long they stay. `backup-cron.sh check` restores the newest one for real. |
+| `infra/restore.sh` | Puts a backup back, or checks one without touching anything live. |
+| `infra/backup-key.sh` | Proves the owner's saved copy of the backup key without printing it (`check`), shows its fingerprint (`show`), and puts it back on a new server (`restore`). |
+| `infra/watchdog.sh` | Cron runs it every minute. Three failed `/api/health` checks restart a frozen API, three restarts at most. |
+
+The platform admin who lost a password or authenticator is reset on the server, with `src/db/reset-admin.ts`:
+[the command](docs/deployment.md#someone-cannot-sign-in).
+
+Nothing on the farm can report a fire yet. The platform raises an urgent alert for a `fire` or `smoke` event, but
+[no detector is connected](docs/deployment.md#no-fire-detection-yet).
+
 ## Environment variables
 
-Development values are in `.env.example`. Production values are in `infra/env.production.example`.
+Development values are in `.env.example`. Production values are in `infra/env.production.example`, and the runbook
+explains [each one](docs/deployment.md#settings).
 
 | Variable | Purpose |
 | --- | --- |
@@ -126,12 +151,18 @@ Development values are in `.env.example`. Production values are in `infra/env.pr
 | `JOBS_ENABLED` | Set to `false` to run the API without background jobs. |
 | `PLATFORM_ADMIN_PHONE`, `PLATFORM_ADMIN_PASSWORD` | Read by the migrate step: create the first platform admin. |
 | `SEED_PASSWORD` | Password for the demo users. Set it for any seed on a server others can reach: see [Deployment](docs/deployment.md#demo-data-on-a-server). |
+| `HEARTBEAT_URL` | Optional. The API pings it every minute while the deep health check passes, so an outside service notices a dead server. |
+| `BACKUP_HEARTBEAT_URL` | Server scripts only. Pinged once a day when a real restore of the newest backup passes. It needs its own address. |
+| `BACKUP_ALERT_CHAT_ID` | Server scripts only. Telegram chat told when a backup fails or the watchdog restarts the API. Needs the bot token. |
+| `BACKUP_OFFSITE` | Server scripts only. Where backups go: `user@host:path`, a mounted `/path`, or `pull`. |
+| `BACKUP_DIR`, `BACKUP_PASSPHRASE_FILE`, `BACKUP_SSH_KEY`, `BACKUP_SSH_PORT`, `BACKUP_RESERVE_MB` | Server scripts only. Backup details, with defaults that suit. |
+| `RETENTION_KEEP_LAST`, `RETENTION_DAILY`, `RETENTION_WEEKLY`, `RETENTION_MONTHLY`, `RETENTION_FILE_SETS`, `FILES_FULL_EVERY_DAYS` | Server scripts only. How long backups stay, and how often a full archive of the files starts. |
 
 ## Not built yet
 
 - Mobile app. Offline work is done through the web app instead.
 - Live camera video. Cameras can be registered and can send events, but there is no stream gateway.
-- Camera AI, IoT sensors beyond the events API, and GPS trackers.
+- Camera AI, IoT sensors beyond the events API, and GPS trackers. So no fire or smoke detector is connected.
 - Speaking to the assistant in the web app. Voice notes work in Telegram.
 - Real connections to Keeping, Didox, banks and state systems. Keeping is a CSV export whose account
   mapping is an assumption and has not been checked against Keeping.
@@ -139,11 +170,12 @@ Development values are in `.env.example`. Production values are in `infra/env.pr
 - Camera barcode scanning. Tags and barcodes are typed.
 - OAuth 2.0. Users have JWT sessions and machines have API keys.
 - AI herd growth forecast and market price monitoring.
-- Forced password change for one-time passwords, payslip PDFs, and Excel for the full tenant export, which
-  is JSON and CSV. The main lists do export to Excel.
+- Payslip PDFs, and Excel for the full tenant export, which is JSON and CSV. The main lists do export to Excel.
 
 ## Not yet tested for real
 
+- The server kit: most of it ran on a stand-in server on 2026-11-05. The Telegram check, the watchdog and the backup
+  key command have only run with a stand-in for Docker and Telegram: see `apps/api/test/server-kit.test.ts`.
 - Telegram: a real bot delivered a daily summary and an urgent alert on 2026-11-04 (see
   [the acceptance record](docs/acceptance.md)). Scheduled delivery has not yet run unattended, and the
   assistant in the bot, with its cards, voice notes and receipts, has only run against a mocked API.

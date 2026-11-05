@@ -2,6 +2,7 @@ import { PassThrough } from 'node:stream';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { PII_VIEW } from '@yap/shared';
+import { isTest } from '../../config';
 import { forbidden } from '../../core/errors';
 import { routes } from '../../core/http';
 import { idParam, listQuery } from '../../core/query';
@@ -13,6 +14,9 @@ import * as exporter from './export.service';
 import * as profile from './profile.service';
 import * as users from './users.service';
 import * as webhooks from './webhooks.service';
+
+/** The answer differs for a phone with an account, so nobody gets to walk through the numbers. */
+const addLimit = isTest ? {} : { rateLimit: { max: 60, timeWindow: '1 hour' } };
 
 /** Taking all of a farm's data out is itself something the journal should show. */
 async function authorizeExport(identity: Identity, scope: string): Promise<void> {
@@ -55,7 +59,8 @@ export default async function settingsModule(app: FastifyInstance) {
   });
   r.post('/users', {
     access: 'users.create',
-    summary: 'Add a person to this farm. A new login gets a one-time password, shown once.',
+    summary: 'A new phone gets a login and a one-time password, shown once. A phone with an account gets an invitation.',
+    config: addLimit,
     body: users.memberInput,
     handler: async (req, reply) => {
       reply.code(201);
@@ -83,6 +88,22 @@ export default async function settingsModule(app: FastifyInstance) {
     access: 'users.update',
     params: idParam,
     handler: (req) => users.resetPassword(req.params.id),
+  });
+  r.post('/users/:id/reset-2fa', {
+    access: 'users.update',
+    summary: 'Turn off two-factor sign-in for a staff member who lost their authenticator',
+    params: idParam,
+    handler: (req) => users.resetTwoFactor(req.params.id),
+  });
+  r.get('/invitations', {
+    access: 'users.view',
+    summary: 'People invited to this farm who have not answered yet',
+    handler: () => users.listInvitations(),
+  });
+  r.delete('/invitations/:id', {
+    access: 'users.update',
+    params: idParam,
+    handler: (req) => users.cancelInvitation(req.params.id),
   });
 
   // Roles

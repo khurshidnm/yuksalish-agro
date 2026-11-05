@@ -4,6 +4,8 @@ export interface ListMeta {
   page: number;
   pageSize: number;
   total: number;
+  /** The server stopped counting at `total`: there are more rows than that. */
+  totalCapped?: boolean;
 }
 
 export interface Membership {
@@ -16,6 +18,16 @@ export interface Membership {
   roleName: string;
 }
 
+/** A farm asking this person to join, waiting for their answer. */
+export interface Invitation {
+  id: string;
+  tenantName: string;
+  farmName: string;
+  roleKey: RoleKey | string;
+  roleName: string;
+  expiresAt: string;
+}
+
 export interface Session {
   user: {
     id: string;
@@ -24,6 +36,8 @@ export interface Session {
     email: string | null;
     locale: string | null;
     totpEnabled: boolean;
+    /** Null while two-factor sign-in is off. */
+    recoveryCodesLeft: number | null;
     isPlatformAdmin: boolean;
   };
   tenant: { id: string; name: string; currency: string; modules: string[] } | null;
@@ -31,6 +45,8 @@ export interface Session {
   role: { id: string; key: RoleKey | string; name: string } | null;
   permissions: (Permission | string)[];
   memberships: Membership[];
+  invitations: Invitation[];
+  mustChangePassword: boolean;
   mustEnroll2fa: boolean;
   settings: Record<string, unknown>;
 }
@@ -38,6 +54,12 @@ export interface Session {
 export interface AuthResult {
   accessToken: string;
   session: Session;
+}
+
+/** Enrolling in 2FA and asking for new codes both answer this way, and only then are the codes readable. */
+export interface RecoveryCodesResult {
+  session: Session;
+  recoveryCodes: string[];
 }
 
 export interface TwoFactorChallenge {

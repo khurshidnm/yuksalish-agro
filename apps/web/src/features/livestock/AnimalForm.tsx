@@ -9,6 +9,7 @@ import { currencyLabel } from '@/lib/format';
 import { zEnum, zOptionalDate, zOptionalNumber, zOptionalRef, zOptionalText, zRef, zText } from '@/lib/forms';
 import { enumOptions } from '@/lib/i18n';
 import { useApiMutation, useDetail } from '@/lib/query';
+import { categoryLabel } from './category';
 import { type Animal, type HerdLookup, type LookupRow, type Species, useLocalName } from './shared';
 
 const PATH = '/livestock/animals';
@@ -127,7 +128,8 @@ export function AnimalForm({ open, onOpenChange, animal, herdId }: AnimalFormPro
       {(form) => {
         const origin = form.watch('origin');
         const speciesId = form.watch('speciesId');
-        const breeds = species.find((s) => s.id === speciesId)?.breeds ?? [];
+        const chosen = species.find((s) => s.id === speciesId);
+        const breeds = chosen?.breeds ?? [];
         return (
           <>
             <FormGrid>
@@ -144,7 +146,7 @@ export function AnimalForm({ open, onOpenChange, animal, herdId }: AnimalFormPro
               )}
               <SelectField form={form} name="breedId" label={t('fields.breed')} options={breeds.map((b) => ({ value: b.id, label: localName(b.name) }))} />
               <SelectField form={form} name="sex" label={t('fields.sex')} required options={enumOptions('sex', SEXES)} />
-              <SelectField form={form} name="category" label={t('fields.category')} required options={enumOptions('animalCategory', ANIMAL_CATEGORIES)} />
+              <SelectField form={form} name="category" label={t('fields.category')} required options={ANIMAL_CATEGORIES.map((value) => ({ value, label: categoryLabel(value, chosen?.key) }))} />
               <ComboboxField
                 form={form}
                 name="herdId"

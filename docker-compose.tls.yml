@@ -1,0 +1,45 @@
+# HTTPS in front of the web container. Works together with docker-compose.prod.yml, and infra/deploy.sh
+# adds it by itself when TLS_MODE=caddy. Caddy reads DOMAIN and does the rest: see infra/Caddyfile.
+# Its volumes hold the certificates, so never delete them: Let's Encrypt limits how often a name can
+# get a new one.
+services:
+  caddy:
+    image: caddy:2.11.8-alpine
+    restart: unless-stopped
+    mem_limit: ${CADDY_MEM_LIMIT:-256m}
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    environment:
+      DOMAIN: ${DOMAIN:?}
+      CADDY_GLOBAL: ${CADDY_GLOBAL:-}
+    # IPv4 only, on purpose. Docker hands IPv6 connections over through a proxy that hides the client's
+    # address, and then everyone would share one sign-in rate limit.
+    ports:
+      - "${TLS_BIND:-0.0.0.0}:${TLS_HTTP_PORT:-80}:80"
+      - "${TLS_BIND:-0.0.0.0}:${TLS_HTTPS_PORT:-443}:443"
+    volumes:
+      # infra/deploy.sh's copy of infra/Caddyfile, so that going back can restore the old one. Not the
+      # short form: that would create a folder here if the file were missing.
+      - type: bind
+        source: ${YAP_STATE_DIR:-/var/lib/yap}/Caddyfile
+        target: /etc/caddy/Caddyfile
+        read_only: true
+        bind:
+          create_host_path: false
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      web:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:2019/config/"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+
+volumes:
+  caddy_data:
+  caddy_config:

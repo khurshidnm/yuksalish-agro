@@ -121,4 +121,12 @@ describe('enum labels', () => {
     const missing = exported.filter((list) => !known.has(list) && list !== enums.ANIMAL_ON_FARM_STATUSES);
     expect(missing).toEqual([]);
   });
+
+  it('every species has its own word for every animal category', () => {
+    for (const lang of ['uz', 'ru', 'en'] as const) {
+      const bySpecies = (resources[lang].enums as unknown as { animalCategoryBySpecies: Record<string, Record<string, string>> }).animalCategoryBySpecies;
+      expect(Object.keys(bySpecies).sort()).toEqual(['cattle', 'goat', 'horse', 'poultry']);
+      for (const words of Object.values(bySpecies)) expect(Object.keys(words).sort()).toEqual([...enums.ANIMAL_CATEGORIES].sort());
+    }
+  });
 });

@@ -159,6 +159,7 @@ export default function FarmMapPage() {
   const canCreate = usePermission('farm.create');
   const canUpdate = usePermission('farm.update');
   const query = useDetail<FarmMapData>('/farm/map');
+  const canSetLocation = usePermission('settings.update');
 
   const [baseLayer, setBaseLayer] = useUrlParam('base', 'satellite');
   const [colorBy, setColorBy] = useUrlParam('color', 'landUse');
@@ -260,8 +261,20 @@ export default function FarmMapPage() {
   };
   const selectedEditable = selected !== null && canDraw && canUpdate && (selected.kind === 'field' || selected.areaHa != null);
 
+  const noLocation = query.data && !query.data.center && query.data.features.length === 0;
+
   return (
     <>
+      {noLocation && (
+        <Alert tone="info" className="mb-3">
+          <p>{t('map.noLocation')}</p>
+          {canSetLocation && (
+            <Link to="/settings" className="focus-ring inline-flex min-h-11 items-center font-semibold underline">
+              {t('map.noLocationLink')}
+            </Link>
+          )}
+        </Alert>
+      )}
       <PageHeader
         title={t('map.title')}
         description={<span className="hidden md:inline">{t('map.description')}</span>}

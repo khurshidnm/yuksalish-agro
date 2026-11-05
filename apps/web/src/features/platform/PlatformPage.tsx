@@ -49,7 +49,8 @@ interface Stats {
 interface CreatedTenant {
   tenant: Tenant;
   oneTimePassword: string | null;
-  existingUser: boolean;
+  /** The owner already has an account, so they are asked instead of being given a password. */
+  invited: boolean;
 }
 
 function ModulePicker({ value, onChange }: { value: string[]; onChange: (next: string[]) => void }) {

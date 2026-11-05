@@ -40,6 +40,8 @@
     "overAssignedBody": "The contours add up to {{area}} more than the total area. Check the areas."
   },
   "map": {
+    "noLocation": "The farm's place on the map is not set. Enter its coordinates in Settings.",
+    "noLocationLink": "Go to Settings",
     "imageryCredit": "© Esri",
     "fieldCards": "Fields on the map",
     "title": "Farm map",

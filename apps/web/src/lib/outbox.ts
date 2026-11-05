@@ -7,9 +7,13 @@
  * once. A record leaves the queue only after the server has confirmed it.
  *
  * Failure handling:
- *   no network, 5xx, 429   keep the record, back off, stop: order is preserved
+ *   no network, 429        keep the record, back off, stop: order is preserved
+ *   5xx, a crash here      the same, up to MAX_SERVER_ERRORS. After that, with the server up for everything
+ *                          else, it is stuck: a person retries or discards it, and only records about the
+ *                          same thing wait behind it. A server down for everyone blames no record.
  *   401                    keep the record, stop: it goes out after sign-in, as the same user
  *   same herd and date     move to the conflict list, where a person decides
+ *   correction too late    the same: it goes to someone who may still change the record
  *   any other 4xx          move to the failed list with the reason; later records carry on
  *
  * The engine takes its storage and transport as arguments, so its rules are unit-tested without a
@@ -55,8 +59,10 @@ export interface OutboxRecord {
   title: string;
   /** Free-form data for screens, e.g. the herd and date. */
   meta: Record<string, unknown>;
-  status: 'pending' | 'failed' | 'conflict';
+  status: 'pending' | 'failed' | 'conflict' | 'stuck';
   attempts: number;
+  /** Tries that ended in a server error or a crash on this phone. Missing on records saved by older versions. */
+  serverErrors?: number;
   nextAttemptAt: number;
   error: OutboxError | null;
   /** The server's own record that this one clashes with. */
@@ -97,6 +103,8 @@ export interface OutboxTransport {
   send(record: OutboxRecord, body: Record<string, unknown>): Promise<unknown>;
   upload(photo: OutboxPhoto, blob: Blob): Promise<string>;
   inspectConflict(record: OutboxRecord, error: ApiError): Promise<ConflictReport>;
+  /** Whether the server answers at all, which tells one bad record from an outage. */
+  serverIsUp(): Promise<boolean>;
 }
 
 export interface OutboxDeps {
@@ -147,6 +155,9 @@ const SENT_KEEP = 30;
 const SENT_KEY = 'outbox:sent';
 /** A duplicate answer is expected to clear on the next try, once the first delivery has committed. */
 const MAX_DUPLICATE_RETRIES = 3;
+/** With the backoff above, this is a little over a minute of the app being open. */
+const MAX_SERVER_ERRORS = 5;
+const HEALTH_TIMEOUT_MS = 5_000;
 
 /** Time-ordered id. crypto.randomUUID does not exist on plain http, e.g. a server on the farm LAN. */
 export function uuidv7(now: number = Date.now()): string {
@@ -164,15 +175,19 @@ export function backoffMs(attempts: number, random: number = Math.random()): num
   return Math.round(delay * (0.8 + random * 0.4));
 }
 
-export type FailureClass = 'network' | 'transient' | 'auth' | 'conflict' | 'duplicate' | 'closed' | 'permanent';
+export type FailureClass = 'network' | 'transient' | 'server' | 'auth' | 'conflict' | 'duplicate' | 'closed' | 'permanent';
 
 export function classifyFailure(record: Pick<OutboxRecord, 'kind'>, error: unknown): FailureClass {
-  if (!(error instanceof ApiError)) return 'transient';
+  if (!(error instanceof ApiError)) return 'server';
   if (error.status === 0) return 'network';
   if (error.status === 401) return 'auth';
-  if (error.status === 408 || error.status === 425 || error.status === 429 || error.status >= 500) return 'transient';
+  // A step left at sign-in, such as a new password. The record is fine and goes once that is done.
+  if (error.code === 'PASSWORD_CHANGE_REQUIRED' || error.code === 'TWO_FACTOR_ENROLLMENT_REQUIRED') return 'auth';
+  if (error.status >= 500) return 'server';
+  if (error.status === 408 || error.status === 425 || error.status === 429) return 'transient';
   if (error.code === 'RETRY') return 'transient';
   if (error.code === 'DAILY_LOG_EXISTS' || error.code === 'STALE_UPDATE') return 'conflict';
+  if (record.kind === 'daily_log' && error.code === 'EDIT_WINDOW_CLOSED') return 'conflict';
   if (error.code === 'ALREADY_EXISTS') return 'duplicate';
   // Someone finished this task first. The outcome is what the person wanted.
   if (record.kind === 'task_complete' && error.code === 'TASK_NOT_ACTIVE') return 'closed';
@@ -185,6 +200,18 @@ export function classifyFailure(record: Pick<OutboxRecord, 'kind'>, error: unkno
  */
 export function canEdit(record: OutboxRecord): boolean {
   return record.status === 'failed' || record.status === 'conflict' || (record.status === 'pending' && record.attempts === 0);
+}
+
+/** What a record is about. Records about the same thing must reach the server in the order they were made. */
+function subject(record: OutboxRecord): string {
+  if (record.kind === 'daily_log') return `herd:${String(record.meta.herdId)}:${String(record.meta.date)}`;
+  if (record.kind === 'task_complete') return `task:${String(record.meta.taskId)}`;
+  return `animal:${String(record.meta.tag)}`;
+}
+
+/** The older stuck record this one has to wait for, if any. Everything else goes ahead without it. */
+export function waitsFor(record: OutboxRecord, others: OutboxRecord[]): OutboxRecord | undefined {
+  return others.find((other) => other.status === 'stuck' && other.createdAt <= record.createdAt && other.id !== record.id && subject(other) === subject(record));
 }
 
 export function bodyWithPhotos(record: OutboxRecord): Record<string, unknown> {
@@ -377,6 +404,18 @@ export function createOutbox(deps: OutboxDeps) {
     schedule(delay);
   }
 
+  /** Past the limit a person hears about it, unless the server is down for everyone: no record is to blame for that. */
+  async function serverFailure(record: OutboxRecord, error: unknown): Promise<boolean> {
+    const serverErrors = (record.serverErrors ?? 0) + 1;
+    if (serverErrors < MAX_SERVER_ERRORS || !(await transport.serverIsUp())) {
+      await backOff({ ...record, serverErrors }, error);
+      return false;
+    }
+    await store.put({ ...record, status: 'stuck', attempts: record.attempts + 1, serverErrors, error: toOutboxError(error) });
+    await changed();
+    return true;
+  }
+
   /** Returns false when delivery must stop, leaving later records in order behind this one. */
   async function deliver(start: OutboxRecord): Promise<boolean> {
     let record = start;
@@ -407,6 +446,8 @@ export function createOutbox(deps: OutboxDeps) {
         case 'transient':
           await backOff(record, error);
           return false;
+        case 'server':
+          return serverFailure(record, error);
         case 'auth':
           // No attempt is counted: the record did nothing wrong. Sign-in restarts delivery.
           schedule(30_000);
@@ -451,16 +492,18 @@ export function createOutbox(deps: OutboxDeps) {
   }
 
   async function deliverQueue(force: boolean): Promise<void> {
-    const queue = (await store.list())
-      .filter((r) => owned(r) && r.status === 'pending')
-      .sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id));
-    for (const record of queue) {
+    const mine = (await store.list()).filter(owned).sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id));
+    const stuck = mine.filter((r) => r.status === 'stuck');
+    for (const record of mine.filter((r) => r.status === 'pending')) {
+      if (waitsFor(record, stuck)) continue;
       const wait = record.nextAttemptAt - now();
       if (!force && wait > 0) {
         schedule(wait);
         return;
       }
       if (!(await deliver(record))) return;
+      const after = await find(record.id);
+      if (after?.status === 'stuck') stuck.push(after);
     }
   }
 
@@ -493,11 +536,14 @@ export function createOutbox(deps: OutboxDeps) {
     return running;
   }
 
-  /** Send again now. Without an id, every failed record of this user. */
+  /**
+   * Send again now. Without an id, every failed and stuck record of this user. A stuck record keeps its count,
+   * so one more server error puts it straight back, and the queue behind it does not wait through the tries again.
+   */
   async function retry(id?: string): Promise<void> {
     for (const record of await store.list()) {
       if (!owned(record)) continue;
-      if (id ? record.id !== id : record.status !== 'failed') continue;
+      if (id ? record.id !== id : record.status !== 'failed' && record.status !== 'stuck') continue;
       if (record.status === 'conflict') continue;
       await store.put({ ...record, status: 'pending', nextAttemptAt: 0, error: null });
     }
@@ -511,6 +557,8 @@ export function createOutbox(deps: OutboxDeps) {
     if (!record) return;
     await removeRecord(record);
     await changed();
+    // Records about the same thing may have been waiting for this one.
+    void flush();
   }
 
   /** A conflict was settled on the server: the record's work is done. */
@@ -667,6 +715,16 @@ function sameDailyLog(server: ServerDailyLog, body: Record<string, unknown>): bo
   );
 }
 
+/** navigator.onLine alone says yes on Wi-Fi with no internet. The worker leaves this address alone. */
+export async function serverAnswers(): Promise<boolean> {
+  if (!navigator.onLine) return false;
+  try {
+    return (await fetch('/api/health', { cache: 'no-store', signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS) })).ok;
+  } catch {
+    return false;
+  }
+}
+
 const apiTransport: OutboxTransport = {
   send(record, body) {
     if (record.method === 'PATCH') return api.patch(record.path, body);
@@ -691,6 +749,7 @@ const apiTransport: OutboxTransport = {
     const server = await api.get<ServerDailyLog>(`/livestock/daily-logs/${serverId}`);
     return { applied: sameDailyLog(server, bodyWithPhotos(record)), serverId };
   },
+  serverIsUp: serverAnswers,
 };
 
 const channel = typeof window === 'undefined' || typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('yap.outbox');

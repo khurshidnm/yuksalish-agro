@@ -121,10 +121,11 @@
   },
   "page": {
     "title": "AI tahlil va yordamchi",
-    "description": "Farmangiz ma'lumotlari bo'yicha savol-javob, avtomatik tahlillar va tavsiyalar",
+    "description": "Fermangiz ma'lumotlari bo'yicha savol-javob, avtomatik tahlillar va tavsiyalar",
     "notConfiguredTitle": "AI yordamchi hali sozlanmagan",
     "notConfiguredBody": "Savol-javob va hujjat o'qish hozircha ishlamaydi. Statistik tahlillar va tavsiyalar kalitsiz ham ishlayveradi.",
     "notConfiguredHow": "Yoqish uchun server sozlamalarida GEMINI_API_KEY (to'lov ulangan Google loyihasidan) yoki ANTHROPIC_API_KEY ni kiriting va API ni qayta ishga tushiring.",
+    "notConfiguredAsk": "Yoqish uchun tizim administratoriga murojaat qiling.",
     "tabs": {
       "assistant": "Yordamchi",
       "insights": "Tahlillar",

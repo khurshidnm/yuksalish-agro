@@ -184,7 +184,7 @@
         },
         "birth": {
           "label": "Tug'ilgan sana yoki yoshi",
-          "hint": "Sana (15.03.2023) yoki yosh (3, 3 yosh, 18 oy). Yosh yozilsa, sana taxminiy deb belgilanadi."
+          "hint": "Sana (15.03.2023) yoki yosh (3, 3 yosh, 18 oy). Yosh yozilsa, sana taxminiy deb belgilanadi. Sotib olish sanasi bo'lmasa, hayvon fermada tug'ilgan deb yoziladi."
         },
         "weightKg": {
           "label": "Vazni (kg)",
@@ -392,7 +392,7 @@
       }
     },
     "budget": {
-      "title": "Byudjet 2026/27",
+      "title": "Byudjet",
       "sheet": "Byudjet",
       "file": "byudjet-shablon",
       "description": "Oylar va moddalar bo'yicha reja.",
@@ -443,7 +443,8 @@
     "tagOnOtherAnimal": "Bu birka {{tag}} hayvoniga tegishli",
     "invalidBirth": "{{column}}: sana yoki yosh bo'lishi kerak. Namuna: 15.03.2023 yoki 3 yosh",
     "priceNeedsDate": "Narx bor, lekin sotib olish sanasi yo'q",
-    "originUnknown": "Sotib olish sanasi yoki aniq tug'ilgan sana kerak",
+    "originUnknown": "Tug'ilgan sana, yosh yoki sotib olish sanasi kerak",
+    "assumedBornHere": "Sotib olish sanasi yo'q: hayvon fermada tug'ilgan deb, tug'ilgan sanasi esa taxminiy deb yoziladi",
     "maleCannotBePregnant": "Erkak hayvon uchun bo'g'ozlik sanasi yozilgan",
     "matingBeforeBirth": "Bo'g'ozlik sanasi tug'ilgan sanadan oldin",
     "lambingDatePassed": "Kutilayotgan qo'zilash sanasi allaqachon o'tgan: yilni tekshiring",
@@ -572,8 +573,10 @@
     "OLD_EXCEL_FORMAT": "Bu eski .xls format. Excelda \"Saqlash\" orqali .xlsx qilib saqlang va qayta yuklang.",
     "EMPTY_FILE": "Fayl bo'sh.",
     "FILE_TOO_COMPLEX": "Fayl juda katta, uni o'qib bo'lmaydi. Keraksiz varaqlarni olib tashlang.",
+    "READER_BUSY": "Hozir boshqa fayllar o'qilmoqda. Birozdan keyin qayta urinib ko'ring.",
+    "READER_UNAVAILABLE": "Faylni hozir o'qib bo'lmadi. Qayta urinib ko'ring.",
     "FILE_REQUIRED": "Fayl tanlanmagan.",
-    "FST_REQ_FILE_TOO_LARGE": "Fayl hajmi 15 MB dan oshmasligi kerak.",
+    "CELL_TOO_LONG": "{{row}}-qatorda juda uzun katak bor: {{max}} belgidan ko'p. Uni qisqartiring.",
     "WRONG_TEMPLATE": "Fayldagi sarlavhalar \"{{expected}}\" shabloniga mos kelmadi. Shablonni yuklab olib, shuni to'ldiring.",
     "LOOKS_LIKE_OTHER_TEMPLATE": "Bu fayl \"{{detected}}\" shabloniga o'xshaydi, siz esa \"{{expected}}\" ni tanlagansiz.",
     "MISSING_COLUMNS": "Faylda ustunlar yetishmaydi: {{columns}}.",

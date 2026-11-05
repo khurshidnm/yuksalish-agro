@@ -125,6 +125,7 @@
     "notConfiguredTitle": "The AI assistant is not set up yet",
     "notConfiguredBody": "Questions and document reading are unavailable for now. Statistical analysis and recommendations work without a key.",
     "notConfiguredHow": "To turn it on, set GEMINI_API_KEY (from a billing-enabled Google project) or ANTHROPIC_API_KEY in the server settings and restart the API.",
+    "notConfiguredAsk": "To turn it on, ask the system administrator.",
     "tabs": {
       "assistant": "Assistant",
       "insights": "Analysis",

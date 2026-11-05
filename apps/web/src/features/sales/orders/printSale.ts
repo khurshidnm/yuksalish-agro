@@ -47,11 +47,12 @@ export function printWaybill(sale: SaleDetail, farmName: string): void {
       <tfoot><tr><th colspan="4">${t('total')}</th><th class="n">${escape(formatMoney(sale.totalAmount, { currency: sale.currency }))}</th></tr></tfoot>
     </table>
     <div class="sign"><div>${t('handedOver')}</div><div>${t('received')}</div></div>
-    <script>window.onload = function () { window.print(); };</script>
   </body></html>`;
 
   const win = window.open('', '_blank');
   if (!win) return;
   win.document.write(html);
   win.document.close();
+  // From here, not a script in the page: the new window inherits this page's CSP, which would refuse it.
+  win.print();
 }

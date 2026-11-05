@@ -98,7 +98,7 @@ export const weightRecords = pgTable(
     campaignId: uuid().references(() => weighingCampaigns.id),
     notes: text(),
   },
-  (t) => [index().on(t.animalId, t.date.desc()), index().on(t.farmId, t.date)],
+  (t) => [index().on(t.animalId, t.date), index().on(t.farmId, t.date)],
 );
 
 export const breedingRecords = pgTable(
@@ -142,7 +142,7 @@ export const lambingRecords = pgTable(
     complications: text(),
     notes: text(),
   },
-  (t) => [index().on(t.eweId), index().on(t.farmId, t.date.desc())],
+  (t) => [index().on(t.eweId), index().on(t.farmId, t.date)],
 );
 
 export const healthRecords = pgTable(
@@ -178,9 +178,9 @@ export const healthRecords = pgTable(
     notes: text(),
   },
   (t) => [
-    index().on(t.animalId, t.date.desc()),
-    index().on(t.herdId, t.date.desc()),
-    index().on(t.farmId, t.date.desc()),
+    index().on(t.animalId, t.date),
+    index().on(t.herdId, t.date),
+    index().on(t.farmId, t.date),
     index().on(t.farmId, t.type, t.endedOn),
     index().on(t.farmId, t.withdrawalUntil),
   ],
@@ -231,7 +231,7 @@ export const dailyLogs = pgTable(
     photoFileIds: jsonb().$type<string[]>().notNull().default([]),
     notes: text(),
   },
-  (t) => [unique().on(t.herdId, t.date), index().on(t.farmId, t.date.desc())],
+  (t) => [unique().on(t.herdId, t.date), index().on(t.farmId, t.date)],
 );
 
 export const dailyLogLines = pgTable(
@@ -294,5 +294,5 @@ export const animalExits = pgTable(
     photoFileIds: jsonb().$type<string[]>().notNull().default([]),
     notes: text(),
   },
-  (t) => [unique().on(t.animalId), index().on(t.farmId, t.date.desc()), index().on(t.farmId, t.type)],
+  (t) => [unique().on(t.animalId), index().on(t.farmId, t.date), index().on(t.farmId, t.type)],
 );

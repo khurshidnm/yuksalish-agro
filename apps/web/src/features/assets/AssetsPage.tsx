@@ -11,7 +11,8 @@ import { formatDate, formatNumber } from '@/lib/format';
 import { enumOptions } from '@/lib/i18n';
 import { useApiMutation, useDetail, useList } from '@/lib/query';
 import { AssetFormDialog } from './AssetFormDialog';
-import type { Asset, MaintenanceDue } from './types';
+import { DepreciationResultAlert, DepreciationRunButton } from './DepreciationRun';
+import type { Asset, DepreciationRun, MaintenanceDue } from './types';
 
 const PATH = '/assets';
 
@@ -28,6 +29,7 @@ export default function AssetsPage() {
   const canCreate = usePermission('assets.create');
   const canUpdate = usePermission('assets.update');
   const canDelete = usePermission('assets.delete');
+  const canPostDepreciation = usePermission('finance.approve');
   const seesMoney = usePermission('finance.view');
   const confirm = useConfirm();
 
@@ -35,6 +37,7 @@ export default function AssetsPage() {
   const [status, setStatus] = useUrlParam('status');
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Asset | null>(null);
+  const [depreciationRun, setDepreciationRun] = useState<DepreciationRun | null>(null);
 
   const { data: fleet, isLoading } = useList<Asset>(PATH, { pageSize: 200 });
   const { data: due } = useDetail<MaintenanceDue[]>(`${PATH}/maintenance/due`);
@@ -90,7 +93,20 @@ export default function AssetsPage() {
 
   return (
     <>
-      <PageHeader title={t('title')} description={t('description')} actions={addButton} />
+      <PageHeader
+        title={t('title')}
+        description={t('description')}
+        actions={
+          (canPostDepreciation || canCreate) && (
+            <div className="flex flex-col gap-2 sm:flex-row">
+              {canPostDepreciation && <DepreciationRunButton onResult={setDepreciationRun} />}
+              {addButton}
+            </div>
+          )
+        }
+      />
+
+      {depreciationRun && <DepreciationResultAlert run={depreciationRun} />}
 
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard icon={Tractor} label={t('stats.total')} value={active.length} loading={isLoading} />

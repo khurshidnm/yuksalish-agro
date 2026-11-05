@@ -8,7 +8,8 @@ import { badRequest, conflict, forbidden, notFound } from '../../core/errors';
 import { recordEvent } from '../../core/journal';
 import { hidePii } from '../../core/privacy';
 import { clientId, isoDate, listQuery, paged, searchAny, sortBy } from '../../core/query';
-import { revokeAllSessions } from '../auth/auth.service';
+import { blockMember, unblockMember } from '../settings/users.service';
+import { loginForPhone } from './login-link.service';
 
 const { divisions, employees: t, herds, memberships, roles, users } = schema;
 
@@ -48,7 +49,12 @@ export const employeeListQuery = listQuery.extend({
   payType: z.enum(PAY_TYPES).optional(),
 });
 
-export const terminateInput = z.object({ date: isoDate, reason: z.string().trim().max(500).nullish() });
+export const terminateInput = z.object({
+  date: isoDate,
+  reason: z.string().trim().max(500).nullish(),
+  /** The login to end, chosen by hand when the record has none and no phone matches one. */
+  userId: z.uuid().nullish(),
+});
 
 const canSeePii = () => hasPermission(PII_VIEW);
 
@@ -159,9 +165,10 @@ export async function createEmployee(input: EmployeeInput) {
   assertMayChangeRates(input);
   await assertLinks(input);
   const { id, ...values } = input;
+  const userId = values.userId ?? (await loginForPhone(values.phone));
   const [row] = await tx()
     .insert(t)
-    .values({ ...(id ? { id } : {}), ...values, tenantId: c.tenantId, farmId: c.farmId, createdBy: c.userId })
+    .values({ ...(id ? { id } : {}), ...values, userId, tenantId: c.tenantId, farmId: c.farmId, createdBy: c.userId })
     .returning();
   await recordEvent({
     type: 'employee.hired',
@@ -181,9 +188,11 @@ export async function updateEmployee(id: string, input: EmployeePatch) {
   assertSeasonal(input.payType ?? existing.payType, input.contractEndDate === undefined ? existing.contractEndDate : input.contractEndDate);
   assertMayChangeRates(input);
   await assertLinks(input);
+  // Clearing a link on purpose stays cleared: only a record that has none picks one up.
+  const found = !existing.userId && !input.userId && input.phone ? await loginForPhone(input.phone) : null;
   const [row] = await tx()
     .update(t)
-    .set(input)
+    .set(found ? { ...input, userId: found } : input)
     .where(and(eq(t.id, id), eq(t.farmId, ctx().farmId)))
     .returning();
   return protect([row])[0];
@@ -199,8 +208,11 @@ export async function deleteEmployee(id: string) {
 }
 
 /**
- * The person leaves: login stops at once, and everything they entered stays (spec 5.1).
- * Only the membership of this farm is blocked. A job at another farm or tenant is untouched.
+ * The person leaves: login stops at once, and everything they entered stays (spec 5.1). This goes
+ * through the same block as the users page, so someone who may not block this person cannot
+ * dismiss them either, and the whole dismissal is refused. Only the membership of this farm is
+ * blocked: a job at another farm or tenant is untouched. `accessEnded` says what really happened,
+ * and it is what the screen reports.
  */
 export async function terminate(id: string, input: z.infer<typeof terminateInput>) {
   const c = ctx();
@@ -209,27 +221,34 @@ export async function terminate(id: string, input: z.infer<typeof terminateInput
   if (input.date < employee.hireDate) throw badRequest('TERMINATION_BEFORE_HIRE', 'The last day is before the hire date');
   // Blocking is immediate, so a future date would cut access too early.
   if (input.date > today()) throw badRequest('TERMINATION_IN_FUTURE', 'Enter the termination on the last working day');
+  await assertLinks({ userId: input.userId });
 
+  const userId = employee.userId ?? input.userId ?? (await loginForPhone(employee.phone));
   const [row] = await tx()
     .update(t)
-    .set({ status: 'terminated', terminationDate: input.date })
+    .set({ status: 'terminated', terminationDate: input.date, userId })
     .where(and(eq(t.id, id), eq(t.farmId, c.farmId)))
     .returning();
-  if (employee.userId) {
-    await tx()
-      .update(memberships)
-      .set({ status: 'blocked' })
-      .where(and(eq(memberships.userId, employee.userId), eq(memberships.farmId, c.farmId)));
-    await revokeAllSessions(employee.userId);
-  }
+  const accessEnded = userId ? await endAccess(userId) : false;
   await recordEvent({
     type: 'employee.terminated',
     entityType: 'employee',
     entityId: id,
     occurredAt: input.date,
-    data: { reason: input.reason ?? null },
+    data: { reason: input.reason ?? null, accessEnded },
   });
-  return protect([row])[0];
+  return { ...protect([row])[0], accessEnded };
+}
+
+/** Whether a login on this farm is now blocked. One blocked before counts: it has no access either way. */
+async function endAccess(userId: string): Promise<boolean> {
+  const [member] = await tx()
+    .select({ id: memberships.id, status: memberships.status })
+    .from(memberships)
+    .where(and(eq(memberships.userId, userId), eq(memberships.farmId, ctx().farmId)));
+  if (!member) return false;
+  if (member.status !== 'blocked') await blockMember(member.id);
+  return true;
 }
 
 /** Undo a termination, for a mistake or a rehire. */
@@ -243,10 +262,11 @@ export async function reinstate(id: string) {
     .where(and(eq(t.id, id), eq(t.farmId, c.farmId)))
     .returning();
   if (employee.userId) {
-    await tx()
-      .update(memberships)
-      .set({ status: 'active' })
+    const [member] = await tx()
+      .select({ id: memberships.id, status: memberships.status })
+      .from(memberships)
       .where(and(eq(memberships.userId, employee.userId), eq(memberships.farmId, c.farmId)));
+    if (member?.status === 'blocked') await unblockMember(member.id);
   }
   await recordEvent({ type: 'employee.reinstated', entityType: 'employee', entityId: id });
   return protect([row])[0];
@@ -255,7 +275,7 @@ export async function reinstate(id: string) {
 /** Farm logins, with the employee each is linked to, for the link field of the employee form. */
 export async function linkableUsers() {
   const { farmId } = ctx();
-  return tx()
+  const rows = await tx()
     .select({
       id: users.id,
       fullName: users.fullName,
@@ -269,6 +289,7 @@ export async function linkableUsers() {
     .leftJoin(t, and(eq(t.userId, users.id), eq(t.farmId, farmId)))
     .where(and(eq(memberships.farmId, farmId), eq(memberships.status, 'active')))
     .orderBy(asc(users.fullName));
+  return hidePii(rows, ['phone']);
 }
 
 export function listDivisions() {

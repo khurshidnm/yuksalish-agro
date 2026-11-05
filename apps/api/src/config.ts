@@ -33,6 +33,10 @@ const schema = z.object({
   AI_PROVIDER: z.string().optional(),
   /** Set to "false" to run the API without background jobs. */
   JOBS_ENABLED: z.string().default('true'),
+  /** Pinged once a minute while the deep health check passes, so an outside service notices when it stops. */
+  HEARTBEAT_URL: z.string().optional(),
+  /** "true" serves /api/docs in production too. Anyone can read it there, signed in or not. */
+  API_DOCS: z.string().optional(),
 });
 
 const parsed = schema.parse(process.env);

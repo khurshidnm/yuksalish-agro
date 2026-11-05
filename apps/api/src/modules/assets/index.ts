@@ -39,9 +39,9 @@ export default async function assetsModule(app: FastifyInstance) {
 
   r.post('/depreciation/run', {
     access: 'finance.approve',
-    summary: 'Post depreciation for a closed month. Safe to repeat.',
-    body: z.object({ month: isoMonth }),
-    handler: (req) => depreciation.runDepreciation(req.body.month),
+    summary: 'Post every ended month not posted yet, or one named month. Safe to repeat.',
+    body: z.object({ month: isoMonth.optional() }),
+    handler: async (req) => depreciation.postMonths(req.body.month ? [req.body.month] : await depreciation.monthsToRun()),
   });
 
   r.get('/:id', {

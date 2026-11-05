@@ -3,7 +3,7 @@
  * dictionaries at load time, so the two scripts can never drift apart.
  */
 
-const KEEP_WORDS = new Set(['Excel', 'Keeping', 'Google', 'Didox', 'Claude', 'iOS', 'Android', 'Email', 'Webhook', 'MediaMTX', 'pH']);
+const KEEP_WORDS = new Set(['Excel', 'Keeping', 'Google', 'Chrome', 'Safari', 'Didox', 'Claude', 'iOS', 'Android', 'Email', 'Webhook', 'MediaMTX', 'pH']);
 
 /** Uzbek acronyms, which unlike foreign ones change script. */
 const ACRONYMS: Record<string, string> = { STIR: 'СТИР', MFO: 'МФО' };

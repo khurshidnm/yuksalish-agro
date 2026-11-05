@@ -239,7 +239,7 @@ async function reportDeviations(herd: Herd, date: string, logId: string, deviati
   await raiseAlert({
     ruleKey: 'ration_deviation',
     dedupKey: `ration_deviation:${herd.id}:${date}`,
-    severity: Math.abs(percent) >= threshold * 2 ? 'urgent' : 'attention',
+    severity: 'attention',
     title: `${herd.name}: ozuqa sarfi me'yordan chetlandi`,
     body: `${date} kuni farq ${percent}%: berilgan ${actualKg}, me'yor ${plannedKg}.`,
     link: '/livestock/daily-logs',
@@ -388,7 +388,7 @@ async function getLogRow(id: string, opts: { lock?: boolean } = {}) {
 function assertCanEdit(log: typeof logs.$inferSelect): void {
   if (hasPermission('livestock.update')) return;
   if (log.createdBy !== ctx().userId || log.date !== today()) {
-    throw forbidden('Only your own record for today can be corrected', 'EDIT_WINDOW_CLOSED');
+    throw forbidden('Only your own record for today can be corrected', 'EDIT_WINDOW_CLOSED', { id: log.id });
   }
 }
 

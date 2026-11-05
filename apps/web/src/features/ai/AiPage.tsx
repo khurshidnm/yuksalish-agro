@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { ErrorCard, PageHeader, UrlTabs } from '@/components';
 import { Alert, Badge, Skeleton } from '@/components/ui';
+import { useSession } from '@/lib/auth';
 import { usePermission } from '@/lib/auth';
 import { useDetail } from '@/lib/query';
 import { AssistantTab } from './AssistantTab';
@@ -16,6 +17,7 @@ export default function AiPage() {
   const canCreate = usePermission('ai.create');
   const { data: status, error, isLoading, refetch } = useDetail<AiStatus>('/ai/status');
   const configured = status?.assistant.configured ?? false;
+  const session = useSession();
   const pending = usePendingProposals().data?.length ?? 0;
 
   return (
@@ -30,7 +32,7 @@ export default function AiPage() {
           {!configured && (
             <Alert tone="info" title={t('page.notConfiguredTitle')}>
               <p>{t('page.notConfiguredBody')}</p>
-              <p>{t('page.notConfiguredHow')}</p>
+              <p>{t(session.user.isPlatformAdmin ? 'page.notConfiguredHow' : 'page.notConfiguredAsk')}</p>
             </Alert>
           )}
           <UrlTabs

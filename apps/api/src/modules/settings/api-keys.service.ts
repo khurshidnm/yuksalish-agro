@@ -13,6 +13,8 @@ export const API_KEY_SCOPES = ['events:write', '*'] as const;
 export const apiKeyInput = z.object({
   name: z.string().trim().min(2).max(120),
   scopes: z.array(z.enum(API_KEY_SCOPES)).min(1),
+  /** Left out, the key works until someone revokes it. */
+  expiresInDays: z.number().int().min(1).max(3650).nullish(),
 });
 
 const publicColumns = {
@@ -21,6 +23,7 @@ const publicColumns = {
   keyPrefix: apiKeys.keyPrefix,
   scopes: apiKeys.scopes,
   lastUsedAt: apiKeys.lastUsedAt,
+  expiresAt: apiKeys.expiresAt,
   revokedAt: apiKeys.revokedAt,
   createdAt: apiKeys.createdAt,
 };
@@ -47,6 +50,7 @@ export async function createKey(input: z.infer<typeof apiKeyInput>) {
       keyHash: sha256(key),
       keyPrefix: key.slice(0, 12),
       scopes: input.scopes,
+      expiresAt: input.expiresInDays ? new Date(Date.now() + input.expiresInDays * 86_400_000) : null,
     })
     .returning(publicColumns);
   await recordEvent({ type: 'api_key.created', severity: 'attention', entityType: 'api_key', entityId: row.id, data: { name: row.name, scopes: row.scopes } });

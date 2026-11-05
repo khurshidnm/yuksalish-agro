@@ -157,14 +157,20 @@ function rowsOf(result: unknown, rowsKey?: string): Record<string, unknown>[] | 
 
 const isSimple = (value: unknown) => ['string', 'number', 'boolean'].includes(typeof value) || value === null;
 
-/** Reference names are { uz, ru, en }. Left as they are, their column would drop out of a table. */
+/**
+ * Rows as a person should see them. Reference names are { uz, ru, en }, which would drop out of a table
+ * as they are. Beside a name, `key` and `group` are internal codes such as bank_fees.
+ */
 function withPlainNames(row: Record<string, unknown>, language: LanguageCode): Record<string, unknown> {
+  const named = 'name' in row;
   return Object.fromEntries(
-    Object.entries(row).map(([key, value]) => {
-      if (!isPlainObject(value) || typeof value.uz !== 'string') return [key, value];
-      if (language === 'uz-Cyrl') return [key, latinToCyrillic(value.uz)];
-      return [key, value[language] ?? value.uz];
-    }),
+    Object.entries(row)
+      .filter(([key]) => !(named && (key === 'key' || key === 'group')))
+      .map(([key, value]) => {
+        if (!isPlainObject(value) || typeof value.uz !== 'string') return [key, value];
+        if (language === 'uz-Cyrl') return [key, latinToCyrillic(value.uz)];
+        return [key, value[language] ?? value.uz];
+      }),
   );
 }
 
@@ -348,8 +354,12 @@ class ToolSession {
     const fields = Object.keys(rows[0]).filter((key) => isSimple(rows[0][key]) && !key.endsWith('Id'));
 
     if (kind === 'table') {
-      const chosen = (columns ?? fields).filter((column) => column in rows[0]);
-      if (chosen.length === 0) return fail('None of those columns exist in the result.');
+      const asked = (columns ?? fields).filter((column) => column in rows[0]);
+      if (asked.length === 0) return fail('None of those columns exist in the result.');
+      // Numbers with nothing to say what they are mean nothing, so this does not rest on the model's choice.
+      const label = 'name' in rows[0] ? 'name' : fields.find((key) => typeof rows[0][key] === 'string');
+      const labelled = asked.some((column) => typeof rows[0][column] === 'string');
+      const chosen = labelled || !label ? asked : [label, ...asked];
       this.attachments.push({
         type: 'table',
         title,

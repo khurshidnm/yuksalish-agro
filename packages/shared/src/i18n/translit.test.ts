@@ -32,6 +32,7 @@ describe('latinToCyrillic', () => {
 
   it('applies overrides', () => {
     expect(latinToCyrillic('Telegram')).toBe('Телеграм');
+    expect(latinToCyrillic('Chrome 111 yoki Safari 16.4')).toBe('Chrome 111 ёки Safari 16.4');
     expect(latinToCyrillic('Sentabr')).toBe('Сентябрь');
     expect(latinToCyrillic('iyun')).toBe('июнь');
   });

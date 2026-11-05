@@ -3,7 +3,7 @@
  * Every call runs inside the request transaction and locks the batches it touches, so two
  * concurrent issues cannot both spend the same stock.
  */
-import { and, asc, desc, eq, gt, inArray, ne, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, ne, or, sql, type SQLWrapper } from 'drizzle-orm';
 import { consumeBatches, round, weightedAverageCost } from '@yap/shared';
 import { consumeInProportion } from '@yap/shared/formulas/stock';
 import { schema } from '../db/client';
@@ -19,6 +19,19 @@ const { items, stockBatches, stockMovements, transactions } = schema;
 export const STOCK_DOC_REF = 'stock_doc';
 /** Its `docNo` outlives the movements, so the number of a reversed document is never issued again. */
 export const DOCUMENT_REVERSED_EVENT = 'stock.document_reversed';
+
+/**
+ * The money standing on a receipt: posted with it on one of its batches, or entered for it
+ * afterwards under the document itself. Money that was refused stands on nothing.
+ */
+export const moneyOfReceipt = (refId: string | SQLWrapper, batchIds: string[] | SQLWrapper) =>
+  and(
+    ne(transactions.status, 'rejected'),
+    or(
+      and(eq(transactions.sourceType, 'stock_batch'), inArray(transactions.sourceId, batchIds)),
+      and(eq(transactions.sourceType, STOCK_DOC_REF), eq(transactions.sourceId, refId)),
+    ),
+  );
 
 /**
  * Movement types that consume value into a cost center. `adjustment_in` is the opposite sign.
@@ -501,14 +514,7 @@ export async function reverseStockDocument(refId: string): Promise<{ docNo: stri
     const paid = await tx()
       .select({ id: transactions.id })
       .from(transactions)
-      .where(
-        and(
-          eq(transactions.farmId, farmId),
-          eq(transactions.sourceType, 'stock_batch'),
-          inArray(transactions.sourceId, batchIds),
-          ne(transactions.status, 'rejected'),
-        ),
-      );
+      .where(and(eq(transactions.farmId, farmId), moneyOfReceipt(refId, batchIds)));
     if (paid.length > 0) {
       throw conflict('DOCUMENT_HAS_PAYMENT', 'Cancel the linked payment in finance first', {
         transactionIds: paid.map((p) => p.id),

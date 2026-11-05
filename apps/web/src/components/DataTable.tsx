@@ -52,8 +52,8 @@ export interface DataTableViewProps<T> {
   columns: Column<T>[];
   rowKey?: (row: T) => string;
   rowActions?: (row: T) => RowAction[];
-  /** Navigate when the row is clicked; the title cell becomes a real link. */
-  rowHref?: (row: T) => string;
+  /** Navigate when the row is clicked; the title cell becomes a real link. Null leaves that row plain. */
+  rowHref?: (row: T) => string | null;
   onRowClick?: (row: T) => void;
   /** Takes over a row click from `rowHref`: a side panel shows the row, and its title stays a link. */
   onRowPreview?: (row: T) => void;
@@ -142,12 +142,13 @@ export function DataTableView<T>({
   const navigate = useNavigate();
   const showEmpty = !loading && !error && rows.length === 0;
   const hasRows = !loading && !error && rows.length > 0;
-  const clickable = Boolean(rowHref || onRowClick);
+  const clickable = (row: T) => Boolean(rowHref?.(row) || onRowClick);
 
   const activate = (row: T, event: MouseEvent) => {
     if ((event.target as HTMLElement).closest(INTERACTIVE)) return;
+    const href = rowHref?.(row);
     if (onRowPreview) onRowPreview(row);
-    else if (rowHref) navigate(rowHref(row));
+    else if (href) navigate(href);
     else onRowClick?.(row);
   };
 
@@ -157,9 +158,10 @@ export function DataTableView<T>({
 
   const linked = (row: T, column: Column<T>) => {
     const content = column.cell(row);
-    if (column !== titleColumn || !rowHref) return content;
+    const href = rowHref?.(row);
+    if (column !== titleColumn || !href) return content;
     return (
-      <Link to={rowHref(row)} className="focus-ring rounded font-medium hover:underline">
+      <Link to={href} className="focus-ring rounded font-medium hover:underline">
         {content}
       </Link>
     );
@@ -212,9 +214,9 @@ export function DataTableView<T>({
                   rows.map((row) => (
                     <Tr
                       key={rowKey(row)}
-                      onClick={clickable ? (event) => activate(row, event) : undefined}
+                      onClick={clickable(row) ? (event) => activate(row, event) : undefined}
                       aria-selected={isRowSelected?.(row) || undefined}
-                      className={cn(clickable && 'cursor-pointer hover:bg-muted/60', isRowSelected?.(row) && 'bg-secondary hover:bg-secondary')}
+                      className={cn(clickable(row) && 'cursor-pointer hover:bg-muted/60', isRowSelected?.(row) && 'bg-secondary hover:bg-secondary')}
                     >
                       {columns.map((column) => (
                         <Td key={column.key} className={cn(ALIGN[column.align ?? 'left'], column.className)}>
@@ -247,7 +249,7 @@ export function DataTableView<T>({
             {hasRows &&
               rows.map((row) => (
                 <li key={rowKey(row)}>
-                  <Card onClick={clickable ? (event) => activate(row, event) : undefined} className={cn('p-3.5', clickable && 'cursor-pointer active:bg-muted/60')}>
+                  <Card onClick={clickable(row) ? (event) => activate(row, event) : undefined} className={cn('p-3.5', clickable(row) && 'cursor-pointer active:bg-muted/60')}>
                     <div className="flex items-start gap-2">
                       <div className="min-w-0 flex-1">
                         <div className="font-semibold break-words">{linked(row, titleColumn)}</div>
@@ -415,7 +417,7 @@ export function DataTable<T>({
         />
       </div>
       {meta && meta.total > 0 && !query.isError && (
-        <Pagination page={meta.page} pageSize={meta.pageSize} total={meta.total} onPageChange={(next) => update({ page: next > 1 ? String(next) : undefined })} />
+        <Pagination page={meta.page} pageSize={meta.pageSize} total={meta.total} capped={meta.totalCapped} onPageChange={(next) => update({ page: next > 1 ? String(next) : undefined })} />
       )}
     </div>
   );

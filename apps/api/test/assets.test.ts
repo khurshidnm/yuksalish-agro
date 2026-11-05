@@ -1,29 +1,38 @@
-import { addDays, monthOf, monthRange, todayIso } from '@yap/shared';
+import { addDays, monthOf, monthRange, round, todayIso } from '@yap/shared';
 import { and, eq, sql } from 'drizzle-orm';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { tx, withPlatform } from '../src/core/context';
 import { ensureCostCenter } from '../src/core/costCenters';
 import { receiveStock, stockOnHand } from '../src/core/inventory';
 import { postTransaction } from '../src/core/ledger';
 import { schema } from '../src/db/client';
+import { update as updateAsset } from '../src/modules/assets/assets.service';
 import { monthsToRun, previousMonth, runDepreciation } from '../src/modules/assets/depreciation.service';
 import { jobs } from '../src/modules/assets/jobs';
 import { machineryCostByField } from '../src/modules/assets/costs.service';
 import { dueMaintenance } from '../src/modules/assets/maintenance.service';
 import { assetStatus, fuelUsage } from '../src/modules/assets/summary';
+import { RENTED_COMBINE, seedAssets, seedDepreciation } from '../src/seed/assets';
+import { SEED } from '../src/seed/names';
+import type { SeedContext } from '../src/seed/types';
 import { createFixture, type Fixture } from './helpers';
 import { renderAlert } from '../src/modules/alerts/alerts.service';
 
-const { accounts, alerts, counterparties, depreciationEntries, financeCategories, fields, items, stockMovements, transactions, warehouses } = schema;
+const { accounts, alerts, counterparties, depreciationEntries, events: journal, financeCategories, fields, items, stockMovements, transactions, warehouses } = schema;
 
 const today = todayIso();
 const lastMonth = previousMonth(monthOf(today));
 const twoMonthsAgo = previousMonth(lastMonth);
+const threeMonthsAgo = previousMonth(twoMonthsAgo);
 
 async function setup() {
   const f = await createFixture();
   const owner = await f.as('owner');
   return { f, owner };
+}
+
+async function farmCreatedAt(f: Fixture, when: string) {
+  await withPlatform((trx) => trx.update(schema.farms).set({ createdAt: new Date(when) }).where(eq(schema.farms.id, f.farmId)));
 }
 
 async function newAsset(owner: Awaited<ReturnType<Fixture['as']>>, over: object = {}) {
@@ -639,12 +648,42 @@ describe('depreciation (spec 12.5)', () => {
     expect((await mechanic.post('/assets/depreciation/run', { month: lastMonth })).status).toBe(403);
   });
 
-  it('a new farm starts from last month, an existing one catches up on gaps', async () => {
-    const { f, owner } = await setup();
-    expect(await f.run(() => monthsToRun())).toEqual([lastMonth]);
+  it('a farm created this month has no ended month to post', async () => {
+    const { f } = await setup();
+    expect(await f.run(() => monthsToRun())).toEqual([]);
+  });
 
+  it('a farm with no entries starts from the month it was created', async () => {
+    const { f } = await setup();
+    await farmCreatedAt(f, `${monthRange(threeMonthsAgo).from}T10:00:00Z`);
+    expect(await f.run(() => monthsToRun())).toEqual([threeMonthsAgo, twoMonthsAgo, lastMonth]);
+  });
+
+  it('the month of creation is the month in Tashkent', async () => {
+    const { f } = await setup();
+    // 19:30 UTC on the last day is half past midnight on the 1st in Tashkent.
+    await farmCreatedAt(f, `${monthRange(threeMonthsAgo).to}T19:30:00Z`);
+    expect(await f.run(() => monthsToRun())).toEqual([twoMonthsAgo, lastMonth]);
+  });
+
+  it('a missed first run catches up, from the farm and not from the purchase, and only once', async () => {
+    const { f, owner } = await setup();
+    await farmCreatedAt(f, `${monthRange(twoMonthsAgo).from}T10:00:00Z`);
+    await newAsset(owner, { purchasePrice: 60_000_000, purchaseDate: '2024-01-15', usefulLifeMonths: 60 });
+
+    const job = jobs.find((j) => j.name === 'assets.monthly-depreciation')!;
+    await f.run(() => job.run());
+    await f.run(() => job.run());
+
+    const rows = await f.run(() => tx().select().from(depreciationEntries).where(eq(depreciationEntries.farmId, f.farmId)));
+    expect(rows.map((r) => [r.month, r.amount]).sort()).toEqual([[twoMonthsAgo, 1_000_000], [lastMonth, 1_000_000]]);
+    const money = await f.run(() => tx().select().from(transactions).where(eq(transactions.sourceType, 'depreciation')));
+    expect(money).toHaveLength(2);
+  });
+
+  it('a farm with entries catches up on the gap after the last one', async () => {
+    const { f, owner } = await setup();
     const asset = await newAsset(owner, { purchasePrice: 60_000_000, purchaseDate: '2024-01-15', usefulLifeMonths: 120 });
-    const threeMonthsAgo = previousMonth(twoMonthsAgo);
     await f.run(() =>
       tx().insert(depreciationEntries).values({
         tenantId: f.tenantId,
@@ -659,6 +698,7 @@ describe('depreciation (spec 12.5)', () => {
 
   it('the monthly job posts last month', async () => {
     const { f, owner } = await setup();
+    await farmCreatedAt(f, `${monthRange(lastMonth).from}T10:00:00Z`);
     await newAsset(owner, { purchasePrice: 60_000_000, purchaseDate: '2025-01-15', usefulLifeMonths: 60 });
     const job = jobs.find((j) => j.name === 'assets.monthly-depreciation')!;
     expect(job.cron).toBe('30 2 1 * *');
@@ -666,6 +706,329 @@ describe('depreciation (spec 12.5)', () => {
     await f.run(() => job.run());
     const rows = await f.run(() => tx().select().from(depreciationEntries).where(eq(depreciationEntries.farmId, f.farmId)));
     expect(rows.map((r) => [r.month, r.amount])).toEqual([[lastMonth, 1_000_000]]);
+  });
+});
+
+describe('demo seed', () => {
+  afterEach(() => void vi.useRealTimers());
+
+  /** The seed posts up to the last ended month, so the hand figures need the day they were worked out for. */
+  async function seededOn(day: string) {
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date(`${day}T06:00:00Z`) });
+    const { f, owner } = await setup();
+    const seed = { tenantId: f.tenantId, farmId: f.farmId, users: {}, run: (fn: () => Promise<unknown>) => f.run(fn, { userId: owner.userId }) } as unknown as SeedContext;
+    await seedAssets(seed);
+    await seedDepreciation(seed);
+    return { f, owner };
+  }
+
+  // Hand figures for 6 November 2026, monthly amount first. Opening is every month up to August 2026.
+  const CONTROL: [string, number, number, number][] = [
+    // 255 000 000 / 120 = 2 125 000; 31 months in all, April 2024 to October 2026.
+    [SEED.asset.tractor1, 61_625_000, 65_875_000, 219_125_000],
+    // 190 000 000 / 120 = 1 583 333.33; 35 + 2 months.
+    [SEED.asset.tractor2, 55_416_666.67, 58_583_333.33, 151_416_666.67],
+    // 62 000 000 / 96 = 645 833.33; 24 + 2 months.
+    [SEED.asset.seeder, 15_500_000, 16_791_666.66, 45_208_333.34],
+    // 28 000 000 / 84 = 333 333.33; 29 + 2 months.
+    [SEED.asset.plough, 9_666_666.67, 10_333_333.33, 17_666_666.67],
+    // 18 000 000 / 72 = 250 000; 16 + 2 months.
+    [SEED.asset.pump, 4_000_000, 4_500_000, 13_500_000],
+    // 45 000 000 / 120 = 375 000; 18 + 2 months.
+    [SEED.asset.generator, 6_750_000, 7_500_000, 37_500_000],
+    // 12 000 000 / 84 = 142 857.14; bought 1 September, so October alone.
+    [SEED.asset.scale, 0, 142_857.14, 11_857_142.86],
+  ];
+
+  it('every machine shows its hand-computed book value', async () => {
+    const { owner } = await seededOn('2026-11-06');
+    const list = await owner.get('/assets');
+    expect(list.data).toHaveLength(8);
+    const byName = Object.fromEntries(list.data.map((row: { name: string; id: string }) => [row.name, row.id]));
+
+    for (const [name, openingDepreciation, accumulatedDepreciation, bookValue] of CONTROL) {
+      const card = await owner.get(`/assets/${byName[name]}`);
+      expect(card.data, name).toMatchObject({ openingDepreciation, accumulatedDepreciation, bookValue });
+    }
+    expect((await owner.get(`/assets/${byName[RENTED_COMBINE]}`)).data.bookValue).toBeNull();
+  });
+
+  it('the ledger holds the same months as the cards, as non-cash costs on each machine', async () => {
+    const { f, owner } = await seededOn('2026-11-06');
+    const rows = await f.run(() => tx().select().from(transactions).where(eq(transactions.sourceType, 'depreciation')));
+    expect(rows.every((r) => r.status === 'approved' && r.paymentMethod === 'non_cash' && r.accountId === null && r.costCenterId !== null)).toBe(true);
+
+    const byDate = (date: string) => rows.filter((r) => r.date === date);
+    // Six machines in September, and the scale joins in October.
+    expect(byDate('2026-09-30')).toHaveLength(6);
+    expect(byDate('2026-10-31')).toHaveLength(7);
+    expect(rows).toHaveLength(13);
+    expect(round(byDate('2026-09-30').reduce((sum, r) => sum + r.amountBase, 0), 2)).toBe(5_312_499.99);
+    expect(round(byDate('2026-10-31').reduce((sum, r) => sum + r.amountBase, 0), 2)).toBe(5_455_357.13);
+
+    const again = await owner.post('/assets/depreciation/run', {});
+    expect(again.data).toEqual({ months: [], posted: 0, total: 0 });
+  });
+
+  it('a seed run in a later month posts up to that month', async () => {
+    const { owner } = await seededOn('2026-12-02');
+    const list = await owner.get('/assets', { search: 'MTZ' });
+    // One more month than on 6 November.
+    expect((await owner.get(`/assets/${list.data[0].id}`)).data.bookValue).toBe(217_000_000);
+  });
+
+  it('the first run after the seed posts November alone', async () => {
+    const { f } = await seededOn('2026-11-06');
+    vi.setSystemTime(new Date('2026-12-01T06:00:00Z'));
+    expect(await f.run(() => monthsToRun())).toEqual(['2026-11']);
+  });
+});
+
+describe('running depreciation by hand', () => {
+  const machine = { purchasePrice: 60_000_000, purchaseDate: '2024-01-15', usefulLifeMonths: 60 };
+
+  it('posts every month due and says what it posted', async () => {
+    const { f, owner } = await setup();
+    await farmCreatedAt(f, `${monthRange(twoMonthsAgo).from}T10:00:00Z`);
+    await newAsset(owner, machine);
+    await newAsset(owner, { ...machine, name: 'TTZ-80', purchasePrice: 30_000_000 });
+    const accountant = await f.as('accountant');
+
+    const res = await accountant.post('/assets/depreciation/run', {});
+    expect(res.status).toBe(200);
+    // 60 000 000 / 60 + 30 000 000 / 60 = 1 500 000 a month, for two months.
+    expect(res.data).toEqual({
+      months: [
+        { month: twoMonthsAgo, posted: 2, total: 1_500_000 },
+        { month: lastMonth, posted: 2, total: 1_500_000 },
+      ],
+      posted: 4,
+      total: 3_000_000,
+    });
+  });
+
+  it('a second press finds nothing to post, and the books stay as they were', async () => {
+    const { f, owner } = await setup();
+    await farmCreatedAt(f, `${monthRange(lastMonth).from}T10:00:00Z`);
+    await newAsset(owner, machine);
+    expect((await owner.post('/assets/depreciation/run', {})).data.posted).toBe(1);
+
+    const again = await owner.post('/assets/depreciation/run', {});
+    expect(again.status).toBe(200);
+    expect(again.data).toEqual({ months: [], posted: 0, total: 0 });
+    const rows = await f.run(() => tx().select().from(transactions).where(eq(transactions.sourceType, 'depreciation')));
+    expect(rows).toHaveLength(1);
+  });
+
+  it('two presses at the same moment post each month once', async () => {
+    const { f, owner } = await setup();
+    await farmCreatedAt(f, `${monthRange(twoMonthsAgo).from}T10:00:00Z`);
+    await newAsset(owner, machine);
+    const accountant = await f.as('accountant');
+
+    const presses = await Promise.all([owner.post('/assets/depreciation/run', {}), accountant.post('/assets/depreciation/run', {})]);
+    expect(presses.map((press) => press.status)).toEqual([200, 200]);
+    expect(presses[0].data.posted + presses[1].data.posted).toBe(2);
+    const rows = await f.run(() => tx().select().from(transactions).where(eq(transactions.sourceType, 'depreciation')));
+    expect(rows).toHaveLength(2);
+  });
+
+  it('a farm with no ended month yet gets a plain empty answer', async () => {
+    const { owner } = await setup();
+    await newAsset(owner, machine);
+    const res = await owner.post('/assets/depreciation/run', {});
+    expect(res.status).toBe(200);
+    expect(res.data).toEqual({ months: [], posted: 0, total: 0 });
+  });
+
+  it('months due with nothing to depreciate are not listed', async () => {
+    const { f, owner } = await setup();
+    await farmCreatedAt(f, `${monthRange(twoMonthsAgo).from}T10:00:00Z`);
+    await newAsset(owner, { ...machine, purchaseDate: `${twoMonthsAgo}-10` });
+    expect((await owner.post('/assets/depreciation/run', {})).data).toEqual({
+      months: [{ month: lastMonth, posted: 1, total: 1_000_000 }],
+      posted: 1,
+      total: 1_000_000,
+    });
+  });
+
+  it('a named month posts that month alone', async () => {
+    const { owner } = await setup();
+    await newAsset(owner, machine);
+    expect((await owner.post('/assets/depreciation/run', { month: twoMonthsAgo })).data).toEqual({
+      months: [{ month: twoMonthsAgo, posted: 1, total: 1_000_000 }],
+      posted: 1,
+      total: 1_000_000,
+    });
+  });
+
+  it('needs finance approval rights, and this month stays closed to it', async () => {
+    const { f, owner } = await setup();
+    for (const role of ['mechanic', 'agronomist', 'investor'] as const) {
+      expect((await (await f.as(role)).post('/assets/depreciation/run', {})).status).toBe(403);
+    }
+    const open = await owner.post('/assets/depreciation/run', { month: monthOf(today) });
+    expect(open.status).toBe(400);
+    expect(open.body.error.code).toBe('MONTH_NOT_CLOSED');
+  });
+});
+
+describe('opening accumulated depreciation', () => {
+  // MTZ-82: (285 000 000 − 30 000 000) / 120 = 2 125 000 a month, from April 2024.
+  const mtz = { purchasePrice: 285_000_000, salvageValue: 30_000_000, purchaseDate: '2024-03-15', usefulLifeMonths: 120 };
+  // April 2024 to August 2026 is 29 months: 61 625 000.
+  const opening = { openingDepreciation: 61_625_000, openingDepreciationDate: '2026-08-31' };
+
+  it('book value is cost less the opening figure less what was posted', async () => {
+    const { f, owner } = await setup();
+    const asset = await newAsset(owner, { ...mtz, ...opening });
+
+    const before = await owner.get(`/assets/${asset.id}`);
+    expect(before.data).toMatchObject({ ...opening, accumulatedDepreciation: 61_625_000, bookValue: 223_375_000 });
+
+    await f.run(() => runDepreciation('2026-09'));
+    await f.run(() => runDepreciation('2026-10'));
+    const after = await owner.get(`/assets/${asset.id}`);
+    expect(after.data).toMatchObject({ accumulatedDepreciation: 65_875_000, bookValue: 219_125_000 });
+  });
+
+  it('a month the opening figure holds is not posted again', async () => {
+    const { f, owner } = await setup();
+    await newAsset(owner, { ...mtz, ...opening });
+    expect(await f.run(() => runDepreciation('2026-08'))).toMatchObject({ posted: 0 });
+    expect(await f.run(() => runDepreciation('2026-09'))).toEqual({ month: '2026-09', posted: 1, total: 2_125_000 });
+  });
+
+  it('a date inside a month holds only the months already ended', async () => {
+    const { f, owner } = await setup();
+    await newAsset(owner, { ...mtz, openingDepreciation: 59_500_000, openingDepreciationDate: '2026-08-15' });
+    expect(await f.run(() => runDepreciation('2026-07'))).toMatchObject({ posted: 0 });
+    expect(await f.run(() => runDepreciation('2026-08'))).toMatchObject({ posted: 1, total: 2_125_000 });
+  });
+
+  it('what is left to depreciate counts the opening figure', async () => {
+    const { f, owner } = await setup();
+    // (10 000 000 − 1 000 000) / 60 = 150 000 a month, 100 000 left above salvage.
+    const asset = await newAsset(owner, {
+      purchasePrice: 10_000_000,
+      salvageValue: 1_000_000,
+      purchaseDate: '2025-01-15',
+      usefulLifeMonths: 60,
+      openingDepreciation: 8_900_000,
+      openingDepreciationDate: '2025-12-31',
+    });
+    expect(await f.run(() => runDepreciation('2026-01'))).toMatchObject({ posted: 1, total: 100_000 });
+    expect(await f.run(() => runDepreciation('2026-02'))).toMatchObject({ posted: 0 });
+    expect((await owner.get(`/assets/${asset.id}`)).data).toMatchObject({ accumulatedDepreciation: 9_000_000, bookValue: 1_000_000 });
+  });
+
+  it('units of production stops at what the opening figure leaves', async () => {
+    const { f, owner } = await setup();
+    // 1 000 000 / 10 h = 100 000 an hour: 7 h would be 700 000, only 200 000 is left.
+    const asset = await newAsset(owner, {
+      purchasePrice: 1_000_000,
+      purchaseDate: '2025-01-15',
+      depreciationMethod: 'units',
+      totalUnits: 10,
+      openingDepreciation: 800_000,
+      openingDepreciationDate: monthRange(twoMonthsAgo).to,
+    });
+    await owner.post(`/assets/${asset.id}/usage`, { date: monthRange(lastMonth).from, motoHours: 7 });
+    expect(await f.run(() => runDepreciation(lastMonth))).toMatchObject({ posted: 1, total: 200_000 });
+  });
+
+  it('asks for the date, and it must fall between the purchase and today', async () => {
+    const { owner } = await setup();
+    const code = async (over: object) => (await owner.post('/assets', { name: 'MTZ-82', type: 'tractor', ...mtz, ...over })).body.error?.code;
+    expect(await code({ openingDepreciation: 1_000 })).toBe('OPENING_DATE_REQUIRED');
+    expect(await code({ openingDepreciation: 1_000, openingDepreciationDate: addDays(today, 1) })).toBe('OPENING_DATE_INVALID');
+    expect(await code({ openingDepreciation: 1_000, openingDepreciationDate: '2024-03-14' })).toBe('OPENING_DATE_INVALID');
+  });
+
+  it('never more than the price less the salvage value, also after a later edit', async () => {
+    const { owner } = await setup();
+    const over = await owner.post('/assets', { name: 'MTZ-82', type: 'tractor', ...mtz, openingDepreciation: 255_000_001, openingDepreciationDate: '2026-08-31' });
+    expect(over.status).toBe(400);
+    expect(over.body.error.code).toBe('OPENING_TOO_HIGH');
+
+    const asset = await newAsset(owner, { ...mtz, openingDepreciation: 255_000_000, openingDepreciationDate: '2026-08-31' });
+    const raised = await owner.patch(`/assets/${asset.id}`, { salvageValue: 30_000_001 });
+    expect(raised.body.error.code).toBe('OPENING_TOO_HIGH');
+    const cheaper = await owner.patch(`/assets/${asset.id}`, { purchasePrice: 284_999_999 });
+    expect(cheaper.body.error.code).toBe('OPENING_TOO_HIGH');
+    const noPrice = await owner.patch(`/assets/${asset.id}`, { purchasePrice: null });
+    expect(noPrice.body.error.code).toBe('OPENING_TOO_HIGH');
+  });
+
+  it('reaches the limit exactly, in kopeck amounts too', async () => {
+    const { owner } = await setup();
+    const asset = await newAsset(owner, { purchasePrice: 0.3, salvageValue: 0.1, purchaseDate: '2024-03-15', openingDepreciation: 0.2, openingDepreciationDate: '2026-08-31' });
+    expect((await owner.get(`/assets/${asset.id}`)).data.bookValue).toBe(0.1);
+  });
+
+  it('cannot cover a month already posted, or pass the limit with what was posted', async () => {
+    const { f, owner } = await setup();
+    const asset = await newAsset(owner, mtz);
+    await f.run(() => runDepreciation('2026-09'));
+
+    const overlap = await owner.patch(`/assets/${asset.id}`, { openingDepreciation: 63_750_000, openingDepreciationDate: '2026-09-30' });
+    expect(overlap.status).toBe(409);
+    expect(overlap.body.error.code).toBe('OPENING_OVERLAPS_POSTED');
+
+    const tooMuch = await owner.patch(`/assets/${asset.id}`, { ...opening, openingDepreciation: 252_875_001 });
+    expect(tooMuch.body.error.code).toBe('OPENING_TOO_HIGH');
+
+    expect((await owner.patch(`/assets/${asset.id}`, opening)).status).toBe(200);
+    expect((await owner.get(`/assets/${asset.id}`)).data).toMatchObject({ accumulatedDepreciation: 63_750_000, bookValue: 221_250_000 });
+  });
+
+  it('a rented machine has no book value, and takes no opening rule', async () => {
+    const { f, owner } = await setup();
+    const asset = await newAsset(owner, { rented: true, openingDepreciation: 500_000 });
+    expect((await owner.get(`/assets/${asset.id}`)).data.bookValue).toBeNull();
+    expect(await f.run(() => runDepreciation(lastMonth))).toMatchObject({ posted: 0 });
+  });
+
+  it('a figure of zero holds no months back, whatever date is left on it', async () => {
+    const { f, owner } = await setup();
+    await newAsset(owner, { ...mtz, openingDepreciation: 0, openingDepreciationDate: '2026-08-31' });
+    expect(await f.run(() => runDepreciation('2026-08'))).toMatchObject({ posted: 1 });
+  });
+
+  it('is money: hidden from a mechanic in the list and the card', async () => {
+    const { f, owner } = await setup();
+    const asset = await newAsset(owner, { ...mtz, ...opening });
+    const mechanic = await f.as('mechanic');
+
+    const card = await mechanic.get(`/assets/${asset.id}`);
+    expect(card.data).toMatchObject({ openingDepreciation: null, openingDepreciationDate: null, accumulatedDepreciation: null, bookValue: null });
+    const list = await mechanic.get('/assets');
+    expect(list.data[0]).toMatchObject({ openingDepreciation: null, openingDepreciationDate: null });
+    expect(JSON.stringify(list.body)).not.toContain('61625000');
+  });
+
+  it('who cannot see money cannot set it, and can still edit the rest', async () => {
+    const { f, owner } = await setup();
+    const asset = await newAsset(owner, { ...mtz, ...opening });
+    const noMoney = { permissions: ['assets.view', 'assets.update'] };
+
+    for (const change of [{ openingDepreciation: 0 }, { openingDepreciationDate: null }, { purchasePrice: 1 }, { salvageValue: 0 }]) {
+      await expect(f.run(() => updateAsset(asset.id, change), noMoney)).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    }
+    await f.run(() => updateAsset(asset.id, { name: 'MTZ-82 №1' }), noMoney);
+    expect((await owner.get(`/assets/${asset.id}`)).data).toMatchObject({ name: 'MTZ-82 №1', ...opening });
+  });
+
+  it('a change goes to the journal, without the amount', async () => {
+    const { f, owner } = await setup();
+    const asset = await newAsset(owner, mtz);
+    await owner.patch(`/assets/${asset.id}`, opening);
+    await owner.patch(`/assets/${asset.id}`, { notes: 'Yangi izoh' });
+    const events = await f.run(() =>
+      tx().select().from(journal).where(and(eq(journal.entityId, asset.id), eq(journal.type, 'asset.opening_depreciation_changed'))),
+    );
+    expect(events).toHaveLength(1);
+    expect(JSON.stringify(events[0].data)).not.toContain('61625000');
   });
 });
 

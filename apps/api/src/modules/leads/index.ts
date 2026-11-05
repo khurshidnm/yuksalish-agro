@@ -6,9 +6,18 @@ import * as service from './leads.service';
 
 // Enough for a person correcting a typo, too few to fill the table from one address.
 const submitLimit = isTest ? {} : { rateLimit: { max: 5, timeWindow: '10 minutes' } };
+// Every visit to a public page asks once, and a whole farm can share one address.
+const tokenLimit = isTest ? {} : { rateLimit: { max: 60, timeWindow: '1 minute' } };
 
 export default async function leadsModule(app: FastifyInstance) {
   const r = routes(app, 'leads');
+
+  r.get('/form-token', {
+    access: 'public',
+    summary: 'Token the contact form sends with an enquiry',
+    config: tokenLimit,
+    handler: () => service.formToken(),
+  });
 
   r.post('/', {
     access: 'public',

@@ -849,7 +849,7 @@ describe('daily logs (MVP acceptance 24.1)', () => {
     const farm = await makeFarm();
     const shepherd = await farm.f.as('shepherd');
     await herdWith(farm, 10);
-    // 15 kg planned, 18 kg given: +20 % on the total. Attention, not urgent: under twice the 15 % limit.
+    // 15 kg planned, 18 kg given: +20 % on the total, over the 15 % limit.
     await shepherd.post('/livestock/daily-logs', {
       herdId: farm.herdId,
       date: daysAgo(1),
@@ -875,7 +875,7 @@ describe('daily logs (MVP acceptance 24.1)', () => {
     expect(after[0].status).toBe('open');
   });
 
-  it('twice the limit is urgent', async () => {
+  it('twice the limit is still a matter for the morning, not an urgent alert', async () => {
     const farm = await makeFarm();
     const shepherd = await farm.f.as('shepherd');
     await herdWith(farm, 10);
@@ -887,7 +887,7 @@ describe('daily logs (MVP acceptance 24.1)', () => {
       ],
     });
     const [alert] = await farm.f.run(() => tx().select().from(schema.alerts));
-    expect(alert.severity).toBe('urgent');
+    expect(alert.severity).toBe('attention');
   });
 
   it('one feed straying without moving the total is journaled, with no alert', async () => {

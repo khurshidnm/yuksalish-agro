@@ -1,5 +1,6 @@
 import { SEVERITIES } from '@yap/shared';
-import { Activity } from 'lucide-react';
+import { Activity, ExternalLink } from 'lucide-react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { type Column, DataTable, useUrlParam } from '@/components';
 import { Badge, type BadgeVariant, DateInput, Select } from '@/components/ui';
@@ -14,6 +15,8 @@ interface DeviceEvent {
   severity: string;
   deviceId: string | null;
   deviceName: string | null;
+  /** The frame through our own API, which is what the page's CSP lets it show. */
+  snapshotLink: string | null;
   data: { snapshotUrl?: string; sample?: boolean } & Record<string, unknown>;
 }
 
@@ -21,6 +24,27 @@ const SEVERITY_VARIANT: Record<string, BadgeVariant> = { info: 'neutral', attent
 
 /** Only http(s) links reach the page: the API validates this, and this guards older rows. */
 const safeSnapshot = (url: unknown): string | null => (typeof url === 'string' && /^https?:\/\//i.test(url) ? url : null);
+
+/** The server cannot reach a gateway on the farm's own network, but a phone on that network can. */
+function Snapshot({ link, source }: { link: string; source: string | null }) {
+  const { t } = useTranslation('cameras');
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    if (!source) return '—';
+    return (
+      <a href={source} target="_blank" rel="noreferrer noopener" className="focus-ring inline-flex min-h-11 items-center gap-1 rounded text-sm text-primary underline-offset-4 hover:underline">
+        <ExternalLink className="size-4" aria-hidden />
+        {t('events.openSnapshot')}
+      </a>
+    );
+  }
+  return (
+    <a href={link} target="_blank" rel="noreferrer noopener" className="focus-ring inline-block rounded" aria-label={t('events.openSnapshot')}>
+      <img src={link} alt="" loading="lazy" onError={() => setFailed(true)} className="h-16 w-24 rounded object-cover md:h-11 md:w-16" />
+    </a>
+  );
+}
 
 export function EventsTab() {
   const { t } = useTranslation('cameras');
@@ -47,16 +71,7 @@ export function EventsTab() {
     {
       key: 'snapshot',
       header: t('events.snapshot'),
-      mobile: 'hidden',
-      cell: (row) => {
-        const url = safeSnapshot(row.data.snapshotUrl);
-        if (!url) return '—';
-        return (
-          <a href={url} target="_blank" rel="noreferrer noopener" className="focus-ring inline-block rounded" aria-label={t('events.openSnapshot')}>
-            <img src={url} alt="" loading="lazy" referrerPolicy="no-referrer" className="h-10 w-16 rounded object-cover" />
-          </a>
-        );
-      },
+      cell: (row) => (row.snapshotLink ? <Snapshot link={row.snapshotLink} source={safeSnapshot(row.data.snapshotUrl)} /> : '—'),
     },
   ];
 

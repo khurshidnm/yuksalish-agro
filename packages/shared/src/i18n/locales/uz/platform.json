@@ -10,7 +10,7 @@
   "tenants": {
     "tab": "Xo'jaliklar",
     "add": "Xo'jalik qo'shish",
-    "addHint": "Standart rollar va ma'lumotnomalar avtomatik yaratiladi. Ega uchun bir martalik parol beriladi.",
+    "addHint": "Standart rollar va ma'lumotnomalar avtomatik yaratiladi. Yangi ega uchun bir martalik parol beriladi, hisobi bor odamga esa taklif yuboriladi.",
     "edit": "Xo'jalikni tahrirlash",
     "name": "Nomi",
     "legalName": "Yuridik nomi",
@@ -46,7 +46,7 @@
     "reactivate": "Qayta yoqish",
     "createdTitle": "Xo'jalik yaratildi",
     "createdBody": "«{{name}}» egasiga shu parolni bering.",
-    "createdExisting": "Xo'jalik yaratildi. Ega o'z paroli bilan kiradi.",
+    "createdExisting": "Xo'jalik yaratildi. Egaga taklif yuborildi, u qabul qilgach qo'shiladi.",
     "ownerPassword": "Ega paroli"
   },
   "plans": {
@@ -71,7 +71,7 @@
   "errors": {
     "STATUS_UNCHANGED": "Xo'jalik allaqachon shu holatda.",
     "USER_STATUS_UNCHANGED": "Foydalanuvchi allaqachon shu holatda.",
-    "CANNOT_RESET_SELF": "O'z parolingizni profilingizdan o'zgartiring."
+    "CANNOT_RESET_SELF": "O'z hisobingizni bu yerdan tiklab bo'lmaydi."
   },
   "leads": {
     "title": "Arizalar",
@@ -98,6 +98,8 @@
     "deleteBody": "{{name}} arizasi butunlay o'chiriladi. Spam yoki shaxs o'z ma'lumotini o'chirishni so'raganda ishlating.",
     "repeat_one": "{{count}} marta yozdi",
     "repeat_other": "{{count}} marta yozdi",
+    "repeats": "Keyingi murojaatlar",
+    "repeatsHint": "Telefon raqamini istalgan kishi yozishi mumkin, shuning uchun ular alohida saqlanadi va birinchi murojaatni o'zgartirmaydi.",
     "allStatuses": "Barcha holatlar",
     "searchPlaceholder": "Ism, telefon, ferma yoki hudud",
     "emptyTitle": "Hozircha arizalar yo'q",
@@ -128,6 +130,10 @@
     "unblock": "Blokdan chiqarish",
     "blockTitle": "Hisob bloklansinmi?",
     "blockBody": "{{name}} barcha fermalarga kira olmaydi va barcha qurilmalardan chiqariladi.",
+    "reset2fa": "2FA ni tiklash",
+    "reset2faTitle": "Ikki bosqichli kirish tiklansinmi?",
+    "reset2faBody": "{{name}} keyingi kirishda autentifikator ilovasini qaytadan ulaydi. Barcha seanslar tugaydi.",
+    "reset2faDone": "Ikki bosqichli kirish tiklandi",
     "resetPassword": "Parolni tiklash",
     "resetTitle": "Parol tiklansinmi?",
     "resetBody": "{{name}} uchun yangi bir martalik parol yaratiladi. Eski parol ishlamay qoladi.",

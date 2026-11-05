@@ -1,6 +1,7 @@
 import { Check, ClipboardCheck, ExternalLink, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
+import { useOpenableLink } from '@/app/canOpen';
 import { Badge, Button, Card, CardContent, Meter } from '@/components/ui';
 import { formatDateTime, formatPercent } from '@/lib/format';
 import { RichText } from './RichText';
@@ -72,6 +73,7 @@ export function useInsightText() {
 export function InsightCard({ canDecide, insight, onDecide, onOutcome }: InsightCardProps) {
   const { t } = useTranslation('ai');
   const { title, body } = useInsightText()(insight);
+  const to = useOpenableLink()(insight.data.link);
   const severity = insight.data.severity ?? 'info';
   const percent = Math.round(insight.confidence * 100);
 
@@ -122,9 +124,9 @@ export function InsightCard({ canDecide, insight, onDecide, onOutcome }: Insight
               )}
             </>
           )}
-          {typeof insight.data.link === 'string' && (
+          {to && (
             <Button asChild variant="ghost">
-              <Link to={insight.data.link}>
+              <Link to={to}>
                 <ExternalLink aria-hidden />
                 {t('insights.open')}
               </Link>

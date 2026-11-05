@@ -52,6 +52,10 @@
       "title": "Overdue field operations: {{count}}",
       "body": "Oldest: {{date}}."
     },
+    "disk_low": {
+      "title": "The server's disk is nearly full",
+      "body": "{{freeGb}} GB free. Below {{stopsAtGb}} GB new files are refused, and a full disk stops the whole system. Delete files nothing uses, or ask your administrator to add space."
+    },
     "document_expiring": {
       "title": "Document expiring: {{title}}",
       "body": "Valid until {{date}}."
@@ -63,6 +67,10 @@
     "batch_expiring": {
       "title": "{{item}}: batch expiring",
       "body": "Expires {{date}}. Remaining: {{qty}} {{unit}}."
+    },
+    "receipt_unpaid": {
+      "title": "{{docNo}}: goods received, no payment or debt recorded",
+      "body": "{{supplier}}: {{goods}}. Record the payment or the debt in Finance."
     },
     "approvals_pending": {
       "title": "Payments awaiting approval: {{count}}",
@@ -110,12 +118,33 @@
       "title": "{{herd}}: two different records for {{date}}",
       "body": "A record entered offline did not match the saved one. It lists no feed."
     },
+    "offline_refused": {
+      "title": "{{herd}}: the record for {{date}} was not accepted",
+      "body": "A record entered offline was refused and has to be entered by hand. Offline record: {{summary}}."
+    },
     "asset_fuel_deviation": {
       "title": "Fuel use {{percent}}% over the norm: {{name}}",
       "body": "{{date}}: used {{fuelL}} l, norm {{normL}} l."
     },
     "device_event": {
-      "title": "{{deviceName}}: {{eventType}}"
+      "title": "{{deviceName}}: {{eventType}}",
+      "body": "It happened at {{happenedAt}}. The message reached the server late."
+    },
+    "urgent_unreachable_not_configured": {
+      "title": "Urgent alerts do not leave the app",
+      "body": "The Telegram bot is not set up, so a fire alert shows only here. Contact your administrator."
+    },
+    "urgent_unreachable_channel_down": {
+      "title": "Telegram cannot be reached",
+      "body": "The bot cannot connect to Telegram, so a fire alert would show only here. Contact your administrator."
+    },
+    "urgent_unreachable_not_linked": {
+      "title": "Fire alerts have nobody to go to",
+      "body": "Neither the owner nor a director gets urgent messages in Telegram: it is not linked, or it is turned off. Fix this on the Notifications page."
+    },
+    "urgent_unreachable_undelivered": {
+      "title": "An urgent alert has reached nobody",
+      "body": "Sending through Telegram is failing. Check the alerts here and phone the people responsible."
     },
     "device_offline": {
       "title": "{{deviceName}} is offline",
@@ -165,7 +194,9 @@
     "stale": "This button is out of date.",
     "cardChanged": "This card has changed. Please check it and confirm again.",
     "moneyHidden": "This record holds money details your role cannot see.",
+    "noRightToAcknowledge": "Your role cannot acknowledge alerts.",
     "buttons": {
+      "acknowledge": "Acknowledge",
       "confirm": "Confirm",
       "change": "Change",
       "cancel": "Cancel",
@@ -210,12 +241,21 @@
       "title": "Telegram unlinked",
       "body": "This account no longer gets alerts in Telegram and cannot confirm from there. Link it again on the Notifications page."
     },
+    "twoFactorNotice": {
+      "title": "Two-factor sign-in changed",
+      "body": "Two-factor sign-in on your account was reset, replaced, or a recovery code was used. If this was not you, contact your administrator at once."
+    },
+    "inviteNotice": {
+      "title": "Invitation to a farm",
+      "body": "\"{{workspace}}\" invited you to join. Sign in to the app to accept or decline."
+    },
     "passwordNotice": {
       "title": "Password changed",
       "body": "The password of your account was changed, and other devices were signed out. This Telegram chat stays linked. If this was not you, contact your administrator at once."
     },
     "waitForAnswer": "I am still answering your last message. Wait for the answer, check the card, then confirm.",
     "farmAfterTurn": "I will answer what you already wrote first, then switch the farm.",
+    "escalated": "Sent to you because it could not reach the people responsible.",
     "sentLate": "Delivered late. Original time: {{time}}."
   },
   "errors": {
@@ -266,6 +306,10 @@
     "channelsTitle": "What goes where",
     "channelsBody": "Messages inside the platform are always on. You choose the rest.",
     "notConfigured": "Not set up",
+    "urgentOffTitle": "Turn off urgent alerts in Telegram?",
+    "urgentOffBody": "Telegram is the only channel outside the platform right now. Turn it off and you will hear about a fire or a sick animal only when you open the app.",
+    "urgentOffConfirm": "Turn off",
+    "urgentOff": "Urgent alerts do not reach you in Telegram, so you would hear about a fire only in the app. Tick Telegram to turn them back on.",
     "event": {
       "alert_urgent": "Urgent alerts",
       "alert_attention": "Alerts needing attention",
@@ -273,6 +317,27 @@
       "task_assigned": "Tasks assigned to me",
       "daily_summary": "Daily summary",
       "assistant_recap": "Assistant evening recap"
+    }
+  },
+  "testAlert": {
+    "title": "Test alert",
+    "body": "Shows who an urgent alert reaches. Each member of staff gets one message labelled as a test, and no real alert is raised.",
+    "send": "Send a test",
+    "confirmTitle": "Send the test message?",
+    "confirmBody": "It goes to all the staff of this farm.",
+    "confirmAction": "Send",
+    "reached": "Reached: {{count}}",
+    "unreachable": "Not reached: {{count}}",
+    "nobody": "This farm has no staff to send it to.",
+    "reason": {
+      "not_linked": "Telegram not linked, or the bot is blocked",
+      "turned_off": "Turned Telegram off for urgent messages",
+      "failed": "Telegram did not answer, it will be tried again",
+      "not_configured": "The Telegram bot is not set up"
+    },
+    "message": {
+      "title": "TEST: this is not a real alert",
+      "body": "Nothing has happened on the farm. This message checks that urgent alerts reach you. There is nothing to do."
     }
   },
   "telegram": {

@@ -1,10 +1,11 @@
 import { IDENTIFIER_TYPES, todayIso } from '@yap/shared';
 import { ArrowRightLeft, Camera, CircleMinus, Pencil, Plus, Scale, ShieldAlert, Tag, Trash2 } from 'lucide-react';
-import { lazy, Suspense, useRef, useState } from 'react';
+import { Suspense, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { lazyPart } from '@/app/lazyPage';
 import { DateField, ErrorCard, FormDialog, FormGrid, MoneyText, NumberField, PageHeader, SelectField, StatCard, TextField, UrlTabs, useConfirm } from '@/components';
 import { Alert, Button, Card, CardContent, CardHeader, CardTitle, Skeleton, TBody, THead, Table, Td, Th, Tr } from '@/components/ui';
 import { api } from '@/lib/api';
@@ -13,12 +14,13 @@ import { formatDate, formatNumber, formatQty } from '@/lib/format';
 import { zDate, zEnum, zPositive, zText } from '@/lib/forms';
 import { enumOptions } from '@/lib/i18n';
 import { errorMessage, useApiMutation, useDetail } from '@/lib/query';
+import { categoryLabel } from './category';
 import { AnimalForm } from './AnimalForm';
 import { ExitForm } from './ExitForm';
 import { type Animal, type I18nName, StatusBadge, compressImage, isOnFarm, useAgeText, useLocalName } from './shared';
 import { TransferDialog } from './TransferDialog';
 
-const WeightChart = lazy(() => import('./WeightChart'));
+const WeightChart = lazyPart(() => import('./WeightChart'));
 
 interface WeightRow {
   id: string;
@@ -31,6 +33,7 @@ interface WeightRow {
 
 interface AnimalCard extends Animal {
   speciesName: I18nName;
+  speciesKey: string | null;
   breedName: I18nName | null;
   herdName: string | null;
   facilityName: string | null;
@@ -151,7 +154,7 @@ export default function AnimalCardPage() {
             <Detail label={t('fields.species')}>{localName(animal.speciesName)}</Detail>
             <Detail label={t('fields.breed')}>{localName(animal.breedName)}</Detail>
             <Detail label={t('fields.sex')}>{t(`enums:sex.${animal.sex}`)}</Detail>
-            <Detail label={t('fields.category')}>{t(`enums:animalCategory.${animal.category}`)}</Detail>
+            <Detail label={t('fields.category')}>{categoryLabel(animal.category, animal.speciesKey)}</Detail>
             <Detail label={t('fields.birthDate')}>
               {formatDate(animal.birthDate)}
               {animal.birthDateEstimated && animal.birthDate ? ` (${t('card.estimated')})` : ''}

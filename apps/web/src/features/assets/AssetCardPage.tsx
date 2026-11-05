@@ -54,6 +54,11 @@ function Overview({ asset }: { asset: AssetCard }) {
               <Fact label={t('fields.purchasePrice')}>
                 <MoneyText value={asset.purchasePrice} />
               </Fact>
+              {!!asset.openingDepreciation && (
+                <Fact label={t('overview.opening', { date: formatDate(asset.openingDepreciationDate) })}>
+                  <MoneyText value={asset.openingDepreciation} />
+                </Fact>
+              )}
               <Fact label={t('overview.accumulated')}>
                 <MoneyText value={asset.accumulatedDepreciation} />
               </Fact>

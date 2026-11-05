@@ -39,6 +39,26 @@ describe('errorMessage', () => {
   });
 });
 
+describe('a limit on uploads', () => {
+  it('says what the limit is and what to do, in place of a bare status', async () => {
+    await i18n.changeLanguage('uz');
+    const tooBig = new ApiError(413, 'FILE_TOO_LARGE', 'This file is too large', { maxMb: 15 });
+    expect(errorMessage(tooBig)).toBe("Fayl juda katta. Eng ko'pi bilan 15 MB yuklash mumkin. Faylni kichraytiring yoki qismlarga bo'ling.");
+    const quota = new ApiError(409, 'STORAGE_QUOTA_REACHED', 'Full', { usedMb: 20481, quotaMb: 20480 });
+    expect(errorMessage(quota)).toContain('20481 MB, chegara 20480 MB');
+    expect(errorMessage(new ApiError(409, 'DAILY_UPLOAD_LIMIT_REACHED', 'Full', { limitMb: 500 }))).toContain('24 soatda 500 MB');
+  });
+
+  it('says what is busy when the code has words of its own, and a 429 or 5xx without them stays general', async () => {
+    await i18n.changeLanguage('en');
+    expect(errorMessage(new ApiError(429, 'UPLOADS_BUSY', 'x'))).toBe('The server is receiving many files right now. Try again in a moment.');
+    expect(errorMessage(new ApiError(429, 'READER_BUSY', 'x'))).toBe('Other files are being read right now. Try again in a moment.');
+    expect(errorMessage(new ApiError(503, 'READER_UNAVAILABLE', 'x'))).toBe("Files can't be read right now. Try again.");
+    expect(errorMessage(new ApiError(429, 'RATE_LIMITED', 'internal words'))).toBe('Too many attempts. Try again in a minute.');
+    expect(errorMessage(new ApiError(503, 'NOT_KNOWN', 'internal words'))).toBe('Server error. Try again in a moment.');
+  });
+});
+
 describe('a refusal that names the new figure', () => {
   afterAll(() => {
     void i18n.changeLanguage('uz');

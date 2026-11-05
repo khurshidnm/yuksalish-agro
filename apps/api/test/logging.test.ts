@@ -1,7 +1,9 @@
 import type { FastifyInstance } from 'fastify';
 import { DrizzleQueryError } from 'drizzle-orm';
+import pg from 'pg';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app';
+import { config } from '../src/config';
 import { safeError } from '../src/core/errors';
 import { signAccessToken } from '../src/core/tokens';
 import { setProvider } from '../src/modules/ai/provider';
@@ -36,11 +38,31 @@ describe('what reaches the log', () => {
     lines.length = 0;
   });
 
+  /** A failure Postgres really raises on this insert, and that no input check or known code answers. */
+  async function withFailingInsert(run: () => Promise<void>) {
+    const owner = new pg.Client({ connectionString: config.DATABASE_OWNER_URL });
+    await owner.connect();
+    await owner.query(`
+      create function log_test_fail() returns trigger language plpgsql as $$ begin raise exception 'the disk said no'; end $$;
+      create trigger log_test_fail before insert on counterparties for each row
+        when (new.tenant_id = '${w.f.tenantId}') execute function log_test_fail();
+    `);
+    try {
+      await run();
+    } finally {
+      await owner.query('drop trigger log_test_fail on counterparties; drop function log_test_fail()');
+      await owner.end();
+    }
+  }
+
   it('a route that fails keeps the cause and drops what it was sent', async () => {
-    const res = await post('/finance/counterparties', { name: 'Akmal aka\u0000', type: 'supplier', phone: PHONE, contactPerson: 'Akmal Qodirov' });
-    expect(res.statusCode).toBe(500);
+    await withFailingInsert(async () => {
+      const res = await post('/finance/counterparties', { name: 'Akmal aka', type: 'supplier', phone: PHONE, contactPerson: 'Akmal Qodirov' });
+      expect(res.statusCode).toBe(500);
+      expect(res.json().error).toEqual({ code: 'INTERNAL_ERROR', message: 'Something went wrong on the server' });
+    });
     expect(written()).toContain('unhandled error');
-    expect(written()).toContain('invalid byte sequence');
+    expect(written()).toContain('the disk said no');
     expect(written()).not.toContain(PHONE);
     expect(written()).not.toContain('Akmal');
   });

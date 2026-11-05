@@ -48,8 +48,6 @@ export function pathKey(path: string, params?: QueryParams): QueryKey {
 export function errorMessage(error: unknown): string {
   if (!(error instanceof ApiError)) return i18n.t('common:errors.generic');
   if (error.status === 0) return i18n.t('common:errors.network');
-  if (error.status === 429) return i18n.t('common:errors.rateLimit');
-  if (error.status >= 500) return i18n.t('common:errors.server');
   const raw = error.details && typeof error.details === 'object' ? (error.details as Record<string, unknown>) : {};
   // An amount reads as amounts do everywhere else: 480 000 000, not 480000000.
   const details = typeof raw.amount === 'number' ? { ...raw, amount: formatNumber(raw.amount) } : raw;
@@ -59,7 +57,11 @@ export function errorMessage(error: unknown): string {
     const text = i18n.getResource('en', ns, `errors.${error.code}`) as unknown;
     return typeof text === 'string' && [...text.matchAll(/\{\{\s*(\w+)/g)].every(([, value]) => value in details);
   });
-  if (complete.length === 0) return fallback;
+  if (complete.length === 0) {
+    if (error.status === 429) return i18n.t('common:errors.rateLimit');
+    if (error.status >= 500) return i18n.t('common:errors.server');
+    return fallback;
+  }
   return i18n.t(
     complete.map((ns) => `${ns}:errors.${error.code}`),
     { ...details, defaultValue: fallback },

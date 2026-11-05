@@ -22,6 +22,9 @@ export const assets = pgTable(
     depreciationMethod: text().notNull().default('straight_line'),
     /** Total lifetime units for units-of-production depreciation. */
     totalUnits: dec(14, 2),
+    /** Worn before the farm came onto this system: every month ended by its date is in this figure. */
+    openingDepreciation: money().notNull().default(0),
+    openingDepreciationDate: day(),
     motoHours: dec(12, 2).notNull().default(0),
     fuelNormLPerHour: dec(8, 2),
     fuelNormLPerHa: dec(8, 2),
@@ -60,7 +63,7 @@ export const assetUsageLogs = pgTable(
     billedTransactionId: uuid().references(() => transactions.id),
     notes: text(),
   },
-  (t) => [index().on(t.assetId, t.date.desc()), index().on(t.operationId), index().on(t.fieldId)],
+  (t) => [index().on(t.assetId, t.date), index().on(t.operationId), index().on(t.fieldId)],
 );
 
 export const maintenanceRecords = pgTable(
@@ -78,7 +81,7 @@ export const maintenanceRecords = pgTable(
     downtimeHours: dec(8, 2),
     transactionId: uuid().references(() => transactions.id),
   },
-  (t) => [index().on(t.assetId, t.date.desc()), index().on(t.farmId, t.nextDueDate)],
+  (t) => [index().on(t.assetId, t.date), index().on(t.farmId, t.nextDueDate)],
 );
 
 export const depreciationEntries = pgTable(

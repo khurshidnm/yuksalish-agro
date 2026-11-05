@@ -8,7 +8,12 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = join(root, 'dist');
 const ssr = join(root, 'dist-ssr');
 
-const { renderPages, robotsTxt, sitemapXml, SITE_URL } = await import(pathToFileURL(join(ssr, 'server.js')).href);
+const { bootWords, renderPages, robotsTxt, sitemapXml, SITE_URL } = await import(pathToFileURL(join(ssr, 'server.js')).href);
+
+// The app's own page has words of its own for when its code cannot start, so they cannot come from i18n at run time.
+const app = readFileSync(join(dist, 'index.html'), 'utf8');
+if (!app.includes("'__BOOT_WORDS__'")) throw new Error('index.html has lost its placeholder');
+writeFileSync(join(dist, 'index.html'), app.replace("'__BOOT_WORDS__'", () => JSON.stringify(bootWords())));
 
 const template = readFileSync(join(dist, 'landing.html'), 'utf8');
 if (!template.includes('<!--landing-head-->') || !template.includes('<!--landing-body-->')) {

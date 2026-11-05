@@ -6,6 +6,12 @@
   "cropPlanStatus": { "planned": "Запланировано", "sown": "Посеяно", "growing": "Вегетация", "harvested": "Убрано", "cancelled": "Отменено" },
   "sex": { "female": "Самка", "male": "Самец" },
   "animalCategory": { "ewe": "Овцематка", "ram": "Баран", "lamb_male": "Ягнёнок (баранчик)", "lamb_female": "Ягнёнок (ярочка)", "wether": "Валух", "fattening": "На откорме" },
+  "animalCategoryBySpecies": {
+    "goat": { "ewe": "Коза", "ram": "Козёл", "lamb_male": "Козлёнок (самец)", "lamb_female": "Козлёнок (самка)", "wether": "Кастрат", "fattening": "На откорме" },
+    "cattle": { "ewe": "Корова", "ram": "Бык", "lamb_male": "Телёнок (бычок)", "lamb_female": "Телёнок (тёлочка)", "wether": "Вол", "fattening": "На откорме" },
+    "horse": { "ewe": "Кобыла", "ram": "Жеребец", "lamb_male": "Жеребёнок (самец)", "lamb_female": "Жеребёнок (самка)", "wether": "Мерин", "fattening": "На откорме" },
+    "poultry": { "ewe": "Курица", "ram": "Петух", "lamb_male": "Цыплёнок (петушок)", "lamb_female": "Цыплёнок (курочка)", "wether": "Каплун", "fattening": "На откорме" }
+  },
   "animalStatus": { "active": "Активное", "pregnant": "Суягная", "sick": "Больное", "quarantine": "Карантин", "sold": "Продано", "slaughtered": "Забито", "dead": "Пало", "lost": "Потеряно" },
   "animalOrigin": { "born": "Рождено", "purchased": "Куплено" },
   "identifierType": { "ear_tag": "Ушная бирка", "rfid": "RFID", "qr": "QR-код" },

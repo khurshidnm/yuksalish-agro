@@ -50,6 +50,7 @@
     "expiry": "Expiry date",
     "payNow": "Record the payment too",
     "payNowHint": "The cost reaches a cost center when stock is issued",
+    "financeRecords": "The accountant records the payment or debt for this receipt.",
     "paymentMethod": "Payment method",
     "category": "Expense category",
     "categoryHint": "Some items here have no category of their own. This one is used for the whole receipt.",

@@ -1,3 +1,4 @@
+import { MAX_UPLOAD_BYTES } from '@yap/shared';
 import type { ListMeta } from './types';
 import { storageGet, storageRemove, storageSet } from './utils';
 
@@ -136,15 +137,16 @@ export interface RefreshResult {
   session: unknown;
 }
 
+/**
+ * Null is the server refusing. Anything else that goes wrong throws, because no answer says nothing
+ * about the session: the reply may be lost on the way, with the cookie still good.
+ */
 async function callRefresh(): Promise<RefreshResult | null> {
-  try {
-    const res = await fetch(`${BASE}/auth/refresh`, { method: 'POST', credentials: 'include' });
-    if (!res.ok) return null;
-    const body = (await res.json()) as { data?: Partial<RefreshResult> };
-    return body.data?.accessToken ? { accessToken: body.data.accessToken, session: body.data.session } : null;
-  } catch {
-    return null;
-  }
+  const res = await fetch(`${BASE}/auth/refresh`, { method: 'POST', credentials: 'include' });
+  if (res.status === 401) return null;
+  if (!res.ok) throw new Error(`Refresh answered ${res.status}`);
+  const body = (await res.json()) as { data?: Partial<RefreshResult> };
+  return body.data?.accessToken ? { accessToken: body.data.accessToken, session: body.data.session } : null;
 }
 
 function isSomeoneElse(session: unknown): boolean {
@@ -161,7 +163,7 @@ function isSomeoneElse(session: unknown): boolean {
  * Every tab shares that cookie, so what comes back may be the next person's. Their token never enters
  * this tab: whatever it still holds, a card or a queued record, would go out under their name.
  */
-export function refreshSession(): Promise<RefreshResult | null> {
+function attemptRefresh(): Promise<RefreshResult | null> {
   // Startup, a 401 and the chat all come through here, and none may undo a sign-out.
   if (signOutOwed()) return Promise.resolve(null);
   refreshInFlight ??= (async () => {
@@ -186,6 +188,10 @@ export function refreshSession(): Promise<RefreshResult | null> {
   return refreshInFlight;
 }
 
+export const refreshSession = (): Promise<RefreshResult | null> => attemptRefresh().catch(() => null);
+
+const fileTooLarge = () => new ApiError(413, 'FILE_TOO_LARGE', 'This file is too large', { maxMb: MAX_UPLOAD_BYTES / 1024 / 1024 });
+
 async function toApiError(res: Response): Promise<ApiError> {
   try {
     const body = (await res.json()) as { error?: { code?: string; message?: string; details?: unknown } };
@@ -195,7 +201,18 @@ async function toApiError(res: Response): Promise<ApiError> {
   } catch {
     // Not JSON: fall through to a generic error.
   }
+  // A proxy refuses a body over its limit with a page of its own, before the API sees it.
+  if (res.status === 413) return fileTooLarge();
   return new ApiError(res.status, 'HTTP_ERROR', res.statusText || `HTTP ${res.status}`);
+}
+
+/** The 401s that are about the session. Any other is about what was typed: sent again, it would count as a second guess. */
+const SESSION_FAILURES = new Set(['UNAUTHORIZED', 'INVALID_TOKEN', 'ACCOUNT_BLOCKED']);
+
+async function isSessionFailure(res: Response): Promise<boolean> {
+  if (res.status !== 401) return false;
+  const body = (await res.clone().json().catch(() => null)) as { error?: { code?: string } } | null;
+  return SESSION_FAILURES.has(body?.error?.code ?? '');
 }
 
 async function send(path: string, init: RequestInit, opts: RequestOptions): Promise<Response> {
@@ -218,14 +235,15 @@ async function send(path: string, init: RequestInit, opts: RequestOptions): Prom
     throw new ApiError(0, 'NETWORK_ERROR', 'Network error');
   }
 
-  if (res.status === 401 && !isAuthCall) {
-    if (await refreshSession()) {
-      try {
-        res = await attempt();
-      } catch {
-        throw new ApiError(0, 'NETWORK_ERROR', 'Network error');
-      }
-    } else {
+  if (!isAuthCall && (await isSessionFailure(res))) {
+    let refreshed: RefreshResult | null;
+    try {
+      refreshed = await attemptRefresh();
+      if (refreshed) res = await attempt();
+    } catch {
+      throw new ApiError(0, 'NETWORK_ERROR', 'Network error');
+    }
+    if (!refreshed) {
       accessToken = null;
       events.onSignedOut?.();
     }
@@ -311,14 +329,16 @@ export const api = {
   },
 
   /** Multipart upload to POST /files; returns the stored file. */
-  upload(file: File | Blob, name?: string, opts?: RequestOptions): Promise<UploadedFile> {
+  async upload(file: File | Blob, name?: string, opts?: RequestOptions): Promise<UploadedFile> {
+    if (file.size > MAX_UPLOAD_BYTES) throw fileTooLarge();
     const form = new FormData();
     form.append('file', file, name ?? (file instanceof File ? file.name : 'file'));
     return request<UploadedFile>('/files', { method: 'POST', body: form }, opts);
   },
 
   /** Multipart POST to any endpoint, e.g. spreadsheet import. Returns the unwrapped `data`. */
-  postFile<T>(path: string, file: File | Blob, fields?: Record<string, string>, opts?: RequestOptions): Promise<T> {
+  async postFile<T>(path: string, file: File | Blob, fields?: Record<string, string>, opts?: RequestOptions): Promise<T> {
+    if (file.size > MAX_UPLOAD_BYTES) throw fileTooLarge();
     const form = new FormData();
     for (const [k, v] of Object.entries(fields ?? {})) form.append(k, v);
     form.append('file', file, file instanceof File ? file.name : 'file');

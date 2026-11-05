@@ -37,7 +37,7 @@ export const aiInsights = pgTable(
   },
   (t) => [
     unique().on(t.farmId, t.dedupKey),
-    index().on(t.farmId, t.createdAt.desc()),
+    index().on(t.farmId, t.createdAt),
     index().on(t.farmId, t.decision),
     check('ai_insights_confidence_range', sql`${t.confidence} between 0 and 1`),
     check('ai_insights_has_sources', sql`${t.sources} <> '{}'::jsonb`),

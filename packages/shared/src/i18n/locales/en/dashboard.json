@@ -6,6 +6,22 @@
   "noData": "Not enough data",
   "head": "{{value}} head",
   "days": "{{value}} days",
+  "setup": {
+    "title": "Set up the farm",
+    "progress": "{{done}} of {{total}} done",
+    "intro": "A new farm is set up in this order. Each step leaves the list once it is done.",
+    "hide": "Hide",
+    "steps": {
+      "accounts": { "title": "Cash and bank accounts", "body": "Say where the money is kept." },
+      "fields": { "title": "Fields", "body": "Draw the fields on the map or add them to the list." },
+      "warehouses": { "title": "Warehouses", "body": "A receipt needs a warehouse first." },
+      "items": { "title": "Items", "body": "The list of feed, medicine and other goods." },
+      "stock": { "title": "Opening stock", "body": "Receive what is in the warehouse today." },
+      "rations": { "title": "Ration", "body": "Prepare the ration before creating a herd." },
+      "herds": { "title": "Herds and animals", "body": "Create a herd, then add or import the animals." },
+      "staff": { "title": "Staff", "body": "Add a person and give them their one-time password." }
+    }
+  },
   "tabs": {
     "overview": "Overview",
     "kpi": "KPIs"

@@ -1,7 +1,7 @@
 /** Files the module hands out: blank templates, rows to fix, and data exports. */
 import ExcelJS from 'exceljs';
 import type { Column, Template } from './check';
-import { LISTS_SHEET } from './file';
+import { LISTS_SHEET } from './reader';
 import { tr, trOptional, type LanguageCode } from './i18n';
 import type { Cell } from './values';
 

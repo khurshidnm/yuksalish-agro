@@ -6,8 +6,10 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { config } from '../../config';
 import { ctx, withTenant, type Identity } from '../../core/context';
 import { safeError } from '../../core/errors';
-import { latest, renderAlert } from '../alerts/alerts.service';
+import { noteTelegramContact, setTelegramCheck } from '../../core/health';
+import { acknowledgeByButton, latest, renderAlert, type ButtonOutcome } from '../alerts/alerts.service';
 import {
+  answering,
   COMMANDS,
   handleAssistantMessage,
   handleCallback,
@@ -22,11 +24,14 @@ import {
   startNewConversation,
   type BotLog,
   type Person,
+  type Refused,
 } from './assistant-bot';
 import { digestFacts, digestScope, renderDigest } from './digest';
 import { tr } from './i18n';
 import { handleLinkPress, startLink } from './link';
 import {
+  checkTelegram,
+  clearButtons,
   confirmUpdates,
   escapeHtml,
   formatMessage,
@@ -35,6 +40,7 @@ import {
   setCommands,
   telegramConfigured,
   TelegramError,
+  type TelegramCallbackQuery,
   type TelegramMessage,
   type TelegramUpdate,
   type TelegramUser,
@@ -71,14 +77,22 @@ const ASSISTANT_COMMANDS = new Set(['/kutilmoqda', '/pending', '/yangi', '/new']
 /** /yangi must keep its place among the person's messages. Other commands answer whatever the model is doing. */
 const ORDERED_COMMANDS = new Set(['/yangi', '/new']);
 
-/** Stopping something needs no model, and an Undo has a clock on it. */
-const QUICK_PRESS = /^(p:[xu]:|l:)/;
+/** Stopping something needs no model, an Undo has a clock on it, and a fire must not queue behind a question. */
+const QUICK_PRESS = /^(p:[xu]:|l:|a:)/;
 
 /** These book money, so they must never run ahead of what an earlier turn does to the card. */
 const BOOKING_PRESS = /^p:[cd]:/;
 
 /** A farm changes in its place among the messages, or what was written before it would land on the new farm. */
 const FARM_PRESS = /^f:/;
+
+const ACKNOWLEDGE_PRESS = /^a:([0-9a-f-]{36})$/;
+
+const ACKNOWLEDGE_WORDS: Record<ButtonOutcome, string> = {
+  acknowledged: 'toast.acknowledged',
+  taken: 'errors.ALERT_NOT_OPEN',
+  no_right: 'bot.noRightToAcknowledge',
+};
 
 const statusReply = (person: Person): Promise<string> =>
   withTenant(person.identity, async () => {
@@ -192,9 +206,34 @@ async function handleEdit(message: TelegramMessage): Promise<void> {
   if (person.status === 'ok' && person.canAsk) await sendHtml(chatId, escapeHtml(tr(person.locale, 'alerts', 'bot.editIgnored')));
 }
 
+/** An alert reaches them from every farm they work on, and the button does not say which. */
+async function acknowledgeOnTheirFarm(person: Person | Refused, alertId: string): Promise<ButtonOutcome | null> {
+  for (const { identity } of person.farms ?? []) {
+    const outcome = identity && (await withTenant(identity, () => acknowledgeByButton(alertId)));
+    if (outcome) return outcome;
+  }
+  return null;
+}
+
+/** The person comes from who pressed, never from the button, and the rest is what the web route would do. */
+function handleAcknowledgePress(query: TelegramCallbackQuery, log: BotLog): Promise<void> {
+  return answering(query, log, async (person) => {
+    const alertId = ACKNOWLEDGE_PRESS.exec(query.data ?? '')?.[1];
+    const outcome = alertId ? await acknowledgeOnTheirFarm(person, alertId) : null;
+    if (!outcome) return person.status === 'ok' || person.status === 'choose_farm' ? tr(person.locale, 'alerts', 'bot.stale') : refusalText(person);
+    if (outcome !== 'no_right' && query.message) {
+      await clearButtons(String(query.message.chat.id), query.message.message_id).catch((error) =>
+        log.error({ err: safeError(error) }, 'telegram button not removed'),
+      );
+    }
+    return tr(person.locale, 'alerts', ACKNOWLEDGE_WORDS[outcome]);
+  });
+}
+
 /** Answer one update, whatever it is. Exported for tests; the poller feeds it through a queue. */
 export async function handleUpdate(update: TelegramUpdate, log: BotLog): Promise<void> {
   if (update.callback_query?.data?.startsWith('l:')) await handleLinkPress(update.callback_query, log);
+  else if (update.callback_query?.data?.startsWith('a:')) await handleAcknowledgePress(update.callback_query, log);
   else if (update.callback_query) await handleCallback(update.callback_query, log);
   else if (update.edited_message) await handleEdit(update.edited_message);
   else await handleIncoming(update, log);
@@ -212,7 +251,7 @@ function chatOf(update: TelegramUpdate): string | null {
  * the farm it was written on. Everything else needs no model, and a hanging one must not hold back
  * alerts, Cancel or Undo.
  */
-function laneOf(update: TelegramUpdate, chatId: string): string {
+export function laneOf(update: TelegramUpdate, chatId: string): string {
   const press = update.callback_query?.data;
   if (press !== undefined) return QUICK_PRESS.test(press) ? `${chatId}:quick` : chatId;
   if (update.edited_message) return `${chatId}:quick`;
@@ -341,6 +380,7 @@ export function startTelegramBot(log: BotLog, holdMs = TURN_HOLD_MS): () => Prom
     return async () => {};
   }
 
+  setTelegramCheck(checkTelegram);
   const controller = new AbortController();
   const enqueue = createChatQueue(log, holdMs);
   const ledger = createUpdateLedger();
@@ -389,10 +429,12 @@ export function startTelegramBot(log: BotLog, holdMs = TURN_HOLD_MS): () => Prom
   };
 
   const loop = async () => {
+    noteTelegramContact();
     await registerCommands(log);
     while (!controller.signal.aborted) {
       try {
         const updates = await getUpdates(ledger.offset(), controller.signal);
+        noteTelegramContact();
         const fresh = updates.filter((update) => ledger.admit(update.update_id));
         fresh.forEach(take);
         if (updates.length > 0 && fresh.length === 0) await pause(HELD_POLL_MS, controller.signal);

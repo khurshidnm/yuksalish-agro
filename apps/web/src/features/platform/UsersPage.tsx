@@ -1,4 +1,4 @@
-import { Ban, CheckCircle2, KeyRound, ShieldCheck, Users } from 'lucide-react';
+import { Ban, CheckCircle2, KeyRound, ShieldCheck, ShieldX, Users } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { type Column, DataTable, PageHeader, useConfirm, useUrlParam } from '@/components';
@@ -46,6 +46,11 @@ export default function UsersPage() {
   const resetPassword = useApiMutation<PlatformUser, { oneTimePassword: string }>({
     mutationFn: (user) => api.post(`${USERS}/${user.id}/reset-password`),
     onSuccess: (result, user) => setReset({ password: result.oneTimePassword, name: user.fullName }),
+  });
+  const resetTwoFactor = useApiMutation<string>({
+    mutationFn: (id) => api.post(`${USERS}/${id}/reset-2fa`),
+    invalidate: [USERS],
+    successMessage: 'platform:users.reset2faDone',
   });
 
   const columns: Column<PlatformUser>[] = [
@@ -134,6 +139,18 @@ export default function UsersPage() {
                       description: t('users.resetBody', { name: row.fullName }),
                       confirmLabel: t('users.resetPassword'),
                     }).then((ok) => ok && resetPassword.mutate(row)),
+                },
+                {
+                  label: t('users.reset2fa'),
+                  icon: ShieldX,
+                  hidden: !row.totpEnabled,
+                  onClick: () =>
+                    void confirm({
+                      title: t('users.reset2faTitle'),
+                      description: t('users.reset2faBody', { name: row.fullName }),
+                      confirmLabel: t('users.reset2fa'),
+                      destructive: true,
+                    }).then((ok) => ok && resetTwoFactor.mutate(row.id)),
                 },
                 row.status === 'active'
                   ? {

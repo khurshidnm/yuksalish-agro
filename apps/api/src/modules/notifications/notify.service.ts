@@ -3,8 +3,9 @@
  * delivery happens afterwards in dispatchPending(). A rolled-back action therefore never sends a
  * message, and a Telegram outage never fails a business action.
  */
-import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, ne, sql } from 'drizzle-orm';
 import type { Permission, RoleKey, Severity } from '@yap/shared';
+import { LANGUAGES } from '@yap/shared/i18n';
 import { schema } from '../../db/client';
 import { ctx, tx, withPlatform } from '../../core/context';
 import { enabledPermissions } from '../../core/http';
@@ -44,6 +45,8 @@ export interface NotificationInput {
   channels?: ExternalChannel[];
   /** About the person's account, not this farm: it names no farm and is kept even if the account is blocked. */
   account?: boolean;
+  /** Told only because those responsible could not be reached, so it stops once someone takes the alert. */
+  escalated?: boolean;
 }
 
 export interface NotifyOptions {
@@ -54,6 +57,18 @@ export interface NotifyOptions {
 }
 
 const render = (text: Text | undefined, locale: string) => (typeof text === 'function' ? text(locale) : text);
+
+type Words = { title: string; body: string | null };
+
+/** A reader can change language after this is written, so it is kept in all of them. */
+function inEveryLanguage(n: NotificationInput): Record<string, Words> {
+  return Object.fromEntries(LANGUAGES.map(({ code }) => [code, { title: render(n.title, code)!, body: render(n.body, code) ?? null }]));
+}
+
+/** What this reader sees. A row older than `texts` shows the words it was written with. */
+export function wordsFor(row: Words & { texts: Record<string, Words> | null }, locale: string | null | undefined): Words {
+  return row.texts?.[locale ?? ''] ?? { title: row.title, body: row.body };
+}
 
 const eventTypeFor = (n: NotificationInput): EventType =>
   n.eventType ?? (n.severity === 'urgent' ? 'alert_urgent' : n.severity === 'attention' ? 'alert_attention' : 'alert_info');
@@ -81,6 +96,7 @@ async function deliver(userIds: string[], n: NotificationInput, permission?: Per
       ),
     );
   const chosen = new Map(prefs.map((p) => [p.userId, p.channels]));
+  const texts = inEveryLanguage(n);
 
   await tx()
     .insert(notifications)
@@ -89,6 +105,7 @@ async function deliver(userIds: string[], n: NotificationInput, permission?: Per
         const channels = n.channels ?? chosen.get(user.id) ?? DEFAULT_CHANNELS[eventType];
         const deliveries: Record<string, string> = {};
         for (const key of EXTERNAL_CHANNELS) if (channels.includes(key)) deliveries[key] = 'pending';
+        if (n.escalated) deliveries.escalated = 'true';
         return {
           tenantId: c.tenantId,
           farmId: n.account ? null : c.farmId,
@@ -97,6 +114,7 @@ async function deliver(userIds: string[], n: NotificationInput, permission?: Per
           severity: n.severity ?? 'info',
           title: render(n.title, user.locale)!,
           body: render(n.body, user.locale),
+          texts,
           link: n.link,
           alertId: n.alertId,
           permission: permission ?? EVENT_PERMISSIONS[eventType],
@@ -132,10 +150,12 @@ export async function notifyRole(role: RoleKey | RoleKey[], n: NotificationInput
 const MAX_ATTEMPTS = 6;
 /** Wait after each failed attempt, in minutes. Covers roughly a two-hour outage. */
 const RETRY_MINUTES = [1, 5, 15, 30, 60];
+/** An urgent message goes out soon after the channel is back, not at the end of a long wait. */
+const URGENT_RETRY_MINUTES = 5;
 /** Failures in a row that mean the channel is down, so the rest of the run would only sit out timeouts. */
 const CHANNEL_DOWN_AFTER = 3;
 /** Past this a message reads as happening now unless it says otherwise. */
-const LATE_AFTER_MS = 5 * 60_000;
+export const LATE_AFTER_MS = 5 * 60_000;
 
 export interface DispatchResult {
   sent: number;
@@ -199,7 +219,7 @@ function farmNamed(row: Row, places: Workplaces): string | undefined {
   return place && theirs.length > 1 ? farmLabel(place, theirs) : undefined;
 }
 
-const clock = (at: Date, timezone: string) =>
+export const clock = (at: Date, timezone: string) =>
   new Intl.DateTimeFormat('ru-RU', { timeZone: timezone, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(at);
 
 /**
@@ -228,9 +248,12 @@ export async function dispatchPending(limit = 100): Promise<DispatchResult> {
   const places = await workplaces(recipients);
   const alertIds = rows.flatMap((row) => (row.alertId ? [row.alertId] : []));
   const closed = alertIds.length
-    ? await tx().select({ id: alerts.id }).from(alerts).where(and(inArray(alerts.id, alertIds), eq(alerts.status, 'resolved')))
+    ? await tx().select({ id: alerts.id, status: alerts.status }).from(alerts).where(and(inArray(alerts.id, alertIds), ne(alerts.status, 'open')))
     : [];
-  const resolved = new Set(closed.map((alert) => alert.id));
+  const resolved = new Set(closed.filter((alert) => alert.status === 'resolved').map((alert) => alert.id));
+  const taken = new Set(closed.map((alert) => alert.id));
+  /** Urgent alerts that reached someone in this run. */
+  const reached = new Set<string>();
 
   const now = Date.now();
   /** Until when each person is rate limited, by channel. */
@@ -243,9 +266,9 @@ export async function dispatchPending(limit = 100): Promise<DispatchResult> {
     const late = now - row.createdAt.getTime() > LATE_AFTER_MS;
     const message = {
       severity: row.severity as Severity,
-      title: row.title,
-      body: row.body,
+      ...wordsFor(row, to?.locale),
       link: row.link,
+      alertId: row.alertId,
       farm: farmNamed(row, places),
       note: late ? tr(to?.locale, 'alerts', 'bot.sentLate', { time: clock(row.createdAt, c.timezone) }) : null,
     };
@@ -254,7 +277,8 @@ export async function dispatchPending(limit = 100): Promise<DispatchResult> {
       if (deliveries[key] !== 'pending') continue;
       const nextAt = deliveries[`${key}_next`];
       if (nextAt && Date.parse(nextAt) > now) continue;
-      if (to && (!entitled(row, places) || (row.alertId && resolved.has(row.alertId)))) {
+      const overtaken = row.alertId && (resolved.has(row.alertId) || (row.deliveries.escalated && taken.has(row.alertId)));
+      if (to && (!entitled(row, places) || overtaken)) {
         deliveries[key] = 'skipped';
         delete deliveries[`${key}_next`];
         result.skipped++;
@@ -275,8 +299,10 @@ export async function dispatchPending(limit = 100): Promise<DispatchResult> {
         deliveries[key] = channel.configured() ? 'sent' : 'not_configured';
         delete deliveries[`${key}_next`];
         failuresInARow.delete(key);
-        if (channel.configured()) result.sent++;
-        else result.skipped++;
+        if (channel.configured()) {
+          result.sent++;
+          if (row.alertId) reached.add(row.alertId);
+        } else result.skipped++;
       } catch (err) {
         if (err instanceof RetryLaterError) {
           const until = Date.now() + err.afterMs;
@@ -308,7 +334,8 @@ export async function dispatchPending(limit = 100): Promise<DispatchResult> {
             data: { channel: key, attempts, error: (err as Error).message },
           });
         } else {
-          const minutes = RETRY_MINUTES[Math.min(attempts - 1, RETRY_MINUTES.length - 1)];
+          const planned = RETRY_MINUTES[Math.min(attempts - 1, RETRY_MINUTES.length - 1)];
+          const minutes = row.severity === 'urgent' ? Math.min(planned, URGENT_RETRY_MINUTES) : planned;
           deliveries[`${key}_next`] = new Date(now + minutes * 60_000).toISOString();
           result.retried++;
           console.warn(`[${key}] attempt ${attempts} for ${row.id} failed: ${(err as Error).message}`);
@@ -317,5 +344,6 @@ export async function dispatchPending(limit = 100): Promise<DispatchResult> {
     }
     await tx().update(notifications).set({ deliveries }).where(eq(notifications.id, row.id));
   }
+  if (reached.size > 0) await tx().update(alerts).set({ undeliveredSince: null }).where(inArray(alerts.id, [...reached]));
   return result;
 }
