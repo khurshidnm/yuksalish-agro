@@ -477,9 +477,16 @@ describe('reports on the control scenario', () => {
 
   it('groups by a column, summing only what can be summed', async () => {
     const data = await run('finance.transactions', { from: FROM, to: TO, groupBy: 'paymentMethod', status: 'approved', lang: 'en' });
-    expect(data.columns.map((c: any) => c.key)).toEqual(['paymentMethod', '__count', 'amountBase']);
-    expect(data.rows).toEqual([{ paymentMethod: 'Cash', __count: 7, amountBase: 25_000_000 }]);
-    expect(data.totals).toEqual({ __count: 7, amountBase: 25_000_000 });
+    // A journal mixes money in and out, so its amounts are not added up.
+    expect(data.columns.map((c: any) => c.key)).toEqual(['paymentMethod', '__count']);
+    expect(data.rows).toEqual([{ paymentMethod: 'Cash', __count: 7 }]);
+    expect(data.totals).toEqual({ __count: 7 });
+
+    const plain = await run('finance.profitability', { from: FROM, to: TO, lang: 'en' });
+    const grouped = await run('finance.profitability', { from: FROM, to: TO, groupBy: 'type', lang: 'en' });
+    const direct = plain.rows.reduce((sum: number, row: any) => sum + row.direct, 0);
+    expect(grouped.rows.reduce((sum: number, row: any) => sum + row.direct, 0)).toBeCloseTo(direct, 2);
+    expect(grouped.totals.direct).toBeCloseTo(direct, 2);
   });
 
   it('groups dates by month', async () => {
@@ -603,9 +610,16 @@ describe('exports', () => {
     expect(first.getCell(1).value).toBeInstanceOf(Date);
     expect(first.getCell(1).numFmt).toBe('dd.mm.yyyy');
 
+    // No total row: the column mixes money in and out.
+    expect(sheet.getRow(sheet.rowCount).getCell(amountColumn).font?.bold).toBeFalsy();
+  });
+
+  it('Excel closes a report that can be summed with a bold total', async () => {
+    const res = await exportRaw(w.f, token, 'finance.monthly_result', 'xlsx', { ...PERIOD, lang: 'en' });
+    const sheet = await readWorkbook(res.rawPayload);
     const last = sheet.getRow(sheet.rowCount);
-    expect(last.getCell(amountColumn).value).toBe(25_000_000);
-    expect(last.getCell(amountColumn).font?.bold).toBe(true);
+    expect(typeof last.getCell(2).value).toBe('number');
+    expect(last.getCell(2).font?.bold).toBe(true);
   });
 
   it('Excel stores a percentage as a true percentage', async () => {
@@ -863,7 +877,8 @@ describe('investor one-pager', () => {
     const investor = await w.f.as('investor');
     const res = await investor.get('/reports/investor', { month: '2026-03' });
     expect(res.status).toBe(200);
-    expect(res.data.finance).toMatchObject({ income: 3_000_000, expense: 7_000_000, net: -4_000_000 });
+    // Net is income less operating cost, so the percent follows from these figures. `expense` is money paid.
+    expect(res.data.finance).toMatchObject({ income: 3_000_000, expense: 7_000_000, net: -1_000_000 });
     // 3 000 000 direct + 500 kg used at 2 000. The other 3 000 000 of the feed bought is still in stock.
     expect(res.data.finance.operatingExpense).toBe(4_000_000);
     // Farm-wide, so the ram in the second herd counts: (9 000 000 + 4 000 000) / 10 head.

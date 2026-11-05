@@ -67,6 +67,7 @@ export const SEED = {
     riceSeed: "Sholi urug'i",
     ammophos: 'Ammofos',
     urea: 'Karbamid',
+    herbicide: 'Gerbitsid',
     diesel: 'Dizel',
     enterotoxemiaVaccine: 'Enterotoksemiya vaksinasi',
     poxVaccine: 'Chechak vaksinasi',

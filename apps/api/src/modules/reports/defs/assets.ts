@@ -53,7 +53,7 @@ export const assetReports: ReportDefinition[] = [
       col.text('asset'),
       col.text('operator', { sensitive: PII }),
       col.text('field'),
-      col.text('workType'),
+      col.enum('workType', 'operationType'),
       col.num('motoHours', 2, { sum: true }),
       col.num('volumeHa', 2, { sum: true }),
       col.num('fuelL', 2, { sum: true }),

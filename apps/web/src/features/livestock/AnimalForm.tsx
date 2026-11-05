@@ -53,7 +53,7 @@ export function AnimalForm({ open, onOpenChange, animal, herdId }: AnimalFormPro
   const { t } = useTranslation('livestock');
   const localName = useLocalName();
   const canSeeMoney = usePermission('finance.view');
-  const { data: species = [] } = useDetail<Species[]>(open ? '/livestock/species' : null);
+  const { data: species = [], isLoading: speciesLoading } = useDetail<Species[]>(open ? '/livestock/species' : null);
   const sheep = species.find((s) => s.key === 'sheep') ?? species[0];
 
   const defaults: FormValues = animal
@@ -114,7 +114,8 @@ export function AnimalForm({ open, onOpenChange, animal, herdId }: AnimalFormPro
 
   return (
     <FormDialog
-      open={open}
+      // The form takes its defaults as it opens, and the default species comes from this list.
+      open={open && !speciesLoading}
       onOpenChange={onOpenChange}
       title={animal ? t('animals.edit') : t('animals.add')}
       schema={schema}

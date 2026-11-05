@@ -27,6 +27,7 @@
     }
   },
   "journal": {
+    "original": "{{amount}}, kurs {{rate}}",
     "title": "Operatsiyalar",
     "description": "Har bir kirim va chiqim sanasi, summasi, hisobi va xarajat markazi bilan.",
     "tab": "Jurnal",
@@ -92,7 +93,7 @@
     "tab": "Tasdiqlash",
     "approve": "Tasdiqlash",
     "reject": "Rad etish",
-    "void": "Bekor qilish",
+    "void": "Operatsiyani bekor qilish",
     "rejectTitle": "Operatsiyani rad etish",
     "voidTitle": "Tasdiqlangan operatsiyani bekor qilish",
     "reason": "Sababi",
@@ -302,6 +303,7 @@
     "gapTitle": "{{month}} oyidan pul yetishmaydi",
     "gapBody": "Pul yetishmaydigan oylar soni: {{n}}. Eng katta kamomad: {{amount}}. Xarajatni kechiktirish, sotuvni tezlashtirish yoki qisqa muddatli moliyalashtirishni oldindan ko'rib chiqing.",
     "methodNote": "Bu statistik prognoz, va'da emas. Asosi: byudjet, {{months}} oylik tarix, kredit grafigi va qarz muddatlari.",
+    "beyondPlan": "Byudjet {{month}} gacha kiritilgan. Undan keyingi oylarda faqat kredit va qarz to'lovlari ko'rinadi, shuning uchun ular prognoz emas.",
     "lowConfidenceTitle": "Ma'lumot yetarli emas",
     "lowConfidenceBody": "Byudjet kiritilmagan va tarix uch oydan kam, shuning uchun prognoz faqat kredit va qarz muddatlariga tayanadi. Byudjetni kiriting.",
     "balanceChart": "Oy oxiridagi qoldiq",
@@ -370,6 +372,7 @@
     }
   },
   "errors": {
+    "WAGES_PAID_FROM_PAYROLL": "Ish haqi Xodimlar bo'limidagi oylik hisob-kitobdan to'lanadi, bu yerdan emas.",
     "TRANSACTION_CHANGED": "Bu yozuv siz ochganingizdan keyin o'zgartirildi. Hozir unda {{amount}} {{currency}}. Hech narsa saqlanmadi: qayta o'qib, keyin qaror qiling.",
     "ACCOUNT_CLOSED": "Bu hisob yopilgan. Boshqa hisobni tanlang.",
     "ACCOUNT_CURRENCY_MISMATCH": "Bu hisob boshqa valyutada yuritiladi.",

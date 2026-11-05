@@ -31,7 +31,7 @@ interface HerdLookup extends Named {
   headCount: number;
 }
 
-export const animalOptions = (params?: { sex?: string; category?: string }) =>
+export const animalOptions = (params?: { sex?: string; category?: string; forBreeding?: string }) =>
   apiOptions<AnimalLookup>(
     `${ANIMALS_PATH}/lookup`,
     (a) => ({ value: a.id, label: a.tag, hint: i18n.t(`enums:animalCategory.${a.category}`) }),

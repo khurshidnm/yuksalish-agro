@@ -275,7 +275,7 @@
     "warehouse": "Ombor",
     "reason": "Sababi",
     "vetConclusion": "Veterinar xulosasi",
-    "undo": "Bekor qilish",
+    "undo": "Chiqimni bekor qilish",
     "undone": "Chiqim bekor qilindi",
     "undoTitle": "Chiqim bekor qilinsinmi?",
     "undoBody": "{{tag}} yana fermadagi hayvonlar ro'yxatiga qaytadi.",
@@ -283,6 +283,8 @@
     "emptyBody": "Sotuv, so'yish va nobud bo'lish qaydlari shu yerda ko'rinadi."
   },
   "errors": {
+    "WEIGHT_BEFORE_BIRTH": "Sana bu hayvon tug'ilishidan oldin",
+    "WEIGHT_NOT_PLAUSIBLE": "Vaznni tekshiring: bu tur uchun eng ko'pi {{max}} kg",
     "TAG_TAKEN": "{{tag}} birkasi band",
     "IDENTIFIER_TAKEN": "{{value}} raqami {{tag}} hayvonga biriktirilgan",
     "CATEGORY_SEX_MISMATCH": "Toifa hayvonning jinsiga mos emas",

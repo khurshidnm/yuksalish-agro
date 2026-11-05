@@ -191,10 +191,19 @@ export async function createItem(input: ItemInput) {
   return visible;
 }
 
+/** Quantities are plain numbers in the item's unit, so a new label would turn 253 kg into 253 t. */
+async function assertUnitCanChange(id: string, unit: string): Promise<void> {
+  const item = await getItemOrThrow(id);
+  if (item.unit === unit) return;
+  const [used] = await tx().select({ id: stockBatches.id }).from(stockBatches).where(eq(stockBatches.itemId, id)).limit(1);
+  if (used) throw conflict('ITEM_UNIT_LOCKED', 'This item has stock history, so its unit cannot change');
+}
+
 export async function update(id: string, input: Partial<ItemInput>) {
   const { id: _ignored, ...values } = input;
   if (values.name) await assertNameFree(values.name, id);
   await assertReferences(values);
+  if (values.unit) await assertUnitCanChange(id, values.unit);
   // Someone who cannot see the price receives it as null. Saving that form must not erase it.
   if (!canSeeMoney()) delete values.transferPrice;
   if (Object.values(values).every((v) => v === undefined)) return get(id);

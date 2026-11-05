@@ -22,7 +22,7 @@ function FeedRow({ row, horizonDays }: { row: FeedBalanceRow; horizonDays: numbe
       <div className="flex flex-wrap items-baseline justify-between gap-x-3">
         <p className="min-w-0 font-medium break-words">{row.name}</p>
         <p className="text-lg font-semibold tabular-nums">
-          {row.days === null ? t('balance.noData') : t('balance.days', { days: formatNumber(row.days, 0) })}
+          {row.days === null ? t('balance.noData') : t('balance.days', { days: formatNumber(Math.floor(row.days), 0) })}
         </p>
       </div>
       <Meter value={percent} tone={tone(row)} label={t('balance.daysLabel', { name: row.name })} />

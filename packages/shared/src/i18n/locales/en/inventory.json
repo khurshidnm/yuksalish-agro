@@ -1,5 +1,6 @@
 {
   "errors": {
+    "ITEM_UNIT_LOCKED": "This item has stock history, so its unit cannot change. Create a new item instead.",
     "ITEM_NAME_EXISTS": "An item with this name already exists",
     "ITEM_HAS_STOCK": "This item still has stock. Issue it first",
     "WAREHOUSE_HAS_STOCK": "This warehouse still holds stock. Move it out first",

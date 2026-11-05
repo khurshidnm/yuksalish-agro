@@ -96,6 +96,8 @@
     "scenarioPromptBody": "Masalan, 500 sovliq uchun bo'g'ozlik ratsioni bilan hisoblang.",
     "emptyTitle": "Hisoblash uchun ma'lumot yo'q",
     "emptyBody": "Podalarga ratsion biriktiring yoki \"Reja hisobi\"dan foydalaning.",
+    "unknownTitle": "Rejani to'liq tekshirib bo'lmadi",
+    "unknownBody": "Bu ozuqalarning qoldig'ini kilogrammga o'tkazib bo'lmadi: {{names}}. Mahsulot kartasida 1 birlikdagi kg ni kiriting.",
     "enoughTitle": "Zaxira butun qishlovga yetadi",
     "enoughBody": "{{head}} bosh uchun {{days}} kunlik ozuqa bor.",
     "shortTitle": "Yetishmaydigan ozuqalar: {{count}}",

@@ -861,6 +861,68 @@ describe('transactions through the API', () => {
   });
 });
 
+describe('counterparties', () => {
+  it('saves with the bank details left blank, as the form sends them', async () => {
+    const w = await world();
+    const accountant = await w.f.as('accountant');
+    const blank = { bankName: null, account: null, mfo: null };
+    const created = await accountant.post('/finance/counterparties', { name: 'Yangi xaridor', type: 'buyer', bankDetails: blank });
+    expect(created.status).toBe(201);
+    const edited = await accountant.patch(`/finance/counterparties/${created.data.id}`, { notes: 'Izoh', bankDetails: blank });
+    expect(edited.status).toBe(200);
+  });
+});
+
+describe('forecast past the budget', () => {
+  it('names the last planned month and warns only inside the plan', async () => {
+    const f = await createFixture();
+    const owner = await f.as('owner');
+    const month = monthOf(todayIso());
+    await f.run(async () => {
+      const [row] = await tx().select().from(schema.financeCategories).where(sql`key = 'salary' and tenant_id = ${ctx().tenantId}`);
+      await tx().insert(schema.budgets).values({ tenantId: f.tenantId, farmId: f.farmId, month, categoryId: row.id, amount: 100 });
+    });
+    const forecast = (await owner.get('/finance/cashflow/forecast', { months: 6 })).data;
+    expect(forecast.plannedThrough).toBe(month);
+    expect(forecast.rows).toHaveLength(6);
+  });
+});
+
+describe('foreign currency accounts', () => {
+  it('will not take an opening balance it cannot value, rather than count it 1:1', async () => {
+    const f = await createFixture();
+    const owner = await f.as('owner');
+    const usd = { name: 'Dollar', type: 'bank', currency: 'USD', openingBalance: 1000 };
+    const refused = await owner.post('/finance/accounts', usd);
+    expect(refused.status).toBe(400);
+    expect(refused.body.error.code).toBe('FX_RATE_REQUIRED');
+    await owner.put('/finance/fx-rates', { date: '2026-01-01', currency: 'USD', rate: 12_000 });
+    expect((await owner.post('/finance/accounts', usd)).status).toBe(201);
+    expect((await owner.get('/finance/summary/cash')).data.total).toBe(12_000_000);
+  });
+});
+
+describe('cost center lookup', () => {
+  it('finds the general center by the name people see, in any language', async () => {
+    const w = await world();
+    const owner = await w.f.as('owner');
+    for (const search of ['Umumiy', 'Общефермские', 'General farm', 'Умумий']) {
+      const found = (await owner.get('/finance/cost-centers/lookup', { search })).data;
+      expect(found.map((c: any) => c.type)).toContain('general');
+    }
+    expect((await owner.get('/finance/cost-centers/lookup', { search: 'zzz' })).data).toEqual([]);
+  });
+});
+
+describe('server validation', () => {
+  it('carries the limit, so the form can say it in the person\'s language', async () => {
+    const w = await world();
+    const res = await (await w.f.as('owner')).post('/finance/accounts', { name: 'X', type: 'cash', openingBalance: 1e15 });
+    expect(res.status).toBe(400);
+    expect(res.body.error.details.fieldIssues.openingBalance).toMatchObject({ code: 'too_big', max: 1e14 });
+  });
+});
+
 describe('transfers and foreign currency', () => {
   it('moves money between accounts without touching income or expense', async () => {
     const w = await world();

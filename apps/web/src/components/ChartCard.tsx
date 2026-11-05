@@ -384,8 +384,8 @@ export function ChartCard<T>({
 
   return (
     <Card className={cn('min-w-0', className)}>
-      <CardHeader className="flex-row items-start justify-between gap-2">
-        <div className="min-w-0">
+      <CardHeader className="flex-row flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0 flex-1 basis-40">
           <CardTitle>{title}</CardTitle>
           {description && <CardDescription>{description}</CardDescription>}
         </div>

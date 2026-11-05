@@ -58,7 +58,8 @@ export function StatCard({ label, value, delta, hint, tone = 'neutral', icon: Ic
       <div className="relative">
         <div className="flex items-start justify-between gap-2">
           <p className={cn('flex min-w-0 items-start gap-1.5 text-sm leading-snug break-words hyphens-auto', subdued)}>
-            {Icon && <Icon className={cn('mt-px size-4 shrink-0', !featured && ICON_TONE[tone])} aria-hidden />}
+            {/* On a phone a linked tile has no room for both, and the label would break mid-word. */}
+            {Icon && <Icon className={cn('mt-px size-4 shrink-0', to && 'max-sm:hidden', !featured && ICON_TONE[tone])} aria-hidden />}
             <span className="min-w-0">{label}</span>
           </p>
           {to && (

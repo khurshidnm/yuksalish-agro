@@ -96,6 +96,20 @@ export function Combobox({
   const current = list.find((o) => o.value === value) ?? (picked?.value === value ? picked : null);
   const label = current?.label ?? selectedLabel ?? null;
 
+  // A form can fill the value itself, such as an item's default warehouse: the name is in the list.
+  useEffect(() => {
+    if (!isAsync || !value || label) return;
+    let cancelled = false;
+    loaderRef.current!('')
+      .then((next) => {
+        if (!cancelled) setRemote(next);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [isAsync, value, label]);
+
   return (
     <Popover.Root
       open={open}

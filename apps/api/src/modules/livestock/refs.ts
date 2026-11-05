@@ -7,12 +7,15 @@ import { ctx, today, tx } from '../../core/context';
 import { badRequest, conflict, notFound } from '../../core/errors';
 import { herdCost } from '../finance/summary';
 
-const { animals, herds } = schema;
+const { animals, breedingRecords, herds } = schema;
 
 export type Animal = typeof animals.$inferSelect;
 export type Herd = typeof herds.$inferSelect;
 
 export const onFarm = () => inArray(animals.status, [...ANIMAL_ON_FARM_STATUSES]);
+
+/** Has an open pregnancy, whatever the animal's one status says: a pregnant ewe can also be sick. */
+export const carryingPregnancy = sql`exists (select 1 from ${breedingRecords} br where br.ewe_id = ${animals.id} and br.status = 'pregnant')`;
 
 export function isOnFarm(status: string): boolean {
   return (ANIMAL_ON_FARM_STATUSES as readonly string[]).includes(status);

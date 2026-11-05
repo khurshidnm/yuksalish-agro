@@ -1,5 +1,6 @@
 {
   "errors": {
+    "ITEM_UNIT_LOCKED": "Bu mahsulot bo'yicha ombor harakati bor, shuning uchun o'lchov birligini o'zgartirib bo'lmaydi. Yangi mahsulot yarating.",
     "ITEM_NAME_EXISTS": "Bu nomdagi mahsulot allaqachon bor",
     "ITEM_HAS_STOCK": "Bu mahsulotning qoldig'i bor. Avval qoldiqni chiqim qiling",
     "WAREHOUSE_HAS_STOCK": "Bu omborda qoldiq bor. Avval uni boshqa omborga ko'chiring",

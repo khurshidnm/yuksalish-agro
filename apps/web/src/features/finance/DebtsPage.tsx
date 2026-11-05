@@ -246,7 +246,7 @@ function DebtList({ direction }: { direction: 'payable' | 'receivable' }) {
           {
             label: direction === 'payable' ? t('debts.pay') : t('debts.receive'),
             icon: HandCoins,
-            hidden: !canCreate || payable(row) <= 0,
+            hidden: !canCreate || payable(row) <= 0 || row.isPayroll,
             onClick: () => setSettling(row),
           },
         ]}

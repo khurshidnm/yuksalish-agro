@@ -97,6 +97,7 @@ export interface Aging {
 }
 
 export interface CounterpartyDebt {
+  isPayroll: boolean;
   counterpartyId: string;
   counterpartyName: string;
   direction: 'payable' | 'receivable';
@@ -243,6 +244,8 @@ export interface Forecast {
   lowConfidence: boolean;
   assumptions: { lambsPerEwe: number; survival: number; monthsToSale: number };
   firstNegativeMonth: string | null;
+  /** The last budgeted month. After it, only loans and debts are known. */
+  plannedThrough: string | null;
   rows: ForecastMonth[];
 }
 

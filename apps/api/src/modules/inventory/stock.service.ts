@@ -174,7 +174,13 @@ async function assertAccount(id: string): Promise<void> {
   if (!row) throw notFound('Account');
 }
 
+/** Stock moves today or earlier: a later date would leave the cost out of every report up to today. */
+function assertNotFuture(date: string): void {
+  if (date > today()) throw badRequest('FUTURE_DATE', 'The date cannot be in the future');
+}
+
 export async function createReceipt(input: ReceiptInput) {
+  assertNotFuture(input.date);
   const { payment } = input;
   if (payment) assertPermission('finance.create');
   // Paid on the spot, nothing is owed to anyone, so the supplier may stay unnamed.
@@ -272,6 +278,7 @@ export async function createReceipt(input: ReceiptInput) {
 }
 
 export async function createIssue(input: IssueInput) {
+  assertNotFuture(input.date);
   await assertWarehouse(input.warehouseId);
   await assertCostCenterOpen(input.costCenterId);
 
@@ -296,6 +303,7 @@ export async function createIssue(input: IssueInput) {
 }
 
 export async function createTransfer(input: TransferInput) {
+  assertNotFuture(input.date);
   await assertWarehouse(input.fromWarehouseId);
   await assertWarehouse(input.toWarehouseId);
   const docNo = await nextDocNo('transfer', input.date);

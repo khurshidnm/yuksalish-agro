@@ -207,12 +207,12 @@ export function PregnanciesTab() {
       >
         {(form) => (
           <>
-            <ComboboxField form={form} name="eweId" label={t('common.ewe')} required loadOptions={animalOptions({ sex: 'female' })} />
+            <ComboboxField form={form} name="eweId" label={t('common.ewe')} required loadOptions={animalOptions({ sex: 'female', forBreeding: 'true' })} />
             <FormGrid>
               <DateField form={form} name="matingDate" label={t('pregnancies.matingDate')} required />
               <SelectField form={form} name="source" label={t('pregnancies.source')} required options={enumOptions('breedingSource', BREEDING_SOURCES)} />
             </FormGrid>
-            <ComboboxField form={form} name="ramId" label={t('common.ram')} loadOptions={animalOptions({ sex: 'male' })} />
+            <ComboboxField form={form} name="ramId" label={t('common.ram')} loadOptions={animalOptions({ sex: 'male', forBreeding: 'true' })} />
             <InbreedingNotice eweId={form.watch('eweId')} ramId={form.watch('ramId')} />
             <TextareaField form={form} name="notes" label={t('common.notes')} />
           </>
@@ -235,7 +235,7 @@ export function PregnanciesTab() {
               <DateField form={form} name="matingDate" label={t('pregnancies.matingDate')} required />
               <SelectField form={form} name="source" label={t('pregnancies.source')} required options={enumOptions('breedingSource', BREEDING_SOURCES)} />
             </FormGrid>
-            <ComboboxField form={form} name="ramId" label={t('common.ram')} loadOptions={animalOptions({ sex: 'male' })} />
+            <ComboboxField form={form} name="ramId" label={t('common.ram')} loadOptions={animalOptions({ sex: 'male', forBreeding: 'true' })} />
             <TextareaField form={form} name="notes" label={t('common.notes')} />
           </>
         )}
@@ -254,7 +254,7 @@ export function PregnanciesTab() {
         {(form) => (
           <>
             <DateField form={form} name="matingDate" label={t('pregnancies.matingDate')} required />
-            <ComboboxField form={form} name="ramId" label={t('common.ram')} loadOptions={animalOptions({ sex: 'male' })} selectedLabel={editing?.ramTag} />
+            <ComboboxField form={form} name="ramId" label={t('common.ram')} loadOptions={animalOptions({ sex: 'male', forBreeding: 'true' })} selectedLabel={editing?.ramTag} />
             <InbreedingNotice eweId={editing?.eweId} ramId={form.watch('ramId')} />
             <TextareaField form={form} name="notes" label={t('common.notes')} />
           </>

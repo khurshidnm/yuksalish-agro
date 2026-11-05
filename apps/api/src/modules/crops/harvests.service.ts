@@ -149,12 +149,28 @@ async function removeJournalRow(harvestId: string): Promise<void> {
     );
 }
 
+/** Allows for a field measured slightly short, as operations do. */
+const AREA_TOLERANCE = 1.02;
+/** Above any real crop, silage and vegetables included. Catches kilograms typed as tonnes. */
+const MAX_YIELD_T_PER_HA = 200;
+
+/** A slip here lands in stock at once, and from there in feed days and stock value. */
+function assertPlausible(field: { areaHa: number }, grossT: number, areaDoneHa: number | null | undefined): void {
+  if (field.areaHa <= 0) return;
+  if (areaDoneHa && areaDoneHa > field.areaHa * AREA_TOLERANCE) {
+    throw badRequest('AREA_EXCEEDS_FIELD', `This field is only ${field.areaHa} ha`, { fieldAreaHa: field.areaHa });
+  }
+  if (grossT / (areaDoneHa || field.areaHa) > MAX_YIELD_T_PER_HA) {
+    throw badRequest('YIELD_NOT_PLAUSIBLE', `${grossT} t from this area is not believable`, { maxTPerHa: MAX_YIELD_T_PER_HA });
+  }
+}
+
 export async function createHarvest(input: HarvestInput) {
   if (input.date > today()) throw badRequest('FUTURE_DATE', 'A harvest cannot be dated in the future');
   if (Boolean(input.itemId) !== Boolean(input.warehouseId)) {
     throw badRequest('DESTINATION_INCOMPLETE', 'Choose both the product and the warehouse');
   }
-  await getFieldRow(input.fieldId);
+  assertPlausible(await getFieldRow(input.fieldId), input.grossT, input.areaDoneHa);
   const c = ctx();
   const id = input.id ?? uuidv7();
   const cropPlanId = await resolvePlanId(input.fieldId, input.date, input.cropPlanId);
@@ -216,6 +232,7 @@ export async function updateHarvest(id: string, input: z.infer<typeof harvestPat
   const { itemId, warehouseId, stockQty, employeeId, areaDoneHa, ...changes } = input;
   const next = { ...before, ...changes };
   if (next.date > today()) throw badRequest('FUTURE_DATE', 'A harvest cannot be dated in the future');
+  assertPlausible(await getFieldRow(before.fieldId), next.grossT, areaDoneHa);
 
   const destinationChanged =
     (itemId !== undefined && itemId !== before.itemId) ||

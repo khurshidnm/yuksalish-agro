@@ -124,7 +124,13 @@ export default function ExitsPage() {
             icon: Undo2,
             hidden: !canUndo || !!row.transactionId,
             onClick: async () => {
-              const ok = await confirm({ title: t('exits.undoTitle'), description: t('exits.undoBody', { tag: row.tag }), destructive: true });
+              const ok = await confirm({
+                title: t('exits.undoTitle'),
+                description: t('exits.undoBody', { tag: row.tag }),
+                destructive: true,
+                confirmLabel: t('exits.undo'),
+                cancelLabel: t('common:actions.close'),
+              });
               if (ok) undo.mutate(row.id);
             },
           },

@@ -29,6 +29,7 @@ import {
 } from '@yap/shared/formulas/payroll';
 import { schema } from '../../db/client';
 import { ctx, hasPermission, today, tx } from '../../core/context';
+import { PAYROLL_COUNTERPARTY } from '../../core/defaults';
 import { generalCostCenterId } from '../../core/costCenters';
 import { badRequest, conflict, forbidden, notFound } from '../../core/errors';
 import { recordEvent } from '../../core/journal';
@@ -61,7 +62,6 @@ type Line = typeof lines.$inferSelect;
 type LineValues = Pick<Line, 'daysWorked' | 'base' | 'piecework' | 'bonus' | 'advance' | 'deductions' | 'net' | 'allocation' | 'basis'>;
 
 /** Everyone's wages sit on one counterparty, so unpaid wages show up among payables. */
-const PAYROLL_COUNTERPARTY = 'Xodimlar (ish haqi)';
 
 const runLink = (id: string) => `/hr/payroll?run=${id}`;
 
@@ -681,8 +681,8 @@ export async function payRun(id: string, input: z.infer<typeof payInput>) {
 
 // ─── Advances ───────────────────────────────────────────────────────────────
 
-export function listAdvances(q: z.infer<typeof advanceQuery>) {
-  return tx()
+export async function listAdvances(q: z.infer<typeof advanceQuery>) {
+  const rows = await tx()
     .select({
       ...getTableColumns(advances),
       fullName: employees.fullName,
@@ -702,6 +702,8 @@ export function listAdvances(q: z.infer<typeof advanceQuery>) {
     )
     .orderBy(desc(advances.date))
     .limit(500);
+  // A name beside an amount is personal data (rule 8).
+  return hasPermission(PII_VIEW) ? rows : rows.map((row) => ({ ...row, fullName: null }));
 }
 
 /** The ledger applies the usual approval rule, so a large advance waits for a second person. */

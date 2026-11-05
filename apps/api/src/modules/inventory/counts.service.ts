@@ -111,8 +111,11 @@ export async function get(id: string) {
   // A draft shows today's book quantity, since stock keeps moving until approval fixes it.
   const live = count.status === 'draft' ? await systemQty(count.warehouseId) : null;
   const data = rows.map((row) => {
-    const system = live ? (live.get(row.itemId) ?? 0) : row.systemQty;
-    return { ...row, systemQty: system, diffQty: Number((row.actualQty - system).toFixed(3)) };
+    if (!live) return { ...row, diffQty: Number((row.actualQty - row.systemQty).toFixed(3)) };
+    // Stock can move while a sheet is open. The difference found stays, and the book follows the moves.
+    const system = live.get(row.itemId) ?? 0;
+    const diffQty = Number((row.actualQty - row.systemQty).toFixed(3));
+    return { ...row, systemQty: system, actualQty: Math.max(0, Number((system + diffQty).toFixed(3))), diffQty };
   });
 
   let approvedByName: string | null = null;
@@ -217,12 +220,15 @@ export async function approve(id: string) {
   const rows = await tx().select().from(lines).where(eq(lines.countId, id));
   if (rows.length === 0) throw conflict('COUNT_EMPTY', 'Add at least one item to the count');
 
+  // What the count found is a difference from the book at that moment. Stock issued since then is
+  // already gone, so applying the old total would book it back in as a false surplus.
+  const book = await systemQty(count.warehouseId);
   let diffCost = 0;
   for (const line of rows) {
     const result = await adjustStock({
       itemId: line.itemId,
       warehouseId: count.warehouseId,
-      actualQty: line.actualQty,
+      actualQty: Math.max(0, Number(((book.get(line.itemId) ?? 0) + line.actualQty - line.systemQty).toFixed(3))),
       date: count.date,
       docNo: count.docNo,
       refType: 'stock_count',

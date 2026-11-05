@@ -226,7 +226,7 @@ export const financeReports: ReportDefinition[] = [
     filters: [filter.period('this_year')],
     columns: [
       col.enum('type', 'costCenterType'),
-      col.text('costCenter'),
+      col.enum('costCenter', 'reports:costCenterName'),
       col.money('direct', { sum: true }),
       col.money('materials', { sum: true }),
       col.money('machinery', { sum: true }),
@@ -373,11 +373,12 @@ export const financeReports: ReportDefinition[] = [
       col.date('date'),
       col.enum('type', 'transactionType'),
       col.name('category', { label: 'financeCategory' }),
-      col.money('amountBase', { sum: true }),
+      // No total: this column mixes money in, money out, transfers and rows not approved.
+      col.money('amountBase'),
       col.enum('paymentMethod', 'paymentMethod'),
       col.text('account'),
       col.text('counterparty'),
-      col.text('costCenter'),
+      col.enum('costCenter', 'reports:costCenterName'),
       col.enum('status', 'transactionStatus'),
       col.text('description'),
     ],

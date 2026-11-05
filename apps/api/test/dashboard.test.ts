@@ -361,6 +361,11 @@ describe('dashboard', () => {
       const dashboard = await investor.get('/dashboard');
       expect(dashboard.data.order[0]).toBe('finance');
       expect(dashboard.data.blocks.finance.status).toBe('ok');
+      // The total, not the accounts behind it (rule 7).
+      const { cash } = dashboard.data.blocks.finance.data;
+      expect(cash.total).toBe(OPENING_BALANCE + INCOME - EXPENSE);
+      expect(cash.accounts).toEqual([]);
+      expect((await f.as('owner').then((owner) => owner.get('/dashboard'))).data.blocks.finance.data.cash.accounts).toHaveLength(1);
       expect((await investor.get('/dashboard/kpis')).data.groups.finance.status).toBe('ok');
       for (const path of ['/finance/transactions', '/finance/accounts', '/finance/counterparties']) {
         expect((await investor.get(path)).status).toBe(403);

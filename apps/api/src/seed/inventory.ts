@@ -52,6 +52,7 @@ const ITEMS: ItemSeed[] = [
   { name: i.riceSeed, category: 'seed', unit: 'kg', warehouse: w.seed, qty: 2_000, cost: 9_000, expiresInDays: 300 },
   { name: i.ammophos, category: 'fertilizer', unit: 'kg', warehouse: w.seed, qty: 12_000, cost: 9_500 },
   { name: i.urea, category: 'fertilizer', unit: 'kg', warehouse: w.seed, qty: 15_000, cost: 6_200 },
+  { name: i.herbicide, category: 'chemical', unit: 'l', warehouse: w.seed, qty: 150, cost: 95_000, expiresInDays: 540 },
   { name: i.diesel, category: 'fuel', unit: 'l', warehouse: w.fuel, qty: 10_000, cost: 12_500, minQty: 1_500 },
   { name: i.enterotoxemiaVaccine, category: 'vaccine', unit: 'dose', warehouse: w.vet, qty: 1_000, cost: 1_800, expiresInDays: 300 },
   { name: i.poxVaccine, category: 'vaccine', unit: 'dose', warehouse: w.vet, qty: 600, cost: 1_200, expiresInDays: 20 },

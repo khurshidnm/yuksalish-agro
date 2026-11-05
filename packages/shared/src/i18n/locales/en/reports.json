@@ -604,6 +604,10 @@
     "actual": "Actual use",
     "plan": "Ration plan"
   },
+  "division": {"crops": "Crops", "livestock": "Sheep", "machinery": "Machinery", "admin": "Management"},
+  "priceKind": {"sale": "Our price", "market": "Market price"},
+  "issueReason": {"ration": "Ration", "field_operation": "Field work", "fuel": "Fuel", "treatment": "Treatment", "repair": "Repair", "maintenance": "Repair", "write_off": "Write-off", "manual": "Manual", "sale": "Sale"},
+  "costCenterName": {"General": "General farm"},
   "lowStockReason": {
     "qty": "Low quantity",
     "days": "Too few days"
@@ -654,7 +658,8 @@
     "title": "Investor report",
     "finance": "Finance",
     "income": "Income",
-    "expense": "Expenses",
+    "operatingExpense": "Operating cost",
+    "expense": "Money paid (assets included)",
     "net": "Net result",
     "profitability": "Profitability",
     "budget": "Budget execution",

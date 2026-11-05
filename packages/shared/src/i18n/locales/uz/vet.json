@@ -321,6 +321,7 @@
   "errors": {
     "ALREADY_PREGNANT": "Bu sovliq allaqachon bo'g'oz deb yozilgan",
     "ANIMAL_NOT_FEMALE": "Bu hayvon urg'ochi emas",
+    "ANIMAL_CANNOT_BREED": "Bu hayvon qochirish uchun yosh yoki bichilgan",
     "ANIMAL_NOT_ON_FARM": "Bu hayvon endi fermada yo'q",
     "RAM_NOT_MALE": "Tanlangan hayvon erkak emas",
     "PREGNANCY_NOT_OPEN": "Bu bo'g'ozlik allaqachon yopilgan",

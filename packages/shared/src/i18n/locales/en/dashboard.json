@@ -31,6 +31,7 @@
     "cameras": "Cameras"
   },
   "finance": {
+    "cashTotal": "Total cash",
     "cash": "Cash and bank",
     "monthExpense": "Expenses this month",
     "monthIncome": "Income this month",

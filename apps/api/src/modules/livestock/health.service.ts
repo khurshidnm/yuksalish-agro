@@ -13,7 +13,7 @@ import { hideMoney } from '../../core/privacy';
 import { clientId, isoDate, listQuery, paged, searchAny, sortBy } from '../../core/query';
 import { raiseAlert, resolveByDedupKey } from '../alerts/alerts.service';
 import { signedFileUrl } from '../files';
-import { findByCode } from './animals.service';
+import { findByCode, sickDedupKey } from './animals.service';
 import { restingStatus } from './breeding.shared';
 import {
   assertInFarm,
@@ -366,8 +366,6 @@ export const reportSickInput = z
 export const sickReportQuery = listQuery.extend({ status: z.enum(['open', 'resolved']).default('open') });
 
 export const resolveSickInput = z.object({ result: text(300), date: isoDate.nullish() });
-
-const sickDedupKey = (animalId: string) => `sick_report:${animalId}`;
 
 /**
  * A shepherd reports a sick animal (spec 18.1). It must reach the vet at once, so the alert is

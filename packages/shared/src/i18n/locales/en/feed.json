@@ -96,6 +96,8 @@
     "scenarioPromptBody": "For example, plan the pregnancy ration for 500 ewes.",
     "emptyTitle": "Nothing to calculate yet",
     "emptyBody": "Assign rations to herds, or use the what-if mode.",
+    "unknownTitle": "The plan could not be fully checked",
+    "unknownBody": "These feeds cannot be converted to kilograms: {{names}}. Enter the weight per unit on the item card.",
     "enoughTitle": "Stock covers the whole winter",
     "enoughBody": "There is feed for {{head}} head for {{days}} days.",
     "shortTitle": "Feeds running short: {{count}}",

@@ -58,7 +58,7 @@ export const counterparties = pgTable(
     phone: text(),
     address: text(),
     contactPerson: text(),
-    bankDetails: jsonb().$type<{ bankName?: string; account?: string; mfo?: string }>(),
+    bankDetails: jsonb().$type<{ bankName?: string | null; account?: string | null; mfo?: string | null }>(),
     notes: text(),
     active: boolean().notNull().default(true),
   },

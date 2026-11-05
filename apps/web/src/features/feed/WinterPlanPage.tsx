@@ -83,6 +83,15 @@ function SowingCard({ rows }: { rows: WinterRow[] }) {
 function Conclusion({ plan, canSeeMoney }: { plan: WinterPlan; canSeeMoney: boolean }) {
   const { t } = useTranslation('feed');
   const short = plan.rows.filter((row) => (row.shortageKg ?? 0) > 0);
+  // Stock that cannot be turned into kilograms is not the same as enough stock (rule 5).
+  const unknown = plan.rows.filter((row) => row.shortageKg === null);
+  if (unknown.length > 0 && short.length === 0) {
+    return (
+      <Alert tone="warning" title={t('winter.unknownTitle')}>
+        {t('winter.unknownBody', { names: unknown.map((row) => row.name).join(', ') })}
+      </Alert>
+    );
+  }
   if (short.length === 0) {
     return (
       <Alert tone="success" title={t('winter.enoughTitle')}>

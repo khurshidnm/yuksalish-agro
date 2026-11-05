@@ -581,7 +581,7 @@ describe('weights', () => {
     const owner = await farm.f.as('owner');
     const animal = await ewe(farm);
     await owner.post('/livestock/weights', { animalId: animal.id, date: daysAgo(30), weightKg: 40 });
-    const wrong = await owner.post('/livestock/weights', { animalId: animal.id, date: daysAgo(1), weightKg: 400 });
+    const wrong = await owner.post('/livestock/weights', { animalId: animal.id, date: daysAgo(1), weightKg: 140 });
     await owner.delete(`/livestock/weights/${wrong.data.id}`);
     expect((await owner.get(`/livestock/animals/${animal.id}`)).data.currentWeightKg).toBe(40);
   });
@@ -638,7 +638,7 @@ describe('weighing campaign', () => {
     const a = await ewe(farm, { tag: 'C-1' });
     const campaign = await owner.post('/livestock/weighing-campaigns', { herdId: farm.herdId, name: 'X' });
     const url = `/livestock/weighing-campaigns/${campaign.data.id}/entries`;
-    await owner.post(url, { code: 'C-1', weightKg: 600 });
+    await owner.post(url, { code: 'C-1', weightKg: 160 });
     const fixed = await owner.post(url, { code: 'C-1', weightKg: 60 });
     expect(fixed.data.updated).toBe(true);
     expect(fixed.data.progress.weighed).toBe(1);
@@ -1503,6 +1503,37 @@ describe('exits (spec 8.5)', () => {
     expect(card.data.pregnancy.expectedDate).toBe(expected);
   });
 
+  it('an animal that dies leaves the vet work list and its alert closes; undo brings both back', async () => {
+    const farm = await makeFarm();
+    const owner = await farm.f.as('owner');
+    const sick = await ewe(farm);
+    const isolated = await ewe(farm);
+    await owner.post('/livestock/health/report-sick', { animalId: sick.id, note: 'Oqsayapti' });
+    await owner.post('/livestock/health/quarantine', { animalIds: [isolated.id], days: 21 });
+    const reports = async () => (await owner.get('/livestock/health/sick-reports')).data.map((r: any) => r.animalId);
+    const quarantined = async () => (await owner.get('/livestock/health/quarantine')).data.map((r: any) => r.animalId);
+    const openAlerts = async () => (await owner.get('/alerts', { status: 'open' })).data.filter((a: any) => a.ruleKey === 'sick_report');
+    expect(await reports()).toEqual([sick.id]);
+    expect(await quarantined()).toEqual([isolated.id]);
+    expect(await openAlerts()).toHaveLength(1);
+
+    const deaths = [
+      await owner.post('/livestock/exits', { animalId: sick.id, type: 'death' }),
+      await owner.post('/livestock/exits', { animalId: isolated.id, type: 'death' }),
+    ];
+    expect(await reports()).toEqual([]);
+    expect(await quarantined()).toEqual([]);
+    expect(await openAlerts()).toHaveLength(0);
+
+    for (const exit of deaths) expect((await owner.delete(`/livestock/exits/${exit.data.id}`)).status).toBe(200);
+    expect(await reports()).toEqual([sick.id]);
+    expect(await quarantined()).toEqual([isolated.id]);
+    expect((await owner.get(`/livestock/animals/${sick.id}`)).data.status).toBe('sick');
+    const back = (await owner.get(`/livestock/animals/${isolated.id}`)).data;
+    expect(back.status).toBe('quarantine');
+    expect(back.quarantineUntil).not.toBeNull();
+  });
+
   it('undoing a slaughter takes the meat back out of stock', async () => {
     const farm = await makeFarm();
     const owner = await farm.f.as('owner');
@@ -1653,16 +1684,16 @@ describe('summary figures (hand-computed control numbers)', () => {
     await owner.post('/livestock/exits', { animalId: born[0].id, type: 'loss', date: daysAgo(1) });
 
     const movement = await farm.f.run(() => herdMovement(daysAgo(29), today));
-    expect(movement).toEqual({ opening: 4, born: 3, purchased: 2, sold: 1, slaughtered: 1, dead: 1, lost: 1, closing: 5 });
+    expect(movement).toEqual({ opening: 4, born: 3, purchased: 2, sold: 1, slaughtered: 1, dead: 1, lost: 1, closing: 5, averageHead: 5.5 });
     expect(movement.closing).toBe(herdCount(movement));
 
     const summary = await farm.f.run(() => herdSummary());
     expect(summary.total).toBe(5);
 
     const dead = await farm.f.run(() => mortality(30));
-    // 1 dead over an average of (4 + 5) / 2 = 4.5 head.
+    // 1 dead over an average of (4 opening + 2 bought + 5 closing) / 2 = 5.5 head.
     expect(dead.dead).toBe(1);
-    expect(dead.percent).toBeCloseTo((1 / 4.5) * 100, 5);
+    expect(dead.percent).toBeCloseTo((1 / 5.5) * 100, 5);
 
     const exposed = await owner.get('/livestock/movement', { from: daysAgo(29), to: today });
     expect(exposed.data.closing).toBe(5);
@@ -1681,20 +1712,61 @@ describe('summary figures (hand-computed control numbers)', () => {
 
   it('herd summary by category and status', async () => {
     const farm = await makeFarm();
-    await ewe(farm, { status: 'pregnant' });
-    await ewe(farm, { status: 'pregnant' });
-    await ewe(farm, { status: 'sick' });
+    const carrying = [await ewe(farm, { status: 'pregnant' }), await ewe(farm, { status: 'pregnant' }), await ewe(farm, { status: 'sick' })];
     await ewe(farm, { status: 'quarantine' });
     await ewe(farm, { sex: 'male', category: 'ram' });
+    const expected = addDays(today, 30);
+    await farm.f.run(() =>
+      tx()
+        .insert(schema.breedingRecords)
+        .values(
+          carrying.map((animal) => ({
+            tenantId: farm.f.tenantId,
+            farmId: farm.f.farmId,
+            eweId: animal.id,
+            matingDate: addDays(today, -120),
+            expectedDate: expected,
+            expectedEarliest: expected,
+            expectedLatest: expected,
+          })),
+        ),
+    );
     const s = await farm.f.run(() => herdSummary());
     expect(s).toEqual({
       total: 5,
       byCategory: { ewe: 4, ram: 1 },
       byStatus: { pregnant: 2, sick: 1, quarantine: 1, active: 1 },
-      pregnant: 2,
+      // The sick ewe is still carrying, so she counts here though her status says otherwise.
+      pregnant: 3,
       sick: 1,
       quarantine: 1,
     });
+    const owner = await farm.f.as('owner');
+    const list = await owner.get('/livestock/animals', { status: 'pregnant' });
+    expect(list.body.meta.total).toBe(3);
+  });
+
+  it('refuses a weight no sheep could have, or from before it was born', async () => {
+    const farm = await makeFarm();
+    const zoo = await farm.f.as('zootechnician');
+    const animal = await ewe(farm, { birthDate: daysAgo(400) });
+    const slip = await zoo.post('/livestock/weights', { animalId: animal.id, weightKg: 1500 });
+    expect(slip.status).toBe(400);
+    expect(slip.body.error).toMatchObject({ code: 'WEIGHT_NOT_PLAUSIBLE', details: { max: 250 } });
+    const early = await zoo.post('/livestock/weights', { animalId: animal.id, weightKg: 60, date: daysAgo(500) });
+    expect(early.body.error.code).toBe('WEIGHT_BEFORE_BIRTH');
+    expect((await zoo.post('/livestock/weights', { animalId: animal.id, weightKg: 190 })).status).toBe(201);
+  });
+
+  it('a flock bought inside the period does not double the mortality rate', async () => {
+    const farm = await makeFarm();
+    const owner = await farm.f.as('owner');
+    const flock: { id: string }[] = [];
+    for (let i = 0; i < 10; i++) flock.push(await ewe(farm, { purchaseDate: daysAgo(10) }));
+    await owner.post('/livestock/exits', { animalId: flock[0].id, type: 'death', date: daysAgo(1) });
+    const dead = await farm.f.run(() => mortality(30));
+    // 1 of (0 + 10 + 9) / 2 = 9.5 head, about 10.5 %. Without the purchase: 1 of 4.5, 22 %.
+    expect(dead.percent).toBeCloseTo((1 / 9.5) * 100, 5);
   });
 
   it('with no data, rates are null rather than zero', async () => {

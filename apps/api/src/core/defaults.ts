@@ -2,6 +2,9 @@ import type { I18nName } from '../db/schema';
 
 const n = (uz: string, ru: string, en: string): I18nName => ({ uz, ru, en });
 
+/** One counterparty holds the wages owed. They are paid from the payroll run, which knows what each person gets. */
+export const PAYROLL_COUNTERPARTY = 'Xodimlar (ish haqi)';
+
 export const DEFAULT_DIVISIONS = [
   { key: 'crops', name: "Dehqonchilik" },
   { key: 'livestock', name: "Qo'ychilik" },

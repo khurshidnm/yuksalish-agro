@@ -233,7 +233,7 @@ function InvestorTab() {
         <>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard label={label('income')} value={money(data.data.finance.income)} />
-            <StatCard label={label('expense')} value={money(data.data.finance.expense)} />
+            <StatCard label={label('operatingExpense')} value={money(data.data.finance.operatingExpense)} />
             <StatCard label={label('cash')} value={money(data.data.finance.cash)} />
             <StatCard label={label('head')} value={formatNumber(data.data.livestock.head, 0)} />
           </div>
@@ -243,6 +243,7 @@ function InvestorTab() {
               rows={[
                 [label('net'), money(data.data.finance.net)],
                 [label('profitability'), formatPercent(data.data.finance.profitabilityPercent)],
+                [label('expense'), money(data.data.finance.expense)],
                 [label('budget'), formatPercent(data.data.finance.budgetPercent)],
                 [label('receivable'), money(data.data.finance.receivable)],
                 [label('payable'), money(data.data.finance.payable)],

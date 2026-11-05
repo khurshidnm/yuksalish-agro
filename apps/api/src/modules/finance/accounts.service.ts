@@ -2,9 +2,10 @@ import { and, asc, eq, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { ACCOUNT_TYPES, CURRENCIES, addDays, round } from '@yap/shared';
 import { schema } from '../../db/client';
-import { ctx, tx } from '../../core/context';
+import { ctx, today, tx } from '../../core/context';
 import { conflict, notFound } from '../../core/errors';
 import { recordEvent } from '../../core/journal';
+import { resolveFxRate } from '../../core/ledger';
 import { clientId, isoDate, searchAny } from '../../core/query';
 
 const { accounts: a, fxRates, transactions: t } = schema;
@@ -141,9 +142,15 @@ export async function get(id: string, opts: { lock?: boolean } = {}) {
   return row;
 }
 
+/** A balance in another currency joins the farm's total through a rate, so without one it would be counted 1:1. */
+async function assertCanValueOpening(currency: string, openingBalance: number | undefined): Promise<void> {
+  if (openingBalance) await resolveFxRate(currency, today());
+}
+
 export async function create(input: AccountInput) {
   const c = ctx();
   const { id, ...values } = input;
+  await assertCanValueOpening(input.currency ?? c.currency, input.openingBalance);
   const [row] = await tx()
     .insert(a)
     .values({
@@ -161,6 +168,7 @@ export async function create(input: AccountInput) {
 
 export async function update(id: string, input: Partial<AccountInput>) {
   const account = await get(id, { lock: true });
+  await assertCanValueOpening(input.currency ?? account.currency, input.openingBalance);
   // Its balance is a number in this currency: a new label would change what the money is.
   if (input.currency && input.currency !== account.currency) {
     const [used] = await tx()

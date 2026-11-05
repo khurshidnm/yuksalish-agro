@@ -202,7 +202,10 @@ function AccountsTab() {
     successMessage: 'common:toast.deleted',
   });
   const save = useApiMutation<z.output<typeof accountSchema>>({
-    mutationFn: (values) => (editing ? api.patch(`${PATH}/${editing.id}`, values) : api.postOnce(PATH, values)),
+    mutationFn: (form) => {
+      const values = { ...form, openingBalance: form.openingBalance ?? 0 };
+      return editing ? api.patch(`${PATH}/${editing.id}`, values) : api.postOnce(PATH, values);
+    },
     invalidate: MONEY_QUERIES,
     silentError: true,
   });

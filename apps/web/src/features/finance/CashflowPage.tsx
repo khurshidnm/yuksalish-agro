@@ -43,8 +43,10 @@ function ForecastTab() {
   const data = forecast.data;
   const rows = data?.rows ?? [];
   const shortfall = shortfallPeriod(rows);
-  const lowest = useMemo(() => rows.reduce<ForecastMonth | null>((low, row) => (!low || row.closing < low.closing ? row : low), null), [rows]);
-  const negative = rows.filter((row) => row.negative);
+  // Past the budget only loans and debts are known, so those months say nothing about a real shortage.
+  const planned = useMemo(() => rows.filter((row) => !data?.plannedThrough || row.month <= data.plannedThrough), [rows, data?.plannedThrough]);
+  const lowest = useMemo(() => planned.reduce<ForecastMonth | null>((low, row) => (!low || row.closing < low.closing ? row : low), null), [planned]);
+  const negative = planned.filter((row) => row.negative);
 
   const columns: Column<ForecastMonth>[] = [
     { key: 'month', header: t('cashflow.month'), mobile: 'title', cell: (row) => formatMonth(row.month) },
@@ -95,6 +97,9 @@ function ForecastTab() {
         <Alert tone="danger" title={t('cashflow.gapTitle', { month: formatMonth(data.firstNegativeMonth) })}>
           {t('cashflow.gapBody', { n: negative.length, amount: formatMoney(lowest?.closing ? -lowest.closing : 0) })}
         </Alert>
+      )}
+      {data?.plannedThrough && planned.length < rows.length && (
+        <Alert tone="warning">{t('cashflow.beyondPlan', { month: formatMonth(data.plannedThrough) })}</Alert>
       )}
       {data?.lowConfidence ? (
         <Alert tone="warning" title={t('cashflow.lowConfidenceTitle')}>

@@ -103,7 +103,7 @@ export const salesReports: ReportDefinition[] = [
     module: 'sales',
     money: true,
     filters: [filter.period('this_year')],
-    columns: [col.date('date'), col.text('item'), col.text('kind'), col.money('price'), col.text('source')],
+    columns: [col.date('date'), col.text('item'), col.enum('kind', 'reports:priceKind'), col.money('price'), col.text('source')],
     async run({ from, to }) {
       const rows = await tx()
         .select({ date: prices.date, item: items.name, kind: prices.kind, price: prices.price, source: prices.source })
@@ -124,7 +124,7 @@ export const salesReports: ReportDefinition[] = [
       col.num('qty', 3),
       col.num('receivedQty', 3),
       col.enum('unit', 'unit'),
-      col.text('supplier'),
+      col.text('supplier', { sensitive: ['money'] }),
       col.enum('status', 'purchaseRequestStatus'),
       col.money('expectedPrice'),
     ],

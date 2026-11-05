@@ -604,6 +604,10 @@
     "actual": "Haqiqiy sarf",
     "plan": "Ratsion rejasi"
   },
+  "division": {"crops": "Dehqonchilik", "livestock": "Qo'ychilik", "machinery": "Mexanizatsiya", "admin": "Boshqaruv"},
+  "priceKind": {"sale": "Bizning narx", "market": "Bozor narxi"},
+  "issueReason": {"ration": "Ratsion bo'yicha", "field_operation": "Dala ishi", "fuel": "Yoqilg'i", "treatment": "Davolash", "repair": "Ta'mirlash", "maintenance": "Ta'mirlash", "write_off": "Hisobdan chiqarish", "manual": "Qo'lda", "sale": "Sotuv"},
+  "costCenterName": {"General": "Umumiy ferma"},
   "lowStockReason": {
     "qty": "Miqdor kam",
     "days": "Kunlar kam"
@@ -654,7 +658,8 @@
     "title": "Investor hisoboti",
     "finance": "Moliya",
     "income": "Daromad",
-    "expense": "Xarajat",
+    "operatingExpense": "Operatsion xarajat",
+    "expense": "To'langan pul (aktivlar bilan)",
     "net": "Sof natija",
     "profitability": "Rentabellik",
     "budget": "Byudjet ijrosi",

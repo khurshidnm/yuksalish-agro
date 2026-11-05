@@ -180,7 +180,7 @@
       "contract": "Contract ends: {{number}}, {{counterparty}}",
       "document": "Document expires: {{name}}",
       "maintenance": "Maintenance: {{name}}",
-      "state_report": "Report due: {{name}}, {{authority}}",
+      "state_report": "Report due: {{name}}",
       "staff_contract": "Contract ends: {{name}}",
       "staff_medical": "Medical check: {{name}}"
     },

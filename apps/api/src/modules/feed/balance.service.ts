@@ -5,7 +5,7 @@
  */
 import { addDays, feedDays, feedDaysByActual, hectaresForShortage, round, winterFeedBalance, ANIMAL_ON_FARM_STATUSES } from '@yap/shared';
 import { ACTUAL_CONSUMPTION_WINDOW_DAYS, averageDailyConsumption, kgPerUnit } from '@yap/shared/formulas/feed';
-import { and, asc, count, desc, eq, gte, inArray, isNotNull, lte, ne } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, inArray, isNotNull, lte, notInArray } from 'drizzle-orm';
 import { z } from 'zod';
 import { schema } from '../../db/client';
 import { ctx, today, tx } from '../../core/context';
@@ -147,7 +147,8 @@ async function feedIssuesByDay(from: string, to: string) {
       and(
         eq(stockMovements.farmId, ctx().farmId),
         eq(stockMovements.type, 'issue'),
-        ne(stockMovements.reason, 'sale'),
+        // Sold or spoiled feed left the store but nobody ate it, so it says nothing about how fast it goes.
+        notInArray(stockMovements.reason, ['sale', 'write_off']),
         eq(items.category, 'feed'),
         gte(stockMovements.date, from),
         lte(stockMovements.date, to),

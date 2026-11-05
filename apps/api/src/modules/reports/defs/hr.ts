@@ -109,7 +109,7 @@ export const hrReports: ReportDefinition[] = [
     columns: [
       col.text('employee', { sensitive: PII }),
       col.text('position'),
-      col.text('division'),
+      col.enum('division', 'reports:division'),
       col.text('phone', { sensitive: PII }),
       col.date('hireDate'),
       col.enum('status', 'employeeStatus'),

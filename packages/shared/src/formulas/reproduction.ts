@@ -2,7 +2,21 @@
  * Reproduction and veterinary calculations (spec 8.2, 8.3). Same conventions as index.ts:
  * pure functions, and `null` when there is not enough data to answer.
  */
+import { diffDays } from '../dates';
 import { withdrawalUntil } from './index';
+
+/** Youngest age for mating. Sheep and goats reach puberty at 5 to 7 months. */
+export const MIN_BREEDING_AGE_DAYS = 180;
+
+/**
+ * Can this animal be mated on this date? A wether never can. Age decides when the birth date is
+ * known, so a lamb that grew up without being recategorised still can. Without one, a lamb cannot.
+ */
+export function canBreed(animal: { category: string; birthDate: string | null }, on: string): boolean {
+  if (animal.category === 'wether') return false;
+  if (animal.birthDate) return diffDays(animal.birthDate, on) >= MIN_BREEDING_AGE_DAYS;
+  return animal.category !== 'lamb_male' && animal.category !== 'lamb_female';
+}
 
 /** Lamb ages accepted as a "100-day" weighing: closest record inside this window is used. */
 export const WEIGHT_100_WINDOW = { minDays: 70, maxDays: 130 } as const;

@@ -15,7 +15,7 @@ import { schema } from '../../db/client';
 import { assertWithinLimits, ensureConversation, loadHistory, openExchange, saveMessage } from './conversations';
 import { getProvider, notConfigured, type LlmBlock, type LlmMessage, type LlmResponse, type LlmUsage } from './provider';
 import { LANGUAGE_NAMES, aiText, asLanguage, messageLanguage } from './render';
-import type { LanguageCode } from '@yap/shared/i18n';
+import { latinToCyrillic, type LanguageCode } from '@yap/shared/i18n';
 import { asAi, asAiWriter } from './role';
 import { plainName, recordCatalog } from './records/catalog';
 import { readDocumentAmounts } from './records/document';
@@ -157,6 +157,17 @@ function rowsOf(result: unknown, rowsKey?: string): Record<string, unknown>[] | 
 
 const isSimple = (value: unknown) => ['string', 'number', 'boolean'].includes(typeof value) || value === null;
 
+/** Reference names are { uz, ru, en }. Left as they are, their column would drop out of a table. */
+function withPlainNames(row: Record<string, unknown>, language: LanguageCode): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(row).map(([key, value]) => {
+      if (!isPlainObject(value) || typeof value.uz !== 'string') return [key, value];
+      if (language === 'uz-Cyrl') return [key, latinToCyrillic(value.uz)];
+      return [key, value[language] ?? value.uz];
+    }),
+  );
+}
+
 class ToolSession {
   readonly calls: ToolCallRecord[] = [];
   readonly sources: AnswerSource[] = [];
@@ -178,6 +189,7 @@ class ToolSession {
     tools: AiTool[],
     private readonly onEvent: ((event: ChatEvent) => void) | undefined,
     private readonly env: ToolEnv,
+    private readonly language: LanguageCode,
   ) {
     this.allowed = new Map(tools.map((t) => [t.name, t]));
     this.earlierCards = env.draft.onCards ?? [];
@@ -330,7 +342,7 @@ class ToolSession {
     const { resultId, kind, title, rowsKey, columns, xKey, yKeys } = parsed.data;
 
     if (!this.results.has(resultId)) return fail(`Unknown resultId ${resultId}.`);
-    const rows = rowsOf(this.results.get(resultId), rowsKey);
+    const rows = rowsOf(this.results.get(resultId), rowsKey)?.map((row) => withPlainNames(row, this.language));
     if (!rows || rows.length === 0) return fail('That result has no rows to show.');
 
     const fields = Object.keys(rows[0]).filter((key) => isSimple(rows[0][key]) && !key.endsWith('Id'));
@@ -532,7 +544,7 @@ export async function chat(identity: Identity, input: ChatInput, onEvent?: (even
     own,
     onCards: exchange.cardAmounts,
   };
-  const session = new ToolSession(identity, tools, onEvent, { draft: draftEnv });
+  const session = new ToolSession(identity, tools, onEvent, { draft: draftEnv }, language);
   const usage: LlmUsage = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 };
 
   let text: string | null = null;

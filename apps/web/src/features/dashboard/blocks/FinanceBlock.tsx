@@ -44,8 +44,9 @@ export function FinanceBlock({ data, link }: { data: FinanceData; link: LinkTo }
           <CardTitle>{t('finance.cash')}</CardTitle>
         </CardHeader>
         <CardContent>
-          {cash.accounts.length === 0 && <NoData />}
+          {cash.accounts.length === 0 && !cash.total && <NoData />}
           <ul>
+            {cash.accounts.length === 0 && !!cash.total && <FigureRow label={t('finance.cashTotal')} value={<MoneyText value={cash.total} compact />} />}
             {cash.accounts.map((account) => (
               <FigureRow
                 key={account.id}

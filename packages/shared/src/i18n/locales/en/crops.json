@@ -257,6 +257,7 @@
     }
   },
   "errors": {
+    "YIELD_NOT_PLAUSIBLE": "Check the harvest: more than {{maxTPerHa}} t per hectare is not possible. Were kilograms entered as tonnes?",
     "AREA_EXCEEDS_FIELD": "This field is only {{fieldAreaHa}} ha",
     "AREA_REQUIRED": "Enter the planned area",
     "ASSET_REQUIRED_FOR_FUEL": "Choose the machine that used this fuel",

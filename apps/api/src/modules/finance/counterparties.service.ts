@@ -18,7 +18,7 @@ export const counterpartyInput = z.object({
   address: z.string().trim().max(300).nullish(),
   contactPerson: z.string().trim().max(120).nullish(),
   bankDetails: z
-    .object({ bankName: z.string().max(120).optional(), account: z.string().max(40).optional(), mfo: z.string().max(10).optional() })
+    .object({ bankName: z.string().max(120).nullish(), account: z.string().max(40).nullish(), mfo: z.string().max(10).nullish() })
     .nullish(),
   notes: z.string().max(1000).nullish(),
 });

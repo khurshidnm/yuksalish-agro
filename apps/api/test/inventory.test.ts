@@ -2,6 +2,7 @@ import { addDays, todayIso } from '@yap/shared';
 import { eq, sql } from 'drizzle-orm';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { generalCostCenterId } from '../src/core/costCenters';
+import { stockOnHand } from '../src/core/inventory';
 import { tx } from '../src/core/context';
 import { issueStock } from '../src/core/inventory';
 import { schema } from '../src/db/client';
@@ -444,6 +445,35 @@ describe('issues, transfers and reversals', () => {
 
   const onHand = async (name: string) => (await owner.get('/inventory/items/lookup', { search: name })).data[0].qtyOnHand;
 
+  it('locks the unit once an item has stock, because quantities are plain numbers in it', async () => {
+    const fresh = await item(owner, { name: 'Unit free' });
+    expect((await owner.patch(`/inventory/items/${fresh}`, { unit: 't' })).status).toBe(200);
+    const used = await stocked('Unit used', 253, 2000);
+    const res = await owner.patch(`/inventory/items/${used}`, { unit: 't' });
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('ITEM_UNIT_LOCKED');
+    expect((await owner.patch(`/inventory/items/${used}`, { unit: 'kg', minQty: 5 })).status).toBe(200);
+  });
+
+  it('refuses stock documents dated in the future', async () => {
+    const i = await stocked('Future', 10, 10);
+    const later = '2099-01-01';
+    const lines = [{ itemId: i, qty: 1 }];
+    const issue = await owner.post('/inventory/issues', { warehouseId: w, date: later, costCenterId, reason: 'ration', lines });
+    expect(issue.body.error.code).toBe('FUTURE_DATE');
+    const receipt = await owner.post('/inventory/receipts', { warehouseId: w, date: later, source: 'opening', lines: [{ itemId: i, qty: 1, unitCost: 1 }] });
+    expect(receipt.body.error.code).toBe('FUTURE_DATE');
+  });
+
+  it('feed written off says nothing about how fast it is eaten', async () => {
+    const feedItem = await item(owner, { name: 'Spoiled hay', category: 'feed', unit: 'kg' });
+    await owner.post('/inventory/receipts', { warehouseId: w, date: daysAgo(3), source: 'opening', lines: [{ itemId: feedItem, qty: 1000, unitCost: 10 }] });
+    await owner.post('/inventory/issues', { warehouseId: w, date: daysAgo(1), costCenterId, reason: 'write_off', lines: [{ itemId: feedItem, qty: 100 }] });
+    const row = (await owner.get('/feed/balance')).data.find((r: any) => r.itemId === feedItem);
+    expect(row.stockQty).toBe(900);
+    expect(row.actualDaily).toBeNull();
+  });
+
   it('charges the issue to the cost center at FIFO cost', async () => {
     const i = await stocked('FIFO', 100, 10);
     await owner.post('/inventory/receipts', { warehouseId: w, date: daysAgo(5), source: 'opening', lines: [{ itemId: i, qty: 100, unitCost: 20 }] });
@@ -574,6 +604,35 @@ describe('issues, transfers and reversals', () => {
   });
 });
 
+describe('stock moving while a count is open', () => {
+  it('books no false surplus, and keeps a difference that was really found', async () => {
+    const f = await createFixture();
+    const owner = await f.as('owner');
+    const w = await warehouse(owner, 'Ozuqa');
+    const stock = async (name: string) => {
+      const id = await item(owner, { name });
+      await owner.post('/inventory/receipts', { warehouseId: w, date: daysAgo(5), source: 'opening', lines: [{ itemId: id, qty: 100, unitCost: 10 }] });
+      return id;
+    };
+    const untouched = await stock('Untouched');
+    const found = await stock('Found short');
+    const costCenterId = await f.run(() => generalCostCenterId());
+    const count = await owner.post('/inventory/counts', { warehouseId: w, date: TODAY, itemIds: [untouched, found] });
+    await owner.patch(`/inventory/counts/${count.data.id}`, { lines: [{ itemId: found, actualQty: 95 }] });
+
+    // 10 kg of each is fed out while the sheet stays open.
+    const lines = [{ itemId: untouched, qty: 10 }, { itemId: found, qty: 10 }];
+    await owner.post('/inventory/issues', { warehouseId: w, date: TODAY, costCenterId, reason: 'ration', lines });
+    const sheet = (await owner.get(`/inventory/counts/${count.data.id}`)).data.lines;
+    expect(sheet.find((l: any) => l.itemId === untouched)).toMatchObject({ systemQty: 90, actualQty: 90, diffQty: 0 });
+
+    expect((await owner.post(`/inventory/counts/${count.data.id}/approve`)).status).toBe(200);
+    const onHand = async (id: string) => f.run(() => stockOnHand(id));
+    expect(await onHand(untouched)).toBe(90);
+    expect(await onHand(found)).toBe(85); // the 5 short that was counted, and the 10 fed out
+  });
+});
+
 describe('stock counts', () => {
   let f: Fixture;
   let owner: Client;
@@ -649,7 +708,7 @@ describe('stock counts', () => {
     const id = (await owner.post('/inventory/counts', { warehouseId: w, date: TODAY, itemIds: [i] })).data.id;
     const costCenterId = await f.run(() => generalCostCenterId());
     await owner.post('/inventory/issues', { warehouseId: w, date: TODAY, costCenterId, lines: [{ itemId: i, qty: 25 }] });
-    expect((await owner.get(`/inventory/counts/${id}`)).data.lines[0]).toMatchObject({ systemQty: 75, actualQty: 100, diffQty: 25 });
+    expect((await owner.get(`/inventory/counts/${id}`)).data.lines[0]).toMatchObject({ systemQty: 75, actualQty: 75, diffQty: 0 });
   });
 
   it('counts everything in stock by default and can add a new item', async () => {

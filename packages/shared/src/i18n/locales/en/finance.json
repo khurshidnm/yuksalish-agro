@@ -27,6 +27,7 @@
     }
   },
   "journal": {
+    "original": "{{amount}}, rate {{rate}}",
     "title": "Transactions",
     "description": "Every receipt and payment, with its date, amount, account and cost center.",
     "tab": "Journal",
@@ -302,6 +303,7 @@
     "gapTitle": "Cash runs short from {{month}}",
     "gapBody": "Months short of cash: {{n}}. Deepest gap: {{amount}}. Plan ahead: delay spending, bring sales forward, or arrange short-term financing.",
     "methodNote": "This is a statistical forecast, not a promise. It rests on the budget, {{months}} months of history, the loan schedule and debt due dates.",
+    "beyondPlan": "The budget runs to {{month}}. Later months show only loan and debt payments, so they are not a forecast.",
     "lowConfidenceTitle": "Not enough data",
     "lowConfidenceBody": "There is no budget and under three months of history, so this forecast only reflects loans and debt due dates. Enter a budget.",
     "balanceChart": "Month-end balance",
@@ -370,6 +372,7 @@
     }
   },
   "errors": {
+    "WAGES_PAID_FROM_PAYROLL": "Wages are paid from the payroll run under Staff, not from here.",
     "TRANSACTION_CHANGED": "This entry was changed after you opened it. It now reads {{amount}} {{currency}}. Nothing was saved: read it again, then decide.",
     "ACCOUNT_CLOSED": "This account is closed. Choose another one.",
     "ACCOUNT_CURRENCY_MISMATCH": "This account holds a different currency.",

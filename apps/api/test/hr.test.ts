@@ -9,7 +9,7 @@ import { addMember } from '../src/core/tenancy';
 import { signAccessToken } from '../src/core/tokens';
 import * as payroll from '../src/modules/hr/payroll.service';
 import { attendanceToday, reminders } from '../src/modules/hr/summary';
-import { seedHr } from '../src/seed/hr';
+import { seedHr, seedPayroll } from '../src/seed/hr';
 import { SEED } from '../src/seed/names';
 import { createFixture, getApp, type Client, type Fixture } from './helpers';
 
@@ -1243,6 +1243,25 @@ describe('payroll approval', () => {
     expect((await owner.get(`/hr/payroll/${run.id}`)).status).toBe(404);
   });
 
+  it('wages owed cannot be paid from the debts page too, or they would be paid twice', async () => {
+    const { f, accountant, director, run } = await setup();
+    const accountId = await makeCashAccount(f);
+    await director.post(`/hr/payroll/${run.id}/approve`);
+    const debts = (await accountant.get('/finance/debts', { direction: 'payable' })).data;
+    const wages = debts.find((d: any) => d.isPayroll);
+    expect(wages.outstanding).toBeGreaterThan(0);
+    const refused = await accountant.post('/finance/debts/settle', {
+      direction: 'payable',
+      counterpartyId: wages.counterpartyId,
+      accountId,
+      amount: wages.outstanding,
+      date: '2026-10-05',
+    });
+    expect(refused.status).toBe(409);
+    expect(refused.body.error.code).toBe('WAGES_PAID_FROM_PAYROLL');
+    expect((await accountant.post(`/hr/payroll/${run.id}/pay`, { accountId, date: '2026-10-05' })).status).toBe(200);
+  });
+
   it('payment settles the net as a debt payment, without adding cost', async () => {
     const { f, accountant, director, e, run } = await setup();
     const accountId = await makeCashAccount(f);
@@ -1618,6 +1637,25 @@ describe('journal', () => {
   });
 });
 
+describe('advances and personal data', () => {
+  it('hides the name beside the amount without pii.view (rule 8)', async () => {
+    const f = await createFixture();
+    const owner = await f.as('owner');
+    const e = await hire(owner, { baseRate: 6_000_000 });
+    const accountId = await makeCashAccount(f);
+    const made = await owner.post('/hr/advances', { employeeId: e.id, date: todayIso(), amount: 100_000, accountId });
+    expect(made.status).toBe(201);
+    expect((await owner.get('/hr/advances')).data[0].fullName).toBeTruthy();
+    await f.run(async () => {
+      const roles = await tx().select().from(schema.roles).where(eq(schema.roles.key, 'accountant'));
+      const permissions = roles[0].permissions.filter((p: string) => p !== 'pii.view');
+      await tx().update(schema.roles).set({ permissions }).where(eq(schema.roles.id, roles[0].id));
+    });
+    const accountant = await f.as('accountant');
+    expect((await accountant.get('/hr/advances')).data[0].fullName).toBeNull();
+  });
+});
+
 describe('pilot seed', () => {
   it('builds the staff, timesheets and an approved October payroll', async () => {
     const f = await createFixture();
@@ -1627,14 +1665,18 @@ describe('pilot seed', () => {
       tx().insert(accounts).values({ tenantId: f.tenantId, farmId: f.farmId, name: SEED.account.cash, type: 'cash' }),
     );
 
-    await seedHr({
+    const seed = {
       tenantId: f.tenantId,
       farmId: f.farmId,
       users,
-      run: (fn, as = 'owner') => f.run(fn, { userId: users[as] }),
-    });
-
+      run: <T,>(fn: () => Promise<T>, as: RoleKey = 'owner') => f.run(fn, { userId: users[as] }),
+    };
+    await seedHr(seed);
     const owner = await f.as('owner');
+    const herd = await owner.post('/livestock/herds', { name: SEED.herd.pregnant });
+    expect(herd.status).toBe(201);
+    await seedPayroll(seed);
+
     const staff = await owner.get('/hr/employees', { pageSize: 50 });
     expect(staff.body.meta.total).toBe(13);
     const count = (position: string) => staff.body.data.filter((e: any) => e.position === position).length;
@@ -1654,6 +1696,9 @@ describe('pilot seed', () => {
     const run = (await owner.get(`/hr/payroll/${summary.id}`)).data;
     // The piece-rate mechanic joined in November.
     expect(run.lines).toHaveLength(12);
+    // A shepherd's wage is the herd's labour cost, not general overhead.
+    const onHerd = run.allocation.find((a: any) => a.name === SEED.herd.pregnant);
+    expect(onHerd.amount).toBeGreaterThan(0);
     // October 2026: 31 days, 4 Sundays, so 27 expected days and 27 present.
     const director = run.lines.find((l: any) => l.position === SEED.position.director);
     expect(director.base).toBe(5_000_000);
@@ -1662,9 +1707,10 @@ describe('pilot seed', () => {
     const guard = run.lines.find((l: any) => l.position === SEED.position.guard);
     expect(guard.base).toBe(1_925_925.93);
 
+    // One entry per cost center, together the whole payroll.
     const posted = await payrollTransactions(f, summary.id);
-    expect(posted).toHaveLength(1);
-    expect(posted[0].amountBase).toBe(summary.totalGross);
+    expect(posted).toHaveLength(2);
+    expect(posted.reduce((sum: number, row: any) => sum + row.amountBase, 0)).toBeCloseTo(summary.totalGross, 2);
 
     const grid = await owner.get('/hr/timesheets', { month: '2026-11' });
     const shepherd = grid.data.employees.find((p: any) => p.fullName === 'Sherzod Boboyev');

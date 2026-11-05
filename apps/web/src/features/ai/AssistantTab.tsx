@@ -80,7 +80,8 @@ function ConversationList({
 
 export function AssistantTab({ configured }: { configured: boolean }) {
   const { t } = useTranslation('ai');
-  const [conversationId, setUrlConversation] = useUrlParam('c');
+  // An answer writes the conversation into the address, and that must not jump the view back to the top.
+  const [conversationId, setUrlConversation] = useUrlParam('c', '', { keepScroll: true });
   const last = useLastConversation();
   const [historyOpen, setHistoryOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);

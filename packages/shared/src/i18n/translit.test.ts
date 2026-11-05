@@ -41,6 +41,37 @@ describe('latinToCyrillic', () => {
   });
 });
 
+describe('real words a person would notice', () => {
+  it.each([
+    ['internetsiz', 'интернетсиз'],
+    ['Muddatsiz', 'Муддатсиз'],
+    ['harakatsizlik', 'ҳаракатсизлик'],
+    ['kalitsiz', 'калитсиз'],
+    ['yetsin', 'етсин'],
+    ['ratsion', 'рацион'],
+    ['operatsiya', 'операция'],
+    ['litsenziya', 'лицензия'],
+    ['meditsina', 'медицина'],
+    ['protsent', 'процент'],
+    ['Vaksina', 'Вакцина'],
+    ['vaksinatsiya', 'вакцинация'],
+    ['Kompyuterda', 'Компьютерда'],
+    ['Obyektlar', 'Объектлар'],
+    ["PDF'ga", "PDF'га"],
+    ['STIR', 'СТИР'],
+    ['Webhook', 'Webhook'],
+    ['pH', 'pH'],
+  ])('%s', (latin, cyrillic) => {
+    expect(latinToCyrillic(latin)).toBe(cyrillic);
+  });
+
+  it('leaves paths and file types alone, but not a unit after a slash', () => {
+    expect(latinToCyrillic('Hujjat: /api/docs')).toBe('Ҳужжат: /api/docs');
+    expect(latinToCyrillic('Excel (.xlsx) yoki CSV')).toBe('Excel (.xlsx) ёки CSV');
+    expect(latinToCyrillic("so'm/kg")).toBe('сўм/кг');
+  });
+});
+
 describe('mapStrings', () => {
   it('walks nested dictionaries', () => {
     expect(mapStrings({ a: 'x', b: { c: ['y'] }, d: 1 }, (s) => s.toUpperCase())).toEqual({

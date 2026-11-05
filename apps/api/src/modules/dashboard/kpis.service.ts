@@ -30,7 +30,6 @@ import {
   perEmployee,
   profitPerHead,
 } from '@yap/shared/formulas/kpi';
-import { averageHead } from '@yap/shared/formulas/livestock';
 import { schema } from '../../db/client';
 import { canSeeMoney, ctx, today, tx } from '../../core/context';
 import { badRequest } from '../../core/errors';
@@ -112,7 +111,7 @@ async function livestockKpis(p: Period) {
     adgG: growth.adgG,
     weighedAnimals: growth.animals,
     feedConversion: roundOrNull(growth.feedConversion, 2),
-    mortalityPercent: roundOrNull(mortalityPercent(movement.dead, averageHead(movement.opening, movement.closing)), 2),
+    mortalityPercent: roundOrNull(mortalityPercent(movement.dead, movement.averageHead), 2),
     ...(canSeeMoney(FINANCE_SUMMARY_VIEW) ? { costPerKgLive: (await herdCost()).costPerKg } : {}),
   };
 }

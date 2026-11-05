@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { CURRENCIES, diffDays, round } from '@yap/shared';
 import { schema } from '../../db/client';
 import { ctx, today, tx } from '../../core/context';
+import { PAYROLL_COUNTERPARTY } from '../../core/defaults';
 import { conflict, notFound } from '../../core/errors';
 import { amountInBase, lockDebt, postTransaction, tradeSettlement, type DebtDirection, type RecordSource } from '../../core/ledger';
 import { clientId, isoDate } from '../../core/query';
@@ -122,6 +123,8 @@ async function loadDebtRows() {
 export interface CounterpartyDebt {
   counterpartyId: string;
   counterpartyName: string;
+  /** Wages owed. Paid from the payroll run: paying them here too would pay them twice. */
+  isPayroll: boolean;
   direction: Direction;
   total: number;
   paid: number;
@@ -173,6 +176,7 @@ export async function listDebts(direction?: Direction): Promise<CounterpartyDebt
     result.push({
       counterpartyId: group.counterpartyId,
       counterpartyName: nameOf.get(group.counterpartyId) ?? '',
+      isPayroll: nameOf.get(group.counterpartyId) === PAYROLL_COUNTERPARTY,
       direction: group.direction,
       total: round(group.docs.reduce((sum, d) => sum + d.amountBase, 0), 2),
       paid,
@@ -195,10 +199,13 @@ export async function listDebts(direction?: Direction): Promise<CounterpartyDebt
  */
 export async function settle(input: SettleInput, source?: RecordSource) {
   const [counterparty] = await tx()
-    .select({ id: counterparties.id })
+    .select({ id: counterparties.id, name: counterparties.name })
     .from(counterparties)
     .where(and(eq(counterparties.id, input.counterpartyId), eq(counterparties.farmId, ctx().farmId)));
   if (!counterparty) throw notFound('Counterparty');
+  if (counterparty.name === PAYROLL_COUNTERPARTY) {
+    throw conflict('WAGES_PAID_FROM_PAYROLL', 'Wages are paid from the payroll run, not from the debts page');
+  }
   const [account] = await tx()
     .select({ id: accounts.id, type: accounts.type, currency: accounts.currency })
     .from(accounts)

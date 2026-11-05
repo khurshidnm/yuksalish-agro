@@ -604,6 +604,10 @@
     "actual": "Фактический расход",
     "plan": "План рациона"
   },
+  "division": {"crops": "Растениеводство", "livestock": "Овцеводство", "machinery": "Механизация", "admin": "Управление"},
+  "priceKind": {"sale": "Наша цена", "market": "Рыночная цена"},
+  "issueReason": {"ration": "По рациону", "field_operation": "Полевые работы", "fuel": "Топливо", "treatment": "Лечение", "repair": "Ремонт", "maintenance": "Ремонт", "write_off": "Списание", "manual": "Вручную", "sale": "Продажа"},
+  "costCenterName": {"General": "Общефермские"},
   "lowStockReason": {
     "qty": "Мало по количеству",
     "days": "Мало дней запаса"
@@ -654,7 +658,8 @@
     "title": "Отчёт для инвестора",
     "finance": "Финансы",
     "income": "Доход",
-    "expense": "Расход",
+    "operatingExpense": "Операционные расходы",
+    "expense": "Оплачено (включая активы)",
     "net": "Чистый итог",
     "profitability": "Рентабельность",
     "budget": "Исполнение бюджета",

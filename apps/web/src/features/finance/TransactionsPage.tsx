@@ -34,7 +34,7 @@ import {
 } from '@/components/ui';
 import { api } from '@/lib/api';
 import { usePermission, useSession } from '@/lib/auth';
-import { formatDate, formatMoney } from '@/lib/format';
+import { formatDate, formatMoney, formatNumber } from '@/lib/format';
 import { zText } from '@/lib/forms';
 import { enumOptions } from '@/lib/i18n';
 import { useApiMutation, useDetail, useList } from '@/lib/query';
@@ -64,7 +64,17 @@ function signedAmount(row: Transaction): number {
 }
 
 function AmountCell({ row }: { row: Transaction }) {
-  return row.type === 'transfer' ? <MoneyText value={row.amountBase} /> : <MoneyText value={signedAmount(row)} signed />;
+  const { t } = useTranslation('finance');
+  const amount = row.type === 'transfer' ? <MoneyText value={row.amountBase} /> : <MoneyText value={signedAmount(row)} signed />;
+  if (row.amount === row.amountBase) return amount;
+  return (
+    <span className="inline-flex flex-col items-end">
+      {amount}
+      <span className="text-xs text-muted-foreground">
+        {t('journal.original', { amount: formatMoney(row.amount, { currency: row.currency }), rate: formatNumber(row.fxRate, 2) })}
+      </span>
+    </span>
+  );
 }
 
 function useTitle() {
@@ -109,6 +119,7 @@ function ReasonDialog({
       defaultValues={{ reason: '' }}
       onSubmit={(values) => act.mutateAsync(values.reason)}
       submitLabel={t(`approval.${mode}`)}
+      cancelLabel={t('common:actions.close')}
       successMessage={`finance:approval.${mode}Done`}
     >
       {(form) => <TextareaField form={form} name="reason" label={t('approval.reason')} required />}
@@ -237,7 +248,19 @@ function Journal({ onEdit }: { onEdit: (row: Transaction) => void }) {
     { key: 'account', header: t('journal.fields.account'), cell: (row) => row.accountName ?? t(`enums:paymentMethod.${row.paymentMethod}`) },
     { key: 'counterparty', header: t('journal.fields.counterparty'), mobile: 'hidden', cell: (row) => row.counterpartyName ?? '—' },
     { key: 'costCenter', header: t('journal.fields.costCenter'), mobile: 'hidden', cell: (row) => centerName(row.costCenterName, row.costCenterType) },
-    { key: 'status', header: t('journal.fields.status'), sortable: true, cell: (row) => <StatusBadge status={row.status} /> },
+    {
+      key: 'status',
+      header: t('journal.fields.status'),
+      sortable: true,
+      cell: (row) => (
+        <span className="inline-flex max-w-56 flex-col items-start gap-0.5 max-md:items-end">
+          <StatusBadge status={row.status} />
+          {row.rejectedReason && (
+            <span className="text-xs break-words text-muted-foreground">{[row.approvedByName, row.rejectedReason].filter(Boolean).join(': ')}</span>
+          )}
+        </span>
+      ),
+    },
   ];
 
   return (

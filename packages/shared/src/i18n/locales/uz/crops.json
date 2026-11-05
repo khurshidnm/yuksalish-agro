@@ -257,6 +257,7 @@
     }
   },
   "errors": {
+    "YIELD_NOT_PLAUSIBLE": "Hosilni tekshiring: 1 gektardan {{maxTPerHa}} tonnadan ko'p bo'lishi mumkin emas. Kilogramm tonna deb yozilmadimi?",
     "AREA_EXCEEDS_FIELD": "Bu dala atigi {{fieldAreaHa}} ga",
     "AREA_REQUIRED": "Reja maydonini kiriting",
     "ASSET_REQUIRED_FOR_FUEL": "Yoqilg'i sarflagan texnikani tanlang",

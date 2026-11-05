@@ -84,6 +84,7 @@ export interface InvestorData {
   month: string;
   asOf: string;
   finance: {
+    operatingExpense: number;
     income: number;
     expense: number;
     net: number;

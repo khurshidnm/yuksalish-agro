@@ -40,7 +40,18 @@ export function animalBookValue(purchasePrice: number | null, accumulatedPerHead
   return round((purchasePrice ?? 0) + (accumulatedPerHead ?? 0), 2);
 }
 
-/** Mean of opening and closing head, the base for mortality percent. */
-export function averageHead(opening: number, closing: number): number {
-  return (opening + closing) / 2;
+/** Heaviest believable live weight per species, in kg: far above any real animal, well below a typing slip. */
+const MAX_LIVE_WEIGHT_KG: Record<string, number> = { sheep: 250, goat: 200, cattle: 1800, horse: 1500, poultry: 40 };
+
+export function maxLiveWeightKg(speciesKey: string): number {
+  return MAX_LIVE_WEIGHT_KG[speciesKey] ?? 2000;
+}
+
+/**
+ * Mean of opening and closing head, the base for mortality percent. Animals bought in the period
+ * count as present from its start: a flock bought in one go would otherwise halve the average and
+ * double the rate. Lambs are not included, because they arrive through the period.
+ */
+export function averageHead(opening: number, closing: number, purchased = 0): number {
+  return (opening + purchased + closing) / 2;
 }

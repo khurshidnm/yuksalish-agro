@@ -1,7 +1,8 @@
 import type { FastifyInstance } from 'fastify';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, or } from 'drizzle-orm';
 import { z } from 'zod';
 import { CATEGORY_KINDS, COST_CENTER_TYPES, EXPENSE_GROUPS, INCOME_GROUPS } from '@yap/shared';
+import { LANGUAGES, resources } from '@yap/shared/i18n';
 import { schema } from '../../db/client';
 import { ctx, tx } from '../../core/context';
 import { badRequest, notFound } from '../../core/errors';
@@ -17,6 +18,18 @@ import * as summary from './summary';
 import * as transactions from './transactions.service';
 
 const { costCenters, financeCategories: cat } = schema;
+
+/** The general center is stored as 'General' and shown translated, so people search for the translation. */
+function namesGeneral(search: string | undefined): boolean {
+  const term = search?.toLocaleLowerCase();
+  return (
+    !!term &&
+    LANGUAGES.some(({ code }) => {
+      const { costCenterType } = resources[code].enums as { costCenterType: { general: string } };
+      return costCenterType.general.toLocaleLowerCase().includes(term);
+    })
+  );
+}
 
 const period = z.object({ from: isoDate.optional(), to: isoDate.optional() });
 const reason = z.object({ reason: z.string().trim().min(1).max(300) });
@@ -56,7 +69,7 @@ export function registerFinance(app: FastifyInstance) {
             eq(costCenters.farmId, ctx().farmId),
             eq(costCenters.active, true),
             req.query.type ? eq(costCenters.type, req.query.type) : undefined,
-            searchAny(req.query.search, [costCenters.name]),
+            or(searchAny(req.query.search, [costCenters.name]), namesGeneral(req.query.search) ? eq(costCenters.type, 'general') : undefined),
           ),
         )
         .orderBy(asc(costCenters.type), asc(costCenters.name))

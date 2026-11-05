@@ -1168,15 +1168,21 @@ export async function cashflowForecastDetail(months = 12) {
     return row;
   });
 
+  // Past the last budgeted month only loans and debts are left, so money seems to stop coming in.
+  // Those months stay on the page, marked, but they must not raise the shortage warning.
+  const plannedThrough = budgetRows.length ? budgetRows.map((row) => row.month).sort().at(-1)! : null;
+  const warnable = plannedThrough ? result.filter((row) => row.month <= plannedThrough) : result;
+
   return {
     method: 'statistical' as const,
     asOf,
     opening: position.total,
+    plannedThrough,
     /** Completed months of history behind the averages. Few months means low confidence. */
     historyMonths,
     lowConfidence: historyMonths < 3 && budgetRows.length === 0,
     assumptions: LAMB_ASSUMPTIONS,
-    firstNegativeMonth: result.find((row) => row.negative)?.month ?? null,
+    firstNegativeMonth: warnable.find((row) => row.negative)?.month ?? null,
     rows: result,
   };
 }

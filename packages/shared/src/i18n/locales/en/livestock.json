@@ -283,6 +283,8 @@
     "emptyBody": "Sales, slaughter and deaths will appear here."
   },
   "errors": {
+    "WEIGHT_BEFORE_BIRTH": "The date is before this animal was born",
+    "WEIGHT_NOT_PLAUSIBLE": "Check the weight: {{max}} kg is the most this species can weigh",
     "TAG_TAKEN": "The tag {{tag}} is already in use",
     "IDENTIFIER_TAKEN": "{{value}} belongs to animal {{tag}}",
     "CATEGORY_SEX_MISMATCH": "This category does not match the animal's sex",

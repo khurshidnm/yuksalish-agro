@@ -77,12 +77,16 @@ function mapPostgresError(pg: NonNullable<ReturnType<typeof postgresError>>): Ap
 function errorHandler(error: FastifyError, req: FastifyRequest, reply: FastifyReply) {
   if (hasZodFastifySchemaValidationErrors(error)) {
     const fieldErrors: Record<string, string> = {};
+    // `message` is zod's English: `fieldIssues` lets the web app say it in the person's language.
+    const fieldIssues: Record<string, { code: string; min?: unknown; max?: unknown; inclusive?: unknown }> = {};
     for (const issue of error.validation) {
-      const path = issue.instancePath.replace(/^\//, '').replaceAll('/', '.');
-      fieldErrors[path || '_'] = issue.message ?? 'Invalid value';
+      const path = issue.instancePath.replace(/^\//, '').replaceAll('/', '.') || '_';
+      fieldErrors[path] = issue.message ?? 'Invalid value';
+      const { minimum, maximum, inclusive } = issue.params as Record<string, unknown>;
+      fieldIssues[path] = { code: issue.keyword, min: minimum, max: maximum, inclusive };
     }
     return reply.code(400).send({
-      error: { code: 'VALIDATION_ERROR', message: 'Please check the highlighted fields', details: { fieldErrors } },
+      error: { code: 'VALIDATION_ERROR', message: 'Please check the highlighted fields', details: { fieldErrors, fieldIssues } },
     });
   }
 
