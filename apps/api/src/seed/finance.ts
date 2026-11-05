@@ -37,12 +37,16 @@ const STOCK_PURCHASE: Record<string, { category: string; supplier: string }> = {
   spare_part: { category: 'spare_parts', supplier: P.fuelSupplier },
 };
 
-/** Feed bought on credit, part of it paid, the rest past its due date. */
+/** Feed bought on credit, part of it paid, the rest due later this month. */
 const CREDIT_FEED = 24_000_000;
 const CREDIT_FEED_PAID = 10_000_000;
 
-const CLOSING_BANK = 940_000_000;
-const CLOSING_CASH = 38_000_000;
+/** The ewes are capitalised with what it took to get them here: road and border veterinary work. */
+const TATARSTAN_TRANSPORT = 268_000_000;
+const IMPORT_VETERINARY = 18_500_000;
+
+const CLOSING_BANK = 1_860_000_000;
+const CLOSING_CASH = 62_000_000;
 
 const BUDGET_MONTHS = [
   '2026-10', '2026-11', '2026-12', '2027-01', '2027-02', '2027-03', '2027-04',
@@ -50,34 +54,35 @@ const BUDGET_MONTHS = [
 ];
 
 /**
- * Budget 2026/27 in million so'm, one value per month in BUDGET_MONTHS. Income starts in summer,
- * after harvest and the first lamb sales, so the forecast shows a shortfall before then.
+ * Budget 2026/27 in million so'm, one value per month in BUDGET_MONTHS. Winter runs on the money set
+ * aside for it. From summer come the 2027 harvest and then the first lambs: 770 born at 110 % and
+ * 8 % losses, a fifth kept for the flock and about 566 sold at 45 kg and 68 000 so'm a kilogram.
  */
 const BUDGET: Record<string, number[]> = {
-  animal_purchase: [2150, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  feed: [570, 14, 12, 12, 20, 25, 15, 6, 4, 4, 35, 90, 120],
-  veterinary: [18, 5, 5, 5, 10, 10, 6, 5, 5, 5, 5, 5, 8],
-  tags_devices: [4, 0, 0, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0],
-  shearing: [0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0],
-  seed: [120, 0, 0, 0, 0, 20, 10, 0, 0, 0, 0, 0, 90],
-  fertilizer: [210, 0, 0, 0, 0, 30, 20, 0, 0, 0, 0, 0, 120],
-  crop_protection: [0, 0, 0, 0, 0, 5, 6, 4, 0, 0, 0, 0, 0],
-  water: [2, 1, 0, 0, 0, 2, 5, 6, 6, 6, 5, 2, 2],
-  mechanization_service: [10, 0, 0, 0, 0, 4, 0, 0, 28, 16, 0, 0, 8],
-  salary: [32, 33, 33, 33, 36, 36, 36, 34, 34, 34, 34, 34, 34],
-  fuel: [130, 5, 3, 3, 4, 14, 12, 8, 18, 14, 8, 6, 80],
-  repair: [7, 3, 3, 3, 3, 5, 4, 3, 4, 3, 3, 3, 5],
-  electricity: [4, 4, 5, 5, 5, 4, 4, 4, 4, 4, 4, 4, 4],
+  animal_purchase: [3510, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  feed: [120, 8, 8, 8, 14, 14, 10, 6, 4, 4, 20, 40, 60],
+  veterinary: [34, 6, 6, 6, 12, 12, 8, 6, 6, 6, 6, 6, 8],
+  tags_devices: [6, 0, 0, 0, 3, 3, 0, 0, 0, 0, 0, 0, 0],
+  shearing: [0, 0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 0, 0],
+  seed: [115, 0, 0, 0, 0, 12, 10, 0, 0, 0, 0, 0, 110],
+  fertilizer: [210, 0, 0, 0, 0, 30, 20, 0, 0, 0, 0, 0, 130],
+  crop_protection: [15, 0, 0, 0, 0, 5, 6, 4, 0, 0, 0, 0, 0],
+  water: [3, 1, 0, 0, 0, 3, 6, 8, 8, 8, 6, 3, 3],
+  mechanization_service: [10, 0, 0, 0, 0, 5, 0, 0, 30, 18, 0, 0, 10],
+  salary: [34, 34, 34, 34, 38, 38, 38, 36, 36, 36, 36, 36, 36],
+  fuel: [175, 6, 4, 4, 5, 16, 14, 10, 20, 16, 10, 8, 85],
+  repair: [8, 4, 3, 3, 3, 6, 5, 4, 5, 4, 3, 3, 6],
+  electricity: [5, 5, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5],
   communication: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5],
-  transport: [13, 2, 2, 2, 2, 3, 3, 2, 3, 3, 3, 3, 3],
+  transport: [6, 2, 2, 2, 2, 3, 3, 2, 3, 3, 3, 3, 3],
   bank_fees: [0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4],
-  insurance: [8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8],
-  loan_interest: [18, 17, 17, 16, 16, 16, 15, 15, 15, 14, 14, 14, 13],
-  subsidies: [45, 0, 0, 0, 0, 60, 0, 0, 0, 0, 0, 0, 0],
-  wool_sales: [0, 0, 0, 0, 0, 0, 0, 18, 6, 0, 0, 0, 0],
-  grain_sales: [0, 0, 0, 0, 0, 0, 0, 0, 0, 230, 120, 0, 0],
+  insurance: [12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12],
+  loan_interest: [29, 28, 28, 27, 26, 26, 25, 24, 24, 23, 22, 22, 21],
+  subsidies: [65, 0, 0, 0, 0, 90, 0, 0, 0, 0, 0, 0, 0],
+  wool_sales: [0, 0, 0, 0, 0, 0, 0, 14, 6, 0, 0, 0, 0],
+  grain_sales: [0, 0, 0, 0, 0, 0, 0, 0, 0, 380, 240, 0, 0],
   alfalfa_sales: [0, 0, 0, 0, 0, 0, 0, 0, 0, 30, 40, 0, 0],
-  lamb_sales: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 340, 460, 220],
+  lamb_sales: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 830, 900, 0],
   services_income: [6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 };
 
@@ -105,7 +110,7 @@ export async function seedFinance(s: SeedContext): Promise<void> {
     const created = await createLoan({
       counterpartyId: lender.id,
       name: 'Agrobank imtiyozli krediti',
-      principal: 1_500_000_000,
+      principal: 2_500_000_000,
       annualRate: 14,
       termMonths: 36,
       startDate: '2026-09-15',
@@ -154,12 +159,12 @@ export async function seedFinance(s: SeedContext): Promise<void> {
       ...byBank,
       date: flock.firstDate ?? '2026-10-20',
       type: 'expense',
-      amount: Number(flock.total) || 500 * 4_200_000,
+      amount: Number(flock.total) || 700 * 4_600_000,
       categoryId: await category('animal_purchase'),
       costCenterId: herdCc,
       costTreatment: 'animal',
       counterpartyId: await supplier(P.sheepSeller),
-      description: "500 bosh Hisori bo'g'oz sovliq xaridi",
+      description: "Tataristondan 700 bosh Hisori naslli bo'g'oz sovliq",
     });
 
     // Stock on the shelves was paid for. Everything here is 'inventory': it reaches a field or
@@ -199,7 +204,7 @@ export async function seedFinance(s: SeedContext): Promise<void> {
           ...common,
           amount: onCredit,
           paymentMethod: 'debt',
-          dueDate: '2026-10-25',
+          dueDate: '2026-11-25',
           description: `${batch.name}: qarzga`,
         });
       }
@@ -208,27 +213,38 @@ export async function seedFinance(s: SeedContext): Promise<void> {
 
     await post({
       ...byBank,
-      date: '2026-10-22',
+      date: '2026-10-20',
       type: 'expense',
-      amount: 12_400_000,
-      categoryId: await category('transport'),
+      amount: TATARSTAN_TRANSPORT,
+      categoryId: await category('animal_purchase'),
       costCenterId: herdCc,
-      description: "Qo'ylarni Sherobodan olib kelish",
+      costTreatment: 'animal',
+      description: "Qo'ylarni Tataristondan olib kelish: 8 ta chorva tashuvchi",
+    });
+    await post({
+      ...byBank,
+      date: '2026-10-20',
+      type: 'expense',
+      amount: IMPORT_VETERINARY,
+      categoryId: await category('animal_purchase'),
+      costCenterId: herdCc,
+      costTreatment: 'animal',
+      description: 'Import karantini va veterinariya rasmiylashtiruvi',
     });
     await post({
       ...byCash,
       date: '2026-10-23',
       type: 'expense',
-      amount: 3_250_000,
+      amount: 4_550_000,
       categoryId: await category('tags_devices'),
       costCenterId: herdCc,
-      description: '500 dona quloq birkasi',
+      description: '700 dona quloq birkasi',
     });
     await post({
       ...byCash,
       date: '2026-10-24',
       type: 'expense',
-      amount: 4_800_000,
+      amount: 6_700_000,
       categoryId: await category('veterinary'),
       costCenterId: herdCc,
       counterpartyId: await supplier(P.vetSupplier),
@@ -238,7 +254,7 @@ export async function seedFinance(s: SeedContext): Promise<void> {
       ...byBank,
       date: '2026-10-14',
       type: 'expense',
-      amount: 7_600_000,
+      amount: 11_400_000,
       categoryId: await category('insurance'),
       costCenterId: general,
       description: "Chorva mollarini sug'urtalash",
@@ -321,10 +337,40 @@ export async function seedFinance(s: SeedContext): Promise<void> {
       ...byBank,
       date: '2026-10-28',
       type: 'income',
-      amount: 45_000_000,
+      amount: 65_000_000,
       categoryId: await category('subsidies'),
-      costCenterId: herdCc,
+      costCenterId: general,
       description: 'Naslli chorvachilik subsidiyasi',
+    });
+    // The 2026 harvest, sold through the autumn.
+    await post({
+      ...byBank,
+      date: '2026-08-12',
+      type: 'income',
+      amount: 374_000_000,
+      categoryId: await category('grain_sales'),
+      costCenterId: await fieldCc(SEED.field.wheat3),
+      counterpartyId: await supplier(P.grainBuyer),
+      description: "2026 yil bug'doyi: 110 t",
+    });
+    await post({
+      ...byBank,
+      date: '2026-10-09',
+      type: 'income',
+      amount: 188_700_000,
+      categoryId: await category('grain_sales'),
+      costCenterId: await fieldCc(SEED.field.wheat1),
+      counterpartyId: await supplier(P.grainBuyer),
+      description: "2026 yil bug'doyi: 55,5 t",
+    });
+    await post({
+      ...byBank,
+      date: '2026-10-18',
+      type: 'income',
+      amount: 84_000_000,
+      categoryId: await category('alfalfa_sales'),
+      costCenterId: await fieldCc(SEED.field.alfalfa),
+      description: 'Ortiqcha beda pichani: 42 t',
     });
     await post({
       ...byCash,

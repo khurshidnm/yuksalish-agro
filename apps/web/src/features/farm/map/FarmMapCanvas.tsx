@@ -93,6 +93,8 @@ export interface FarmMapCanvasProps {
   colorBy: ColorBy;
   selectedId: string | null;
   className?: string;
+  /** Height of whatever covers the bottom of the map, so the first view does not hide fields under it. */
+  fitBottom?: number;
   onSelect: (props: MapProps | null) => void;
   onDrawn: (shape: DrawnShape) => void;
   onLiveArea: (hectares: number | null) => void;
@@ -105,7 +107,7 @@ export interface FarmMapCanvasProps {
  * render cycle would fight. React state stays in FarmMapPage, which drives this through a handle.
  */
 export const FarmMapCanvas = forwardRef<FarmMapHandle, FarmMapCanvasProps>(function FarmMapCanvas(props, ref) {
-  const { data, baseLayer, colorBy, selectedId, className } = props;
+  const { data, baseLayer, colorBy, selectedId, className, fitBottom = 24 } = props;
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const tiles = useRef<L.TileLayer | null>(null);
@@ -227,9 +229,15 @@ export const FarmMapCanvas = forwardRef<FarmMapHandle, FarmMapCanvasProps>(funct
     features.current = group;
 
     if (!fitted.current) {
-      const bounds = group.getBounds();
+      // The fields and the yard, not a pasture far off that would shrink them to specks.
+      const core = L.latLngBounds([]);
+      group.eachLayer((layer) => {
+        const feature = (layer as L.Polygon & { feature?: { properties?: { landUse?: string } } }).feature;
+        if ('getBounds' in layer && feature?.properties?.landUse !== 'pasture') core.extend((layer as L.Polygon).getBounds());
+      });
+      const bounds = core.isValid() ? core : group.getBounds();
       if (bounds.isValid()) {
-        instance.fitBounds(bounds, { padding: [24, 24] });
+        instance.fitBounds(bounds, { paddingTopLeft: [24, 24], paddingBottomRight: [24, fitBottom] });
         fitted.current = true;
       } else if (data.center) {
         instance.setView([data.center.lat, data.center.lng], 14);

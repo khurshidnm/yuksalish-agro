@@ -21,7 +21,7 @@ const perUnit = (unit: string, pricePerKg: number) => (unit === 't' ? pricePerKg
 
 /** Monthly prices ending today, oldest first: [own sale price, market price] per kg. */
 const PRICE_HISTORY_PER_KG: Record<string, [number, number][]> = {
-  [LAMB_ITEM]: [[50_000, 51_000], [51_000, 52_000], [52_000, 53_500], [53_000, 54_000], [54_000, 55_000], [56_000, 57_000]],
+  [LAMB_ITEM]: [[62_000, 63_000], [63_000, 64_000], [64_000, 65_500], [65_000, 66_000], [66_000, 67_000], [68_000, 69_000]],
   [SEED.item.wool]: [[9_000, 9_500], [9_000, 9_500], [9_500, 10_000], [10_000, 10_500], [10_500, 11_000], [11_000, 11_500]],
   [SEED.item.wheatGrain]: [[4_200, 4_300], [4_300, 4_400], [4_400, 4_500], [4_300, 4_450], [4_500, 4_600], [4_600, 4_700]],
   [SEED.item.alfalfa]: [[1_700, 1_750], [1_750, 1_800], [1_800, 1_900], [1_900, 2_000], [2_000, 2_100], [2_100, 2_200]],
@@ -68,7 +68,7 @@ async function seedSaleDocuments() {
   // Stays above what the grain cost in the inventory seed, so the demo margin is a real one.
   const price = perUnit(grain.unit, 4_600);
 
-  const small = qtyOf(500);
+  const small = qtyOf(800);
   const holding = await warehouseHolding(grain.id, small);
   const warehouseId = holding ?? (await findWarehouse(SEED.warehouse.feed)).id;
   const draft = await orders.create({
@@ -88,7 +88,7 @@ async function seedSaleDocuments() {
     dueDate: addDays(today(), 30),
     deliveryDate: addDays(today(), 5),
     notes: 'Direktor tasdig\'ini kutmoqda',
-    lines: [{ itemId: grain.id, warehouseId, qty: qtyOf(2_000), price }],
+    lines: [{ itemId: grain.id, warehouseId, qty: qtyOf(12_000), price }],
   });
   return large.id;
 }
@@ -125,7 +125,7 @@ async function seedContracts() {
   await contracts.create({
     counterpartyId: seller.id,
     number: 'SCH-2026/03',
-    title: "500 bosh Hisori sovliq xaridi",
+    title: "700 bosh Hisori naslli sovliq xaridi",
     startDate: addDays(today(), -30),
     endDate: addDays(today(), -5),
     currency: 'UZS',
@@ -137,9 +137,9 @@ async function seedContracts() {
     title: "Qo'zilarni yetkazib berish shartnomasi",
     startDate: today(),
     endDate: addDays(today(), 300),
-    amount: 450_000_000,
+    amount: 1_200_000_000,
     currency: 'UZS',
-    terms: 'Tirik vazn bo\'yicha, sentyabr-oktyabr 2027.',
+    terms: 'Tirik vazn bo\'yicha, avgust-oktyabr 2027.',
     status: 'active',
   });
 }
@@ -149,10 +149,10 @@ async function seedGrantsAndReports() {
     title: "Chorvachilikni rivojlantirish subsidiyasi",
     program: "Qishloq xo'jaligini qo'llab-quvvatlash jamg'armasi",
     kind: 'subsidy',
-    amount: 120_000_000,
+    amount: 180_000_000,
     status: 'in_review',
     submittedOn: addDays(today(), -14),
-    notes: "500 bosh nasldor sovliq xaridi bo'yicha.",
+    notes: "700 bosh naslli sovliq xaridi bo'yicha.",
   });
   await grants.create({
     title: 'Imtiyozli kredit arizasi',
@@ -179,8 +179,7 @@ async function seedGrantsAndReports() {
     title: 'Yagona soliq hisoboti',
     authority: 'tax',
     period: 'quarterly',
-    dueDate: addDays(today(), -2),
-    notes: "Muddati o'tgan: darhol topshirilsin.",
+    dueDate: addDays(today(), 12),
   });
 }
 
@@ -196,7 +195,7 @@ export async function seedSales(s: SeedContext): Promise<void> {
 
   // Waiting for the director.
   await s.run(
-    () => requestPurchase(SEED.item.bran, 5_000, 2_400, SEED.counterparty.feedSupplier, "Qish uchun kepak yetishmaydi"),
+    () => requestPurchase(SEED.item.bran, 5_000, 2_400, SEED.counterparty.feedSupplier, "Qo'zilash davri uchun qo'shimcha kepak"),
     'storekeeper',
   );
 

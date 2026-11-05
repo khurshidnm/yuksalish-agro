@@ -15,16 +15,16 @@ import { SEED } from './names';
 import type { SeedContext } from './types';
 
 /**
- * Layout of the 210 ha in metres, x east and y north, measured from the south-west corner.
- * The real contours do not exist yet (spec 6.2 and 25.4 leave them open), so this plan only has
- * to be plausible and add up. It sits on the irrigated land south of Qorovulbozor town, so that
- * the demo does not draw fields over houses. Replace it by drawing on the map.
+ * Layout of the 210 ha in metres, x east and y north, measured from the farm's point on the map.
+ * Traced on satellite imagery around that point: the fields around it and the yard follow what is on
+ * the ground, the northern fields lie between the two canals, and the pasture is the open steppe
+ * beyond the canal. Not surveyed, so they are compared with the cadastre and corrected on the map.
  */
-const ORIGIN = { lng: 64.79, lat: 39.4815, x: 1060, y: 525 };
+const ORIGIN = { lng: 64.794201, lat: 39.743439, x: 0, y: 0 };
 
-/** Metres per degree at latitude 39.5 on the WGS84 spheroid. */
-const M_PER_DEG_LNG = 86_013;
-const M_PER_DEG_LAT = 111_025;
+/** Metres per degree at latitude 39.74 on the WGS84 spheroid. */
+const M_PER_DEG_LNG = 85_705;
+const M_PER_DEG_LAT = 111_030;
 
 type Corner = [x: number, y: number];
 
@@ -57,7 +57,7 @@ async function fitToArea(corners: Corner[], targetHa: number) {
   return shape;
 }
 
-const OPEN_QUESTION = "Ochiq savol (6.2-band): chegara va maydon taxminiy, aniqlashtiriladi.";
+const TRACED = "Sun'iy yo'ldosh suratidan chizilgan, kadastr ma'lumoti bilan solishtiriladi.";
 
 const CONTOURS: {
   number: string;
@@ -72,30 +72,40 @@ const CONTOURS: {
 }[] = [
   {
     number: SEED.field.wheat1,
-    name: 'Shimoliy dala',
+    name: "G'arbiy massiv",
     landUse: 'arable',
-    areaHa: 20,
-    corners: [[0, 640], [500, 640], [505, 1040], [5, 1040]],
+    areaHa: 10,
+    corners: [[-193, 112], [-62, 152], [-110, -368], [-244, -375], [-322, -292], [-336, -127]],
     soilType: "O'tloqi-bo'z",
     salinityLevel: 'low',
     irrigationSource: 'Magistral kanal',
   },
   {
     number: SEED.field.wheat2,
-    name: "O'rta dala",
+    name: 'Sharqiy massiv',
     landUse: 'arable',
-    areaHa: 15,
-    corners: [[0, 330], [500, 330], [500, 630], [0, 630]],
+    areaHa: 9,
+    corners: [[-62, 152], [108, 228], [211, 180], [86, -7], [64, -136], [13, -255], [-24, -356], [-110, -368]],
     soilType: "O'tloqi-bo'z",
     salinityLevel: 'low',
     irrigationSource: 'Magistral kanal',
   },
   {
+    number: SEED.field.wheat3,
+    name: 'Shimoli-g\'arbiy dala',
+    landUse: 'arable',
+    areaHa: 18,
+    corners: [[-640, 505], [-430, 520], [-120, 625], [-105, 900], [-600, 905]],
+    soilType: "O'tloqi-bo'z",
+    salinityLevel: 'low',
+    irrigationSource: 'Ariq №1',
+  },
+  {
     number: SEED.field.barley,
-    name: 'Janubiy dala',
+    name: 'Arpa dalasi',
     landUse: 'arable',
     areaHa: 15,
-    corners: [[0, 20], [495, 20], [500, 320], [0, 320]],
+    corners: [[-110, 250], [300, 232], [330, 585], [-110, 622]],
     soilType: "Bo'z tuproq",
     salinityLevel: 'medium',
     irrigationSource: 'Ariq №1',
@@ -104,19 +114,19 @@ const CONTOURS: {
     number: SEED.field.alfalfa,
     name: 'Beda dalasi',
     landUse: 'arable',
-    areaHa: 12,
-    corners: [[510, 730], [910, 730], [905, 1040], [515, 1040]],
+    areaHa: 28,
+    corners: [[-100, 630], [330, 592], [655, 598], [695, 640], [640, 790], [520, 930], [300, 1000], [100, 1055], [-60, 1000], [-95, 880]],
     soilType: "O'tloqi",
     salinityLevel: 'low',
-    irrigationSource: 'Ariq №1',
+    irrigationSource: 'Magistral kanal',
   },
   {
-    number: SEED.field.rice,
-    name: 'Sholipoya',
+    number: SEED.field.corn,
+    name: 'Silos dalasi',
     landUse: 'arable',
-    areaHa: 8,
-    corners: [[510, 520], [910, 520], [910, 720], [510, 720]],
-    soilType: "O'tloqi-botqoq",
+    areaHa: 10,
+    corners: [[300, 232], [515, 215], [625, 430], [640, 590], [330, 585]],
+    soilType: "O'tloqi",
     salinityLevel: 'low',
     irrigationSource: 'Magistral kanal',
   },
@@ -124,33 +134,33 @@ const CONTOURS: {
     number: SEED.field.yard,
     name: 'Molxona va hovli',
     landUse: 'yard',
-    areaHa: 6,
-    corners: [[510, 300], [810, 300], [810, 500], [510, 500]],
-    notes: OPEN_QUESTION,
+    areaHa: 5,
+    corners: [[95, -30], [335, -180], [345, -300], [30, -300], [72, -140]],
+    notes: TRACED,
   },
   {
     number: SEED.field.infrastructure,
     name: "Yo'llar, suv, elektr",
     landUse: 'infrastructure',
-    areaHa: 4,
-    corners: [[510, 90], [710, 90], [710, 290], [510, 290]],
-    notes: OPEN_QUESTION,
+    areaHa: 3,
+    corners: [[395, -110], [575, 195], [668, 420], [728, 640], [706, 640], [632, 430], [535, 205], [360, -100]],
+    notes: TRACED,
   },
   {
     number: SEED.field.reserve,
     name: 'Zaxira hududi',
     landUse: 'reserve',
-    areaHa: 20,
-    corners: [[720, 10], [1200, 10], [1200, 510], [820, 510], [820, 290], [720, 290]],
-    notes: OPEN_QUESTION,
+    areaHa: 8,
+    corners: [[215, 178], [510, 190], [375, -60], [335, -150], [110, -30]],
+    notes: TRACED,
   },
   {
     number: SEED.field.pasture,
     name: 'Yaylov',
     landUse: 'pasture',
-    areaHa: 110,
-    corners: [[920, 520], [1210, 520], [1210, 0], [2120, 0], [2120, 1050], [920, 1050]],
-    notes: OPEN_QUESTION,
+    areaHa: 104,
+    corners: [[-640, 1890], [420, 1210], [660, 1330], [660, 2000], [0, 2330], [-640, 2330]],
+    notes: TRACED,
   },
 ];
 
@@ -172,7 +182,6 @@ export async function seedLand(s: SeedContext): Promise<void> {
           { role: 'Agronom', fullName: 'Sardor Toshev', phone: '+998900000004' },
           { role: 'Zootexnik', fullName: 'Jasur Ergashev', phone: '+998900000005' },
         ],
-        notes: `${OPEN_QUESTION} 140 ga qoldiq maydonning taqsimoti (yaylov, qurilish, zaxira) hali tasdiqlanmagan.`,
       },
     });
 
@@ -194,35 +203,43 @@ export async function seedLand(s: SeedContext): Promise<void> {
       name: SEED.facility.barn,
       capacity: 1000,
       capacityUnit: 'bosh',
-      boundary: polygon([[540, 400], [720, 400], [720, 460], [540, 460]]),
+      boundary: polygon([[130, -130], [250, -130], [250, -185], [130, -185]]),
       notes: "Yopiq turdagi molxona, 1 000 boshgacha.",
     });
-    for (const [name, capacity] of [["A bo'lim", 500], ["B bo'lim", 300], ["Karantin bo'limi", 100], ["Qo'zilash bo'limi", 100]] as const) {
+    for (const [name, capacity] of [["A bo'lim", 450], ["B bo'lim", 350], ["Karantin bo'limi", 100], ["Qo'zilash bo'limi", 100]] as const) {
       await createFacility({ type: 'barn', name: `${SEED.facility.barn} — ${name}`, capacity, capacityUnit: 'bosh', parentId: barn.id });
     }
+    await createFacility({
+      type: 'barn',
+      name: 'Molxona №2',
+      capacity: 800,
+      capacityUnit: 'bosh',
+      boundary: polygon([[130, -200], [250, -200], [250, -255], [130, -255]]),
+      notes: "Qo'zilash va qo'zilarni boqish uchun.",
+    });
     await createFacility({
       type: 'feed_storage',
       name: SEED.facility.feedStore,
       capacity: 500,
       capacityUnit: 't',
-      boundary: polygon([[540, 320], [640, 320], [640, 380], [540, 380]]),
+      boundary: polygon([[265, -200], [330, -200], [330, -255], [265, -255]]),
     });
     await createFacility({
       type: 'warehouse',
       name: SEED.facility.mainStore,
-      boundary: polygon([[660, 320], [720, 320], [720, 370], [660, 370]]),
+      boundary: polygon([[265, -262], [330, -262], [330, -292], [265, -292]]),
     });
-    await createFacility({ type: 'well', name: SEED.facility.well, ...pointOf([760, 420]), notes: 'Chuqurligi aniqlashtiriladi.' });
-    await createFacility({ type: 'other', name: SEED.facility.gate, ...pointOf([515, 300]) });
-    await createFacility({ type: 'guardhouse', name: 'Qorovulxona', ...pointOf([530, 310]) });
-    await createFacility({ type: 'pump', name: 'Nasos stansiyasi', ...pointOf([505, 700]) });
-    await createFacility({ type: 'power', name: 'Transformator', ...pointOf([600, 290]) });
+    await createFacility({ type: 'well', name: SEED.facility.well, ...pointOf([300, -180]), notes: 'Chuqurligi 48 m.' });
+    await createFacility({ type: 'other', name: SEED.facility.gate, ...pointOf([100, -45]) });
+    await createFacility({ type: 'guardhouse', name: 'Qorovulxona', ...pointOf([112, -55]) });
+    await createFacility({ type: 'pump', name: 'Nasos stansiyasi', ...pointOf([545, 215]) });
+    await createFacility({ type: 'power', name: 'Transformator', ...pointOf([110, -105]) });
     await createFacility({
       type: 'road',
       name: "Ichki yo'l",
       boundary: {
         type: 'LineString',
-        coordinates: ([[0, 635], [505, 635], [505, 300], [810, 300]] as Corner[]).map((corner): [number, number] => {
+        coordinates: ([[-62, 152], [0, 0], [335, -173]] as Corner[]).map((corner): [number, number] => {
           const p = pointOf(corner);
           return [p.lng, p.lat];
         }),
@@ -233,24 +250,25 @@ export async function seedLand(s: SeedContext): Promise<void> {
     const wheat2 = await findField(SEED.field.wheat2);
     const barley = await findField(SEED.field.barley);
     const alfalfa = await findField(SEED.field.alfalfa);
-    const rice = await findField(SEED.field.rice);
+    const corn = await findField(SEED.field.corn);
+    const wheat3 = await findField(SEED.field.wheat3);
 
     await createIrrigation({
       type: 'canal',
       name: 'Magistral kanal',
       capacityM3h: 400,
-      limitM3: 180_000,
-      fieldIds: [wheat1.id, wheat2.id, rice.id],
+      limitM3: 420_000,
+      fieldIds: [wheat1.id, wheat2.id, alfalfa.id, corn.id],
       notes: 'Mavsumiy suv limiti taxminiy, aniqlashtiriladi.',
     });
     await createIrrigation({
       type: 'ditch',
       name: 'Ariq №1',
       capacityM3h: 120,
-      limitM3: 90_000,
-      fieldIds: [barley.id, alfalfa.id],
+      limitM3: 160_000,
+      fieldIds: [barley.id, wheat3.id],
     });
-    await createIrrigation({ type: 'pump', name: 'Nasos stansiyasi', capacityM3h: 150, fieldIds: [rice.id] });
+    await createIrrigation({ type: 'pump', name: 'Nasos stansiyasi', capacityM3h: 150, fieldIds: [corn.id] });
 
     const soil: [string, string, number, number, number, number, number, number][] = [
       [wheat1.id, '2024-09-12', 18, 24, 215, 7.9, 1.05, 0.62],
@@ -261,7 +279,9 @@ export async function seedLand(s: SeedContext): Promise<void> {
       [barley.id, '2026-09-11', 15, 21, 198, 8.0, 0.92, 0.98],
       [alfalfa.id, '2024-09-13', 24, 28, 240, 7.6, 1.32, 0.44],
       [alfalfa.id, '2026-09-11', 27, 30, 248, 7.5, 1.45, 0.4],
-      [rice.id, '2026-09-11', 20, 23, 210, 7.4, 1.22, 0.58],
+      [corn.id, '2026-09-11', 20, 23, 210, 7.4, 1.22, 0.58],
+      [wheat3.id, '2024-09-13', 17, 23, 208, 7.9, 1.0, 0.66],
+      [wheat3.id, '2026-09-10', 20, 26, 226, 7.8, 1.14, 0.52],
     ];
     for (const [fieldId, date, n, p, k, ph, humus, salinity] of soil) {
       await createSoil(fieldId, { date, n, p, k, ph, humus, salinity, lab: 'Buxoro viloyat agrokimyo laboratoriyasi' });
@@ -274,7 +294,7 @@ export async function seedLand(s: SeedContext): Promise<void> {
       number: 'IJ-2021/118',
       issueDate: '2021-03-15',
       expiryDate: '2070-03-15',
-      notes: '210 ga. Maydon taqsimoti aniqlashtiriladi.',
+      notes: '210 ga, shundan 90 ga haydaladigan yer.',
     });
     await createDocument({ type: 'land', title: 'Kadastr ko\'chirmasi', number: '06:11:02:01:0147', issueDate: '2021-04-02' });
     await createDocument({
@@ -297,10 +317,17 @@ export async function seedLand(s: SeedContext): Promise<void> {
       type: 'permit',
       title: 'Veterinariya-sanitariya xulosasi',
       number: 'VS-2025/07',
-      issueDate: '2025-10-20',
-      expiryDate: addDays(now, -6),
+      issueDate: '2026-10-05',
+      expiryDate: addDays(now, 330),
       entityType: 'facility',
       entityId: barnFacility.id,
+    });
+    await createDocument({
+      type: 'permit',
+      title: "Import veterinariya sertifikati: 700 bosh qo'y (Tatariston)",
+      number: 'VS-RT-2026/312',
+      issueDate: '2026-10-12',
+      notes: "Rossiya Federatsiyasi, Tatariston Respublikasi veterinariya xizmati.",
     });
 
     // Best effort: offline seeds simply start with no weather until the job runs.

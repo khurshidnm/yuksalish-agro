@@ -670,7 +670,7 @@ describe('dashboard KPIs (spec 14.3)', () => {
       mortalityPercent: null,
       costPerKgLive: null,
     });
-    expect(groups.crops.data).toEqual({ yieldTHa: null, onTimePercent: null, waterM3PerTon: null, costPerTon: null });
+    expect(groups.crops.data).toEqual({ yieldTHa: null, yieldSeason: null, onTimePercent: null, waterM3PerTon: null, costPerTon: null });
     expect(groups.feed.data).toMatchObject({ stockDays: null, lossPercent: null, costPerHeadDay: null });
     expect(groups.staff.data).toEqual({ headPerEmployee: null, haPerEmployee: null, attendancePercent: null });
     expect(groups.machinery.data.utilizationPercent).toBeNull();
@@ -726,6 +726,30 @@ describe('dashboard KPIs (spec 14.3)', () => {
     const month = (await client.get('/finance/summary/month', { month: monthOf(now) })).data;
     expect(month.expense).toBe(1_100_000); // money paid is unchanged
     expect(month.operatingExpense).toBe(300_000);
+  });
+
+  it('the year ahead: herd from the pregnancies, money only for those allowed to see it', async () => {
+    const owner = await f.as('owner');
+    const { data } = await owner.get('/dashboard/outlook');
+    expect(data.months).toHaveLength(12);
+    expect(data.months[0]).toBe(month);
+    expect(data.herd.rows).toHaveLength(12);
+    // Every open pregnancy gives 1.1 lambs, and 8 % are lost.
+    const born = data.herd.rows.reduce((sum: number, row: any) => sum + row.ewesLambing, 0);
+    expect(data.herd.lambsBorn).toBe(data.herd.rows.reduce((sum: number, row: any) => sum + row.lambsBorn, 0));
+    expect(born).toBe(data.herd.pregnant);
+    expect(data.money.opening).toBe(OPENING_BALANCE + INCOME - EXPENSE);
+    expect(data.money.rows).toHaveLength(12);
+    expect(data.money.closing).toBe(data.money.rows.at(-1).closing);
+    expect(data.feed.every((row: any) => typeof row.needKg === 'number')).toBe(true);
+
+    const vet = await f.as('veterinarian');
+    const seen = (await vet.get('/dashboard/outlook')).data;
+    expect(seen.money).toBeNull();
+    expect(JSON.stringify(seen)).not.toContain(String(OPENING_BALANCE));
+
+    const investor = await f.as('investor');
+    expect((await investor.get('/dashboard/outlook')).data.money.opening).toBe(OPENING_BALANCE + INCOME - EXPENSE);
   });
 
   it('rejects an impossible period', async () => {

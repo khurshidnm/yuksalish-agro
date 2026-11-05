@@ -11,7 +11,7 @@ import type { ChatMessage } from './types';
 import type { AssistantChat } from './useAssistantChat';
 import { useOnline } from './useOnline';
 
-const SUGGESTIONS = ['feedSpending', 'lambingThisWeek', 'feedDays', 'attention'] as const;
+const SUGGESTIONS = ['farmAnalysis', 'outlook','feedSpending', 'lambingThisWeek', 'feedDays', 'attention'] as const;
 const MAX_LENGTH = 2000;
 
 const hasProposal = (message: ChatMessage | undefined) => message?.attachments?.some((attachment) => attachment.type === 'proposal') ?? false;

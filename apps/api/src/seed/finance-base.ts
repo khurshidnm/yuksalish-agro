@@ -33,12 +33,10 @@ export async function seedFinanceBase(s: SeedContext): Promise<void> {
         {
           ...columns,
           name: p.sheepSeller,
-          tin: '305114872',
           type: 'supplier',
-          phone: '+998 76 225 14 80',
-          address: 'Surxondaryo viloyati, Sherobod tumani',
-          contactPerson: 'Olim Sharipov',
-          bankDetails: { bankName: 'Xalq banki', account: '2020 8000 3000 4411 1002', mfo: '00421' },
+          phone: '+7 843 200 14 80',
+          address: 'Rossiya, Tatariston Respublikasi, Qozon shahri',
+          contactPerson: 'Rinat Galiev',
         },
         {
           ...columns,

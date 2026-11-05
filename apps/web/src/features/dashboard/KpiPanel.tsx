@@ -164,7 +164,7 @@ export function KpiPanel() {
                             <FigureRow
                               key={row.key}
                               label={t(`kpi.labels.${row.key}`)}
-                              hint={missing ? missingHint : row.key === 'stockDays' ? group.data.limitingItem : undefined}
+                              hint={missing ? missingHint : row.key === 'stockDays' ? group.data.limitingItem : row.key === 'yieldTHa' ? (group.data.yieldSeason ?? undefined) : undefined}
                               value={missing ? '—' : format(row.format, Number(value))}
                               to={link(row.source[0], row.source[1])}
                             />

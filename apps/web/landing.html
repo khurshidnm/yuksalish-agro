@@ -7,7 +7,7 @@
     <script>
       // Someone with a session came for the app, not the sales page. Runs before anything is painted.
       try {
-        if (localStorage.getItem('yap.signedIn')) location.replace('/app');
+        if (localStorage.getItem('yap.signedIn')) location.replace('/app' + location.search);
       } catch (e) {}
     </script>
     <!--landing-head-->

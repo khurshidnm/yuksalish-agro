@@ -1,4 +1,4 @@
-import { Navigate, type RouteObject } from 'react-router';
+import { Navigate, useLocation, type RouteObject } from 'react-router';
 import { routes as ai } from '@/features/ai/routes';
 import { routes as alerts } from '@/features/alerts/routes';
 import { routes as assets } from '@/features/assets/routes';
@@ -21,6 +21,12 @@ import { routes as today } from '@/features/today/routes';
 import { NotFoundPage } from './pages';
 
 /** The pages behind sign-in. */
+/** A dashboard tab lives in the query, so a reload or a link keeps it. */
+function BackToDashboard() {
+  const { search } = useLocation();
+  return <Navigate to={{ pathname: '/', search }} replace />;
+}
+
 export const appRoutes: RouteObject[] = [
   ...dashboard,
   ...today,
@@ -42,6 +48,6 @@ export const appRoutes: RouteObject[] = [
   ...settings,
   ...platform,
   // Where the public page sends someone who already has a session.
-  { path: 'app', element: <Navigate to="/" replace /> },
+  { path: 'app', element: <BackToDashboard /> },
   { path: '*', element: <NotFoundPage /> },
 ];

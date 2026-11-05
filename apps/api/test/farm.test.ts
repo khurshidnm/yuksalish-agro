@@ -1044,7 +1044,7 @@ describe('weather', () => {
 });
 
 describe('pilot seed', () => {
-  it('lays out 210 ha: 70 arable, no overlaps, measured area matching the plan', async () => {
+  it('lays out 210 ha: 90 arable, no overlaps, measured area matching the plan', async () => {
     const f = await createFixture();
     const owner = await f.as('owner');
     vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -1067,9 +1067,8 @@ describe('pilot seed', () => {
     await owner.patch('/farm/passport', { totalAreaHa: 210 });
     const { data } = await owner.get('/farm/passport');
     const byUse = Object.fromEntries(data.areaBalance.byLandUse.map((r: any) => [r.landUse, r.areaHa]));
-    expect(byUse.arable).toBe(70);
+    expect(byUse.arable).toBe(90);
     expect(data.areaBalance).toMatchObject({ assignedHa: 210, unassignedHa: 0, overAssigned: false });
-    expect(data.passport.notes).toContain('Ochiq savol');
 
     const geometry = await f.run(async () => {
       const measured = await tx().execute(
@@ -1080,7 +1079,7 @@ describe('pilot seed', () => {
         where ST_Intersects(a.geom, b.geom) and ST_Area(ST_Intersection(a.geom, b.geom)) > 0`);
       return { measured: measured.rows, overlaps: overlaps.rows };
     });
-    expect(geometry.measured).toHaveLength(9);
+    expect(geometry.measured).toHaveLength(10);
     for (const row of geometry.measured as { area_ha: string; measured: number; valid: boolean }[]) {
       expect(row.valid).toBe(true);
       expect(Math.abs(Number(row.area_ha) - Number(row.measured))).toBeLessThan(0.001);
@@ -1094,7 +1093,7 @@ describe('pilot seed', () => {
 
     const expiring = await owner.get('/farm/documents', { expiry: 'expiring' });
     expect(expiring.body.data.map((d: any) => d.title)).toEqual(['Suvdan foydalanish ruxsatnomasi']);
-    expect((await owner.get('/farm/documents', { expiry: 'expired' })).body.meta.total).toBe(1);
+    expect((await owner.get('/farm/documents', { expiry: 'expired' })).body.meta.total).toBe(0);
 
     const card = (await owner.get('/farm/fields/lookup', { search: '1' })).data[0];
     expect((await owner.get(`/farm/fields/${card.id}`)).data.soilAnalyses).toHaveLength(2);

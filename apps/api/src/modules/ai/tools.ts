@@ -3,13 +3,17 @@
  * tool, and a tool the caller may not use is neither offered to the model nor run if requested.
  * Money tools need finance.view, so a shepherd's assistant has none at all (CLAUDE.md rule 7).
  */
+import type { FastifyBaseLogger } from 'fastify';
 import { z, type ZodType } from 'zod';
 import { ITEM_CATEGORIES, addDays, monthOf, type Permission } from '@yap/shared';
-import { today } from '../../core/context';
+import { hasPermission, today } from '../../core/context';
 import { isoDate, isoMonth } from '../../core/query';
+import { counts as alertCounts } from '../alerts/alerts.service';
 import { openAlerts } from '../alerts/summary';
 import { assetStatus } from '../assets/summary';
 import { overdueOperations } from '../crops/summary';
+import { kpis } from '../dashboard/kpis.service';
+import { outlook } from '../dashboard/outlook.service';
 import {
   budgetExecution,
   cashPosition,
@@ -20,6 +24,7 @@ import {
   monthToDate,
 } from '../finance/summary';
 import { attendanceToday } from '../hr/summary';
+import { areaBalance, getPassport } from '../farm/passport.service';
 import { feedBalance } from '../inventory/summary';
 import { herdMovement, herdSummary, reproductionKpis } from '../livestock/summary';
 import * as facts from './facts';
@@ -91,7 +96,37 @@ function resolvePeriod(input: z.output<typeof period>) {
   return { from: input.from ?? addDays(today(), -30), to: input.to ?? today() };
 }
 
+/** KPIs isolate a failing group by logging it. A tool has no request log, so a failed group just stays out. */
+const quietLog = { error: () => undefined, warn: () => undefined, info: () => undefined } as unknown as FastifyBaseLogger;
+
 export const TOOLS: AiTool[] = [
+  tool({
+    name: 'farm_overview',
+    description: 'The whole farm at once: land, herd, and the key indicators for finance, livestock, crops, feed, staff and machinery, plus open alerts. Use it for broad questions about how the farm is doing.',
+    input: z.object({}),
+    anyOf: ['dashboard.view'],
+    run: async () => {
+      const { groups } = await kpis({}, quietLog);
+      const { byStatus: _oneStatusEach, ...herd } = await herdSummary();
+      const data = {
+        land: hasPermission('farm.view') ? await areaBalance((await getPassport()).totalAreaHa) : null,
+        herd: hasPermission('livestock.view') ? herd : null,
+        indicators: Object.fromEntries(Object.entries(groups).map(([key, group]) => [key, group.data])),
+        openAlerts: await alertCounts(),
+      };
+      return { data, tables: ['animals', 'fields', 'transactions'], rows: 1, enoughData: herd.total > 0 };
+    },
+  }),
+  tool({
+    name: 'farm_outlook',
+    description: 'The next 12 months, projected from the records: lambing and herd size by month, whether each feed lasts until its next harvest, the expected harvest by crop and, for those allowed, cash by month and lamb income. Use it for any forecast.',
+    input: z.object({}),
+    anyOf: ['dashboard.view'],
+    run: async () => {
+      const data = await outlook();
+      return { data, tables: ['breeding_records', 'stock_batches', 'crop_plans', 'transactions'], rows: data.months.length };
+    },
+  }),
   tool({
     name: 'herd_summary',
     description: 'Head count of animals on the farm by category, and how many are pregnant, sick or in quarantine.',
@@ -352,8 +387,8 @@ export const TOOLS: AiTool[] = [
   }),
   tool({
     name: 'cashflow_forecast',
-    description: 'Statistical cash-flow forecast by month. Months where cash goes negative matter most.',
-    input: z.object({ months: z.number().int().min(1).max(12).default(6) }),
+    description: 'Statistical cash-flow forecast by month, 12 months unless asked otherwise. Months where cash goes negative matter most.',
+    input: z.object({ months: z.number().int().min(1).max(12).default(12) }),
     money: true,
     anyOf: ['finance.view'],
     run: async (input) => {

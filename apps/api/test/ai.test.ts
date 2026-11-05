@@ -485,8 +485,8 @@ describe('expenses', () => {
     const [insight] = await insightsOf(f, 'expense_spike');
     expect(insight.containsMoney).toBe(true);
     expect(insight.title).toContain(monthText(monthOf(monthsBack(1))));
-    expect(insight.body).toContain('2 000 000 UZS');
-    expect(insight.body).toContain('1 000 000 UZS');
+    expect(insight.body).toContain("2 000 000 so'm");
+    expect(insight.body).toContain("1 000 000 so'm");
     expect(insight.body).toContain('+100%');
     expect(insight.sources).toMatchObject({ months: 4, baselineMonths: 3 });
   });
@@ -613,7 +613,7 @@ describe('season profit, feed advice and crop suggestion', () => {
     // Wheat 50 t × 3 mln + barley 40 t × 2.5 mln = 250 mln; cost 30 + 20 = 50 mln.
     expect(insight.containsMoney).toBe(true);
     expect(insight.data).toMatchObject({ revenue: 250_000_000, cost: 50_000_000, profit: 200_000_000, profitabilityPercent: 400 });
-    expect(insight.title).toContain('200 000 000 UZS');
+    expect(insight.title).toContain("200 000 000 so'm");
     expect(insight.confidence).toBeCloseTo(0.7, 5);
     // Everything was covered, so the text does not report "0 plans lack data".
     expect((insight.data as any).textKey).toBe('season_profit_complete');
@@ -674,7 +674,7 @@ describe('season profit, feed advice and crop suggestion', () => {
     expect(insight.containsMoney).toBe(true);
     // 197.73 a head a day × 100 head.
     expect(insight.data).toMatchObject({ savingPerHeadDay: 197.73, savingPerDay: 19_772.73 });
-    expect(insight.body).toContain('19 773 UZS');
+    expect(insight.body).toContain("19 773 so'm");
     expect(insight.decision).toBe('pending');
   });
 
@@ -1305,7 +1305,7 @@ describe('executive summary', () => {
 
   it('turns figures into good, bad and to-do without any model', () => {
     const { bad, good, todo } = templateSections(figures(), 'uz');
-    expect(good).toEqual([aiText('uz', 'summary.good.noDeaths', { head: 500 }), expect.stringContaining('90 000 000 UZS')]);
+    expect(good).toEqual([aiText('uz', 'summary.good.noDeaths', { head: 500 }), expect.stringContaining("90 000 000 so'm")]);
     expect(bad).toEqual(
       expect.arrayContaining([
         expect.stringContaining('Kepak zaxirasi faqat 10 kunga'),

@@ -74,8 +74,8 @@ async function main() {
       district: 'Qorovulbozor tumani',
       address: 'Buxoro viloyati, Qorovulbozor tumani',
       totalAreaHa: 210,
-      lat: 39.5,
-      lng: 64.8,
+      lat: 39.743439,
+      lng: 64.794201,
     },
   });
 

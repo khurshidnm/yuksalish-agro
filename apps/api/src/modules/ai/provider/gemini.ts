@@ -13,7 +13,7 @@ import {
 import { AppError } from '../../../core/errors';
 import type { LlmBlock, LlmMessage, LlmProvider, LlmRequest, LlmResponse, LlmStopReason } from './types';
 
-export const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash';
+export const DEFAULT_GEMINI_MODEL = 'gemini-3.8-flash';
 
 const DEFAULT_THINKING_BUDGET = 1024;
 const DEFAULT_MAX_TOKENS = 8000;

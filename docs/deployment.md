@@ -988,7 +988,7 @@ docker compose -f docker-compose.prod.yml --env-file .env.production run --rm --
   api tsx src/seed/index.ts
 ```
 
-Always set `SEED_PASSWORD`. The default is published in this public repository together with the demo phone
+Always set `SEED_PASSWORD`. The default is written in this repository together with the demo phone
 numbers, so on a reachable server anyone could sign in as the owner. The platform admin keeps the password from
 `PLATFORM_ADMIN_PASSWORD`. Demo farms have 2FA switched off, so that their logins work without an authenticator.
 
