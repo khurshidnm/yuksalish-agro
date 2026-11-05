@@ -126,7 +126,7 @@ function Conflict({ record }: { record: OutboxRecord }) {
   return (
     <RecordRow record={record}>
       <p className="text-base">{t('sync.conflictBody')}</p>
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <Amounts title={t('sync.mine')} lines={mine} waterL={body.waterL} notes={body.notes} />
         {server.data ? (
           <Amounts title={t('sync.server')} lines={server.data.lines} waterL={server.data.waterL} notes={server.data.notes} />

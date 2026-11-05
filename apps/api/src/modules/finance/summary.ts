@@ -89,7 +89,33 @@ export async function cashPosition() {
   };
 }
 
-/** Income and expense this month. `operatingExpense` leaves out assets and animals bought. */
+/** Stock used in a period, less stock found. */
+async function stockCost(from: string, to: string): Promise<number> {
+  const credits = sql.join(
+    COST_CREDIT_MOVEMENT_TYPES.map((type) => sql`${type}`),
+    sql`, `,
+  );
+  const [row] = await tx()
+    .select({
+      amount: sql`coalesce(sum(case when ${m.type} in (${credits}) then -${m.totalCost} else ${m.totalCost} end), 0)`.mapWith(Number),
+    })
+    .from(m)
+    .where(
+      and(
+        eq(m.farmId, ctx().farmId),
+        inArray(m.type, [...COST_MOVEMENT_TYPES, ...COST_CREDIT_MOVEMENT_TYPES]),
+        gte(m.date, from),
+        lte(m.date, to),
+      ),
+    );
+  return row?.amount ?? 0;
+}
+
+/**
+ * Income and expense this month. `expense` is money paid. `operatingExpense` is the cost of running
+ * the farm: direct expenses plus stock used, so stock still in the warehouse is not a cost yet, and
+ * neither are assets or animals bought (CLAUDE.md rule 3).
+ */
 export async function monthToDate(month: string = monthOf(today())) {
   const { from, to } = monthRange(month);
   const rows = await tx()
@@ -111,7 +137,7 @@ export async function monthToDate(month: string = monthOf(today())) {
     month,
     income: sum((r) => r.type === 'income'),
     expense: sum((r) => r.type === 'expense'),
-    operatingExpense: sum((r) => r.type === 'expense' && ['expense', 'inventory'].includes(r.treatment)),
+    operatingExpense: round(sum((r) => r.type === 'expense' && r.treatment === 'expense') + (await stockCost(from, to)), 2),
   };
 }
 
@@ -555,6 +581,15 @@ export async function costCenterCosts(from?: string, to?: string) {
       };
     })
     .sort((a, b) => b.total - a.total);
+}
+
+/** Each herd judged with its own income and cost, including its share of overhead. */
+export async function herdResult(from?: string, to?: string) {
+  const centers = (await costCenterCosts(from, to)).filter((c) => c.type === 'herd' || c.type === 'animal');
+  return {
+    income: centers.reduce((sum, c) => sum + c.income, 0),
+    expense: centers.reduce((sum, c) => sum + c.total, 0),
+  };
 }
 
 // ─── Herds ─────────────────────────────────────────────────────────────────

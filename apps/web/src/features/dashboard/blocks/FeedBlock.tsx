@@ -54,7 +54,7 @@ export function FeedBlock({ data, link }: { data: FeedData; link: LinkTo }) {
   const stock = link('/inventory/stock', 'inventory.view') ?? balance;
 
   return (
-    <div className="grid gap-3 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
       <Card className="lg:col-span-2">
         <CardHeader>
           <CardTitle>{t('feed.daysTitle')}</CardTitle>
@@ -64,7 +64,7 @@ export function FeedBlock({ data, link }: { data: FeedData; link: LinkTo }) {
           {data.items.length === 0 ? (
             <NoData />
           ) : (
-            <ul className="grid gap-x-6 md:grid-cols-2">
+            <ul className="grid grid-cols-1 gap-x-6 md:grid-cols-2">
               {data.items.map((item) => (
                 <FeedMeter key={item.itemId} item={item} horizon={horizon} to={balance} />
               ))}

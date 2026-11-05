@@ -125,6 +125,7 @@ Development values are in `.env.example`. Production values are in `infra/env.pr
 | `AI_MODEL`, `AI_THINKING_BUDGET`, `AI_EFFORT`, `AI_CHAT_PER_MINUTE`, `AI_CHAT_PER_DAY` | Optional AI tuning. `AI_THINKING_BUDGET` is Gemini only, `AI_EFFORT` Claude only. |
 | `JOBS_ENABLED` | Set to `false` to run the API without background jobs. |
 | `PLATFORM_ADMIN_PHONE`, `PLATFORM_ADMIN_PASSWORD` | Read by the migrate step: create the first platform admin. |
+| `SEED_PASSWORD` | Password for the demo users. Set it for any seed on a server others can reach: see [Deployment](docs/deployment.md#demo-data-on-a-server). |
 
 ## Not built yet
 

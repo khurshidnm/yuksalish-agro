@@ -864,7 +864,8 @@ describe('investor one-pager', () => {
     const res = await investor.get('/reports/investor', { month: '2026-03' });
     expect(res.status).toBe(200);
     expect(res.data.finance).toMatchObject({ income: 3_000_000, expense: 7_000_000, net: -4_000_000 });
-    expect(res.data.finance.operatingExpense).toBe(7_000_000);
+    // 3 000 000 direct + 500 kg used at 2 000. The other 3 000 000 of the feed bought is still in stock.
+    expect(res.data.finance.operatingExpense).toBe(4_000_000);
     // Farm-wide, so the ram in the second herd counts: (9 000 000 + 4 000 000) / 10 head.
     expect(res.data.finance.costPerHead).toBe(1_300_000);
     expect(res.data.livestock).toMatchObject({ head: 10, dead: 1 });

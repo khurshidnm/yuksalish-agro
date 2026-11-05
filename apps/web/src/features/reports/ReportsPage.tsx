@@ -77,7 +77,7 @@ function CatalogTab({ catalog }: { catalog: Catalog }) {
             <h2 className="text-base font-semibold">
               {t(`modules.${module}`)} <span className="font-normal text-muted-foreground">· {reports.length}</span>
             </h2>
-            <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {reports.map((report) => (
                 <ReportCard key={report.key} report={report} />
               ))}
@@ -231,13 +231,13 @@ function InvestorTab() {
         <Skeleton className="h-64 w-full" />
       ) : (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard label={label('income')} value={money(data.data.finance.income)} />
             <StatCard label={label('expense')} value={money(data.data.finance.expense)} />
             <StatCard label={label('cash')} value={money(data.data.finance.cash)} />
             <StatCard label={label('head')} value={formatNumber(data.data.livestock.head, 0)} />
           </div>
-          <div className="grid gap-3 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
             <FigureList
               title={label('finance')}
               rows={[
@@ -327,7 +327,7 @@ export default function ReportsPage() {
       {catalog.isError ? (
         <ErrorCard error={catalog.error} onRetry={() => void catalog.refetch()} />
       ) : !catalog.data ? (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 6 }, (_, i) => (
             <Skeleton key={i} className="h-24 w-full" />
           ))}

@@ -119,7 +119,7 @@ export function AssistantTab({ configured }: { configured: boolean }) {
   );
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[17rem_minmax(0,1fr)]">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[17rem_minmax(0,1fr)]">
       <aside className="hidden flex-col gap-2 lg:flex">
         <Button variant="outline" onClick={chat.startNew}>
           <MessageSquarePlus aria-hidden />

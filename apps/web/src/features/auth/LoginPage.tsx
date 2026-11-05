@@ -132,7 +132,7 @@ export default function LoginPage() {
   const [challenge, setChallenge] = useState<string | null>(null);
 
   return (
-    <div className="grid min-h-dvh lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+    <div className="grid grid-cols-1 min-h-dvh lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
       <section className="relative hidden flex-col overflow-hidden bg-muted p-10 text-foreground lg:flex">
         <div className="flex items-center gap-3">
           <LogoMark />

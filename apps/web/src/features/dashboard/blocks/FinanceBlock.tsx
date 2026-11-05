@@ -38,7 +38,7 @@ export function FinanceBlock({ data, link }: { data: FinanceData; link: LinkTo }
   const transactions = link('/finance/transactions', 'finance.view');
 
   return (
-    <div className="grid gap-3 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
       <Card>
         <CardHeader>
           <CardTitle>{t('finance.cash')}</CardTitle>

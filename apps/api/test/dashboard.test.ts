@@ -1,6 +1,6 @@
 import { eq, sql } from 'drizzle-orm';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import { DEFAULT_ROLE_PERMISSIONS, MODULES, addDays, monthOf, todayIso, type RoleKey } from '@yap/shared';
+import { DEFAULT_ROLE_PERMISSIONS, MODULES, addDays, monthOf, round, todayIso, type RoleKey } from '@yap/shared';
 import { ctx, tx } from '../src/core/context';
 import { ensureCostCenter, generalCostCenterId } from '../src/core/costCenters';
 import { issueStock, receiveStock } from '../src/core/inventory';
@@ -526,12 +526,14 @@ describe('dashboard KPIs (spec 14.3)', () => {
 
   it('finance figures against control numbers', async () => {
     const { data } = (await (await f.as('owner')).get('/dashboard/kpis', { from: month, to: month })).data.groups.finance;
+    // Hay is fed at 100 000 a day for the last 7 days, so how much falls in this month depends on the date.
+    const hayUsed = [1, 2, 3, 4, 5, 6, 7].filter((day) => monthOf(addDays(now, -day)) === month).length * 100_000;
+    const operating = EXPENSE + hayUsed;
     expect(data).toMatchObject({
       income: INCOME,
-      operatingExpense: EXPENSE,
-      // (10 mln − 8 mln) / 8 mln
-      profitabilityPercent: 25,
-      operatingRatio: 0.8,
+      operatingExpense: operating,
+      profitabilityPercent: round(((INCOME - operating) / operating) * 100, 1),
+      operatingRatio: round(operating / INCOME, 2),
       netCashflow: INCOME - EXPENSE,
       budgetDeviation: EXPENSE - BUDGET,
     });
@@ -689,6 +691,36 @@ describe('dashboard KPIs (spec 14.3)', () => {
     const { data } = (await (await other.as('owner')).get('/dashboard/kpis')).data.groups.finance;
     expect(data.operatingExpense).toBe(100);
     expect(data.profitabilityPercent).toBeNull();
+  });
+
+  it('stock bought is a cost only when it is used (rule 3)', async () => {
+    const other = await createFixture();
+    await other.run(async () => {
+      const [account] = await tx().insert(schema.accounts).values({ ...base(), name: 'K', type: 'cash' }).returning();
+      const category = async (key: string) =>
+        (await tx().select().from(schema.financeCategories).where(sql`key = ${key} and tenant_id = ${ctx().tenantId}`))[0]!;
+      const general = await generalCostCenterId();
+      const [warehouse] = await tx().insert(schema.warehouses).values({ ...base(), name: 'W', type: 'feed' }).returning();
+      const [hay] = await tx().insert(schema.items).values({ ...base(), name: 'Hay', category: 'feed', unit: 'kg' }).returning();
+      const money = { date: now, paymentMethod: 'cash' as const, accountId: account.id, autoApprove: true };
+      // 1 000 000 of feed bought, of which 200 000 is used, and 100 000 paid for fuel.
+      await postTransaction({ ...money, type: 'expense', amount: 1_000_000, categoryId: (await category('feed')).id, costCenterId: general, costTreatment: 'inventory' });
+      await receiveStock({ itemId: hay.id, warehouseId: warehouse.id, qty: 1000, unitCost: 1000, date: now, source: 'purchase' });
+      await issueStock({ itemId: hay.id, warehouseId: warehouse.id, qty: 200, date: now, costCenterId: general, reason: 'ration' });
+      await postTransaction({ ...money, type: 'expense', amount: 100_000, categoryId: (await category('fuel')).id, costCenterId: general });
+      await postTransaction({ ...money, type: 'income', amount: 450_000, categoryId: (await category('wool_sales')).id, costCenterId: general });
+    });
+    const client = await other.as('owner');
+    const { data } = (await client.get('/dashboard/kpis')).data.groups.finance;
+    expect(data).toMatchObject({
+      income: 450_000,
+      operatingExpense: 300_000,
+      // (450 000 − 300 000) / 300 000
+      profitabilityPercent: 50,
+    });
+    const month = (await client.get('/finance/summary/month', { month: monthOf(now) })).data;
+    expect(month.expense).toBe(1_100_000); // money paid is unchanged
+    expect(month.operatingExpense).toBe(300_000);
   });
 
   it('rejects an impossible period', async () => {

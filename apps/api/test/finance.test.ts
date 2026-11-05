@@ -876,7 +876,8 @@ describe('transfers and foreign currency', () => {
 
     const month = await owner.get('/finance/summary/month', { month: '2026-10' });
     expect(month.data.expense).toBe(19_900_000); // all approved expenses of the scenario
-    expect(month.data.operatingExpense).toBe(4_900_000); // without animals (10m) and capex (5m)
+    // 1.9m direct + 1.5m of stock used. Not animals (10m), capex (5m) or stock bought and unused.
+    expect(month.data.operatingExpense).toBe(3_400_000);
   });
 
   it('keeps a foreign account in its own currency and values it in base', async () => {

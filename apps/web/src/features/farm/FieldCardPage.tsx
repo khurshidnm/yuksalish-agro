@@ -75,7 +75,7 @@ function OverviewTab({ field }: { field: FieldCard }) {
         <StatCard label={t('fields.soilType')} value={field.soilType ?? '—'} hint={field.salinityLevel ? t(`salinity.${field.salinityLevel}`, { defaultValue: field.salinityLevel }) : undefined} />
         <StatCard label={t('fields.irrigationSource')} value={field.irrigationSource ?? '—'} />
       </div>
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>{t('fields.currentCrop')}</CardTitle>

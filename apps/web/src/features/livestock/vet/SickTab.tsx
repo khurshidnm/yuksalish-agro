@@ -64,7 +64,7 @@ export function SickTab() {
         <EmptyState icon={HeartPulse} title={status === 'open' ? t('sick.emptyTitle') : t('sick.emptyResolvedTitle')} description={status === 'open' ? t('sick.emptyBody') : undefined} />
       )}
 
-      <ul className="grid gap-3 lg:grid-cols-2">
+      <ul className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         {rows.map((report) => (
           <li key={report.id}>
             <Card className="space-y-2 p-4">
@@ -113,7 +113,7 @@ export function SickTab() {
         <section className="space-y-2">
           <h2 className="font-semibold">{t('sick.unreportedTitle')}</h2>
           <p className="text-sm text-muted-foreground">{t('sick.unreportedHint')}</p>
-          <ul className="grid gap-3 lg:grid-cols-2">
+          <ul className="grid grid-cols-1 gap-3 lg:grid-cols-2">
             {unreported.map((animal) => (
               <li key={animal.id}>
                 <Card className="space-y-2 p-4">

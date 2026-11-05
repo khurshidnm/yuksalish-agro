@@ -203,7 +203,7 @@ function WeekView({ anchor, items, onPick, onEdit }: MonthProps & { onEdit: (ite
   const today = todayIso();
   return (
     // Seven columns beside the sidebar leave no room to read, so days flow into wider cards.
-    <div className="grid items-start gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {weekDays(anchor).map((date, index) => (
         <Card key={date} className={cn('min-w-0', date === today && 'border-primary')}>
           <CardContent className="p-2 md:p-2">

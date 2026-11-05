@@ -108,7 +108,7 @@ export function AssetCostsTab({ asset }: { asset: AssetCard }) {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <StatCard icon={Clock} label={t('costs.perHour')} value={<MoneyText value={data?.costPerHour ?? null} />} hint={t('costs.overHours', { hours: formatNumber(data?.hours ?? 0) })} loading={isLoading} />
         <StatCard icon={Tractor} label={t('costs.perHectare')} value={<MoneyText value={data?.costPerHectare ?? null} />} hint={t('costs.overHectares', { hectares: formatNumber(data?.hectares ?? 0) })} loading={isLoading} />
         <StatCard label={t('costs.total')} value={<MoneyText value={data?.total ?? null} compact />} loading={isLoading} />

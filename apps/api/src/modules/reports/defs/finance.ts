@@ -7,8 +7,9 @@ import {
   profitabilityPercent,
   round,
 } from '@yap/shared';
+import { profitPerHead } from '@yap/shared/formulas/kpi';
 import { schema } from '../../../db/client';
-import { ctx, hasPermission, tx } from '../../../core/context';
+import { ctx, hasPermission, today, tx } from '../../../core/context';
 import { monthsBetween } from '../../finance/budget.service';
 import { listDebts } from '../../finance/debts.service';
 import { list as listLoans } from '../../finance/loans.service';
@@ -18,6 +19,7 @@ import {
   cashflowActual,
   cashflowForecastDetail,
   costCenterCosts,
+  herdResult,
   fieldCosts,
   herdCosts,
   incomeExpenseByCategory,
@@ -445,8 +447,9 @@ export const financeReports: ReportDefinition[] = [
         );
       const flow = await cashflowActual(from, to);
       const budget = await budgetExecution(from, to);
-      const profit = income - operating;
-      const perEwe = ratio(profit, ewes.head);
+      // The same figure as the dashboard: a period running past today has no later costs to count.
+      const herds = await herdResult(from, to < today() ? to : today());
+      const perEwe = profitPerHead(herds.income, herds.expense, ewes.head);
       const costRatio = ratio(operating, income);
       const value = (v: number | null) => (v === null ? null : round(v, 2));
       return {

@@ -4,7 +4,8 @@
  * devices, tasks. Each step finds what earlier steps created through seed/lookup.ts.
  */
 export const SEED = {
-  password: 'Yuksalish2026!',
+  /** The default is published in the repository: set SEED_PASSWORD on any server that others can reach. */
+  password: process.env.SEED_PASSWORD || 'Yuksalish2026!',
   /** Employee `position`s; findEmployee(position) returns the first match. */
   position: {
     director: 'Direktor',

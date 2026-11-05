@@ -177,7 +177,7 @@ export function TaskBoard(props: Omit<TaskCardProps, 'task'>) {
 
   if (active.isLoading) {
     return (
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {[0, 1, 2].map((i) => (
           <Skeleton key={i} className="h-64 w-full" />
         ))}
@@ -193,7 +193,7 @@ export function TaskBoard(props: Omit<TaskCardProps, 'task'>) {
   }
 
   return (
-    <div className="grid items-start gap-4 lg:grid-cols-3">
+    <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
       <Column title={t('board.open')} tone="neutral" tasks={tasks.filter((task) => task.status === 'open')} {...props} />
       <Column title={t('board.inProgress')} tone="info" tasks={tasks.filter((task) => task.status === 'in_progress')} {...props} />
       <Column title={t('board.done')} tone="success" tasks={closed} {...props} />

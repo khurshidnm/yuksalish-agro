@@ -149,7 +149,7 @@ export function PregnanciesTab() {
               className="md:w-48"
             />
             {canCreate && (
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button onClick={() => setCreating(true)} className="flex-1 md:flex-none">
                   <Plus aria-hidden />
                   {t('pregnancies.add')}

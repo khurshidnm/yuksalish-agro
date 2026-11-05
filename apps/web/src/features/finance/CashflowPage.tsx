@@ -57,7 +57,7 @@ function ForecastTab() {
       align: 'right',
       cell: (row) =>
         row.negative ? (
-          <span className="inline-flex items-center gap-1.5 font-medium text-danger">
+          <span className="inline-flex flex-wrap items-center justify-end gap-1.5 font-medium text-danger">
             <OctagonAlert className="size-4" aria-hidden />
             <MoneyText value={row.closing} />
             <Badge variant="danger">{t('cashflow.shortfall')}</Badge>

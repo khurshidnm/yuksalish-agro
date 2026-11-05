@@ -31,11 +31,13 @@ describe('settings reach the containers', () => {
     // An empty value would coerce the numbers among these to 0, so they are not passed through.
     const onDefaults = ['API_PORT', 'ACCESS_TOKEN_TTL_MIN', 'REFRESH_TOKEN_TTL_DAYS', 'BCRYPT_ROUNDS', 'STORAGE_DIR', 'JOBS_ENABLED'];
     const migrateOnly = ['DATABASE_OWNER_URL', 'PLATFORM_ADMIN_PHONE', 'PLATFORM_ADMIN_PASSWORD'];
+    // Set on the one command that seeds demo data: see docs/deployment.md.
+    const seedOnly = ['SEED_PASSWORD'];
     const files = readdirSync(join(apiRoot, 'src'), { recursive: true, encoding: 'utf8' }).filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts'));
     const inCode = files.flatMap((f) => [...source(f).matchAll(/process\.env\.([A-Z][A-Z0-9_]*)/g)].map((m) => m[1]));
     const declared = [...source('config.ts').matchAll(/^ {2}([A-Z][A-Z0-9_]*):/gm)].map((m) => m[1]);
     const apiEnv = compose.slice(compose.indexOf('x-api-env'), compose.indexOf('services:'));
-    const missing = [...new Set([...inCode, ...declared])].filter((name) => !onDefaults.includes(name) && !migrateOnly.includes(name) && !apiEnv.includes(`${name}:`));
+    const missing = [...new Set([...inCode, ...declared])].filter((name) => !onDefaults.includes(name) && !migrateOnly.includes(name) && !seedOnly.includes(name) && !apiEnv.includes(`${name}:`));
     expect(missing).toEqual([]);
   });
 });

@@ -92,7 +92,7 @@ export function PedigreeTab() {
       {animalId && pedigree.isLoading && <Skeleton className="h-48 w-full" />}
 
       {pedigree.data && (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <Card className="p-4">
             <h3 className="mb-3 font-semibold">{t('pedigree.ancestors')}</h3>
             <AnimalChip node={pedigree.data.animal} />

@@ -158,7 +158,7 @@ export default function WinterPlanPage() {
                 <TabsTrigger value="scenario">{t('winter.modeScenario')}</TabsTrigger>
               </TabsList>
             </Tabs>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="winter-days">{t('winter.days')}</Label>
                 <NumberInput
@@ -205,7 +205,7 @@ export default function WinterPlanPage() {
 
         {ready && plan.data && plan.data.rows.length > 0 && (
           <>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <StatCard label={t('winter.stats.herd')} value={t('winter.headValue', { head: formatNumber(plan.data.head, 0) })} hint={t('winter.stats.days', { days: plan.data.days })} icon={CalendarDays} />
               <StatCard label={t('winter.stats.required')} value={formatKg(plan.data.totals.requiredKg)} icon={Scale} />
               <StatCard

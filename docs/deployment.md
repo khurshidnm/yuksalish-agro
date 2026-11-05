@@ -87,10 +87,42 @@ or through the assistant: a record has nowhere to go until one exists.
 ## TLS
 
 TLS must terminate in front of the `web` container. The refresh cookie is marked `Secure` in production, so
-over plain HTTP a session cannot be renewed and people are signed out when the access token expires. Service
-workers also need HTTPS.
+over plain HTTP the browser never stores it. Sign-in appears to work, then every page reload returns to the
+sign-in page, and the session ends when the access token expires. Service workers, and so offline use, also
+need HTTPS. Testing on `localhost` hides all of this, because browsers treat it as secure.
 
-Put any TLS proxy on the host and forward to `127.0.0.1:${WEB_PORT}`:
+The shortest route is Caddy on the host, which obtains and renews the certificate by itself. Point a DNS name
+at the server and open ports 80 and 443. Without a domain yet, `<server-ip-with-dashes>.sslip.io` resolves to
+the server and can receive a certificate, for example `203-0-113-10.sslip.io`.
+
+```sh
+sudo apt install -y caddy
+```
+
+`/etc/caddy/Caddyfile`:
+
+```caddy
+app.example.uz {
+	request_body {
+		max_size 16MB
+	}
+	reverse_proxy 127.0.0.1:8080 {
+		flush_interval -1
+		transport http {
+			read_timeout 600s
+		}
+	}
+}
+```
+
+```sh
+sudo systemctl reload caddy
+```
+
+Set `WEB_ORIGIN` and `VITE_SITE_URL` to the same `https://` address. Check it with a reload after signing in:
+you should stay signed in.
+
+Any other TLS proxy on the host works too. Forward to `127.0.0.1:${WEB_PORT}`:
 
 ```nginx
 location / {
@@ -114,6 +146,24 @@ person to send again, which can draft a second card. `infra/nginx.conf` allows t
 
 `infra/nginx.conf` trusts `X-Forwarded-For` only from loopback and Docker's private range. Set `WEB_ORIGIN` to
 the public HTTPS address.
+
+## Demo data on a server
+
+A farm that is being shown rather than used can hold the pilot demo data. The seed refuses to run in production
+on purpose, so this overrides that guard for one command. Run it once, on an empty database, after the first
+deploy. Never run it on a farm with real records.
+
+```sh
+docker compose -f docker-compose.prod.yml --env-file .env.production run --rm --no-deps \
+  -e NODE_ENV=development \
+  -e SEED_PASSWORD='your-own-long-password' \
+  -e DATABASE_OWNER_URL="postgres://yap:$(grep '^POSTGRES_PASSWORD=' .env.production | cut -d= -f2)@db:5432/yap" \
+  api tsx src/seed/index.ts
+```
+
+Always set `SEED_PASSWORD`. The default is published in this public repository together with the demo phone
+numbers, so on a reachable server anyone could sign in as the owner. The platform admin keeps the password from
+`PLATFORM_ADMIN_PASSWORD`. Demo farms have 2FA switched off, so that their logins work without an authenticator.
 
 ## Updates and migrations
 

@@ -62,7 +62,7 @@ export function CropsBlock({ data, link }: { data: CropsData; link: LinkTo }) {
   const operations = link('/crops/operations', 'crops.view');
 
   return (
-    <div className="grid gap-3 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
       <Card className="lg:col-span-3">
         <CardHeader className="flex-row items-center justify-between gap-2">
           <CardTitle>{t('crops.weatherTitle')}</CardTitle>
