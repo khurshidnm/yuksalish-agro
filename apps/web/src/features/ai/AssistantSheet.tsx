@@ -128,7 +128,7 @@ export default function AssistantSheet({
         )}
 
         <Tabs value={tab} onValueChange={setTab} className="flex min-h-0 flex-1 flex-col">
-          <TabsList className="shrink-0 px-2">
+          <TabsList className="mx-0 shrink-0 px-2">
             <TabsTrigger value="chat">{t('records.sheet.chat')}</TabsTrigger>
             <TabsTrigger value="pending" data-testid="sheet-pending-tab">
               <span className="flex items-center gap-1.5">
