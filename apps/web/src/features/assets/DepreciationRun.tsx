@@ -47,8 +47,11 @@ export function DepreciationResultAlert({ run }: { run: DepreciationRun }) {
     <Alert tone="success" className="mb-4" title={t('depreciation.postedTitle')}>
       <ul>
         {run.months.map((line) => (
-          <li key={line.month}>
-            {formatMonth(line.month)}, {t('depreciation.machines', { count: line.posted })}: <MoneyText value={line.total} />
+          <li key={line.month} className="flex flex-wrap justify-between gap-x-3">
+            <span>
+              {formatMonth(line.month)}, {t('depreciation.machines', { count: line.posted })}
+            </span>
+            <MoneyText value={line.total} />
           </li>
         ))}
       </ul>

@@ -194,7 +194,7 @@
     "stale": "This button is out of date.",
     "cardChanged": "This card has changed. Please check it and confirm again.",
     "moneyHidden": "This record holds money details your role cannot see.",
-    "noRightToAcknowledge": "Your role cannot acknowledge alerts.",
+    "noRightToAcknowledge": "Only the people responsible, the owner or the director can acknowledge this alert.",
     "buttons": {
       "acknowledge": "Acknowledge",
       "confirm": "Confirm",
@@ -261,6 +261,7 @@
   "errors": {
     "ALERT_NOT_OPEN": "This alert has already been handled",
     "ALERT_ALREADY_RESOLVED": "This alert is already closed",
+    "ALERT_NOT_YOURS": "Only the people responsible, the owner or the director can stop this urgent alert",
     "TELEGRAM_NOT_CONFIGURED": "The Telegram bot is not set up yet. Contact your administrator.",
     "AI_AUDIO_NOT_SUPPORTED": "The current AI provider cannot read voice notes. Please type your message.",
     "AI_TRANSCRIPTION_FAILED": "The voice note could not be read. Please say it again or type it."
@@ -326,8 +327,10 @@
     "confirmTitle": "Send the test message?",
     "confirmBody": "It goes to all the staff of this farm.",
     "confirmAction": "Send",
-    "reached": "Reached: {{count}}",
-    "unreachable": "Not reached: {{count}}",
+    "inApp": "In the app: {{count}}",
+    "inAppBody": "The message is in each person's notifications.",
+    "reached": "Reached through Telegram: {{count}}",
+    "unreachable": "Not reached through Telegram: {{count}}",
     "nobody": "This farm has no staff to send it to.",
     "reason": {
       "not_linked": "Telegram not linked, or the bot is blocked",

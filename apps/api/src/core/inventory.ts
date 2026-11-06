@@ -287,7 +287,8 @@ export async function transferStock(i: {
         qtyRemaining: part.qty,
         unitCost: part.unitCost,
         expiryDate: part.batch.expiryDate,
-        source: 'transfer',
+        // Own produce stays own produce wherever it moves: farm-level cost leaves it out.
+        source: part.batch.source === 'own_harvest' ? 'own_harvest' : 'transfer',
         counterpartyId: part.batch.counterpartyId,
       })
       .returning();

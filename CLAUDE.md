@@ -76,6 +76,9 @@ For a schema change there, apply the new table by hand; never run `db:reset` on 
    `expense` transactions plus stock `issue` movements. Purchases for stock must use `inventory`.
    Money and goods stand or fall together: rejecting or voiding the money of a stock purchase takes its
    receipt back, and if the stock was already used, the rejection is refused.
+   Money recorded later for a receipt stands alone: rejecting it puts the receipt back on the unpaid list,
+   and the goods stay. Farm-level operating expense is direct expenses plus stock used, leaving out own
+   produce, whose cost was counted as it grew. Net result is income less operating expense, everywhere.
 4. **Formulas live in `packages/shared/src/formulas`.** Do not reimplement one. Add it there with a test.
 5. **Missing data is `null`, never 0.** A zero denominator yields `null`; the UI shows a "not enough data"
    dash. Do not guess.

@@ -12,6 +12,7 @@ import { AssetFormDialog } from './AssetFormDialog';
 import { AssetMaintenanceTab } from './AssetMaintenanceTab';
 import { AssetUsageTab, ShiftDialog } from './AssetUsageTab';
 import { STATUS_VARIANT } from './AssetsPage';
+import { depreciationGaps } from './depreciationGaps';
 import type { AssetCard } from './types';
 
 function Fact({ label, children }: { label: string; children: React.ReactNode }) {
@@ -27,8 +28,16 @@ function Overview({ asset }: { asset: AssetCard }) {
   const { t } = useTranslation('assets');
   const seesMoney = usePermission('finance.view');
   const due = asset.maintenanceDue;
+  const gaps = depreciationGaps(asset);
   return (
     <div className="space-y-4">
+      {gaps.length > 0 && (
+        <Alert tone="warning">
+          {gaps.map((gap) => (
+            <p key={gap}>{t(`depreciation.gap.${gap}`)}</p>
+          ))}
+        </Alert>
+      )}
       {due?.overdue && (
         <Alert tone="warning" title={t('serviceDueTitle')}>
           {[due.nextDueDate ? formatDate(due.nextDueDate) : null, due.nextDueMotoHours === null ? null : `${formatNumber(due.nextDueMotoHours)} ${t('unit.hours')}`]

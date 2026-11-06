@@ -96,7 +96,7 @@
       "noDeaths": "No deaths this period, with {{head}} head on the farm.",
       "feedCovered": "Feed is sufficient: the lowest stock ({{item}}) lasts {{days}} days.",
       "noOverdue": "Nothing is overdue.",
-      "money": "Income {{income}} so'm, expense {{expense}} so'm, {{cash}} so'm in cash and bank.",
+      "money": "Income {{income}} so'm, paid {{expense}} so'm, {{cash}} so'm in cash and bank.",
       "onBudget": "Budget execution is {{percent}}%, within plan.",
       "none": "No particular gains to report this period."
     },

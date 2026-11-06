@@ -4,7 +4,7 @@
  * and receipts and issues also share a `refId`, so the whole document can be reversed.
  */
 import { addDays, CURRENCIES, round, toBaseAmount } from '@yap/shared';
-import { and, asc, count, desc, eq, exists, gt, gte, inArray, isNull, lte, notExists, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, count, desc, eq, exists, gt, gte, inArray, isNull, lte, notExists, or, sql, type SQL, type SQLWrapper } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { v7 as uuidv7 } from 'uuid';
 import { z } from 'zod';
@@ -252,6 +252,9 @@ export async function createReceipt(input: ReceiptInput) {
   await assertWarehouse(input.warehouseId);
   if (input.counterpartyId) await assertCounterparty(input.counterpartyId);
   if (payment?.accountId) await assertAccount(payment.accountId);
+  if (payment && input.source === 'purchase') {
+    await assertNoPaidRequest(input.lines.map((line) => line.itemId), input.counterpartyId ?? null);
+  }
 
   const currency = input.currency ?? ctx().currency;
   if (currency !== ctx().currency && !input.fxRate) throw badRequest('FX_RATE_REQUIRED', `Enter the exchange rate for ${currency}`);
@@ -323,6 +326,30 @@ export async function createReceipt(input: ReceiptInput) {
 
 // ─── Receipts with no money ────────────────────────────────────────────────
 
+/** A paid request naming no supplier could be any delivery of the item. */
+const paidRequestFor = (farmId: SQLWrapper | string, itemId: SQLWrapper | string, counterpartyId: SQLWrapper | string | null) =>
+  and(
+    eq(purchaseRequests.farmId, farmId),
+    eq(purchaseRequests.status, 'paid'),
+    eq(purchaseRequests.itemId, itemId),
+    or(isNull(purchaseRequests.counterpartyId), counterpartyId ? eq(purchaseRequests.counterpartyId, counterpartyId) : undefined),
+  );
+
+/** Money for goods a paid request is still waiting for would count twice. */
+async function assertNoPaidRequest(itemIds: string[], counterpartyId: string | null, docNo?: string | null): Promise<void> {
+  const [request] = await tx()
+    .select({ id: purchaseRequests.id })
+    .from(purchaseRequests)
+    .where(or(...itemIds.map((itemId) => paidRequestFor(ctx().farmId, itemId, counterpartyId))))
+    .limit(1);
+  if (request) {
+    throw conflict('RECEIPT_PAID_BY_REQUEST', 'A paid purchase request is waiting for these goods, so money here would count twice', {
+      docNo,
+      requestId: request.id,
+    });
+  }
+}
+
 /**
  * A storekeeper receives goods but cannot post money, and money is never posted for them: the same
  * purchase may already be paid. So a purchase from a supplier with nothing recorded stays visible to
@@ -343,14 +370,7 @@ function unpaidDocuments() {
   const paidRequest = tx()
     .select({ id: purchaseRequests.id })
     .from(purchaseRequests)
-    .where(
-      and(
-        eq(purchaseRequests.farmId, m.farmId),
-        eq(purchaseRequests.status, 'paid'),
-        eq(purchaseRequests.itemId, m.itemId),
-        or(isNull(purchaseRequests.counterpartyId), eq(purchaseRequests.counterpartyId, stockBatches.counterpartyId)),
-      ),
-    );
+    .where(paidRequestFor(m.farmId, m.itemId, stockBatches.counterpartyId));
   return tx()
     .select({
       id: m.refId,
@@ -404,7 +424,9 @@ export const receiptMoneyInput = paymentInput.omit({ fileId: true }).extend({
 /**
  * Say what an unpaid receipt was: paid, or owed. The amount is what the receipt put in stock, in the
  * base currency, so stock and money agree. The rows carry the document, not a batch: refusing them
- * later puts the receipt back on the list and leaves the goods alone (see core/ledger).
+ * later puts the receipt back on the list and leaves the goods alone (see core/ledger). Refused while
+ * a paid request waits for these goods: they would be paid twice, and receiving that request later
+ * would double the stock too.
  */
 export async function recordReceiptMoney(refId: string, input: z.infer<typeof receiptMoneyInput>) {
   const m = stockMovements;
@@ -435,6 +457,8 @@ export async function recordReceiptMoney(refId: string, input: z.infer<typeof re
     .where(and(eq(transactions.farmId, c.farmId), moneyOfReceipt(refId, lines.map((line) => line.batchId))))
     .limit(1);
   if (money) throw conflict('RECEIPT_HAS_MONEY', 'Money is already recorded for this receipt', { docNo });
+
+  await assertNoPaidRequest(lines.map((line) => line.itemId), counterpartyId, docNo);
 
   const groups = new Map<string, MoneyGroup>();
   for (const line of lines) {

@@ -149,7 +149,12 @@
     "machines": "texnika: {{count}}",
     "total": "Jami",
     "nothingTitle": "Hisoblanadigan summa yo'q",
-    "nothingBody": "Tugagan oylar bo'yicha hisoblanadigan summa qolmagan. {{month}} tugagach hisoblash mumkin."
+    "nothingBody": "Tugagan oylar bo'yicha hisoblanadigan summa qolmagan. {{month}} tugagach hisoblash mumkin.",
+    "gap": {
+      "usefulLifeMonths": "Xizmat muddatisiz amortizatsiya hisoblanmaydi",
+      "totalUnits": "Umumiy resurssiz amortizatsiya hisoblanmaydi",
+      "purchaseDate": "Xarid sanasisiz amortizatsiya hisoblanmaydi"
+    }
   },
   "rental": {
     "createAct": "Bajarilgan ish akti",

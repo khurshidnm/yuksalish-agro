@@ -23,7 +23,6 @@ export default function ChangePasswordPage() {
   if (!session.mustChangePassword) return <Navigate to="/" replace />;
 
   const submit = form.handleSubmit(async ({ currentPassword, newPassword }) => {
-    setError(null);
     try {
       await api.post('/auth/change-password', { currentPassword, newPassword });
       await reloadSession();
@@ -40,7 +39,15 @@ export default function ChangePasswordPage() {
           <h1 className="text-xl font-semibold tracking-tight">{t('auth:password.forcedTitle')}</h1>
         </div>
         <p className="text-sm text-muted-foreground">{t('auth:password.forcedBody')}</p>
-        <form onSubmit={(e) => void submit(e)} noValidate className="mt-4 flex flex-col gap-4">
+        <form
+          onSubmit={(e) => {
+            // Before validation, which stops a failing attempt from reaching the handler.
+            setError(null);
+            void submit(e);
+          }}
+          noValidate
+          className="mt-4 flex flex-col gap-4"
+        >
           {error && <Alert tone="danger">{error}</Alert>}
           <PasswordFields form={form} currentLabel={t('auth:password.forcedCurrent')} />
           <Button type="submit" size="lg" loading={form.formState.isSubmitting}>

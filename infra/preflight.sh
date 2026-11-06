@@ -242,6 +242,8 @@ if [[ -n "$telegram_token" ]]; then
       warn "Telegram does not work from this server." "$telegram_message"
     fi
   fi
+else
+  warn "TELEGRAM_BOT_TOKEN is empty, so no alert can leave the app." "A fire shows only to someone looking at the app. Get a token from @BotFather and put it in the env file."
 fi
 
 storage="$(setting STORAGE_DRIVER local)"

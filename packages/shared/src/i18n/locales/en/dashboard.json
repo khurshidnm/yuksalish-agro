@@ -16,6 +16,7 @@
       "fields": { "title": "Fields", "body": "Draw the fields on the map or add them to the list." },
       "warehouses": { "title": "Warehouses", "body": "A receipt needs a warehouse first." },
       "items": { "title": "Items", "body": "The list of feed, medicine and other goods." },
+      "suppliers": { "title": "Suppliers", "body": "A purchase needs a supplier before it can be received." },
       "stock": { "title": "Opening stock", "body": "Receive what is in the warehouse today." },
       "rations": { "title": "Ration", "body": "Prepare the ration before creating a herd." },
       "herds": { "title": "Herds and animals", "body": "Create a herd, then add or import the animals." },
@@ -49,7 +50,7 @@
   "finance": {
     "cashTotal": "Total cash",
     "cash": "Cash and bank",
-    "monthExpense": "Expenses this month",
+    "monthExpense": "Paid this month",
     "monthIncome": "Income this month",
     "budget": "Budget execution",
     "budgetMonth": "Budget this month",

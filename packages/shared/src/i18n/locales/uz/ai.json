@@ -96,7 +96,7 @@
       "noDeaths": "Bu davrda nobudgarchilik bo'lmadi, fermada {{head}} bosh hayvon bor.",
       "feedCovered": "Ozuqa yetarli: eng kam zaxira ({{item}}) {{days}} kunga yetadi.",
       "noOverdue": "Muddati o'tgan ishlar yo'q.",
-      "money": "Daromad {{income}} so'm, xarajat {{expense}} so'm, kassa va bankda {{cash}} so'm.",
+      "money": "Daromad {{income}} so'm, to'langan pul {{expense}} so'm, kassa va bankda {{cash}} so'm.",
       "onBudget": "Byudjet ijrosi {{percent}}%, rejadan oshmadi.",
       "none": "Bu davrda alohida yaxshi natija qayd etilmadi."
     },

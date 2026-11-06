@@ -18,7 +18,9 @@
     "DOCUMENT_NOT_REVERSIBLE": "This document cannot be reversed here",
     "DOCUMENT_NUMBER_AMBIGUOUS": "Two documents share this number, so it cannot be reversed by number",
     "COUNT_NOT_DRAFT": "This stock count is already approved",
-    "COUNT_EMPTY": "Add at least one item to the count"
+    "COUNT_EMPTY": "Add at least one item to the count",
+    "COUNT_ALREADY_OPEN": "{{item}} is already on open count sheet {{docNo}}. Approve or delete that sheet first",
+    "COUNT_BOOK_MOVED": "Stock moved while this count was being approved. Approve it again"
   },
   "document": {
     "addLine": "Add a line",
@@ -40,6 +42,9 @@
     "pendingApproval": "The payment is waiting for approval",
     "source": "Receipt type",
     "supplier": "Supplier",
+    "addSupplier": "Add a supplier",
+    "supplierAddHere": "Not on the list. Add one with the button under this field.",
+    "supplierAskFinance": "Not on the list. The accountant adds suppliers under Finance, Counterparties.",
     "invoice": "Invoice number",
     "currency": "Currency",
     "fxRate": "Exchange rate",

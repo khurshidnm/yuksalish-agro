@@ -73,18 +73,15 @@ export const financeReports: ReportDefinition[] = [
     columns: [
       col.month('month'),
       col.money('income', { sum: true }),
-      col.money('expense', { sum: true }),
       col.money('operatingExpense', { sum: true }),
-      col.money('net', { sum: true }),
+      col.money('net', { sum: true, label: 'netResult' }),
+      col.money('expense', { sum: true, label: 'moneyPaid' }),
     ],
-    chart: { kind: 'bar', x: 'month', series: ['income', 'expense'] },
+    chart: { kind: 'bar', x: 'month', series: ['income', 'operatingExpense'] },
     async run({ from, to }) {
       const rows: Row[] = [];
-      for (const month of monthsBetween(from.slice(0, 7), to.slice(0, 7))) {
-        const m = await monthToDate(month);
-        rows.push({ ...m, net: round(m.income - m.expense, 2) });
-      }
-      return { rows };
+      for (const month of monthsBetween(from.slice(0, 7), to.slice(0, 7))) rows.push(await monthToDate(month));
+      return { rows, notes: [{ key: 'net_result_definition' }] };
     },
   },
   {
@@ -96,7 +93,7 @@ export const financeReports: ReportDefinition[] = [
       col.month('month'),
       col.money('inflow', { sum: true }),
       col.money('outflow', { sum: true }),
-      col.money('net', { sum: true }),
+      col.money('net', { sum: true, label: 'netCashFlow' }),
     ],
     chart: { kind: 'bar', x: 'month', series: ['inflow', 'outflow'] },
     run: async ({ from, to }) => ({ rows: await cashflowActual(from, to) }),
@@ -110,7 +107,7 @@ export const financeReports: ReportDefinition[] = [
       col.month('month'),
       col.money('inflow', { sum: true }),
       col.money('outflow', { sum: true }),
-      col.money('net', { sum: true }),
+      col.money('net', { sum: true, label: 'netCashFlow' }),
       col.money('closing'),
     ],
     chart: { kind: 'line', x: 'month', series: ['closing'] },
@@ -457,7 +454,7 @@ export const financeReports: ReportDefinition[] = [
         rows: [
           { indicator: 'income', value: value(income), unit: 'money' },
           { indicator: 'operating_expense', value: value(operating), unit: 'money' },
-          { indicator: 'profitability', value: value(profitabilityPercent(income, operating)), unit: 'percent' },
+          { indicator: 'profitability', value: income > 0 ? value(profitabilityPercent(income, operating)) : null, unit: 'percent' },
           { indicator: 'profit_per_ewe', value: value(perEwe), unit: 'money' },
           { indicator: 'cost_to_income', value: costRatio === null ? null : value(costRatio * 100), unit: 'percent' },
           { indicator: 'net_cash_flow', value: value(flow.reduce((sum, m) => sum + m.net, 0)), unit: 'money' },

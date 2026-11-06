@@ -29,9 +29,9 @@ export function localizeValue(value: unknown, locale: string | null | undefined)
 }
 
 /** The same short date the web app shows; ISO dates are for machines. */
-function displayDate(value: string): string {
+function displayDate(value: string, locale?: string | null): string {
   const [year, month, day] = value.split('-');
-  return `${day}.${month}.${year}`;
+  return [day, month, year].join(language(locale) === 'en' ? '/' : '.');
 }
 
 /** "2026-11" as the web app says it, in the reader's language. */
@@ -45,7 +45,7 @@ export function interpolate(template: string, params: Params, locale?: string | 
   return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (_, name: string) => {
     const value = localizeValue(params[name], locale);
     if (value === null || value === undefined) return '';
-    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return displayDate(value);
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return displayDate(value, locale);
     if (name === 'month' && typeof value === 'string' && /^\d{4}-\d{2}$/.test(value)) return displayMonth(value, locale);
     if (name === 'unit') return lookup(locale, 'enums', `unit.${String(value)}`) ?? String(value);
     return String(value);

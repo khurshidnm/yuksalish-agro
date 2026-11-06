@@ -1,17 +1,39 @@
+import { normalizeIP } from '@fastify/rate-limit';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { config, isProd, isTest } from '../../config';
-import { unauthorized } from '../../core/errors';
+import { AppError, unauthorized } from '../../core/errors';
 import { routes } from '../../core/http';
 import { MIN_PASSWORD_LENGTH } from '../../core/passwords';
 import { idParam } from '../../core/query';
 import { verifyAccessToken } from '../../core/tokens';
 import * as auth from './auth.service';
+import { MAX_FAILURES } from './lockout.service';
 
 const COOKIE = 'yap_rt';
 const cookiePath = '/api/v1/auth';
 
-const strictLimit = isTest ? {} : { rateLimit: { max: 10, timeWindow: '1 minute' } };
+/**
+ * A shift or a demo room signs in through one address, so guessing is stopped per phone: by the lock, and
+ * behind it by phoneLimiter. This count only bounds how many phones one address can try.
+ */
+const addressLimit = isTest ? {} : { rateLimit: { max: 100, timeWindow: '1 minute' } };
+/** Above MAX_FAILURES, so guessing one phone meets the lock first, which says how long to wait. */
+const PHONE_TRIES_PER_MINUTE = 2 * MAX_FAILURES;
+/** For what a signed-in person does, counted per person. A token that fails counts by address. */
+const personLimit = isTest
+  ? {}
+  : {
+      rateLimit: {
+        max: 10,
+        timeWindow: '1 minute',
+        keyGenerator: (req: FastifyRequest) =>
+          claims(req).then(
+            (c) => c.userId,
+            () => normalizeIP(req.ip),
+          ),
+      },
+    };
 /** Each call costs a database lookup, so guessing has to cost something too. Tabs refresh every 15 minutes. */
 const sessionLimit = isTest ? {} : { rateLimit: { max: 60, timeWindow: '1 minute' } };
 
@@ -40,6 +62,20 @@ function respond(reply: FastifyReply, issued: auth.IssuedTokens) {
   return { accessToken: issued.accessToken, session: issued.session };
 }
 
+/** Needs the phone from the body, which the route's own limit runs too early to see. */
+function phoneLimiter(app: FastifyInstance) {
+  if (isTest) return async () => {};
+  const count = app.createRateLimit({
+    max: PHONE_TRIES_PER_MINUTE,
+    timeWindow: '1 minute',
+    keyGenerator: (req) => `${auth.normalizePhone((req.body as { phone: string }).phone)}|${normalizeIP(req.ip)}`,
+  });
+  return async (req: FastifyRequest) => {
+    const tries = await count(req);
+    if (!tries.isAllowed && tries.isExceeded) throw new AppError(429, 'RATE_LIMITED', 'Too many attempts, please wait a minute');
+  };
+}
+
 const password = z.string().min(MIN_PASSWORD_LENGTH).max(128);
 
 /** Six digits from the app, or a recovery code. */
@@ -49,13 +85,15 @@ export default async function authModule(app: FastifyInstance) {
   // Auth routes are 'public' at the guard level: a platform admin has no tenant context, so
   // each route that needs a user verifies the token itself through claims().
   const r = routes(app, 'auth');
+  const limitPhone = phoneLimiter(app);
 
   r.post('/login', {
     access: 'public',
     summary: 'Sign in with phone and password',
-    config: strictLimit,
+    config: addressLimit,
     body: z.object({ phone: z.string().min(9).max(20), password: z.string().min(1).max(128) }),
     handler: async (req, reply) => {
+      await limitPhone(req as unknown as FastifyRequest);
       const result = await auth.login(req.body.phone, req.body.password, meta(req as unknown as FastifyRequest));
       return 'twoFactorRequired' in result ? result : respond(reply, result);
     },
@@ -64,7 +102,7 @@ export default async function authModule(app: FastifyInstance) {
   r.post('/2fa/verify', {
     access: 'public',
     summary: 'Complete sign-in with a one-time code',
-    config: strictLimit,
+    config: addressLimit,
     body: z.object({ challengeToken: z.string(), code: secondFactor }),
     handler: async (req, reply) => {
       const issued = await auth.verifyTwoFactor(req.body.challengeToken, req.body.code, meta(req as unknown as FastifyRequest));
@@ -130,7 +168,7 @@ export default async function authModule(app: FastifyInstance) {
   r.post('/change-password', {
     access: 'public',
     summary: 'Sets the new password. Other devices are signed out, and this one gets a new session.',
-    config: strictLimit,
+    config: personLimit,
     body: z.object({ currentPassword: z.string().max(128), newPassword: password }),
     handler: async (req, reply) => {
       const c = await claims(req as unknown as FastifyRequest);
@@ -150,7 +188,7 @@ export default async function authModule(app: FastifyInstance) {
   r.post('/2fa/enable', {
     access: 'public',
     summary: 'Finish enrolment. The ten recovery codes are in this response and never again.',
-    config: strictLimit,
+    config: personLimit,
     body: z.object({ code: z.string().length(6) }),
     handler: async (req) => {
       const c = await claims(req as unknown as FastifyRequest);
@@ -161,7 +199,7 @@ export default async function authModule(app: FastifyInstance) {
 
   r.post('/2fa/disable', {
     access: 'public',
-    config: strictLimit,
+    config: personLimit,
     body: z.object({ code: secondFactor }),
     handler: async (req) => {
       const c = await claims(req as unknown as FastifyRequest);
@@ -173,7 +211,7 @@ export default async function authModule(app: FastifyInstance) {
   r.post('/2fa/replace', {
     access: 'public',
     summary: 'Clear the authenticator to enrol a new phone. Other devices are signed out.',
-    config: strictLimit,
+    config: personLimit,
     body: z.object({ code: secondFactor }),
     handler: async (req, reply) => {
       const c = await claims(req as unknown as FastifyRequest);
@@ -184,7 +222,7 @@ export default async function authModule(app: FastifyInstance) {
   r.post('/2fa/recovery-codes', {
     access: 'public',
     summary: 'Replace the recovery codes. The new ones are in this response and never again.',
-    config: strictLimit,
+    config: personLimit,
     body: z.object({ code: secondFactor }),
     handler: async (req) => {
       const c = await claims(req as unknown as FastifyRequest);

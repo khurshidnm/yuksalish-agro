@@ -209,6 +209,9 @@ function TestAlertCard() {
     onSuccess: setResult,
   });
   const who = (person: TestPerson) => person.name ?? t(`enums:role.${person.role}`);
+  // Every person listed has the notification row: only Telegram can have missed them.
+  const inApp = result ? result.reached.length + result.unreachable.length : 0;
+  const noBot = result?.unreachable.every((person) => person.reason === 'not_configured');
 
   return (
     <Card>
@@ -236,7 +239,13 @@ function TestAlertCard() {
           {t('testAlert.send')}
         </Button>
 
-        {result && result.reached.length + result.unreachable.length === 0 && <Alert tone="warning">{t('testAlert.nobody')}</Alert>}
+        {result && inApp === 0 && <Alert tone="warning">{t('testAlert.nobody')}</Alert>}
+
+        {result && inApp > 0 && (
+          <Alert tone="success" title={t('testAlert.inApp', { count: inApp })}>
+            {t('testAlert.inAppBody')}
+          </Alert>
+        )}
 
         {result && result.reached.length > 0 && (
           <Alert tone="success" title={t('testAlert.reached', { count: result.reached.length })}>
@@ -249,15 +258,19 @@ function TestAlertCard() {
         )}
 
         {result && result.unreachable.length > 0 && (
-          <Alert tone="danger" title={t('testAlert.unreachable', { count: result.unreachable.length })}>
-            <ul className="space-y-1">
-              {result.unreachable.map((person) => (
-                <li key={person.userId}>
-                  <span className="block font-medium">{who(person)}</span>
-                  {t(`testAlert.reason.${person.reason}`)}
-                </li>
-              ))}
-            </ul>
+          <Alert tone="warning" title={t('testAlert.unreachable', { count: result.unreachable.length })}>
+            {noBot ? (
+              t('testAlert.reason.not_configured')
+            ) : (
+              <ul className="space-y-1">
+                {result.unreachable.map((person) => (
+                  <li key={person.userId}>
+                    <span className="block font-medium">{who(person)}</span>
+                    {t(`testAlert.reason.${person.reason}`)}
+                  </li>
+                ))}
+              </ul>
+            )}
           </Alert>
         )}
       </CardContent>

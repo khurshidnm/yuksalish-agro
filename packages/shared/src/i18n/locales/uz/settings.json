@@ -219,7 +219,7 @@
     "blockBody": "{{name}} darhol tizimga kira olmaydi. U kiritgan ma'lumotlar saqlanib qoladi.",
     "unblock": "Blokdan chiqarish",
     "passwordTitle": "Bir martalik parol",
-    "passwordBody": "Parolni {{name}} ga bering. U faqat birinchi kirish uchun: kirgach darhol o'z parolini tanlaydi.",
+    "passwordBody": "Parolni xodimga bering: {{name}}. U faqat birinchi kirish uchun, kirgach darhol o'z parolini tanlaydi.",
     "oneTimePassword": "Parol"
   },
   "roles": {

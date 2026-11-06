@@ -445,7 +445,7 @@ describe('POST /today/conflicts', () => {
     expect(alert.status).toBe('open');
     expect(alert.severity).toBe('attention');
     expect(alert.body).toContain('Beda: 7 kg');
-    expect(renderAlert(alert, 'en').title).toMatch(/: two different records for \d{2}\.\d{2}\.\d{4}$/);
+    expect(renderAlert(alert, 'en').title).toMatch(/: two different records for \d{2}\/\d{2}\/\d{4}$/);
     expect(renderAlert(alert, 'en').body).toContain('Offline record: Beda: 7 kg');
 
     // Saved stock is untouched: nothing moved until a person decides.

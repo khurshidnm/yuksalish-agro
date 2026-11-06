@@ -1,4 +1,4 @@
-import { and, eq, max, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { addDays, monthOf, monthRange, round, straightLineMonthly, todayIso, unitsOfProductionDepreciation } from '@yap/shared';
 import { schema } from '../../db/client';
 import { ctx, today, tx } from '../../core/context';
@@ -32,6 +32,8 @@ export function monthsFrom(first: string, last: string): string[] {
   for (let m = first; m <= last; m = nextMonth(m)) months.push(m);
   return months;
 }
+
+const onTheBooks = () => and(eq(assets.farmId, ctx().farmId), sql`${assets.status} <> 'written_off'`);
 
 /** Depreciation for one month, never exceeding what is left to depreciate. */
 async function amountFor(asset: Asset, month: string): Promise<number> {
@@ -84,12 +86,7 @@ export async function runDepreciation(month: string): Promise<{ month: string; p
 
   // Locked, because each amount is capped by what is already posted: two months at once would
   // both see the same amount left and go past it.
-  const rows = await tx()
-    .select()
-    .from(assets)
-    .where(and(eq(assets.farmId, c.farmId), sql`${assets.status} <> 'written_off'`))
-    .orderBy(assets.id)
-    .for('update');
+  const rows = await tx().select().from(assets).where(onTheBooks()).orderBy(assets.id).for('update');
 
   let posted = 0;
   let total = 0;
@@ -146,16 +143,26 @@ async function farmStartMonth(): Promise<string> {
 }
 
 /**
- * Months to post now: every ended month after the last one posted, so a run that failed or a server
- * that was down catches up. A farm with no entries yet starts from the month it was created, so a
- * missed first run catches up too, and nothing reaches back into a ledger that did not exist then.
+ * Months to post now: every ended month in which some machine still has an amount due, so a machine
+ * added after a month ran gets that month, and a run that failed or a server that was down catches
+ * up. The ledger starts at the month the farm was created, or at the first month posted if that is
+ * earlier, and nothing reaches back past it. The opening figure holds its own months (amountFor).
  */
 export async function monthsToRun(): Promise<string[]> {
-  const [{ latest }] = await tx()
-    .select({ latest: max(t.month) })
-    .from(t)
-    .where(eq(t.farmId, ctx().farmId));
-  return monthsFrom(latest ? nextMonth(latest) : await farmStartMonth(), previousMonth(monthOf(today())));
+  const entries = await tx().select({ assetId: t.assetId, month: t.month }).from(t).where(eq(t.farmId, ctx().farmId));
+  const posted = new Set(entries.map((entry) => `${entry.assetId} ${entry.month}`));
+  const start = entries.reduce((first, entry) => (entry.month < first ? entry.month : first), await farmStartMonth());
+  const machines = await tx().select().from(assets).where(onTheBooks());
+
+  const due: string[] = [];
+  for (const month of monthsFrom(start, previousMonth(monthOf(today())))) {
+    for (const machine of machines) {
+      if (posted.has(`${machine.id} ${month}`) || (await amountFor(machine, month)) <= 0) continue;
+      due.push(month);
+      break;
+    }
+  }
+  return due;
 }
 
 export async function listDepreciation(assetId: string) {

@@ -111,7 +111,7 @@ export function PregnanciesTab() {
       sortable: true,
       mobile: 'title',
       cell: (row) => (
-        <Link className="font-medium text-primary hover:underline" to={`/livestock/animals/${row.eweId}`}>
+        <Link className="relative font-medium text-primary after:absolute after:inset-x-0 after:-inset-y-3 hover:underline" to={`/livestock/animals/${row.eweId}`}>
           {row.eweTag}
         </Link>
       ),

@@ -1,13 +1,16 @@
 import { CURRENCIES, todayIso } from '@yap/shared';
-import { useState } from 'react';
+import { Plus } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useFieldArray, type UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { ComboboxField, DateField, FormDialog, FormGrid, NumberField, SelectField, Separator, SwitchField, TextField, TextareaField, apiOptions } from '@/components';
+import { z } from 'zod';
+import { Button, ComboboxField, DateField, FormDialog, FormGrid, NumberField, SelectField, Separator, SwitchField, TextField, TextareaField, apiOptions } from '@/components';
 import { useLocalName } from '@/features/finance/lib';
 import type { CategoryOption } from '@/features/finance/types';
 import { ApiError, api } from '@/lib/api';
 import { usePermission, useSession } from '@/lib/auth';
+import { zOptionalText, zText } from '@/lib/forms';
 import { formatMoney } from '@/lib/format';
 import { enumOptions } from '@/lib/i18n';
 import { useApiMutation, useDetail } from '@/lib/query';
@@ -17,6 +20,42 @@ import type { DocumentResult, ItemOption } from './types';
 
 /** Numbers stay blank until typed, and zod reports them as required on submit. */
 const EMPTY_LINE = { itemId: '' } as ReceiptFormIn['lines'][number];
+
+const supplierSchema = z.object({ name: zText(200), phone: zOptionalText(30) });
+
+interface Supplier {
+  id: string;
+  name: string;
+}
+
+/** Rendered beside the receipt form: inside it, this form's submit would bubble through React to the receipt's. */
+function SupplierDialog({ open, onOpenChange, onCreated }: { open: boolean; onOpenChange: (open: boolean) => void; onCreated: (supplier: Supplier) => void }) {
+  const { t } = useTranslation('inventory');
+  const save = useApiMutation<z.output<typeof supplierSchema>, Supplier>({
+    mutationFn: (values) => api.postOnce('/finance/counterparties', { ...values, type: 'supplier' }),
+    invalidate: ['/finance'],
+    silentError: true,
+    onSuccess: onCreated,
+  });
+  return (
+    <FormDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={t('receipt.addSupplier')}
+      schema={supplierSchema}
+      defaultValues={{ name: '', phone: '' }}
+      onSubmit={(values) => save.mutateAsync(values)}
+      successMessage="common:toast.created"
+    >
+      {(form) => (
+        <>
+          <TextField form={form} name="name" label={t('finance:counterparties.fields.name')} required autoFocus />
+          <TextField form={form} name="phone" label={t('finance:counterparties.fields.phone')} type="tel" inputMode="tel" />
+        </>
+      )}
+    </FormDialog>
+  );
+}
 
 function CategoryField({ form, required }: { form: UseFormReturn<ReceiptFormIn, unknown, ReceiptFormOut>; required: boolean }) {
   const { t } = useTranslation('inventory');
@@ -39,11 +78,15 @@ function Fields({
   canPay,
   baseCurrency,
   categoryAsked,
+  newSupplier,
+  onAddSupplier,
 }: {
   form: UseFormReturn<ReceiptFormIn, unknown, ReceiptFormOut>;
   canPay: boolean;
   baseCurrency: string;
   categoryAsked: boolean;
+  newSupplier: Supplier | null;
+  onAddSupplier: () => void;
 }) {
   const { t } = useTranslation('inventory');
   const warehouses = useWarehouseOptions();
@@ -54,9 +97,15 @@ function Fields({
   const method = form.watch('paymentMethod');
   const lines = form.watch('lines');
   const categoryId = form.watch('categoryId');
+  const counterpartyId = form.watch('counterpartyId');
   const isPurchase = source === 'purchase';
   const categoryRequired = needsCategory(lines) || categoryAsked;
   const total = lines.reduce((sum, line) => sum + (line?.qty ?? 0) * (line?.unitCost ?? 0), 0);
+
+  const { setValue } = form;
+  useEffect(() => {
+    if (newSupplier) setValue('counterpartyId', newSupplier.id, { shouldValidate: true });
+  }, [newSupplier, setValue]);
 
   return (
     <>
@@ -67,13 +116,23 @@ function Fields({
       <SelectField form={form} name="warehouseId" label={t('document.warehouse')} required options={warehouses} />
       {isPurchase && (
         <FormGrid>
-          <ComboboxField
-            form={form}
-            name="counterpartyId"
-            label={t('receipt.supplier')}
-            required={supplierRequired({ source, pay, paymentMethod: method })}
-            loadOptions={apiOptions<{ id: string; name: string }>('/finance/counterparties/lookup', (c) => ({ value: c.id, label: c.name }))}
-          />
+          <div className="flex min-w-0 flex-col gap-1">
+            <ComboboxField
+              form={form}
+              name="counterpartyId"
+              label={t('receipt.supplier')}
+              required={supplierRequired({ source, pay, paymentMethod: method })}
+              emptyText={t(canPay ? 'receipt.supplierAddHere' : 'receipt.supplierAskFinance')}
+              selectedLabel={newSupplier?.id === counterpartyId ? newSupplier?.name : undefined}
+              loadOptions={apiOptions<{ id: string; name: string }>('/finance/counterparties/lookup', (c) => ({ value: c.id, label: c.name }))}
+            />
+            {canPay && (
+              <Button variant="ghost" className="self-start" onClick={onAddSupplier}>
+                <Plus aria-hidden />
+                {t('receipt.addSupplier')}
+              </Button>
+            )}
+          </div>
           <TextField form={form} name="invoiceNo" label={t('receipt.invoice')} />
         </FormGrid>
       )}
@@ -155,6 +214,8 @@ export function ReceiptDialog({ open, onOpenChange }: { open: boolean; onOpenCha
   const canPay = usePermission('finance.create');
   const baseCurrency = useSession().tenant?.currency ?? 'UZS';
   const [categoryAsked, setCategoryAsked] = useState(false);
+  const [addingSupplier, setAddingSupplier] = useState(false);
+  const [newSupplier, setNewSupplier] = useState<Supplier | null>(null);
 
   const mutation = useApiMutation<ReceiptFormOut, DocumentResult>({
     mutationFn: (values) => api.postOnce('/inventory/receipts', toPayload(values, baseCurrency)),
@@ -173,35 +234,50 @@ export function ReceiptDialog({ open, onOpenChange }: { open: boolean; onOpenCha
   });
 
   return (
-    <FormDialog
-      open={open}
-      onOpenChange={(next) => {
-        if (!next) setCategoryAsked(false);
-        onOpenChange(next);
-      }}
-      title={t('receipt.title')}
-      description={t('receipt.description')}
-      schema={receiptSchema}
-      defaultValues={{
-        warehouseId: '',
-        date: todayIso(),
-        source: 'purchase',
-        counterpartyId: null,
-        invoiceNo: '',
-        currency: baseCurrency,
-        notes: '',
-        lines: [EMPTY_LINE],
-        pay: false,
-        paymentMethod: 'cash',
-        accountId: null,
-        categoryId: null,
-        dueDate: null,
-      }}
-      onSubmit={(values) => mutation.mutateAsync(values)}
-      submitLabel={t('receipt.submit')}
-      size="lg"
-    >
-      {(form) => <Fields form={form} canPay={canPay} baseCurrency={baseCurrency} categoryAsked={categoryAsked} />}
-    </FormDialog>
+    <>
+      <FormDialog
+        open={open}
+        onOpenChange={(next) => {
+          if (!next) {
+            setCategoryAsked(false);
+            setNewSupplier(null);
+          }
+          onOpenChange(next);
+        }}
+        title={t('receipt.title')}
+        description={t('receipt.description')}
+        schema={receiptSchema}
+        defaultValues={{
+          warehouseId: '',
+          date: todayIso(),
+          source: 'purchase',
+          counterpartyId: null,
+          invoiceNo: '',
+          currency: baseCurrency,
+          notes: '',
+          lines: [EMPTY_LINE],
+          pay: false,
+          paymentMethod: 'cash',
+          accountId: null,
+          categoryId: null,
+          dueDate: null,
+        }}
+        onSubmit={(values) => mutation.mutateAsync(values)}
+        submitLabel={t('receipt.submit')}
+        size="lg"
+      >
+        {(form) => (
+          <Fields
+            form={form}
+            canPay={canPay}
+            baseCurrency={baseCurrency}
+            categoryAsked={categoryAsked}
+            newSupplier={newSupplier}
+            onAddSupplier={() => setAddingSupplier(true)}
+          />
+        )}
+      </FormDialog>
+      <SupplierDialog open={addingSupplier} onOpenChange={setAddingSupplier} onCreated={setNewSupplier} />
+    </>
   );
 }

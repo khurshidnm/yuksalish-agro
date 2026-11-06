@@ -6,8 +6,8 @@ const counts = (value: number) => Object.fromEntries(SETUP_STEPS.map((step) => [
 describe('setupProgress', () => {
   it('an empty farm has every step open, in the order they have to be done', () => {
     const progress = setupProgress(SETUP_STEPS, counts(0));
-    expect(progress.open.map((step) => step.key)).toEqual(['accounts', 'fields', 'warehouses', 'items', 'stock', 'rations', 'herds', 'staff']);
-    expect(progress).toMatchObject({ done: 0, total: 8, finished: false });
+    expect(progress.open.map((step) => step.key)).toEqual(['accounts', 'fields', 'warehouses', 'items', 'suppliers', 'stock', 'rations', 'herds', 'staff']);
+    expect(progress).toMatchObject({ done: 0, total: 9, finished: false });
   });
 
   it('a step leaves the list once it is done', () => {
@@ -29,6 +29,11 @@ describe('setupProgress', () => {
 
   it('a person sees only the steps they can do', () => {
     const allowed = SETUP_STEPS.filter((step) => step.access !== 'users.create');
-    expect(setupProgress(allowed, counts(1))).toMatchObject({ total: 7, finished: true });
+    expect(setupProgress(allowed, counts(1))).toMatchObject({ total: 8, finished: true });
+  });
+
+  it('a farm with no supplier is told so, and a storekeeper is not given a step only finance can do', () => {
+    expect(setupProgress(SETUP_STEPS, { ...counts(3), suppliers: 0 }).open.map((step) => step.key)).toEqual(['suppliers']);
+    expect(SETUP_STEPS.find((step) => step.key === 'suppliers')).toMatchObject({ source: '/finance/counterparties', access: 'finance.create' });
   });
 });

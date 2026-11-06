@@ -102,8 +102,10 @@ const eventFields = z.object({
  * is refused, and a fire must not be lost over a severity this format does not know.
  */
 export const deviceEvent = z.preprocess((raw) => {
-  const type = (raw as { type?: unknown } | null)?.type;
-  return typeof type === 'string' && ALWAYS_URGENT.has(eventKind(type)) ? { ...(raw as object), severity: 'urgent' } : raw;
+  const sent = (raw as { type?: unknown } | null)?.type;
+  if (typeof sent !== 'string') return raw;
+  const type = sent.toLowerCase();
+  return { ...(raw as object), type, ...(ALWAYS_URGENT.has(eventKind(type)) ? { severity: 'urgent' } : {}) };
 }, eventFields);
 export type DeviceEvent = z.infer<typeof deviceEvent>;
 
@@ -347,8 +349,8 @@ async function store(device: Device, e: DeviceEvent): Promise<boolean> {
     const label = EVENT_TITLES[eventKind(e.type)] ?? e.type;
     await raiseAlert({
       ruleKey: 'device_event',
-      // One alert per device and type while it is open: a burst of smoke frames is one problem.
-      dedupKey: `device_event:${device.id}:${e.type}`,
+      // One alert per device and kind while it is open: a burst of smoke frames is one problem, however it is spelled.
+      dedupKey: `device_event:${device.id}:${eventKind(e.type)}`,
       newAfterMs: EVENT_BURST_MS,
       severity: 'urgent',
       title: `${device.name}: ${label}`,

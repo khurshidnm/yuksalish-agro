@@ -194,7 +194,7 @@
     "stale": "Bu tugma eskirgan.",
     "cardChanged": "Bu yozuv o'zgargan. Tekshirib, qayta tasdiqlang.",
     "moneyHidden": "Bu yozuvda lavozimingiz ko'ra olmaydigan pul ma'lumotlari bor.",
-    "noRightToAcknowledge": "Lavozimingiz ogohlantirishlarni qabul qilishga ruxsat bermaydi.",
+    "noRightToAcknowledge": "Bu ogohlantirishni faqat mas'ullar, egasi yoki direktor qabul qila oladi.",
     "buttons": {
       "acknowledge": "Qabul qilish",
       "confirm": "Tasdiqlash",
@@ -261,6 +261,7 @@
   "errors": {
     "ALERT_NOT_OPEN": "Bu ogohlantirish allaqachon ko'rib chiqilgan",
     "ALERT_ALREADY_RESOLVED": "Bu ogohlantirish allaqachon yopilgan",
+    "ALERT_NOT_YOURS": "Bu shoshilinch ogohlantirishni faqat mas'ullar, egasi yoki direktor to'xtata oladi",
     "TELEGRAM_NOT_CONFIGURED": "Telegram bot hali sozlanmagan. Administratorga murojaat qiling.",
     "AI_AUDIO_NOT_SUPPORTED": "Hozirgi AI provayder ovozli xabarni o'qiy olmaydi. Iltimos, matn bilan yozing.",
     "AI_TRANSCRIPTION_FAILED": "Ovozli xabarni o'qib bo'lmadi. Qayta ayting yoki yozib yuboring."
@@ -326,8 +327,10 @@
     "confirmTitle": "Sinov xabarini yuborasizmi?",
     "confirmBody": "Xabar shu fermaning barcha xodimlariga boradi.",
     "confirmAction": "Yuborish",
-    "reached": "Yetib bordi: {{count}}",
-    "unreachable": "Yetib bormadi: {{count}}",
+    "inApp": "Ilovada: {{count}}",
+    "inAppBody": "Xabar har bir xodimning bildirishnomalarida turibdi.",
+    "reached": "Telegram orqali yetib bordi: {{count}}",
+    "unreachable": "Telegram orqali yetib bormadi: {{count}}",
     "nobody": "Bu fermada xabar yuboriladigan xodim yo'q.",
     "reason": {
       "not_linked": "Telegram ulanmagan yoki bot bloklangan",
@@ -336,7 +339,7 @@
       "not_configured": "Telegram bot sozlanmagan"
     },
     "message": {
-      "title": "SINOV: bu haqiqiy ogohlantirish emas",
+      "title": "Sinov: bu haqiqiy ogohlantirish emas",
       "body": "Fermada hech narsa bo'lmagan. Bu xabar shoshilinch ogohlantirishlar sizga yetib borishini tekshiradi. Hech narsa qilish shart emas."
     }
   },

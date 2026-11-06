@@ -72,7 +72,7 @@ export function QuarantineTab() {
       header: t('common.animal'),
       mobile: 'title',
       cell: (row) => (
-        <Link className="font-medium text-primary hover:underline" to={`/livestock/animals/${row.animalId}`}>
+        <Link className="relative font-medium text-primary after:absolute after:inset-x-0 after:-inset-y-3 hover:underline" to={`/livestock/animals/${row.animalId}`}>
           {row.tag}
         </Link>
       ),

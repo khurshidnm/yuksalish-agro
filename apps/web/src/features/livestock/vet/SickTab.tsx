@@ -69,7 +69,7 @@ export function SickTab() {
           <li key={report.id}>
             <Card className="space-y-2 p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <Link className="text-lg font-semibold text-primary hover:underline" to={`/livestock/animals/${report.animalId}`}>
+                <Link className="inline-flex min-h-11 items-center text-lg font-semibold text-primary hover:underline" to={`/livestock/animals/${report.animalId}`}>
                   {report.tag}
                 </Link>
                 <Badge variant={report.reportStatus === 'open' ? 'danger' : 'success'}>{t(`enums:animalStatus.${report.animalStatus}`)}</Badge>
@@ -118,7 +118,7 @@ export function SickTab() {
               <li key={animal.id}>
                 <Card className="space-y-2 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <Link className="text-lg font-semibold text-primary hover:underline" to={`/livestock/animals/${animal.id}`}>
+                    <Link className="inline-flex min-h-11 items-center text-lg font-semibold text-primary hover:underline" to={`/livestock/animals/${animal.id}`}>
                       {animal.tag}
                     </Link>
                     <Badge variant="danger">{t(`enums:animalStatus.${animal.status}`)}</Badge>

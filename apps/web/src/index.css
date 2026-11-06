@@ -347,6 +347,13 @@
     cursor: not-allowed;
   }
 
+  /* Sonner's close button stays 20 px to the eye and takes a 44 px tap, the way Switch and Checkbox do. */
+  [data-sonner-toast] [data-close-button]::after {
+    content: '';
+    position: absolute;
+    inset: -0.75rem;
+  }
+
   /* Keep Leaflet panes below dialogs, drawers and the sticky bars. */
   .leaflet-container {
     z-index: 0;

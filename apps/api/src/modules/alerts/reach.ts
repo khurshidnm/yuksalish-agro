@@ -4,7 +4,7 @@
  * the app. Runs after each dispatch, once per farm.
  */
 import { and, asc, eq, gt, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
-import type { RoleKey } from '@yap/shared';
+import type { RoleKey, Severity } from '@yap/shared';
 import { schema } from '../../db/client';
 import { ctx, tx } from '../../core/context';
 import { noteUndelivered, telegramLost } from '../../core/health';
@@ -83,10 +83,13 @@ async function escalate(undelivered: Alert[], people: LinkedPerson[], now: Date)
 
 type Reason = 'not_configured' | 'channel_down' | 'not_linked' | 'undelivered';
 
+/** A channel nobody has set up yet is a job for the owner. Only one that fails now is an emergency. */
+const warningSeverity = (reason: Reason): Severity => (reason === 'not_configured' || reason === 'not_linked' ? 'attention' : 'urgent');
+
 /** One standing warning per farm, on the dashboard until the cause is gone. Written only when it changes. */
 async function warnOwner(reason: Reason | null): Promise<void> {
   const [open] = await tx()
-    .select({ data: alerts.data })
+    .select({ data: alerts.data, severity: alerts.severity })
     .from(alerts)
     .where(and(eq(alerts.farmId, ctx().farmId), eq(alerts.dedupKey, UNREACHABLE_RULE), ne(alerts.status, 'resolved')));
   if (!reason) {
@@ -94,11 +97,12 @@ async function warnOwner(reason: Reason | null): Promise<void> {
     return;
   }
   const textKey = `${UNREACHABLE_RULE}_${reason}`;
-  if (open?.data.textKey === textKey) return;
+  const severity = warningSeverity(reason);
+  if (open?.data.textKey === textKey && open.severity === severity) return;
   await raiseAlert({
     ruleKey: UNREACHABLE_RULE,
     dedupKey: UNREACHABLE_RULE,
-    severity: 'urgent',
+    severity,
     title: 'Urgent alerts reach nobody outside the app',
     link: '/notifications',
     data: { textKey },

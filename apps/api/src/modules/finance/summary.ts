@@ -20,7 +20,8 @@
  * Own produce fed to own animals (spec 7.3): hay costs the field to grow, then costs the herd
  * again at transfer price when issued. So the sum over centers exceeds farm-level cash cost by
  * the internal transfers. That is by design: each center is judged as if it traded with the
- * others. Farm-level results must therefore use question 1, never a sum of centers.
+ * others. Farm-level results must therefore use question 1, never a sum of centers, and their
+ * stock cost leaves out own_harvest batches (see stockCost).
  */
 import { and, asc, desc, eq, gte, inArray, isNotNull, lte, ne, notInArray, sql, type AnyColumn } from 'drizzle-orm';
 import {
@@ -89,7 +90,11 @@ export async function cashPosition() {
   };
 }
 
-/** Stock used in a period, less stock found. */
+/**
+ * Stock used in a period, less stock found. Own produce is left out wherever it went: growing it
+ * was the farm's cost, and its transfer value moves no money, whether a herd eats it, a buyer takes
+ * it or a count finds it short. Sold, it brings its income and no second cost.
+ */
 async function stockCost(from: string, to: string): Promise<number> {
   const credits = sql.join(
     COST_CREDIT_MOVEMENT_TYPES.map((type) => sql`${type}`),
@@ -100,10 +105,12 @@ async function stockCost(from: string, to: string): Promise<number> {
       amount: sql`coalesce(sum(case when ${m.type} in (${credits}) then -${m.totalCost} else ${m.totalCost} end), 0)`.mapWith(Number),
     })
     .from(m)
+    .innerJoin(stockBatches, eq(stockBatches.id, m.batchId))
     .where(
       and(
         eq(m.farmId, ctx().farmId),
         inArray(m.type, [...COST_MOVEMENT_TYPES, ...COST_CREDIT_MOVEMENT_TYPES]),
+        ne(stockBatches.source, 'own_harvest'),
         gte(m.date, from),
         lte(m.date, to),
       ),
@@ -114,7 +121,8 @@ async function stockCost(from: string, to: string): Promise<number> {
 /**
  * Income and expense this month. `expense` is money paid. `operatingExpense` is the cost of running
  * the farm: direct expenses plus stock used, so stock still in the warehouse is not a cost yet, and
- * neither are assets or animals bought (CLAUDE.md rule 3).
+ * neither are assets or animals bought (CLAUDE.md rule 3). `net` is the farm's result, income less
+ * that cost, and every screen and report takes it from here.
  */
 export async function monthToDate(month: string = monthOf(today())) {
   const { from, to } = monthRange(month);
@@ -133,12 +141,9 @@ export async function monthToDate(month: string = monthOf(today())) {
     .groupBy(t.type, t.costTreatment);
   const sum = (filter: (row: (typeof rows)[number]) => boolean) =>
     round(rows.filter(filter).reduce((total, row) => total + row.total, 0), 2);
-  return {
-    month,
-    income: sum((r) => r.type === 'income'),
-    expense: sum((r) => r.type === 'expense'),
-    operatingExpense: round(sum((r) => r.type === 'expense' && r.treatment === 'expense') + (await stockCost(from, to)), 2),
-  };
+  const income = sum((r) => r.type === 'income');
+  const operatingExpense = round(sum((r) => r.type === 'expense' && r.treatment === 'expense') + (await stockCost(from, to)), 2);
+  return { month, income, expense: sum((r) => r.type === 'expense'), operatingExpense, net: round(income - operatingExpense, 2) };
 }
 
 export async function debtSummary() {
@@ -182,7 +187,10 @@ export async function budgetExecution(from: string, to: string) {
   };
 }
 
-/** Income and expense by category over a period (spec 10.4). */
+/**
+ * Income and expense by category over a period (spec 10.4). `net` here is money: it counts animals,
+ * machinery and stock bought, so the screens label it as cash. The farm's result is monthToDate().
+ */
 export async function incomeExpenseByCategory(from?: string, to?: string) {
   const rows = await tx()
     .select({

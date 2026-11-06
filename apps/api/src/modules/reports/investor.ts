@@ -87,10 +87,9 @@ export async function investorData(month: string) {
         income: result.income,
         expense: result.expense,
         operatingExpense: result.operatingExpense,
-        // Income less the cost of running the farm, so the percent below follows from these lines.
-        // Animals, machinery and stock still in the warehouse are assets, not a loss (rule 3).
-        net: round(result.income - result.operatingExpense, 2),
-        profitabilityPercent: roundOrNull(profitabilityPercent(result.income, result.operatingExpense), 1),
+        net: result.net,
+        // As on the dashboard: before the first sale there is no return to measure.
+        profitabilityPercent: result.income > 0 ? roundOrNull(profitabilityPercent(result.income, result.operatingExpense), 1) : null,
         cash: round(accounts.reduce((sum, a) => sum + a.balanceBase, 0), 2),
         receivable: debts.receivable,
         payable: debts.payable,

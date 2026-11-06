@@ -18,7 +18,9 @@
     "DOCUMENT_NOT_REVERSIBLE": "Bu hujjatni shu yerdan bekor qilib bo'lmaydi",
     "DOCUMENT_NUMBER_AMBIGUOUS": "Bu raqam ikki hujjatda bor, raqam bo'yicha bekor qilib bo'lmaydi",
     "COUNT_NOT_DRAFT": "Bu inventarizatsiya allaqachon tasdiqlangan",
-    "COUNT_EMPTY": "Inventarizatsiyaga kamida bitta mahsulot qo'shing"
+    "COUNT_EMPTY": "Inventarizatsiyaga kamida bitta mahsulot qo'shing",
+    "COUNT_ALREADY_OPEN": "{{item}} ochiq sanoq varag'ida allaqachon bor: {{docNo}}. Avval shu varaqni tasdiqlang yoki o'chiring",
+    "COUNT_BOOK_MOVED": "Tasdiqlash paytida qoldiq o'zgardi. Inventarizatsiyani qayta tasdiqlang"
   },
   "document": {
     "addLine": "Yana qator qo'shish",
@@ -40,6 +42,9 @@
     "pendingApproval": "To'lov rahbar tasdig'ini kutmoqda",
     "source": "Kirim turi",
     "supplier": "Yetkazib beruvchi",
+    "addSupplier": "Yetkazib beruvchi qo'shish",
+    "supplierAddHere": "Ro'yxatda yo'q. Maydon ostidagi tugma bilan qo'shing.",
+    "supplierAskFinance": "Ro'yxatda yo'q. Yetkazib beruvchini buxgalter qo'shadi: Moliya, Kontragentlar.",
     "invoice": "Hisob-faktura raqami",
     "currency": "Valyuta",
     "fxRate": "Valyuta kursi",

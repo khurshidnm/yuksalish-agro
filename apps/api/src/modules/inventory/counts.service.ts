@@ -1,4 +1,5 @@
-import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, ne, sql } from 'drizzle-orm';
+import { round } from '@yap/shared';
 import { z } from 'zod';
 import { schema } from '../../db/client';
 import { ctx, tx } from '../../core/context';
@@ -22,8 +23,14 @@ export const countCreateInput = z.object({
 export const countUpdateInput = z.object({
   date: isoDate.optional(),
   notes: z.string().max(1000).nullish(),
-  /** Counted quantities. An item not yet on the sheet is added. */
-  lines: z.array(z.object({ itemId: z.uuid(), actualQty: z.number().min(0) })).max(500).optional(),
+  /**
+   * Counted quantities. An item not yet on the sheet is added. `systemQty` is the book the person saw
+   * beside the number; without it the difference is taken against the book the line already holds.
+   */
+  lines: z
+    .array(z.object({ itemId: z.uuid(), actualQty: z.number().min(0), systemQty: z.number().min(0).optional() }))
+    .max(500)
+    .optional(),
 });
 
 export const countListQuery = listQuery.extend({
@@ -59,6 +66,33 @@ async function getHeader(id: string, opts: { lock?: boolean } = {}) {
 
 function assertDraft(count: { status: string }) {
   if (count.status !== 'draft') throw conflict('COUNT_NOT_DRAFT', 'This count is already approved');
+}
+
+/** Take it before putting an item on a sheet: two people can start counting the same shelf at once. */
+async function lockOpenSheets(warehouseId: string) {
+  await tx().execute(sql`select pg_advisory_xact_lock(hashtext(${`stock_count:${ctx().farmId}:${warehouseId}`}))`);
+}
+
+/** Approval applies a difference, so two open sheets on one item would book the same shortage twice. */
+async function assertNotOnOpenSheet(warehouseId: string, itemIds: string[], exceptCountId?: string) {
+  if (itemIds.length === 0) return;
+  const [open] = await tx()
+    .select({ docNo: counts.docNo, item: items.name })
+    .from(lines)
+    .innerJoin(counts, eq(counts.id, lines.countId))
+    .innerJoin(items, eq(items.id, lines.itemId))
+    .where(
+      and(
+        eq(counts.farmId, ctx().farmId),
+        eq(counts.warehouseId, warehouseId),
+        eq(counts.status, 'draft'),
+        inArray(lines.itemId, itemIds),
+        exceptCountId ? ne(counts.id, exceptCountId) : undefined,
+      ),
+    )
+    .orderBy(asc(counts.docNo), asc(items.name))
+    .limit(1);
+  if (open) throw conflict('COUNT_ALREADY_OPEN', `${open.item} is already on open count sheet ${open.docNo}`, open);
 }
 
 export async function list(q: z.infer<typeof countListQuery>) {
@@ -108,15 +142,15 @@ export async function get(id: string) {
     .where(eq(lines.countId, id))
     .orderBy(asc(items.name));
 
-  // A draft shows today's book quantity, since stock keeps moving until approval fixes it.
+  // An approved sheet is the act: what approval applied, as stored. A draft shows today's book, since
+  // stock can move while it is open: the difference found stays, and the book follows the moves.
   const live = count.status === 'draft' ? await systemQty(count.warehouseId) : null;
-  const data = rows.map((row) => {
-    if (!live) return { ...row, diffQty: Number((row.actualQty - row.systemQty).toFixed(3)) };
-    // Stock can move while a sheet is open. The difference found stays, and the book follows the moves.
-    const system = live.get(row.itemId) ?? 0;
-    const diffQty = Number((row.actualQty - row.systemQty).toFixed(3));
-    return { ...row, systemQty: system, actualQty: Math.max(0, Number((system + diffQty).toFixed(3))), diffQty };
-  });
+  const data = !live
+    ? rows
+    : rows.map((row) => {
+        const system = live.get(row.itemId) ?? 0;
+        return { ...row, systemQty: system, actualQty: Math.max(0, round(system + row.diffQty, 3)) };
+      });
 
   let approvedByName: string | null = null;
   if (count.approvedBy) {
@@ -142,6 +176,11 @@ export async function create(input: z.infer<typeof countCreateInput>) {
     if (found.length !== new Set(input.itemIds).size) throw notFound('Item');
   }
 
+  await lockOpenSheets(input.warehouseId);
+  const stock = await systemQty(input.warehouseId, input.itemIds);
+  const itemIds = input.itemIds ? [...new Set(input.itemIds)] : [...stock.entries()].filter(([, qty]) => qty > 0).map(([id]) => id);
+  await assertNotOnOpenSheet(input.warehouseId, itemIds);
+
   const docNo = await nextDocNo('count', input.date);
   const [count] = await tx()
     .insert(counts)
@@ -156,8 +195,6 @@ export async function create(input: z.infer<typeof countCreateInput>) {
     })
     .returning();
 
-  const stock = await systemQty(input.warehouseId, input.itemIds);
-  const itemIds = input.itemIds ?? [...stock.entries()].filter(([, qty]) => qty > 0).map(([id]) => id);
   if (itemIds.length > 0) {
     await tx()
       .insert(lines)
@@ -188,19 +225,21 @@ export async function update(id: string, input: z.infer<typeof countUpdateInput>
     await tx().update(counts).set(header).where(eq(counts.id, id));
   }
   if (input.lines?.length) {
-    const stock = await systemQty(count.warehouseId);
-    const existing = await tx().select({ id: lines.id, itemId: lines.itemId }).from(lines).where(eq(lines.countId, id));
-    const byItem = new Map(existing.map((l) => [l.itemId, l.id]));
-    for (const line of input.lines) {
-      const system = stock.get(line.itemId) ?? 0;
-      const values = {
-        systemQty: system,
-        actualQty: line.actualQty,
-        diffQty: Number((line.actualQty - system).toFixed(3)),
-      };
-      const lineId = byItem.get(line.itemId);
-      if (lineId) {
-        await tx().update(lines).set(values).where(eq(lines.id, lineId));
+    const typed = [...new Map(input.lines.map((line) => [line.itemId, line])).values()];
+    const existing = await tx().select({ id: lines.id, itemId: lines.itemId, systemQty: lines.systemQty }).from(lines).where(eq(lines.countId, id));
+    const byItem = new Map(existing.map((l) => [l.itemId, l]));
+    const added = typed.map((line) => line.itemId).filter((itemId) => !byItem.has(itemId));
+    if (added.length > 0) {
+      await lockOpenSheets(count.warehouseId);
+      await assertNotOnOpenSheet(count.warehouseId, added, id);
+    }
+    const stock = await systemQty(count.warehouseId, added);
+    for (const line of typed) {
+      const onSheet = byItem.get(line.itemId);
+      const system = line.systemQty ?? onSheet?.systemQty ?? stock.get(line.itemId) ?? 0;
+      const values = { systemQty: system, actualQty: line.actualQty, diffQty: round(line.actualQty - system, 3) };
+      if (onSheet) {
+        await tx().update(lines).set(values).where(eq(lines.id, onSheet.id));
       } else {
         await getItemOrThrow(line.itemId);
         await tx()
@@ -219,25 +258,34 @@ export async function approve(id: string) {
 
   const rows = await tx().select().from(lines).where(eq(lines.countId, id));
   if (rows.length === 0) throw conflict('COUNT_EMPTY', 'Add at least one item to the count');
+  await assertNotOnOpenSheet(count.warehouseId, rows.map((line) => line.itemId), id);
 
   // What the count found is a difference from the book at that moment. Stock issued since then is
   // already gone, so applying the old total would book it back in as a false surplus.
   const book = await systemQty(count.warehouseId);
   let diffCost = 0;
   for (const line of rows) {
+    const before = book.get(line.itemId) ?? 0;
     const result = await adjustStock({
       itemId: line.itemId,
       warehouseId: count.warehouseId,
-      actualQty: Math.max(0, Number(((book.get(line.itemId) ?? 0) + line.actualQty - line.systemQty).toFixed(3))),
+      actualQty: Math.max(0, round(before + line.diffQty, 3)),
       date: count.date,
       docNo: count.docNo,
       refType: 'stock_count',
       refId: id,
     });
+    // adjustStock reads the book under its lock. A different figure means this quantity came from a stale read.
+    if (round(result.systemQty - before, 3) !== 0) throw conflict('COUNT_BOOK_MOVED', 'Stock moved during approval. Approve again');
     diffCost += result.diffCost;
     await tx()
       .update(lines)
-      .set({ systemQty: result.systemQty, diffQty: result.diffQty, diffCost: result.diffCost })
+      .set({
+        systemQty: result.systemQty,
+        actualQty: round(result.systemQty + result.diffQty, 3),
+        diffQty: result.diffQty,
+        diffCost: result.diffCost,
+      })
       .where(eq(lines.id, line.id));
   }
 

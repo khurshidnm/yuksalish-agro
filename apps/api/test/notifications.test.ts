@@ -7,6 +7,7 @@ import { tx } from '../src/core/context';
 import { renderRecap } from '../src/modules/ai/records/recap';
 import { raiseAlert } from '../src/modules/alerts/alerts.service';
 import { evaluateRules } from '../src/modules/alerts/rules';
+import { renderDigest } from '../src/modules/notifications/digest';
 import { sendDailySummary } from '../src/modules/notifications/jobs';
 import { PASSWORD_NOTICE, inviteNotice } from '../src/modules/notifications/notifications.service';
 import { dispatchPending, notifyRole, notifyUser } from '../src/modules/notifications/notify.service';
@@ -282,5 +283,13 @@ describe('alert links', () => {
 
     const [alert] = await f.run(() => tx().select().from(alerts).where(eq(alerts.ruleKey, 'approvals_pending')));
     expect(alert.link).toBe('/finance/transactions?tab=approval');
+  });
+});
+
+describe('dates in server text', () => {
+  it('match what the web app shows beside them: slashes in English, dots otherwise', () => {
+    const facts = { date: '2026-11-06', herd: null, scarceFeed: null, openAlerts: 0, urgentAlerts: 0, cash: null, tasksOpen: null };
+    expect(renderDigest(facts, 'en').title).toBe('Daily summary, 06/11/2026');
+    for (const locale of ['ru', 'uz', 'uz-Cyrl']) expect(renderDigest(facts, locale).title).toContain('06.11.2026');
   });
 });

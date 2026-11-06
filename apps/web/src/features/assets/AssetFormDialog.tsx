@@ -7,8 +7,9 @@ import { Separator, apiOptions } from '@/components/ui';
 import { api } from '@/lib/api';
 import { usePermission } from '@/lib/auth';
 import { zEnum, zOptionalDate, zOptionalEnum, zOptionalNumber, zOptionalRef, zOptionalText, zText } from '@/lib/forms';
-import { enumOptions } from '@/lib/i18n';
+import i18n, { enumOptions } from '@/lib/i18n';
 import { useApiMutation } from '@/lib/query';
+import { depreciationGaps } from './depreciationGaps';
 import type { Asset } from './types';
 
 const PATH = '/assets';
@@ -41,8 +42,9 @@ const schema = z
   })
   .superRefine((v, ctx) => {
     if (!v.rented && v.openingDepreciation && !v.openingDepreciationDate) {
-      ctx.addIssue({ code: 'custom', path: ['openingDepreciationDate'], message: 'required' });
+      ctx.addIssue({ code: 'custom', path: ['openingDepreciationDate'], message: i18n.t('common:validation.required') });
     }
+    for (const gap of depreciationGaps(v)) ctx.addIssue({ code: 'custom', path: [gap], message: i18n.t(`assets:depreciation.gap.${gap}`) });
   });
 
 type Values = z.input<typeof schema>;
@@ -55,6 +57,7 @@ function OwnershipFields({ form, seesMoney }: { form: Form; seesMoney: boolean }
   const { t } = useTranslation('assets');
   const rented = useWatch({ control: form.control, name: 'rented' });
   const method = useWatch({ control: form.control, name: 'depreciationMethod' });
+  const priced = Boolean(useWatch({ control: form.control, name: 'purchasePrice' }));
 
   if (rented) {
     return (
@@ -75,14 +78,14 @@ function OwnershipFields({ form, seesMoney }: { form: Form; seesMoney: boolean }
   }
   return (
     <FormGrid>
-      <DateField form={form} name="purchaseDate" label={t('fields.purchaseDate')} />
+      <DateField form={form} name="purchaseDate" label={t('fields.purchaseDate')} required={priced} />
       {seesMoney && <NumberField money form={form} name="purchasePrice" label={t('fields.purchasePrice')} />}
       {seesMoney && <NumberField money form={form} name="salvageValue" label={t('fields.salvageValue')} hint={t('fields.salvageHint')} />}
       <SelectField form={form} name="depreciationMethod" label={t('fields.depreciationMethod')} options={enumOptions('depreciationMethod', DEPRECIATION_METHODS)} />
       {method === 'units' ? (
-        <NumberField form={form} name="totalUnits" label={t('fields.totalUnits')} suffix={t('unit.hours')} hint={t('fields.totalUnitsHint')} />
+        <NumberField form={form} name="totalUnits" label={t('fields.totalUnits')} suffix={t('unit.hours')} hint={t('fields.totalUnitsHint')} required={priced} />
       ) : (
-        <NumberField form={form} name="usefulLifeMonths" label={t('fields.usefulLife')} suffix={t('unit.months')} maxDigits={0} />
+        <NumberField form={form} name="usefulLifeMonths" label={t('fields.usefulLife')} suffix={t('unit.months')} maxDigits={0} required={priced} />
       )}
       {seesMoney && <NumberField money form={form} name="openingDepreciation" label={t('fields.openingDepreciation')} hint={t('fields.openingDepreciationHint')} />}
       {seesMoney && <DateField form={form} name="openingDepreciationDate" label={t('fields.openingDepreciationDate')} hint={t('fields.openingDepreciationDateHint')} />}

@@ -90,7 +90,7 @@ function TaskCard({ task, onComplete, onEdit }: TaskCardProps) {
               <div>
                 <dt className="sr-only">{t('fields.linkedObject')}</dt>
                 <dd>
-                  <Link to={task.entityLink} className="focus-ring rounded underline underline-offset-2">
+                  <Link to={task.entityLink} className="focus-ring inline-flex min-h-11 items-center rounded underline underline-offset-2">
                     {entityText(task, t)}
                   </Link>
                 </dd>

@@ -149,7 +149,12 @@
     "machines": "machines: {{count}}",
     "total": "Total",
     "nothingTitle": "Nothing to post",
-    "nothingBody": "No ended month has anything left to post. {{month}} can be posted once it has ended."
+    "nothingBody": "No ended month has anything left to post. {{month}} can be posted once it has ended.",
+    "gap": {
+      "usefulLifeMonths": "Without a useful life, no depreciation is posted",
+      "totalUnits": "Without lifetime hours, no depreciation is posted",
+      "purchaseDate": "Without a purchase date, no depreciation is posted"
+    }
   },
   "rental": {
     "createAct": "Acceptance act",

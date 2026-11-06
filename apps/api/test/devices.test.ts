@@ -301,6 +301,23 @@ describe('event ingest', () => {
     expect(res.body.error.code).toBe('INVALID_EVENT_TIME');
   });
 
+  it('one device saying fire three ways is one alert, and a capital letter is not refused', async () => {
+    const { f, key, device } = await setup();
+    for (const type of ['fire', 'camera.fire', 'FIRE', 'Sensor.Fire']) {
+      expect((await ingest(f, key, '/events', { deviceId: device.id, type })).status).toBe(200);
+    }
+
+    expect(await alertsFor(f)).toMatchObject([{ severity: 'urgent', ruleKey: 'device_event', dedupKey: `device_event:${device.id}:fire` }]);
+  });
+
+  it('smoke from the same device stays its own alert', async () => {
+    const { f, key, device } = await setup();
+    await ingest(f, key, '/events', { deviceId: device.id, type: 'fire' });
+    await ingest(f, key, '/events', { deviceId: device.id, type: 'camera.smoke' });
+
+    expect((await alertsFor(f)).map((alert) => alert.dedupKey).sort()).toEqual([`device_event:${device.id}:fire`, `device_event:${device.id}:smoke`]);
+  });
+
   describe('fire and smoke are urgent whatever the sender says', () => {
     const reportedSeverity = (f: Fixture) =>
       f.run(() => tx().select({ severity: schema.events.severity }).from(schema.events).where(eq(schema.events.source, 'camera')));

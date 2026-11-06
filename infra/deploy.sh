@@ -140,6 +140,9 @@ remember_images() {
   if [[ -r "$live_caddyfile" ]]; then
     cp "$live_caddyfile" "${images_list%.list}.Caddyfile"
   fi
+  if [[ -r "$STATE_DIR/last-deploy" ]]; then
+    cp "$STATE_DIR/last-deploy" "${images_list%.list}.deploy"
+  fi
 }
 
 build_images() {
@@ -358,7 +361,15 @@ forget_images() {
   while read -r _ _ hold; do
     docker image rm "$hold" > /dev/null 2>&1 || true
   done < "$list"
-  rm -f "$list" "${list%.list}.Caddyfile"
+  rm -f "$list" "${list%.list}.Caddyfile" "${list%.list}.deploy"
+}
+
+# status.sh names what last-deploy holds, so it must not go on naming what was just undone.
+note_rollback() {
+  local back undone
+  back="$(grep '^commit=' "${1%.list}.deploy" 2> /dev/null | cut -d= -f2-)"
+  undone="$(grep '^commit=' "$STATE_DIR/last-deploy" 2> /dev/null | cut -d= -f2-)"
+  printf 'commit=%s\nrolled_back_at=%s\nundoing=%s\n' "${back:-unknown}" "$(date -Is)" "${undone:-unknown}" > "$STATE_DIR/last-deploy"
 }
 
 restore_images() {
@@ -456,6 +467,7 @@ if [[ "$mode" == "rollback" ]]; then
     echo "The site is on the earlier images, and it passed the smoke check."
     echo "This does not undo database migrations, and the code on disk has not changed. The next"
     echo "infra/deploy.sh builds what is checked out here again, Caddyfile included."
+    note_rollback "$list"
     forget_images "$list"
     leave 0
   fi

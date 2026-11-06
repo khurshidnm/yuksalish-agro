@@ -16,6 +16,7 @@
       "fields": { "title": "Dalalar", "body": "Dalalarni xaritada chizing yoki ro'yxatga qo'shing." },
       "warehouses": { "title": "Omborlar", "body": "Kirim qilish uchun avval ombor kerak." },
       "items": { "title": "Tovarlar", "body": "Ozuqa, dori va boshqa tovarlar ro'yxati." },
+      "suppliers": { "title": "Yetkazib beruvchilar", "body": "Xaridni kirim qilish uchun yetkazib beruvchi kerak." },
       "stock": { "title": "Boshlang'ich qoldiq", "body": "Omborda hozir bor narsalarni kirim qiling." },
       "rations": { "title": "Ratsion", "body": "Poda yaratishdan oldin ratsionni tayyorlang." },
       "herds": { "title": "Poda va hayvonlar", "body": "Poda yarating, hayvonlarni qo'shing yoki import qiling." },
@@ -49,7 +50,7 @@
   "finance": {
     "cashTotal": "Jami pul",
     "cash": "Kassa va bank",
-    "monthExpense": "Bu oy xarajat",
+    "monthExpense": "Bu oy to'langan pul",
     "monthIncome": "Bu oy daromad",
     "budget": "Byudjet ijrosi",
     "budgetMonth": "Byudjet ijrosi (bu oy)",

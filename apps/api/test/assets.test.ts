@@ -18,7 +18,7 @@ import type { SeedContext } from '../src/seed/types';
 import { createFixture, type Fixture } from './helpers';
 import { renderAlert } from '../src/modules/alerts/alerts.service';
 
-const { accounts, alerts, counterparties, depreciationEntries, events: journal, financeCategories, fields, items, stockMovements, transactions, warehouses } = schema;
+const { accounts, alerts, assets, counterparties, depreciationEntries, events: journal, financeCategories, fields, items, stockMovements, transactions, warehouses } = schema;
 
 const today = todayIso();
 const lastMonth = previousMonth(monthOf(today));
@@ -654,15 +654,17 @@ describe('depreciation (spec 12.5)', () => {
   });
 
   it('a farm with no entries starts from the month it was created', async () => {
-    const { f } = await setup();
+    const { f, owner } = await setup();
     await farmCreatedAt(f, `${monthRange(threeMonthsAgo).from}T10:00:00Z`);
+    await newAsset(owner, { purchasePrice: 60_000_000, purchaseDate: '2024-01-15', usefulLifeMonths: 120 });
     expect(await f.run(() => monthsToRun())).toEqual([threeMonthsAgo, twoMonthsAgo, lastMonth]);
   });
 
   it('the month of creation is the month in Tashkent', async () => {
-    const { f } = await setup();
+    const { f, owner } = await setup();
     // 19:30 UTC on the last day is half past midnight on the 1st in Tashkent.
     await farmCreatedAt(f, `${monthRange(threeMonthsAgo).to}T19:30:00Z`);
+    await newAsset(owner, { purchasePrice: 60_000_000, purchaseDate: '2024-01-15', usefulLifeMonths: 120 });
     expect(await f.run(() => monthsToRun())).toEqual([twoMonthsAgo, lastMonth]);
   });
 
@@ -694,6 +696,80 @@ describe('depreciation (spec 12.5)', () => {
       }),
     );
     expect(await f.run(() => monthsToRun())).toEqual([twoMonthsAgo, lastMonth]);
+  });
+
+  describe('a machine added after months were posted', () => {
+    const entriesOf = (f: Fixture, assetId: string) =>
+      f.run(async () =>
+        (await tx().select().from(depreciationEntries).where(eq(depreciationEntries.assetId, assetId)))
+          .map((row) => [row.month, row.amount])
+          .sort(),
+      );
+    const job = jobs.find((j) => j.name === 'assets.monthly-depreciation')!;
+
+    async function farmWithPostedMonths() {
+      const { f, owner } = await setup();
+      await farmCreatedAt(f, `${monthRange(threeMonthsAgo).from}T10:00:00Z`);
+      const first = await newAsset(owner, { purchasePrice: 60_000_000, purchaseDate: '2024-01-15', usefulLifeMonths: 120 });
+      await f.run(() => job.run());
+      return { f, owner, first };
+    }
+
+    it('gets its own months, the others stay as they are, and a second run posts nothing', async () => {
+      const { f, owner, first } = await farmWithPostedMonths();
+      // 120 000 / 120 = 1 000 a month.
+      const late = await newAsset(owner, { purchasePrice: 120_000, purchaseDate: '2024-01-20', usefulLifeMonths: 120 });
+
+      const run = await owner.post('/assets/depreciation/run', {});
+      expect(run.data).toMatchObject({ posted: 3, total: 3_000 });
+      expect(await entriesOf(f, late.id)).toEqual([[threeMonthsAgo, 1_000], [twoMonthsAgo, 1_000], [lastMonth, 1_000]]);
+      expect(await entriesOf(f, first.id)).toHaveLength(3);
+
+      expect((await owner.post('/assets/depreciation/run', {})).data).toEqual({ months: [], posted: 0, total: 0 });
+      await f.run(() => job.run());
+      expect(await entriesOf(f, late.id)).toHaveLength(3);
+      const money = await f.run(() => tx().select().from(transactions).where(eq(transactions.sourceType, 'depreciation')));
+      expect(money).toHaveLength(6);
+    });
+
+    it('starts the month after its purchase', async () => {
+      const { f, owner } = await farmWithPostedMonths();
+      const late = await newAsset(owner, { purchasePrice: 120_000, purchaseDate: `${twoMonthsAgo}-20`, usefulLifeMonths: 12 });
+      expect(await f.run(() => monthsToRun())).toEqual([lastMonth]);
+      await f.run(() => job.run());
+      expect(await entriesOf(f, late.id)).toEqual([[lastMonth, 10_000]]);
+    });
+
+    it('never reaches past the first month of the farm', async () => {
+      const { f, owner } = await farmWithPostedMonths();
+      const late = await newAsset(owner, { purchasePrice: 120_000, purchaseDate: '2024-01-20', usefulLifeMonths: 120 });
+      await f.run(() => job.run());
+      expect((await entriesOf(f, late.id)).map(([month]) => month)).toEqual([threeMonthsAgo, twoMonthsAgo, lastMonth].sort());
+    });
+
+    it('starts after its opening date, the months before it are in the opening figure', async () => {
+      const { f, owner } = await farmWithPostedMonths();
+      const late = await newAsset(owner, {
+        purchasePrice: 120_000,
+        purchaseDate: '2024-01-20',
+        usefulLifeMonths: 120,
+        openingDepreciation: 30_000,
+        openingDepreciationDate: monthRange(twoMonthsAgo).to,
+      });
+      expect(await f.run(() => monthsToRun())).toEqual([lastMonth]);
+      await f.run(() => job.run());
+      // 120 000 / 120 = 1 000 a month.
+      expect(await entriesOf(f, late.id)).toEqual([[lastMonth, 1_000]]);
+    });
+
+    it('a machine with nothing left, a rented one and one written off hold no month open', async () => {
+      const { f, owner } = await farmWithPostedMonths();
+      await newAsset(owner, { name: 'Eski', purchasePrice: 120_000, purchaseDate: '2010-01-20', usefulLifeMonths: 12 });
+      await newAsset(owner, { name: 'Ijara', rented: true, purchasePrice: 120_000, purchaseDate: '2024-01-20', usefulLifeMonths: 12 });
+      const gone = await newAsset(owner, { name: 'Hisobdan', purchasePrice: 120_000, purchaseDate: '2024-01-20', usefulLifeMonths: 120 });
+      await f.run(() => tx().update(assets).set({ status: 'written_off' }).where(eq(assets.id, gone.id)));
+      expect(await f.run(() => monthsToRun())).toEqual([]);
+    });
   });
 
   it('the monthly job posts last month', async () => {
@@ -781,6 +857,16 @@ describe('demo seed', () => {
     const { f } = await seededOn('2026-11-06');
     vi.setSystemTime(new Date('2026-12-01T06:00:00Z'));
     expect(await f.run(() => monthsToRun())).toEqual(['2026-11']);
+  });
+
+  it('a machine added after the seed gets the months the seed posted, from the first of them', async () => {
+    const { f, owner } = await seededOn('2026-11-06');
+    // 120 000 / 12 = 10 000 a month, bought in August: September and October have ended.
+    const pump = await newAsset(owner, { name: 'Nasos', purchasePrice: 120_000, purchaseDate: '2026-08-20', usefulLifeMonths: 12 });
+
+    expect((await owner.post('/assets/depreciation/run', {})).data).toMatchObject({ posted: 2, total: 20_000 });
+    expect((await owner.get(`/assets/${pump.id}`)).data).toMatchObject({ accumulatedDepreciation: 20_000, bookValue: 100_000 });
+    expect((await owner.post('/assets/depreciation/run', {})).data).toEqual({ months: [], posted: 0, total: 0 });
   });
 });
 

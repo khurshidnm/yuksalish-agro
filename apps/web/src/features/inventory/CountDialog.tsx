@@ -25,10 +25,9 @@ import { usePermission } from '@/lib/auth';
 import { formatDate, formatMoney, formatQty } from '@/lib/format';
 import i18n from '@/lib/i18n';
 import { errorMessage, useApiMutation, useDetail } from '@/lib/query';
+import { type CountEntries, actualOf, bookOf, countPayload, differenceOf, enterCount } from './count-entry';
 import { STOCK_PATHS, itemOptions } from './shared';
-import type { CountDetail, CountLine } from './types';
-
-const round3 = (value: number) => Number(value.toFixed(3));
+import type { CountDetail } from './types';
 
 function Difference({ value, unit }: { value: number; unit: string }) {
   if (value === 0) return null;
@@ -53,7 +52,7 @@ export function CountDialog({ id, onClose }: { id: string; onClose: () => void }
   const isDraft = count?.status === 'draft';
   const editable = isDraft && canEdit;
 
-  const [entered, setEntered] = useState<Record<string, number | null>>({});
+  const [entered, setEntered] = useState<CountEntries>({});
   const [failure, setFailure] = useState<string | null>(null);
 
   useEffect(() => {
@@ -61,15 +60,11 @@ export function CountDialog({ id, onClose }: { id: string; onClose: () => void }
     setFailure(null);
   }, [id]);
 
-  const actualOf = (line: CountLine) => (line.itemId in entered ? entered[line.itemId] : line.actualQty);
   const lines = count?.lines ?? [];
-  const blank = lines.some((line) => actualOf(line) === null);
-  const differences = lines.filter((line) => {
-    const actual = actualOf(line);
-    return actual !== null && round3(actual - line.systemQty) !== 0;
-  }).length;
+  const blank = lines.some((line) => actualOf(entered, line) === null);
+  const differences = lines.filter((line) => differenceOf(entered, line) !== 0).length;
 
-  const payload = () => lines.flatMap((line) => (line.itemId in entered ? [{ itemId: line.itemId, actualQty: entered[line.itemId] }] : []));
+  const payload = () => countPayload(entered, lines);
 
   const save = useApiMutation<void, unknown>({
     mutationFn: async () => {
@@ -152,19 +147,19 @@ export function CountDialog({ id, onClose }: { id: string; onClose: () => void }
 
           <ul className="flex flex-col divide-y divide-border">
             {lines.map((line) => {
-              const actual = actualOf(line);
-              const diff = actual === null ? 0 : round3(actual - line.systemQty);
+              const actual = actualOf(entered, line);
+              const diff = isDraft ? differenceOf(entered, line) : line.diffQty;
               return (
                 <li key={line.id} className="grid grid-cols-[minmax(0,1fr)_8.5rem] items-center gap-x-3 gap-y-1 py-3">
                   <div className="min-w-0">
                     <p className="font-medium break-words">{line.itemName}</p>
-                    <p className="text-sm text-muted-foreground">{t('counts.book', { qty: formatQty(line.systemQty, line.unit) })}</p>
+                    <p className="text-sm text-muted-foreground">{t('counts.book', { qty: formatQty(bookOf(entered, line), line.unit) })}</p>
                   </div>
                   {editable ? (
                     <NumberInput
                       aria-label={t('counts.actualFor', { item: line.itemName })}
                       value={actual ?? null}
-                      onChange={(value) => setEntered((prev) => ({ ...prev, [line.itemId]: value }))}
+                      onChange={(value) => setEntered((prev) => enterCount(prev, line, value))}
                       suffix={t(`enums:unit.${line.unit}`)}
                     />
                   ) : (
@@ -190,7 +185,7 @@ export function CountDialog({ id, onClose }: { id: string; onClose: () => void }
                 value={null}
                 loadOptions={itemOptions()}
                 placeholder={t('counts.addItemPlaceholder')}
-                onChange={(value) => value && addItem.mutate(value)}
+                onChange={(value) => value && !lines.some((line) => line.itemId === value) && addItem.mutate(value)}
               />
             </div>
           )}

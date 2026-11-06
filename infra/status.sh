@@ -27,13 +27,15 @@ origin="$(setting WEB_ORIGIN)"
 domain="$(setting DOMAIN)"
 backup_dir="$(setting BACKUP_DIR /var/backups/yap)"
 offsite="$(setting BACKUP_OFFSITE)"
+telegram_token="$(setting TELEGRAM_BOT_TOKEN)"
 
 echo "Containers"
 services="db redis api web"
 tls_enabled && services="$services caddy"
 for service in $services; do
   id="$(compose ps -q "$service" 2> /dev/null | head -n 1)"
-  state="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$id" 2> /dev/null || echo 'not running')"
+  state="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$id" 2> /dev/null)"
+  state="${state:-not running}"
   if [[ "$state" == "healthy" ]]; then
     good "$service"
   else
@@ -54,8 +56,10 @@ fi
 # terminal: under `timeout` a program that reads it is stopped, and this would wait for nothing.
 compose_command
 deep="$(timeout 20 "${COMPOSE_CMD[@]}" exec -T api node -e "fetch('http://127.0.0.1:4000/api/health/deep', { signal: AbortSignal.timeout(10000) }).then((r) => r.json()).then((r) => console.log(r.failing.join(', ') || 'ok'))" < /dev/null 2> /dev/null | tail -n 1)"
-if [[ "$deep" == "ok" ]]; then
+if [[ "$deep" == "ok" && -n "$telegram_token" ]]; then
   good "Deep health check: database, Redis, background worker, urgent alerts, Telegram and disk"
+elif [[ "$deep" == "ok" ]]; then
+  good "Deep health check: database, Redis, background worker and disk"
 elif [[ -n "$deep" ]]; then
   bad "The deep health check is failing: $deep. Its log: docker compose -p $PROJECT -f docker-compose.prod.yml --env-file $ENV_FILE logs --tail 50 api"
 else
@@ -155,10 +159,12 @@ fi
 echo
 echo "The server"
 used="$(df -P "$(docker info --format '{{.DockerRootDir}}' 2> /dev/null || echo /)" 2> /dev/null | awk 'NR == 2 { gsub("%", "", $5); print $5 }')"
-if [[ -n "$used" ]] && ((used >= 85)); then
+if [[ ! "$used" =~ ^[0-9]+$ ]]; then
+  bad "The disk could not be read, so nobody knows how full it is. Look with: df -h"
+elif ((used >= 85)); then
   bad "The disk is $used% full"
 else
-  good "Disk ${used:-?}% full"
+  good "Disk $used% full"
 fi
 swap_used="$(awk '/^SwapTotal:/ { t = $2 } /^SwapFree:/ { f = $2 } END { print int((t - f) / 1024) }' /proc/meminfo)"
 mem_free="$(awk '/^MemAvailable:/ { print int($2 / 1024) }' /proc/meminfo)"
@@ -171,7 +177,9 @@ if [[ -f /var/run/reboot-required ]]; then
   good "A reboot is due for updates. It happens by itself at 04:30."
 fi
 
-if [[ -n "$(setting TELEGRAM_BOT_TOKEN)" ]]; then
+if [[ -z "$telegram_token" ]]; then
+  bad "TELEGRAM_BOT_TOKEN is empty, so no alert can leave the app: a fire shows only to someone looking at it. Put the token from @BotFather in $ENV_FILE, then run infra/deploy.sh"
+else
   if words="$(telegram_words "$(telegram_check_api)")"; then
     good "$words"
   else

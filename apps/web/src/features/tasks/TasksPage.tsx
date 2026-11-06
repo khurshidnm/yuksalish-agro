@@ -84,7 +84,7 @@ function TaskList({ onEdit, onComplete }: ListProps) {
         <div className="min-w-0">
           <p className="font-medium break-words">{task.title}</p>
           {task.entityLink && task.entityLabel && (
-            <Link to={task.entityLink} className="text-sm text-muted-foreground underline">
+            <Link to={task.entityLink} className="inline-flex min-h-11 items-center text-sm text-muted-foreground underline">
               {entityText(task, t)}
             </Link>
           )}

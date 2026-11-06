@@ -13,7 +13,7 @@ import { issueStock, receiveStock } from '../src/core/inventory';
 import { postTransaction } from '../src/core/ledger';
 import { INSIGHT_TYPES } from '../src/modules/ai/analyzers/types';
 import { asAi } from '../src/modules/ai/role';
-import { raiseAlert, renderAlert, repeatUrgentAlerts } from '../src/modules/alerts/alerts.service';
+import { escalateAlert, raiseAlert, renderAlert, repeatUrgentAlerts } from '../src/modules/alerts/alerts.service';
 import { checkReach, UNREACHABLE_RULE } from '../src/modules/alerts/reach';
 import { evaluateRules, RULES } from '../src/modules/alerts/rules';
 import { openAlerts } from '../src/modules/alerts/summary';
@@ -919,12 +919,12 @@ describe('an urgent alert with nobody reachable', () => {
     await f.run(() => checkReach());
 
     const alert = await warning(f);
-    expect(alert).toMatchObject({ severity: 'urgent', status: 'open', notifyRoles: ['owner'], link: '/notifications', nextNotifyAt: null, undeliveredSince: null });
+    expect(alert).toMatchObject({ severity: 'attention', status: 'open', notifyRoles: ['owner'], link: '/notifications', nextNotifyAt: null, undeliveredSince: null });
     expect(renderAlert(alert, 'en').title).toBe('Fire alerts have nobody to go to');
     const told = await rowsFor(f, owner.userId);
     expect(told).toHaveLength(1);
     expect(told[0].deliveries).toEqual({});
-    expect((await owner.get('/alerts/counts')).data.urgent).toBe(1);
+    expect((await owner.get('/alerts/counts')).data).toMatchObject({ urgent: 0, attention: 1 });
 
     await f.run(() => tx().update(users).set({ telegramChatId: 'chat-owner' }).where(eq(users.id, owner.userId)));
     await f.run(() => checkReach());
@@ -955,6 +955,31 @@ describe('an urgent alert with nobody reachable', () => {
     expect((await openAlert(f)).notifyRoles).toEqual(['director', 'owner']);
   });
 
+  it('a new farm with no bot opens with nothing urgent, and the owner still sees the warning', async () => {
+    const { f } = await setup([]);
+    vi.stubEnv('TELEGRAM_BOT_TOKEN', '');
+    const owner = await f.as('owner');
+
+    await f.run(() => checkReach());
+
+    expect((await owner.get('/alerts/counts')).data).toEqual({ urgent: 0, attention: 1, info: 0, total: 1 });
+    const { data } = await owner.get('/alerts', { active: true });
+    expect(data.map((alert: { ruleKey: string; severity: string }) => [alert.ruleKey, alert.severity])).toEqual([[UNREACHABLE_RULE, 'attention']]);
+  });
+
+  it('a warning left open at urgent by an earlier version comes down, without telling anyone again', async () => {
+    const { f } = await setup([]);
+    vi.stubEnv('TELEGRAM_BOT_TOKEN', '');
+    const owner = await f.as('owner');
+    await f.run(() => checkReach());
+    await f.run(() => tx().update(alerts).set({ severity: 'urgent' }).where(eq(alerts.dedupKey, UNREACHABLE_RULE)));
+
+    await f.run(() => checkReach());
+
+    expect(await warning(f)).toMatchObject({ severity: 'attention', status: 'open' });
+    expect(await rowsFor(f, owner.userId)).toHaveLength(1);
+  });
+
   it('sends that keep failing raise the warning too, and it is gone once a message gets through', async () => {
     const { f } = await setup(['director'], ['owner', 'director']);
     vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -967,6 +992,7 @@ describe('an urgent alert with nobody reachable', () => {
     await age(f, 6);
     await dispatch(f);
     expect(renderAlert(await warning(f), 'ru').title).toBe('Срочное предупреждение никому не дошло');
+    expect((await warning(f)).severity).toBe('urgent');
 
     vi.stubGlobal('fetch', telegramOk());
     const director = await f.as('director');
@@ -1100,7 +1126,7 @@ describe('alert labels', () => {
   it('offline conflict with no feed listed says so, rather than leaving a blank', () => {
     const empty = alert('offline_conflict', { herd: 'P', date: '2026-11-04', summary: '', textKey: 'offline_conflict_empty' });
     expect(renderAlert(empty, 'en').body).toBe('A record entered offline did not match the saved one. It lists no feed.');
-    expect(renderAlert(empty, 'en').title).toBe('P: two different records for 04.11.2026');
+    expect(renderAlert(empty, 'en').title).toBe('P: two different records for 04/11/2026');
   });
 
   it('names device events from the cameras dictionary, and survives a dotted or unknown type', () => {
@@ -1268,6 +1294,21 @@ describe('the Acknowledge button on an urgent alert', () => {
 
     expect(telegram.notice()).toBe(tr('uz', 'alerts', 'bot.noRightToAcknowledge'));
     expect(await alertRow(f, id)).toMatchObject({ status: 'open', acknowledgedBy: null });
+    expect(await journal(f, id)).toEqual([]);
+    expect(telegram.of('editMessageReplyMarkup')).toEqual([]);
+  });
+
+  it('someone it was not sent to sees it but cannot stop it, and the button stays for those who can', async () => {
+    const f = await createFixture();
+    const telegram = fakeTelegram();
+    await person(f, 'accountant', '4108');
+    const { id } = await f.run(() => fire({ notify: ['director', 'owner'] }));
+
+    await press('4108', id);
+
+    expect(telegram.notice()).toBe(tr('uz', 'alerts', 'bot.noRightToAcknowledge'));
+    expect(await alertRow(f, id)).toMatchObject({ status: 'open', acknowledgedBy: null });
+    expect((await alertRow(f, id)).nextNotifyAt).not.toBeNull();
     expect(await journal(f, id)).toEqual([]);
     expect(telegram.of('editMessageReplyMarkup')).toEqual([]);
   });
@@ -1447,7 +1488,8 @@ describe('a test alert', () => {
 
     expect(sent[0].text).toContain('ПРОВЕРКА');
     expect(tr('en', 'alerts', 'testAlert.message.title')).toContain('TEST');
-    expect(tr('uz', 'alerts', 'testAlert.message.title')).toContain('SINOV');
+    expect(tr('uz', 'alerts', 'testAlert.message.title')).toContain('Sinov');
+    expect(tr('uz-Cyrl', 'alerts', 'testAlert.message.title')).toBe('Синов: бу ҳақиқий огоҳлантириш эмас');
   });
 
   it('is no alert: nothing to acknowledge, nothing repeats, nothing is left open, and the journal has it', async () => {
@@ -1719,6 +1761,81 @@ describe('alerts API', () => {
     const rows = await f.run(() => openAlerts(2));
     expect(rows).toHaveLength(2);
     expect(rows[0].severity).toBe('attention');
+  });
+});
+
+describe('who may stop an urgent alert', () => {
+  const fire = (f: Fixture, notify: RoleKey[], dedupKey = 'fire') =>
+    f.run(() => raiseAlert({ ruleKey: 'device_event', dedupKey, severity: 'urgent', title: "Yong'in", notify }));
+  const rowOf = async (f: Fixture, id: string) => {
+    const [row] = await f.run(() => tx().select().from(alerts).where(eq(alerts.id, id)));
+    return row;
+  };
+
+  it('an accountant sees a fire sent to others, cannot stop it by either route, and the repeats go on', async () => {
+    const f = await createFixture();
+    const accountant = await f.as('accountant');
+    const director = await f.as('director');
+    const { id } = await fire(f, ['director', 'owner']);
+
+    expect((await accountant.get('/alerts', { active: true })).data.map((alert: { id: string }) => alert.id)).toEqual([id]);
+    for (const action of ['acknowledge', 'resolve']) {
+      const refused = await accountant.post(`/alerts/${id}/${action}`);
+      expect(refused.status).toBe(403);
+      expect(refused.body.error.code).toBe('ALERT_NOT_YOURS');
+    }
+
+    const row = await rowOf(f, id);
+    expect(row).toMatchObject({ status: 'open', acknowledgedBy: null });
+    expect(row.nextNotifyAt).not.toBeNull();
+    await f.run(() => tx().update(alerts).set({ nextNotifyAt: new Date(0) }).where(eq(alerts.id, id)));
+    expect(await f.run(() => repeatUrgentAlerts())).toBe(1);
+
+    expect((await director.post(`/alerts/${id}/acknowledge`)).data.acknowledgedBy).toBe(director.userId);
+  });
+
+  it('the words for that refusal exist in every language', () => {
+    expect(tr('uz', 'alerts', 'errors.ALERT_NOT_YOURS')).toContain('direktor');
+    expect(tr('ru', 'alerts', 'errors.ALERT_NOT_YOURS')).toContain('директор');
+    expect(tr('en', 'alerts', 'errors.ALERT_NOT_YOURS')).toContain('director');
+  });
+
+  it('the role it was sent to may take it, and so may the owner and director, whoever it was sent to', async () => {
+    const f = await createFixture();
+    for (const role of ['veterinarian', 'owner', 'director'] as const) {
+      const { id } = await fire(f, ['veterinarian'], `fire-${role}`);
+      const client = await f.as(role);
+      expect((await client.post(`/alerts/${id}/acknowledge`)).data.acknowledgedBy).toBe(client.userId);
+    }
+  });
+
+  it('a role brought in by escalation was sent it too', async () => {
+    const f = await createFixture();
+    const storekeeper = await f.as('storekeeper');
+    const { id } = await fire(f, ['director']);
+    expect((await storekeeper.post(`/alerts/${id}/acknowledge`)).status).toBe(403);
+
+    await f.run(async () => escalateAlert(await rowOf(f, id), 'storekeeper'));
+
+    expect((await storekeeper.post(`/alerts/${id}/acknowledge`)).status).toBe(200);
+  });
+
+  it('once taken, it stays out of reach of the others', async () => {
+    const f = await createFixture();
+    const { id } = await fire(f, ['director', 'owner']);
+    await (await f.as('director')).post(`/alerts/${id}/acknowledge`);
+
+    expect((await (await f.as('accountant')).post(`/alerts/${id}/resolve`)).status).toBe(403);
+    expect((await rowOf(f, id)).status).toBe('acknowledged');
+  });
+
+  it('what does not repeat stays with anyone who may update tasks', async () => {
+    const f = await createFixture();
+    const accountant = await f.as('accountant');
+    const { id } = await f.run(() => raiseAlert({ ruleKey: 'tasks_overdue', dedupKey: 'calm', severity: 'attention', title: 'Kech', notify: ['director'] }));
+
+    expect((await accountant.post(`/alerts/${id}/acknowledge`)).status).toBe(200);
+    expect((await accountant.post(`/alerts/${id}/resolve`)).status).toBe(200);
   });
 });
 

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { ALERT_STATUSES, SEVERITIES, type Permission, type RoleKey, type Severity } from '@yap/shared';
 import { schema } from '../../db/client';
 import { ctx, hasPermission, tx } from '../../core/context';
-import { conflict, notFound } from '../../core/errors';
+import { conflict, forbidden, notFound } from '../../core/errors';
 import { recordEvent } from '../../core/journal';
 import { listQuery, paged, sortBy } from '../../core/query';
 import { interpolate, lookup, tr, type Params } from '../notifications/i18n';
@@ -320,6 +320,16 @@ export async function counts() {
   return { ...bySeverity, total: bySeverity.urgent + bySeverity.attention + bySeverity.info };
 }
 
+/** An urgent alert repeats until someone takes it, so stopping it belongs to those it was sent to, and to those who answer for the farm. */
+function mayStop(alert: Alert): boolean {
+  const role = ctx().roleKey ?? '';
+  return alert.severity !== 'urgent' || role === 'owner' || role === 'director' || alert.notifyRoles.includes(role);
+}
+
+function assertMayStop(alert: Alert): void {
+  if (!mayStop(alert)) throw forbidden('Only the people responsible, the owner or the director can stop this urgent alert', 'ALERT_NOT_YOURS');
+}
+
 async function getVisible(id: string): Promise<Alert> {
   const [alert] = await tx().select().from(alerts).where(and(eq(alerts.id, id), visible()));
   if (!alert) throw notFound('Alert');
@@ -338,7 +348,9 @@ async function take(alert: Alert): Promise<Alert | undefined> {
 }
 
 export async function acknowledge(id: string) {
-  const row = await take(await getVisible(id));
+  const alert = await getVisible(id);
+  assertMayStop(alert);
+  const row = await take(alert);
   if (!row) throw conflict('ALERT_NOT_OPEN', 'This alert is not open');
   return row;
 }
@@ -349,12 +361,13 @@ export type ButtonOutcome = 'acknowledged' | 'taken' | 'no_right';
 export async function acknowledgeByButton(id: string): Promise<ButtonOutcome | null> {
   const [alert] = await tx().select().from(alerts).where(and(eq(alerts.id, id), visible()));
   if (!alert) return null;
-  if (!hasPermission(ACKNOWLEDGE_PERMISSION)) return 'no_right';
+  if (!hasPermission(ACKNOWLEDGE_PERMISSION) || !mayStop(alert)) return 'no_right';
   return (await take(alert)) ? 'acknowledged' : 'taken';
 }
 
 export async function resolve(id: string) {
   const alert = await getVisible(id);
+  assertMayStop(alert);
   if (alert.status === 'resolved') throw conflict('ALERT_ALREADY_RESOLVED', 'This alert is already resolved');
   const [row] = await tx()
     .update(alerts)

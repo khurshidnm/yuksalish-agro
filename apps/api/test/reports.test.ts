@@ -331,13 +331,15 @@ describe('reports on the control scenario', () => {
     expect(JSON.stringify(data.rows)).not.toContain('9000000');
   });
 
-  it('monthly result nets to the same total', async () => {
+  it('monthly result is income less operating cost, the same net as the investor report', async () => {
     const data = await run('finance.monthly_result', { from: '2026-03-01', to: '2026-04-30' });
-    expect(data.rows.map((r: any) => [r.month, r.income, r.expense])).toEqual([
-      ['2026-03', 3_000_000, 7_000_000],
-      ['2026-04', 7_000_000, 0],
+    expect(data.rows.map((r: any) => [r.month, r.income, r.operatingExpense, r.net, r.expense])).toEqual([
+      // 3 000 000 direct + 500 kg used at 2 000. The other 3 000 000 of the feed bought is still in stock.
+      ['2026-03', 3_000_000, 4_000_000, -1_000_000, 7_000_000],
+      ['2026-04', 7_000_000, 0, 7_000_000, 0],
     ]);
-    expect(data.totals.net).toBe(3_000_000);
+    expect(data.totals).toMatchObject({ income: 10_000_000, operatingExpense: 4_000_000, net: 6_000_000, expense: 7_000_000 });
+    expect((await owner.get('/reports/investor', { month: '2026-03' })).data.finance.net).toBe(data.rows[0].net);
   });
 
   it('cost per head matches the hand count and the dashboard function', async () => {

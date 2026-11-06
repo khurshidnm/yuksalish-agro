@@ -1,4 +1,4 @@
-/** The first-day path of a new farm. Order matters: a receipt needs a warehouse and items, a herd its ration. */
+/** The first-day path of a new farm. Order matters: a receipt needs a warehouse and items, a purchase its supplier, a herd its ration. */
 import type { Permission } from '@yap/shared';
 
 export interface SetupStep {
@@ -17,6 +17,7 @@ export const SETUP_STEPS: SetupStep[] = [
   { key: 'fields', source: '/farm/fields', link: '/farm/fields', access: 'farm.create' },
   { key: 'warehouses', source: '/inventory/warehouses', link: '/inventory/warehouses', access: 'inventory.create' },
   { key: 'items', source: '/inventory/items', link: '/inventory/items', access: 'inventory.create' },
+  { key: 'suppliers', source: '/finance/counterparties', link: '/finance/counterparties', access: 'finance.create' },
   { key: 'stock', source: '/inventory/movements', link: '/inventory/stock', access: 'inventory.create' },
   { key: 'rations', source: '/feed/rations', link: '/feed/rations', access: 'feed.create' },
   { key: 'herds', source: '/livestock/herds', link: '/livestock/herds', access: 'livestock.create' },
