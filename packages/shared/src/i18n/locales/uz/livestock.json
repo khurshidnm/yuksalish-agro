@@ -105,9 +105,73 @@
     "withdrawalTitle": "Kutish muddati",
     "withdrawalBody": "Go'sht sotish va so'yish {{date}} gacha mumkin emas.",
     "pregnancyTitle": "Bo'g'oz",
-    "pregnancyBody": "Kutilayotgan qo'zilash: {{date}}.",
+    "pregnancyBody": "Kutilayotgan tug'ish: {{date}}.",
     "quarantineTitle": "Karantinda",
-    "quarantineBody": "Hayvonni karantin tugaguncha sotish va so'yish mumkin emas."
+    "quarantineBody": "Hayvonni karantin tugaguncha sotish va so'yish mumkin emas.",
+    "breeding": {
+      "title": "Naslchilik",
+      "more": "Batafsil",
+      "births": "Tug'ishlar",
+      "noBirths": "Bu fermada hali tug'magan",
+      "times": "{{count}} marta",
+      "birthsLine": "{{times}}, {{young}}",
+      "bornTile": "Tug'ilgan {{word}}",
+      "aliveTile": "Tirik tug'ilgan {{word}}",
+      "lastBirth": "Oxirgisi: {{date}}",
+      "farmOnly": "Bu sonlar faqat shu fermadagi tug'ishlarni ko'rsatadi. Sotib olingan hayvonning oldingi tug'ishlari yozilmagan.",
+      "farmOnlyShort": "Faqat shu fermadagi tug'ishlar",
+      "matings": "Qochirishlar",
+      "matingsEmpty": "Qochirish yozilmagan",
+      "birthsEmpty": "Bu fermada tug'ish yozilmagan",
+      "unknown": "Noma'lum",
+      "arrivedPregnant": "Fermaga bo'g'oz holda kelgan",
+      "setRam": "{{ram}}ni belgilash",
+      "setRamTitle": "{{tag}}: {{ram}}ni belgilash",
+      "inbreedingBody": "Ikkalasining umumiy ajdodi bor: {{tags}}. Saqlash mumkin, lekin tekshirib ko'ring.",
+      "noTag": "Birkasiz",
+      "emptyTitle": "Naslchilik yozuvlari yo'q",
+      "emptyBody": "Qochirish va tug'ishlar yozilgach, shu yerda ko'rinadi.",
+      "status": {
+        "pregnant": "Bo'g'oz",
+        "lambed": "Tug'gan",
+        "aborted": "Bola tashlagan",
+        "failed": "Bo'g'oz bo'lmagan"
+      },
+      "result": {
+        "born": "{{date}}: {{young}}, {{alive}} tirik",
+        "pending": "Kutilmoqda",
+        "none": "Tug'ish bo'lmagan"
+      },
+      "young": {
+        "sheep": "qo'zilar",
+        "goat": "uloqlar",
+        "cattle": "buzoqlar",
+        "horse": "toylar",
+        "other": "bolalar"
+      },
+      "youngCount": {
+        "sheep": "{{count}} qo'zi",
+        "goat": "{{count}} uloq",
+        "cattle": "{{count}} buzoq",
+        "horse": "{{count}} toy",
+        "other": "{{count}} bola"
+      }
+    },
+    "health": {
+      "title": "Veterinariya",
+      "more": "Batafsil",
+      "lastVaccination": "Oxirgi emlash",
+      "overdue": "Muddati o'tgan",
+      "sickOpen": "Ochiq kasallik xabari",
+      "sickClosed": "Kasallik xabari yopilgan",
+      "quarantineOpen": "Karantin davom etmoqda",
+      "quarantineUntil": "{{date}} gacha",
+      "wholeHerd": "Butun poda uchun yozuv",
+      "upcoming": "Keyingi muddatlar",
+      "endedOn": "Tugagan sana",
+      "emptyTitle": "Veterinariya yozuvlari yo'q",
+      "emptyBody": "Emlash, davolash va tekshiruvlar shu yerda ko'rinadi."
+    }
   },
   "transfer": {
     "title": "Ko'chirish",

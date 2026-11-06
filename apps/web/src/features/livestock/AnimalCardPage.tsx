@@ -15,7 +15,9 @@ import { zDate, zEnum, zPositive, zText } from '@/lib/forms';
 import { enumOptions } from '@/lib/i18n';
 import { errorMessage, useApiMutation, useDetail } from '@/lib/query';
 import { categoryLabel } from './category';
+import { AnimalBreedingTab, BreedingCard, Detail } from './AnimalBreedingTab';
 import { AnimalForm } from './AnimalForm';
+import { AnimalHealthTab, HealthCard } from './AnimalHealthTab';
 import { ExitForm } from './ExitForm';
 import { type Animal, type I18nName, StatusBadge, compressImage, isOnFarm, useAgeText, useLocalName } from './shared';
 import { TransferDialog } from './TransferDialog';
@@ -54,15 +56,6 @@ interface AnimalCard extends Animal {
 const weightSchema = z.object({ date: zDate(), weightKg: zPositive() });
 const identifierSchema = z.object({ type: zEnum(IDENTIFIER_TYPES), value: zText(60) });
 
-function Detail({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <dt className="text-sm text-muted-foreground">{label}</dt>
-      <dd className="font-medium break-words">{children}</dd>
-    </div>
-  );
-}
-
 export default function AnimalCardPage() {
   const { t } = useTranslation('livestock');
   const { id = '' } = useParams();
@@ -71,6 +64,7 @@ export default function AnimalCardPage() {
   const canDelete = usePermission('livestock.delete');
   const canExit = usePermission('livestock.create');
   const canSell = usePermission('sales.create');
+  const canSeeHealth = usePermission('health.view');
   const localName = useLocalName();
   const ageText = useAgeText();
   const confirm = useConfirm();
@@ -142,6 +136,8 @@ export default function AnimalCardPage() {
   }
 
   const active = isOnFarm(animal.status);
+  // Poultry is counted by the flock: a hen has no births of her own.
+  const hasBirths = animal.sex === 'female' && animal.speciesKey !== 'poultry';
 
   const overview = (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -175,6 +171,9 @@ export default function AnimalCardPage() {
           {animal.notes && <p className="mt-4 rounded-lg bg-muted p-3 text-sm">{animal.notes}</p>}
         </CardContent>
       </Card>
+
+      {hasBirths && <BreedingCard animalId={animal.id} speciesKey={animal.speciesKey} />}
+      {canSeeHealth && <HealthCard animalId={animal.id} />}
 
       <Card>
         <CardHeader>
@@ -396,7 +395,7 @@ export default function AnimalCardPage() {
             <StatusBadge status={animal.status} />
           </span>
         }
-        description={`${localName(animal.breedName)} · ${t(`enums:animalCategory.${animal.category}`)}`}
+        description={`${localName(animal.breedName)} · ${categoryLabel(animal.category, animal.speciesKey)}`}
         actions={
           <>
             {canManage && active && (
@@ -504,6 +503,18 @@ export default function AnimalCardPage() {
       <UrlTabs
         tabs={[
           { value: 'overview', label: t('card.tabs.overview'), content: overview },
+          {
+            value: 'breeding',
+            label: t('card.breeding.title'),
+            hidden: !hasBirths,
+            content: <AnimalBreedingTab animalId={animal.id} speciesKey={animal.speciesKey} tag={animal.tag} />,
+          },
+          {
+            value: 'health',
+            label: t('card.health.title'),
+            hidden: !canSeeHealth,
+            content: <AnimalHealthTab animalId={animal.id} tag={animal.tag} onFarm={active} />,
+          },
           { value: 'weights', label: t('card.tabs.weights'), content: weights },
           { value: 'identifiers', label: t('card.tabs.identifiers'), content: identifiers },
           { value: 'transfers', label: t('card.tabs.transfers'), content: transfers },

@@ -250,6 +250,20 @@ export async function updateAnimal(id: string, input: z.infer<typeof animalUpdat
 
   if (Object.keys(values).length === 0) throw badRequest('NOTHING_TO_UPDATE', 'No changes were sent');
   const [row] = await tx().update(t).set(values).where(eq(t.id, id)).returning();
+  // A passport reads herd history from transfers, so a move on this form must leave one too.
+  if (input.herdId !== undefined && input.herdId !== current.herdId) {
+    const c = ctx();
+    await tx().insert(herdTransfers).values({
+      tenantId: c.tenantId,
+      farmId: c.farmId,
+      createdBy: c.userId,
+      animalId: id,
+      fromHerdId: current.herdId,
+      toHerdId: input.herdId,
+      date: today(),
+    });
+    await recordEvent({ type: 'animal.transferred', entityType: 'animal', entityId: id, data: { count: 1 } });
+  }
   return visible(row);
 }
 

@@ -9,7 +9,7 @@ import { ensureCostCenter } from '../../core/costCenters';
 import { badRequest, conflict, notFound } from '../../core/errors';
 import { getItemOrThrow, issueStock, reverseMovements } from '../../core/inventory';
 import { recordEvent } from '../../core/journal';
-import { hideMoney } from '../../core/privacy';
+import { hideMoney, hidePii } from '../../core/privacy';
 import { clientId, isoDate, listQuery, paged, searchAny, sortBy } from '../../core/query';
 import { raiseAlert, resolveByDedupKey } from '../alerts/alerts.service';
 import { signedFileUrl } from '../files';
@@ -252,13 +252,13 @@ export async function listRecords(q: z.infer<typeof healthListQuery>) {
       .limit(limit)
       .offset(offset),
   );
-  return { ...page, data: hideMoney(page.data, ['totalCost']) };
+  return { ...page, data: hidePii(hideMoney(page.data, ['totalCost']), ['vetName']) };
 }
 
 export async function getRecord(id: string) {
   const [row] = await joinedRecords().where(and(eq(h.id, id), eq(h.farmId, ctx().farmId)));
   if (!row) throw notFound('Health record');
-  return hideMoney([row], ['totalCost'])[0];
+  return hidePii(hideMoney([row], ['totalCost']), ['vetName'])[0];
 }
 
 async function getRow(id: string): Promise<HealthRecord> {
