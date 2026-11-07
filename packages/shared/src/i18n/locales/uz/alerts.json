@@ -149,6 +149,50 @@
     "device_offline": {
       "title": "{{deviceName}} aloqada emas",
       "body": "{{minutes}} daqiqadan beri signal yo'q."
+    },
+    "crop_weak_zone": {
+      "title": "{{field}}-dalada zaif joylar: {{areaHa}} ga",
+      "body": "{{date}} sun'iy yo'ldosh suratida zaif joylar: {{count}} ta. Borib zararkunanda, suv yoki o'g'it yetishmasligini tekshiring."
+    },
+    "satellite_check": {
+      "title": "{{field}}-dala: sun'iy yo'ldosh va yozuvlar mos emas",
+      "body": "Sana: {{date}}."
+    },
+    "satellite_no_green_up": {
+      "title": "{{field}}-dala: ekilgandan beri ko'kat ko'rinmayapti",
+      "body": "{{date}} da ekilgan, lekin sun'iy yo'ldosh hali ham ochiq tuproqni ko'rmoqda. Unib chiqishni tekshiring yoki ekish sanasini tuzating."
+    },
+    "satellite_harvest_not_seen": {
+      "title": "{{field}}-dala: hosil yozilgan, ekin hali turibdi",
+      "body": "{{date}} da hosil yig'ilgani yozilgan, lekin sun'iy yo'ldosh hali yashil ekinni ko'rmoqda. Yozuvni tekshiring."
+    },
+    "satellite_unrecorded_harvest": {
+      "title": "{{field}}-dala: ekin olingan, hosil yozilmagan",
+      "body": "{{date}} atrofida sun'iy yo'ldosh ekin olinganini ko'rdi (hosil, o'rim yoki defoliatsiya). Hosil yig'ilgan bo'lsa, uni yozing."
+    },
+    "frost_risk": {
+      "title": "Sovuq kutilmoqda: {{date}}, {{temp}} °C gacha",
+      "body": "Sovuqqa sezgir ekinlar bor dalalar: {{fields}}."
+    },
+    "spray_window": {
+      "title": "{{field}}-dalaga ishlov: {{date}} noqulay kun",
+      "body": "Shamol, yomg'ir yoki issiq ishlovni buzadi. Eng qulay vaqt: {{bestDate}}, {{bestFrom}}–{{bestTo}}."
+    },
+    "spray_window_none": {
+      "title": "{{field}}-dalaga ishlov: {{date}} noqulay kun",
+      "body": "Prognozda yaqin kunlarda qulay soat yo'q. Ishlovni boshqa kunga ko'chiring."
+    },
+    "heat_stress": {
+      "title": "Suruv uchun jazirama: {{date}}, {{from}}–{{to}}",
+      "body": "Qo'ylar uchun issiqlik indeksi {{thi}} ga yetadi (o'ta xavfli). Hayvonlarni soyada saqlang, suvni ko'p bering, bu soatlarda haydamang va qirqmang."
+    },
+    "irrigation_due": {
+      "title": "{{field}}-dala: {{date}} da sug'orish kerak",
+      "body": "Ekin tez orada oson oladigan suvni tugatadi. Ildiz qatlamini to'ldirish uchun taxminan {{m3}} m³ kerak."
+    },
+    "irrigation_due_now": {
+      "title": "{{field}}-dala: sug'orish vaqti keldi",
+      "body": "Ekin oson oladigan suvni tugatdi va qiynala boshlaydi. Ildiz qatlamini to'ldirish uchun taxminan {{m3}} m³ kerak."
     }
   },
   "digest": {

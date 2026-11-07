@@ -24,6 +24,8 @@ const ANY_TIME = Number.POSITIVE_INFINITY;
 export const CATCH_UP_MS: Record<string, number> = {
   'tasks.generate-recurring': ANY_TIME,
   'farm.weather': ANY_TIME,
+  // It reads only scenes it has not read yet, so a late run loses nothing.
+  'farm.satellite': ANY_TIME,
   'notifications.forget-answered': ANY_TIME,
   'settings.retention': ANY_TIME,
   'ai-statistics': ANY_TIME,

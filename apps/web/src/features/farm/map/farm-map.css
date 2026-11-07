@@ -63,3 +63,37 @@
     margin: -0.75rem 0 0 -0.75rem !important;
   }
 }
+
+/* Crop health: one image pixel per 10 m cell, kept sharp so a weak patch keeps its edges. */
+.farm-map .health-grid {
+  image-rendering: pixelated;
+}
+
+/* A weak zone: a 44 px tap target around a numbered badge, for gloved hands. */
+.farm-map .health-zone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.farm-map .health-zone span {
+  display: flex;
+  width: 1.75rem;
+  height: 1.75rem;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--card);
+  border-radius: 9999px;
+  background: var(--destructive);
+  box-shadow: var(--shadow-pop);
+  color: var(--primary-foreground);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.farm-map .health-zone-selected span {
+  width: 2.25rem;
+  height: 2.25rem;
+  background: var(--heading);
+  color: var(--card);
+}

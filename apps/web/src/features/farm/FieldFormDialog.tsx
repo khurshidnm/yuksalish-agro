@@ -1,4 +1,4 @@
-import { LAND_USES } from '@yap/shared';
+import { LAND_USES, SOIL_TEXTURE_CLASSES } from '@yap/shared';
 import type { Geometry } from 'geojson';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -24,6 +24,7 @@ function makeSchema(areaFromMap: boolean) {
     // With an outline the server measures the area, so the form has nothing to require.
     areaHa: areaFromMap ? zOptionalNumber() : zPositive(),
     soilType: zOptionalText(80),
+    soilTexture: zOptionalText(40),
     salinityLevel: zOptionalText(40),
     irrigationSource: zOptionalText(120),
     notes: zOptionalText(1000),
@@ -82,6 +83,7 @@ export function FieldFormDialog({ open, onOpenChange, field, boundary, previewAr
     landUse: field?.landUse ?? defaultLandUse,
     areaHa: field?.areaHa ?? null,
     soilType: field?.soilType ?? '',
+    soilTexture: field?.soilTexture ?? '',
     salinityLevel: field?.salinityLevel ?? '',
     irrigationSource: field?.irrigationSource ?? '',
     notes: field?.notes ?? '',
@@ -116,6 +118,13 @@ export function FieldFormDialog({ open, onOpenChange, field, boundary, previewAr
               hint={areaFromMap ? t('fields.areaFromMapHint') : t('fields.areaManualHint')}
             />
             <TextField form={form} name="soilType" label={t('fields.soilType')} />
+            <SelectField
+              form={form}
+              name="soilTexture"
+              label={t('fields.soilTexture')}
+              hint={t('fields.soilTextureHint')}
+              options={enumOptions('soilTexture', SOIL_TEXTURE_CLASSES)}
+            />
             <SelectField
               form={form}
               name="salinityLevel"

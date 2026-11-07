@@ -17,6 +17,13 @@ export function registerWeather(app: FastifyInstance) {
     handler: (req) => weather.forecast(req.query.days),
   });
 
+  r.get('/weather/hourly', {
+    access: readers,
+    summary: 'Stored forecast points from the past hour on, hourly for about 2.5 days, then 6-hourly',
+    query: z.object({ hours: z.coerce.number().int().min(1).max(240).default(72) }),
+    handler: (req) => weather.hourlyForecast(new Date(Date.now() - 3_600_000), req.query.hours),
+  });
+
   r.get('/weather', {
     access: readers,
     summary: 'Stored daily weather for a period',

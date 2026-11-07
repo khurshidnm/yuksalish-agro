@@ -101,6 +101,7 @@ describe('enum labels', () => {
     deviceStatus: enums.DEVICE_STATUSES,
     aiDecision: enums.AI_DECISIONS,
     documentType: enums.DOCUMENT_TYPES,
+    soilTexture: enums.SOIL_TEXTURE_CLASSES,
     role: ROLE_KEYS,
     module: MODULES,
     action: ACTIONS,

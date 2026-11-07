@@ -57,6 +57,13 @@
       "when": 1793989213227,
       "tag": "0007_asset_foreign_price_and_land_purchase",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794062586050,
+      "tag": "0008_weather_satellite",
+      "breakpoints": true
     }
   ]
 }

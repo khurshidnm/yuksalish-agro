@@ -67,5 +67,16 @@
   "module": { "dashboard": "Boshqaruv paneli", "farm": "Ferma va yer", "crops": "O'simlikchilik", "livestock": "Chorvachilik", "health": "Veterinariya", "inventory": "Ombor", "feed": "Ozuqa", "finance": "Moliya", "payroll": "Ish haqi", "hr": "Xodimlar", "assets": "Texnika", "sales": "Sotuv", "reports": "Hisobotlar", "ai": "AI-tahlil", "cameras": "Kameralar", "tasks": "Vazifalar", "users": "Foydalanuvchilar", "settings": "Sozlamalar", "audit": "Audit" },
   "action": { "view": "Ko'rish", "create": "Yaratish", "update": "Tahrirlash", "approve": "Tasdiqlash", "delete": "O'chirish" },
   "leadStatus": { "new": "Yangi", "contacted": "Bog'lanildi", "qualified": "Qiziqmoqda", "won": "Mijoz bo'ldi", "lost": "Rad etildi" },
-  "leadFarmType": { "livestock": "Chorvachilik", "crops": "O'simlikchilik", "mixed": "Aralash", "other": "Boshqa" }
+  "leadFarmType": { "livestock": "Chorvachilik", "crops": "O'simlikchilik", "mixed": "Aralash", "other": "Boshqa" },
+  "soilTexture": {
+    "sand": "Qum",
+    "loamy_sand": "Qumloq (yengil)",
+    "sandy_loam": "Qumloq",
+    "loam": "Qumoq",
+    "silt_loam": "Changsimon qumoq",
+    "silt": "Changsimon tuproq",
+    "silty_clay_loam": "Og'ir changsimon qumoq",
+    "silty_clay": "Changsimon loy",
+    "clay": "Loy"
+  }
 }

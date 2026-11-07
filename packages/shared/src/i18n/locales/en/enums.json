@@ -67,5 +67,16 @@
   "module": { "dashboard": "Dashboard", "farm": "Farm and land", "crops": "Crops", "livestock": "Livestock", "health": "Veterinary", "inventory": "Warehouse", "feed": "Feed", "finance": "Finance", "payroll": "Payroll", "hr": "People", "assets": "Machinery", "sales": "Sales", "reports": "Reports", "ai": "AI analysis", "cameras": "Cameras", "tasks": "Tasks", "users": "Users", "settings": "Settings", "audit": "Audit" },
   "action": { "view": "View", "create": "Create", "update": "Edit", "approve": "Approve", "delete": "Delete" },
   "leadStatus": { "new": "New", "contacted": "Contacted", "qualified": "Interested", "won": "Became a customer", "lost": "Lost" },
-  "leadFarmType": { "livestock": "Livestock", "crops": "Crops", "mixed": "Mixed", "other": "Other" }
+  "leadFarmType": { "livestock": "Livestock", "crops": "Crops", "mixed": "Mixed", "other": "Other" },
+  "soilTexture": {
+    "sand": "Sand",
+    "loamy_sand": "Loamy sand",
+    "sandy_loam": "Sandy loam",
+    "loam": "Loam",
+    "silt_loam": "Silt loam",
+    "silt": "Silt",
+    "silty_clay_loam": "Silty clay loam",
+    "silty_clay": "Silty clay",
+    "clay": "Clay"
+  }
 }

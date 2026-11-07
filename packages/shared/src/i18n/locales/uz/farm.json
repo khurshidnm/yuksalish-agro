@@ -73,7 +73,9 @@
     "savedArea": "Saqlandi. Hisoblangan maydon: {{area}}",
     "overlap": "Diqqat: bu kontur №{{number}} bilan {{area}} ustma-ust tushadi. Bu maydon balansda ikki marta hisoblanadi.",
     "unmappedTitle": "Xaritaga chizilmagan konturlar",
-    "toolsFailed": "Chizish vositalari yuklanmadi. Xarita faqat ko'rish uchun ochiq. Sahifani qayta yuklab ko'ring."
+    "toolsFailed": "Chizish vositalari yuklanmadi. Xarita faqat ko'rish uchun ochiq. Sahifani qayta yuklab ko'ring.",
+    "colorHealth": "Ekin holati bo'yicha (sun'iy yo'ldosh)",
+    "healthEmpty": "Oxirgi 30 kunda dalalarning tiniq surati hali yo'q. Suratlar har 2–5 kunda keladi, bulutli kunlar o'tkazib yuboriladi."
   },
   "fields": {
     "title": "Dalalar",
@@ -128,7 +130,11 @@
     "noCropTitle": "Joriy ekin yo'q",
     "noCropBody": "Ekin rejasi O'simlikchilik bo'limida biriktiriladi.",
     "rotationEmptyTitle": "Ekin tarixi hali yo'q",
-    "rotationEmptyBody": "Oxirgi 5 yildagi ekinlar, hosildorlik va tannarx shu yerda ko'rinadi."
+    "rotationEmptyBody": "Oxirgi 5 yildagi ekinlar, hosildorlik va tannarx shu yerda ko'rinadi.",
+    "tabSatellite": "Ekin holati",
+    "tabWater": "Sug'orish",
+    "soilTexture": "Tuproq mexanik tarkibi",
+    "soilTextureHint": "Tuproq qancha suv ushlashini belgilaydi, sug'orish maslahati uchun."
   },
   "soil": {
     "add": "Tahlil qo'shish",
@@ -231,7 +237,12 @@
     "rain": "{{value}} mm",
     "emptyTitle": "Prognoz hali yuklanmagan",
     "emptyBody": "Ob-havo har 6 soatda avtomatik yangilanadi.",
-    "unavailable": "Ob-havo xizmati hozir javob bermayapti. Keyinroq avtomatik yangilanadi."
+    "unavailable": "Ob-havo xizmati hozir javob bermayapti. Keyinroq avtomatik yangilanadi.",
+    "credit": "Ma'lumot: MET Norway (CC BY 4.0), NASA POWER",
+    "spray": "Ishlov berish: eng yaqin qulay soatlar {{date}}, {{from}}–{{to}}",
+    "sprayNow": "Ishlov berish: hozir qulay, {{to}} gacha",
+    "sprayNone": "Ishlov berish: keyingi 2 kunda kunduzi qulay soat yo'q (shamol, yomg'ir yoki issiq)",
+    "today": "bugun"
   },
   "errors": {
     "FIELD_NUMBER_TAKEN": "{{number}} raqamli kontur allaqachon bor. Boshqa raqam tanlang.",
@@ -247,5 +258,183 @@
     "INVALID_FIELD": "Bog'langan dalalardan biri topilmadi.",
     "EXPIRY_BEFORE_ISSUE": "Amal qilish muddati berilgan sanadan oldin bo'lishi mumkin emas.",
     "ENTITY_INCOMPLETE": "Hujjat bog'lanadigan obyekt to'liq ko'rsatilmagan."
+  },
+  "satellite": {
+    "title": "Ekin holati koinotdan",
+    "cropLine": "{{crop}}, {{status}}",
+    "date": "Surat sanasi",
+    "refresh": "Yangi suratlarni tekshirish",
+    "refreshed": "Yangi sun'iy yo'ldosh ma'lumotlari: {{count}}",
+    "refreshPending": "Suratlar kelmoqda; qolganlari tunda o'qiladi.",
+    "refreshNothing": "Oxirgi tekshiruvdan beri yangi tiniq surat yo'q.",
+    "unavailable": "Suratlar katalogi javob bermayapti. Tungi tekshiruv qayta urinadi.",
+    "noBoundaryTitle": "Dalani koinotdan ko'rish uchun uni chizing",
+    "noBoundaryBody": "Ekin holati dala chegarasi bo'yicha o'qiladi. Uni xo'jalik xaritasida chizing.",
+    "emptyTitle": "Hali tiniq surat yo'q",
+    "emptyBody": "Sentinel-2 har 2–5 kunda o'tadi. Birinchi ma'lumotlar bugungi tungi tekshiruvdan keyin chiqadi.",
+    "emptyCloudy": "Oxirgi surat, {{date}}, bu dala ustida juda bulutli edi. Keyingi o'tish 2–5 kunda.",
+    "legend": "Ekin holati ranglari",
+    "band": {
+      "bare": "Ochiq tuproq",
+      "sparse": "Siyrak",
+      "moderate": "O'rtacha",
+      "good": "Yaxshi",
+      "dense": "Qalin"
+    },
+    "ndvi": "NDVI",
+    "sincePrevious": "oldingi suratdan beri",
+    "spread": "Eng zaif va eng kuchli o'ndan bir",
+    "spreadHint": "Ikki son qancha yaqin bo'lsa, dala shuncha tekis.",
+    "weakZones": "Zaif joylar",
+    "noZones": "Yo'q",
+    "zoneCount": "Joylar: {{count}}",
+    "imageDate": "Surat",
+    "clear": "Dalaning {{value}}% bulutsiz",
+    "credit": "O'zgartirilgan Copernicus Sentinel ma'lumotlari {{year}}. Har katak 10 m.",
+    "zonesTitle": "Zaif joylar: {{count}}",
+    "zonesHint": "Dalaning qolgan qismidan ancha past joylari. Borib zararkunanda, qurigan yoki botqoqlangan tuproq, unib chiqish va o'g'itni tekshiring.",
+    "zoneLine": "{{area}}, NDVI {{ndvi}}",
+    "zoneMarker": "Zaif joy {{n}}",
+    "showZone": "Ko'rsatish",
+    "walkThere": "U yerga borish",
+    "stopWalking": "To'xtatish",
+    "openInMaps": "Xaritada ochish",
+    "createTask": "Vazifa yaratish",
+    "taskCreated": "Vazifa yaratildi",
+    "taskTitle": "{{field}}-dalada {{n}}-zaif joyni tekshirish",
+    "taskBody": "{{date}} sun'iy yo'ldosh surati: {{area}}, NDVI {{ndvi}}, dalaning qolgan qismidan ancha past. Koordinatalar: {{lat}}, {{lng}}. Yo'l: {{link}}",
+    "distance": "{{metres}} m, yo'nalish: {{direction}}",
+    "locating": "Joylashuvingiz aniqlanmoqda…",
+    "position": {
+      "unsupported": "Bu qurilma joylashuvini bera olmaydi.",
+      "denied": "Joylashuvga ruxsat o'chirilgan. Joyga borish uchun bu saytga ruxsat bering.",
+      "unavailable": "Joylashuv hozir mavjud emas. Ochiq joyga chiqib qayta urinib ko'ring."
+    },
+    "compass": {
+      "n": "shimol",
+      "ne": "shimoli-sharq",
+      "e": "sharq",
+      "se": "janubi-sharq",
+      "s": "janub",
+      "sw": "janubi-g'arb",
+      "w": "g'arb",
+      "nw": "shimoli-g'arb"
+    },
+    "curveTitle": "Mavsum davomida ekin holati",
+    "curveHint": "Har bir tiniq suratda dalaning o'rtacha NDVI qiymati.",
+    "events": "Sun'iy yo'ldosh nimani ko'rdi",
+    "event": {
+      "green_up": "Ko'karish {{date}}",
+      "harvest": "Ekin olingan {{date}}",
+      "bare": "Ochiq tuproq {{date}}"
+    },
+    "check": {
+      "no_green_up": {
+        "title": "Ekilgandan beri ko'kat ko'rinmayapti",
+        "body": "{{date}} da ekilgan, lekin sun'iy yo'ldosh hali ham ochiq tuproqni ko'rmoqda. Unib chiqishni tekshiring yoki ekish sanasini tuzating."
+      },
+      "harvest_not_seen": {
+        "title": "Hosil yozilgan, ekin hali turibdi",
+        "body": "{{date}} da hosil yig'ilgani yozilgan, lekin sun'iy yo'ldosh hali yashil ekinni ko'rmoqda. Yozuvni tekshiring."
+      },
+      "unrecorded_harvest": {
+        "title": "Ekin olingan, hosil yozilmagan",
+        "body": "{{date}} atrofida sun'iy yo'ldosh ekin olinganini ko'rdi (hosil, o'rim yoki defoliatsiya). Hosil yig'ilgan bo'lsa, uni yozing."
+      }
+    },
+    "clearShare": "Bulutsiz",
+    "clearHint": "dala qismi, {{date}} surati"
+  },
+  "pasture": {
+    "title": "Bu yaylovda boqish",
+    "hint": "{{area}} dagi ko'k ozuqa, sun'iy yo'ldosh suratidan baholangan.",
+    "grazingDays": "Boqish kunlari",
+    "days": "{{value}} kun",
+    "forHead": "qo'y va echkilar: {{count}}",
+    "biomass": "Ko'k quruq modda",
+    "kgHa": "{{value}} kg/ga",
+    "kgHaShort": "kg/ga",
+    "model": "Baho",
+    "estimate": "Taxminiy",
+    "calibrated": "Moslangan",
+    "fit": "Namunalar: {{n}}, R² {{r2}}",
+    "needSamples": "3 ta namuna uni shu xo'jalikniki qiladi",
+    "assumptions": "Har bir hayvon kuniga {{intake}} kg quruq modda yeydi, yaylov qayta o'sishi uchun o'tning {{share}}% boqiladi. Namunasiz baho NDVI 0,15 da ochiq tuproq va NDVI 0,75 da 3000 kg/ga deb oladi. Yozgi quruq o't koinotdan ochiq tuproqdek ko'rinadi.",
+    "addSample": "Namuna qo'shish",
+    "howTo": "1 × 1 m kvadratdagi barcha o'tni yer bilan baravar o'rib, sinadigan bo'lguncha quyoshda quriting va torting. Kvadrat metrga gramm × 10 = gektariga kg.",
+    "sampleDate": "O'rilgan sana",
+    "emptyTitle": "Hali namuna yo'q",
+    "emptyBody": "Turli sanalarda olingan uchta namuna taxminiy bahoni shu yaylovning o'z bahosiga aylantiradi.",
+    "deleteTitle": "Namuna o'chirilsinmi?",
+    "deleteBody": "{{date}} dagi namuna endi bahoni moslashda qatnashmaydi."
+  },
+  "water": {
+    "pageTitle": "Sug'orish",
+    "pageDescription": "Har bir ekin qancha suv sarflagani va keyingi sug'orish qachon kerakligi, ob-havo va o'sish bosqichi bo'yicha (FAO-56).",
+    "title": "Suv balansi",
+    "field": "Dala",
+    "stageHeader": "Bosqich",
+    "stage": {
+      "initial": "Boshlang'ich",
+      "development": "Rivojlanish",
+      "mid": "Mavsum o'rtasi",
+      "late": "Mavsum oxiri"
+    },
+    "rawUsed": "Oson olinadigan suv sarfi",
+    "store": "Ekin oson oladigan {{raw}} mm suvdan {{used}} mm sarflandi (ildiz qatlamida jami {{taw}} mm)",
+    "due": "Sug'orish kerak",
+    "dueNow": "Hozir",
+    "notSoon": "Bu hafta emas",
+    "refill": "To'ldirish uchun",
+    "m3": "{{value}} m³",
+    "mm": "{{value}} mm",
+    "efficiency": "egatlab sug'orish FIK {{value}}% bilan",
+    "used7": "Sarflangan, 7 kun",
+    "next7": "Prognoz, keyingi 7 kun",
+    "et0Today": "Bugungi etalon bug'lanish {{value}} mm",
+    "lastIrrigation": "Oxirgi yozilgan sug'orish: {{date}}, {{m3}} m³.",
+    "noIrrigation": "Ekilgandan beri sug'orish yozilmagan.",
+    "assumptions": "Maslahat ekish paytida ildiz qatlami to'la bo'lgan deb hisoblaydi, sug'orib ekilgandagidek, va kunlik sarfning beshdan biridan kam yomg'ir bug'lanib ketadi deb oladi. Balans to'g'ri qolishi uchun har bir sug'orishni m³ bilan yozing.",
+    "setSoil": "Mexanik tarkibni kiritish",
+    "toPlans": "Ekin rejalari",
+    "emptyTitle": "O'sayotgan ekin yo'q",
+    "emptyBody": "Sug'orish maslahati ekin rejasida ekish sanasi va «ekilgan» yoki «o'smoqda» holati bo'lganda boshlanadi.",
+    "gap": {
+      "crop_unknown": {
+        "title": "Bu ekin uchun suv ma'lumoti yo'q",
+        "body": "Maslahat bug'doy, arpa, paxta, makkajo'xori, beda va sholini qamraydi.",
+        "short": "Ekin qamralmagan"
+      },
+      "no_sowing_date": {
+        "title": "Ekish sanasi yo'q",
+        "body": "Ekin rejasiga haqiqiy ekish sanasini kiriting.",
+        "short": "Ekish sanasi yo'q"
+      },
+      "not_sown_yet": {
+        "title": "Hali ekilmagan",
+        "body": "Balans ekish sanasidan boshlanadi.",
+        "short": "Ekilmagan"
+      },
+      "season_over": {
+        "title": "Mavsum tugagan",
+        "body": "Ekin o'z mavsumining oxiridan o'tgan.",
+        "short": "Mavsum tugagan"
+      },
+      "flooded": {
+        "title": "Suv bostiriladigan ekin",
+        "body": "Sholi suvda turadi, shuning uchun faqat suv sarfi ko'rsatiladi.",
+        "short": "Suv bostirilgan"
+      },
+      "no_soil_texture": {
+        "title": "Tuproq mexanik tarkibi kiritilmagan",
+        "body": "Suv sarfi ma'lum, lekin tuproq qancha suv ushlashi noma'lum. Dalada tuproq mexanik tarkibini kiriting.",
+        "short": "Tuproq tarkibi yo'q"
+      },
+      "no_weather": {
+        "title": "Ob-havo ma'lumoti yetarli emas",
+        "body": "Ekilgandan beri bir kunlik ob-havo hali kelmagan. Haqiqiy ob-havo 3–5 kun kechikib e'lon qilinadi, shuning uchun yangi xo'jalik bir necha kun kutadi; ob-havo tekshiruvi bo'shliqni o'zi to'ldiradi. Xo'jalik joylashuvi kiritilmagan bo'lsa, uni xo'jalik pasportida kiriting.",
+        "short": "Ob-havo yo'q"
+      }
+    }
   }
 }

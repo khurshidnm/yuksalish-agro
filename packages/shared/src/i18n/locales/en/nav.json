@@ -65,7 +65,8 @@
     "audit": "Audit log",
     "platform": "Platform",
     "leads": "Leads",
-    "platformUsers": "All users"
+    "platformUsers": "All users",
+    "water": "Watering"
   },
   "shell": {
     "menu": "Menu",

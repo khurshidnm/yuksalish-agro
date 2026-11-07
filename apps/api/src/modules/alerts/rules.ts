@@ -13,6 +13,7 @@ import {
   ANIMAL_ON_FARM_STATUSES,
   addDays,
   budgetExecutionPercent,
+  todayIso,
   deviationPercent,
   monthOf,
   monthRange,
@@ -25,6 +26,10 @@ import {
 import { schema } from '../../db/client';
 import { ctx, today, tx } from '../../core/context';
 import type { TenantSettings } from '../../core/settings';
+import { daytimeWindows, frostSeverity, localHourOf, sheepHeatStress, sheepThi, sprayWindows } from '@yap/shared/formulas/agro-weather';
+import { farmWorkChecks } from '../farm/field-health.service';
+import { DUE_SOON_DAYS, waterAdvice } from '../farm/water.service';
+import { hourlyForecast } from '../farm/weather.service';
 import { feedBalance } from '../feed/balance.service';
 import { lowDisk } from '../files/files.service';
 import { allUnpaidReceipts } from '../inventory/stock.service';
@@ -66,6 +71,13 @@ async function query<T>(statement: SQL): Promise<T[]> {
 }
 
 const num = (value: unknown): number => Number(value ?? 0);
+
+const localHour = (timeZone: string, iso: string) => localHourOf(iso, timeZone);
+const hhmm = (hour: number) => `${String(hour % 24).padStart(2, '0')}:00`;
+/** Crops a light frost damages once they are up. Autumn cereals harden and are left out. */
+const FROST_SENSITIVE_CROPS = ['cotton', 'corn', 'rice'];
+/** Weak zones smaller than this in total are left to the field card. */
+const WEAK_ZONE_ALERT_HA = 0.5;
 
 export const RULES: Rule[] = [
   {
@@ -456,6 +468,156 @@ export const RULES: Rule[] = [
         entityType: 'asset',
         entityId: row.asset_id,
       }));
+    },
+  },
+  {
+    key: 'crop_weak_zone',
+    // The latest clear look at each growing crop. A field whose next look is healthy resolves itself.
+    async run(r) {
+      const rows = await query<{ field_id: string; number: string; date: string; zones: { areaHa: number; meanNdvi: number }[] }>(sql`
+        select distinct on (v.field_id) v.field_id, f.number, v.date::text as date, v.weak_zones as zones
+        from field_vegetation v
+        join fields f on f.id = v.field_id
+        where v.farm_id = ${r.farmId} and v.date >= ${addDays(r.today, -10)}::date
+          and exists (select 1 from crop_plans p where p.field_id = v.field_id and p.status in ('sown', 'growing'))
+        order by v.field_id, v.date desc`);
+      return rows.flatMap((row) => {
+        const areaHa = row.zones.reduce((sum, z) => sum + z.areaHa, 0);
+        if (areaHa < WEAK_ZONE_ALERT_HA) return [];
+        return [
+          {
+            dedupKey: `crop_weak_zone:${row.field_id}`,
+            severity: 'attention' as const,
+            params: { field: row.number, areaHa: round(areaHa, 1), count: row.zones.length, date: row.date },
+            link: `/farm/fields/${row.field_id}?tab=satellite`,
+            entityType: 'field',
+            entityId: row.field_id,
+          },
+        ];
+      });
+    },
+  },
+  {
+    key: 'satellite_check',
+    // Where the satellite and the records disagree. Same alert, one wording per kind.
+    async run() {
+      return (await farmWorkChecks()).map(({ fieldId, number, check }) => ({
+        dedupKey: `satellite_check:${fieldId}:${check.kind}:${check.date}`,
+        severity: 'info' as const,
+        params: { field: number, date: check.date },
+        textKey: `satellite_${check.kind}`,
+        link: `/farm/fields/${fieldId}?tab=satellite`,
+        entityType: 'field',
+        entityId: fieldId,
+      }));
+    },
+  },
+  {
+    key: 'frost_risk',
+    async run(r) {
+      const fieldsAtRisk = await query<{ number: string }>(sql`
+        select distinct f.number from crop_plans p
+        join fields f on f.id = p.field_id
+        join crops c on c.id = p.crop_id
+        where p.farm_id = ${r.farmId} and p.status in ('sown', 'growing') and c.key in (${sql.join(FROST_SENSITIVE_CROPS.map((k) => sql`${k}`), sql`, `)})
+        order by f.number`);
+      if (fieldsAtRisk.length === 0) return [];
+      const cold = (await hourlyForecast(new Date(), 72)).filter((h) => h.tempC !== null && h.tempC <= 0);
+      if (cold.length === 0) return [];
+      const lowest = Math.min(...cold.map((h) => h.tempC!));
+      const date = todayIso(ctx().timezone, new Date(cold[0].time));
+      return [
+        {
+          dedupKey: `frost_risk:${date}`,
+          severity: frostSeverity(lowest) === 'hard' ? ('urgent' as const) : ('attention' as const),
+          params: { date, temp: round(lowest, 1), fields: fieldsAtRisk.map((f) => f.number).join(', ') },
+          link: '/crops/operations',
+        },
+      ];
+    },
+  },
+  {
+    key: 'spray_window',
+    // A spraying planned for a day the forecast says is unsuitable, with the next good hours.
+    async run(r) {
+      const planned = await query<{ id: string; date: string; number: string; field_id: string }>(sql`
+        select o.id, o.date::text as date, f.number, o.field_id from field_operations o
+        join fields f on f.id = o.field_id
+        where o.farm_id = ${r.farmId} and o.status = 'planned' and o.type = 'protection'
+          and o.date between ${r.today}::date and ${addDays(r.today, 2)}::date
+        order by o.date`);
+      if (planned.length === 0) return [];
+      const tz = ctx().timezone;
+      const hours = (await hourlyForecast(new Date(Date.now() - 3_600_000), 96)).filter((h) => h.periodHours === 1);
+      const windows = daytimeWindows(sprayWindows(hours, { minHours: 1 }), tz);
+      const covered = new Set(hours.map((h) => todayIso(tz, new Date(h.time))));
+      return planned.flatMap((op) => {
+        // Hourly points reach about 2.5 days ahead; past them the forecast cannot judge the day.
+        if (!covered.has(op.date)) return [];
+        if (windows.some((w) => todayIso(tz, new Date(w.start)) === op.date)) return [];
+        const next = windows.find((w) => w.start > new Date().toISOString());
+        return [
+          {
+            dedupKey: `spray_window:${op.id}`,
+            severity: 'attention' as const,
+            params: next
+              ? { field: op.number, date: op.date, bestDate: todayIso(tz, new Date(next.start)), bestFrom: hhmm(localHour(tz, next.start)), bestTo: hhmm(localHour(tz, next.end)) }
+              : { field: op.number, date: op.date },
+            textKey: next ? undefined : 'spray_window_none',
+            link: '/crops/operations',
+            entityType: 'field_operation',
+            entityId: op.id,
+          },
+        ];
+      });
+    },
+  },
+  {
+    key: 'heat_stress',
+    // Extreme heat for sheep and goats in the next two days, with the hours to keep them in shade.
+    async run(r) {
+      const [row] = await query<{ n: string }>(sql`
+        select count(*) as n from animals a join species s on s.id = a.species_id
+        where a.farm_id = ${r.farmId} and a.status in ${onFarm} and s.key in ('sheep', 'goat')`);
+      if (num(row.n) === 0) return [];
+      const tz = ctx().timezone;
+      const extreme = (await hourlyForecast(new Date(), 48))
+        .map((h) => ({ h, thi: sheepThi(h.tempC, h.rhPct) }))
+        .filter((x) => sheepHeatStress(x.thi) === 'extreme');
+      if (extreme.length === 0) return [];
+      const date = todayIso(tz, new Date(extreme[0].h.time));
+      const sameDay = extreme.filter((x) => todayIso(tz, new Date(x.h.time)) === date);
+      const last = sameDay[sameDay.length - 1].h;
+      return [
+        {
+          dedupKey: `heat_stress:${date}`,
+          severity: 'attention' as const,
+          params: {
+            date,
+            from: hhmm(localHour(tz, sameDay[0].h.time)),
+            to: hhmm(localHour(tz, last.time) + last.periodHours),
+            thi: round(Math.max(...sameDay.map((x) => x.thi!)), 1),
+          },
+          link: '/livestock/herds',
+        },
+      ];
+    },
+  },
+  {
+    key: 'irrigation_due',
+    // The crop is about to use up the water it can take easily (FAO-56 RAW).
+    async run(r) {
+      return (await waterAdvice())
+        .filter((a) => a.dueDate !== null && a.dueDate <= addDays(r.today, DUE_SOON_DAYS))
+        .map((a) => ({
+          dedupKey: `irrigation_due:${a.fieldId}`,
+          severity: 'attention' as const,
+          params: { field: a.number, date: a.dueDate, m3: a.refillM3 },
+          textKey: a.dueDate! <= r.today ? 'irrigation_due_now' : undefined,
+          link: `/farm/fields/${a.fieldId}?tab=water`,
+          entityType: 'field',
+          entityId: a.fieldId,
+        }));
     },
   },
   {

@@ -15,8 +15,10 @@ import { DocumentsPanel } from './DocumentsPanel';
 import { FieldFormDialog } from './FieldFormDialog';
 import { FieldPhoto } from './FieldPhoto';
 import { FileAttachField } from './FileAttachField';
+import { SatelliteTab } from './satellite/SatelliteTab';
 import type { FieldCard, RotationRow, SoilAnalysis } from './types';
 import { fieldTitle, formatHa, useLocalName } from './utils';
+import { WaterTab } from './water/WaterAdvice';
 
 const SOIL_METRICS = ['ph', 'humus', 'n', 'p', 'k', 'salinity'] as const;
 type SoilMetric = (typeof SOIL_METRICS)[number];
@@ -351,6 +353,10 @@ export default function FieldCardPage() {
       <UrlTabs
         tabs={[
           { value: 'overview', label: t('fields.tabOverview'), content: <OverviewTab field={field} /> },
+          { value: 'satellite', label: t('fields.tabSatellite'), content: <SatelliteTab field={field} /> },
+          ...(field.landUse === 'arable'
+            ? [{ value: 'water', label: t('fields.tabWater'), content: <WaterTab fieldId={field.id} onEditField={canUpdate && field.status === 'active' ? () => setEditing(true) : undefined} /> }]
+            : []),
           { value: 'rotation', label: t('fields.tabRotation'), content: <RotationTab field={field} /> },
           { value: 'soil', label: t('fields.tabSoil'), content: <SoilTab field={field} path={path} /> },
           { value: 'documents', label: t('fields.tabDocuments'), content: <DocumentsPanel entity={{ type: 'field', id: field.id }} urlPrefix="doc" /> },

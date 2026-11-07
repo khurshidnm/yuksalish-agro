@@ -75,6 +75,17 @@
   --chart-6: #c25485;
   --chart-7: #a8ad00;
   --chart-8: #864fba;
+  /*
+   * Crop health (NDVI) from bare soil to dense crop. Drawn over satellite imagery, which looks the
+   * same in both themes, so the ramp is shared. Brown and yellow read as "less", greens as "more";
+   * the steps differ in lightness too, so the ramp holds for red-green colour blindness.
+   */
+  --ndvi-1: #8c4a21;
+  --ndvi-2: #c9822f;
+  --ndvi-3: #ecc94b;
+  --ndvi-4: #b7d35a;
+  --ndvi-5: #5fa843;
+  --ndvi-6: #1d5f2a;
   --chart-grid: #eef1ea;
   --chart-baseline: #d0d6c8;
   --chart-text: #59645a;

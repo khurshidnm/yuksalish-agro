@@ -149,6 +149,50 @@
     "device_offline": {
       "title": "{{deviceName}} is offline",
       "body": "No signal for {{minutes}} minutes."
+    },
+    "crop_weak_zone": {
+      "title": "Weak spots in field {{field}}: {{areaHa}} ha",
+      "body": "The satellite image of {{date}} shows weak zones: {{count}}. Walk to them and check for pests, water and nutrients."
+    },
+    "satellite_check": {
+      "title": "Field {{field}}: satellite and records disagree",
+      "body": "Date: {{date}}."
+    },
+    "satellite_no_green_up": {
+      "title": "Field {{field}}: no crop seen since sowing",
+      "body": "Sown on {{date}}, but the satellite still sees bare soil. Check the emergence, or correct the sowing date."
+    },
+    "satellite_harvest_not_seen": {
+      "title": "Field {{field}}: harvest recorded, crop still standing",
+      "body": "A harvest is recorded on {{date}}, but the satellite still sees a green crop. Check the record."
+    },
+    "satellite_unrecorded_harvest": {
+      "title": "Field {{field}}: crop removed, no harvest recorded",
+      "body": "Around {{date}} the satellite saw the crop removed (harvest, cutting or defoliation). Record the harvest if it took place."
+    },
+    "frost_risk": {
+      "title": "Frost forecast: {{date}}, down to {{temp}} °C",
+      "body": "Fields with frost-sensitive crops: {{fields}}."
+    },
+    "spray_window": {
+      "title": "Spraying field {{field}}: {{date}} is unsuitable",
+      "body": "Wind, rain or heat will spoil the treatment. Best time: {{bestDate}}, {{bestFrom}}–{{bestTo}}."
+    },
+    "spray_window_none": {
+      "title": "Spraying field {{field}}: {{date}} is unsuitable",
+      "body": "The forecast has no suitable hours in the next days. Move the treatment."
+    },
+    "heat_stress": {
+      "title": "Heat for the flock: {{date}}, {{from}}–{{to}}",
+      "body": "The heat index for sheep reaches {{thi}} (extreme). Keep the animals in shade, give plenty of water, and do not drive or shear them in these hours."
+    },
+    "irrigation_due": {
+      "title": "Field {{field}}: watering due {{date}}",
+      "body": "The crop will soon use up the water it takes up easily. About {{m3}} m³ refills the root zone."
+    },
+    "irrigation_due_now": {
+      "title": "Field {{field}}: watering is due now",
+      "body": "The crop has used up the water it takes up easily and starts to suffer. About {{m3}} m³ refills the root zone."
     }
   },
   "digest": {
