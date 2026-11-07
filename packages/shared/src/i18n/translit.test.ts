@@ -3,8 +3,8 @@ import { latinToCyrillic, mapStrings } from './translit';
 
 describe('latinToCyrillic', () => {
   it('writes the product name the same way in every script', () => {
-    expect(latinToCyrillic('Agro Panel zaxira kodlari')).toBe('Agro Panel захира кодлари');
-    expect(mapStrings({ app: { name: 'Agro Panel' } }, latinToCyrillic).app.name).toBe('Agro Panel');
+    expect(latinToCyrillic('AgroPanel zaxira kodlari')).toBe('AgroPanel захира кодлари');
+    expect(mapStrings({ app: { name: 'AgroPanel' } }, latinToCyrillic).app.name).toBe('AgroPanel');
   });
 
   it.each([

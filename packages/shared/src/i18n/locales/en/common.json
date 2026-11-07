@@ -1,5 +1,5 @@
 {
-  "app": { "name": "Agro Panel", "tagline": "Farm management platform" },
+  "app": { "name": "AgroPanel", "tagline": "Farm management platform" },
   "actions": {
     "save": "Save", "cancel": "Cancel", "delete": "Delete", "edit": "Edit", "add": "Add",
     "create": "Create", "close": "Close", "back": "Back", "search": "Search", "filter": "Filter",

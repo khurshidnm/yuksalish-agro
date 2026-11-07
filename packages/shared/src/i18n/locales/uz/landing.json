@@ -1,9 +1,9 @@
 {
   "meta": {
-    "title": "Ferma boshqaruv dasturi: chorvachilik, ekin, moliya | Agro Panel",
+    "title": "Ferma boshqaruv dasturi: chorvachilik, ekin, moliya | AgroPanel",
     "description": "Dalalar, chorva, ombor, moliya va xodimlarni bitta tizimda yuriting. Telefonda ishlaydi, dalada internetsiz ham qayd olinadi. Demo so'rang.",
     "keywords": "ferma boshqaruv dasturi, fermer uchun dastur, chorvachilik dasturi, chorva hisobi, qoramol hisobi, qo'y hisobi, qishloq xo'jaligi dasturi, ekin hisobi, tannarx hisobi, O'zbekiston",
-    "ogImageAlt": "Agro Panel ferma boshqaruv platformasi"
+    "ogImageAlt": "AgroPanel ferma boshqaruv platformasi"
   },
   "nav": {
     "features": "Imkoniyatlar",
@@ -28,7 +28,7 @@
       "Dalada internetsiz qayd",
       "O'zbek va rus tilida"
     ],
-    "imageAlt": "Agro Panel: kassa, xarajat, poda soni va ozuqa zaxirasi bir ekranda",
+    "imageAlt": "AgroPanel: kassa, xarajat, poda soni va ozuqa zaxirasi bir ekranda",
     "phoneAlt": "Telefondagi Bugun ekrani: chorvador uchun kunlik qayd va tezkor amallar"
   },
   "problem": {

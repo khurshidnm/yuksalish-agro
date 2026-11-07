@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
 
 /**
- * The Agro Panel mark: a panel of four tiles, one of them grown into a leaf. Both colours are tokens that stay
+ * The AgroPanel mark: a panel of four tiles, one of them grown into a leaf. Both colours are tokens that stay
  * the same in light and dark. public/favicon.svg and the PNG icons draw the same shapes with fixed colours.
  */
 export function LogoMark({ className }: { className?: string }) {
