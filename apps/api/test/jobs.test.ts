@@ -66,6 +66,10 @@ vi.mock('bullmq', async (importOriginal) => {
 
 const { jobRuns, notifications } = schema;
 
+// A job runs on every farm in the database, and in a full run the other test files have made thousands.
+// On GitHub's runner one pass can take longer than the usual 30 seconds.
+vi.setConfig({ testTimeout: 180_000 });
+
 const quietLog = () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() });
 
 /** A stand-in for a real job, counting its runs on one farm only. */
@@ -261,8 +265,7 @@ describe('urgent jobs do not depend on the queue', () => {
     released = true;
     for (const resolve of waiting.splice(0)) resolve();
     await first;
-    // The first run still visits every farm in the database, and in a full run that can pass 30 seconds.
-  }, 120_000);
+  });
 
   it('other jobs wait for the queue', async () => {
     await createFixture();
