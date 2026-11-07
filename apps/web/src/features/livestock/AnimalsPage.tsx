@@ -1,7 +1,8 @@
 import { ANIMAL_CATEGORIES, ANIMAL_STATUSES, todayIso } from '@yap/shared';
-import { ArrowRightLeft, Baby, PawPrint, Plus, ShieldAlert, Thermometer, X } from 'lucide-react';
+import { ArrowRightLeft, Baby, MapPin, PawPrint, Plus, ShieldAlert, Thermometer, X } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
 import { type Column, DataTable, MoneyText, PageHeader, StatCard, useUrlParam } from '@/components';
 import { Button, Checkbox, Select } from '@/components/ui';
 import { usePermission } from '@/lib/auth';
@@ -79,12 +80,20 @@ export default function AnimalsPage() {
         title={t('animals.title')}
         description={t('animals.description')}
         actions={
-          canManage && (
-            <Button onClick={() => setAdding(true)}>
-              <Plus aria-hidden />
-              {t('animals.add')}
+          <>
+            <Button variant="outline" asChild>
+              <Link to="/livestock/tracking">
+                <MapPin aria-hidden />
+                {t('tracking:map')}
+              </Link>
             </Button>
-          )
+            {canManage && (
+              <Button onClick={() => setAdding(true)}>
+                <Plus aria-hidden />
+                {t('animals.add')}
+              </Button>
+            )}
+          </>
         }
       />
 

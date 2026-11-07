@@ -86,6 +86,8 @@ export const policyInput = z
         webhookDeliveryDays: z.number().int().min(7).max(3650),
         aiToolDataDays: z.number().int().min(7).max(3650),
         importDays: z.number().int().min(7).max(3650),
+        // The nightly summary looks back a week for days it missed.
+        trackerReadingsDays: z.number().int().min(7).max(365),
       })
       .partial()
       .strict(),

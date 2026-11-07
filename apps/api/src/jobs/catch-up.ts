@@ -28,6 +28,8 @@ export const CATCH_UP_MS: Record<string, number> = {
   'farm.satellite': ANY_TIME,
   'notifications.forget-answered': ANY_TIME,
   'settings.retention': ANY_TIME,
+  // It fills each animal's missing days and frees trackers of animals that left: late loses nothing.
+  'tracking.daily': ANY_TIME,
   'ai-statistics': ANY_TIME,
   'assets.monthly-depreciation': ANY_TIME,
   'reports.investor-monthly': ANY_TIME,

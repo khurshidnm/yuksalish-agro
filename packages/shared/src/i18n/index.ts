@@ -21,6 +21,7 @@ import uzAi from './locales/uz/ai.json';
 import uzSettings from './locales/uz/settings.json';
 import uzImport from './locales/uz/import.json';
 import uzToday from './locales/uz/today.json';
+import uzTracking from './locales/uz/tracking.json';
 import uzPlatform from './locales/uz/platform.json';
 import ruCommon from './locales/ru/common.json';
 import ruNav from './locales/ru/nav.json';
@@ -45,6 +46,7 @@ import ruAi from './locales/ru/ai.json';
 import ruSettings from './locales/ru/settings.json';
 import ruImport from './locales/ru/import.json';
 import ruToday from './locales/ru/today.json';
+import ruTracking from './locales/ru/tracking.json';
 import ruPlatform from './locales/ru/platform.json';
 import enCommon from './locales/en/common.json';
 import enNav from './locales/en/nav.json';
@@ -69,6 +71,7 @@ import enAi from './locales/en/ai.json';
 import enSettings from './locales/en/settings.json';
 import enImport from './locales/en/import.json';
 import enToday from './locales/en/today.json';
+import enTracking from './locales/en/tracking.json';
 import enPlatform from './locales/en/platform.json';
 import { latinToCyrillic, mapStrings } from './translit';
 
@@ -108,6 +111,7 @@ export const NAMESPACES = [
   'settings',
   'import',
   'today',
+  'tracking',
   'platform',
 ] as const;
 
@@ -139,6 +143,7 @@ const uz: Bundle = {
   settings: uzSettings,
   import: uzImport,
   today: uzToday,
+  tracking: uzTracking,
   platform: uzPlatform,
 };
 
@@ -166,6 +171,7 @@ const ru: Bundle = {
   settings: ruSettings,
   import: ruImport,
   today: ruToday,
+  tracking: ruTracking,
   platform: ruPlatform,
 };
 
@@ -193,6 +199,7 @@ const en: Bundle = {
   settings: enSettings,
   import: enImport,
   today: enToday,
+  tracking: enTracking,
   platform: enPlatform,
 };
 

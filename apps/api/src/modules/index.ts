@@ -22,6 +22,7 @@ import sales from './sales';
 import settings from './settings';
 import tasks from './tasks';
 import today from './today';
+import tracking from './tracking';
 
 export const MODULE_PLUGINS: Record<string, (app: FastifyInstance) => Promise<void>> = {
   auth,
@@ -39,6 +40,7 @@ export const MODULE_PLUGINS: Record<string, (app: FastifyInstance) => Promise<vo
   alerts,
   notifications,
   devices,
+  tracking,
   dashboard,
   reports,
   ai,

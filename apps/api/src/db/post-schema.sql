@@ -68,7 +68,8 @@ DECLARE
   no_audit text[] := ARRAY['audit_logs', 'events', 'idempotency_keys', 'notifications',
                            'notification_prefs', 'ai_messages', 'weather_daily', 'weather_hourly',
                            'satellite_scenes', 'field_vegetation', 'import_jobs',
-                           'webhook_deliveries', 'job_runs'];
+                           'webhook_deliveries', 'job_runs', 'tracker_readings', 'tracker_state',
+                           'animal_tracking', 'animal_track_days'];
   -- Secrets the AI role must never read.
   no_ai_read text[] := ARRAY['api_keys', 'idempotency_keys', 'audit_logs', 'telegram_link_codes', 'invitations'];
   policy_expr text;

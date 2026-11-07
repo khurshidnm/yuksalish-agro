@@ -157,6 +157,7 @@ const policySchema = z.object({
     webhookDeliveryDays: z.number().int().min(7).max(3650),
     aiToolDataDays: z.number().int().min(7).max(3650),
     importDays: z.number().int().min(7).max(3650),
+    trackerReadingsDays: z.number().int().min(7).max(365),
     idempotencyDays: z.number().int().min(30).max(365),
   }),
   currency: zEnum(CURRENCIES),
@@ -281,6 +282,7 @@ function PolicyTab() {
                 <NumberField form={form} name="retention.webhookDeliveryDays" label={t('policy.webhookDeliveryDays')} suffix={t('policy.days')} maxDigits={0} />
                 <NumberField form={form} name="retention.aiToolDataDays" label={t('policy.aiToolDataDays')} hint={t('policy.aiToolDataDaysHint')} suffix={t('policy.days')} maxDigits={0} />
                 <NumberField form={form} name="retention.importDays" label={t('policy.importDays')} hint={t('policy.importDaysHint')} suffix={t('policy.days')} maxDigits={0} />
+                <NumberField form={form} name="retention.trackerReadingsDays" label={t('policy.trackerReadingsDays')} hint={t('policy.trackerReadingsDaysHint')} suffix={t('policy.days')} maxDigits={0} />
                 <NumberField form={form} name="retention.idempotencyDays" label={t('policy.idempotencyDays')} hint={t('policy.idempotencyDaysHint')} suffix={t('policy.days')} maxDigits={0} />
               </FormGrid>
             </CardContent>

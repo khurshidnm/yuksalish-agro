@@ -275,6 +275,41 @@ export async function remove(id: string) {
   return { id };
 }
 
+// ─── Animal trackers ────────────────────────────────────────────────────────
+
+/** What an animal wears (docs/tracking.md). Stored in `config.trackerKind`. */
+export const TRACKER_KINDS = ['collar', 'bolus', 'ear_tag'] as const;
+export type TrackerKind = (typeof TRACKER_KINDS)[number];
+
+/** A collar carries GPS; a bolus or an ear sensor is a sensor. */
+const trackerType = (kind: TrackerKind) => (kind === 'collar' ? 'gps_tracker' : 'sensor');
+
+export const isTracker = (device: Pick<Device, 'config'>) => typeof device.config.trackerKind === 'string';
+
+/**
+ * Register animal trackers in bulk. The tracking import has checked that each external id is new
+ * here, and it writes one journal event for the whole import.
+ */
+export async function registerTrackers(rows: { externalId: string; kind: TrackerKind; name: string }[]) {
+  if (rows.length === 0) return [];
+  const c = ctx();
+  return tx()
+    .insert(devices)
+    .values(
+      rows.map((r) => ({
+        tenantId: c.tenantId,
+        farmId: c.farmId,
+        createdBy: c.userId,
+        type: trackerType(r.kind),
+        name: r.name,
+        externalId: r.externalId,
+        status: 'planned',
+        config: { trackerKind: r.kind },
+      })),
+    )
+    .returning();
+}
+
 /** The camera layout from spec 25.3 against what is actually registered. */
 export async function plan() {
   const rows = await tx()
@@ -296,10 +331,14 @@ export async function plan() {
 
 // ─── Ingest ─────────────────────────────────────────────────────────────────
 
-async function loadDevices(ids: string[]): Promise<Map<string, Device>> {
-  // Keys skip the member checks in the guard, so a suspended workspace must be stopped here.
+/** Keys skip the member checks in the guard, so a suspended workspace must be stopped by each ingest. */
+export async function assertActiveWorkspace(): Promise<void> {
   const [tenant] = await tx().select({ status: tenants.status }).from(tenants).where(eq(tenants.id, ctx().tenantId));
   if (tenant?.status !== 'active') throw forbidden('This workspace is suspended', 'TENANT_SUSPENDED');
+}
+
+async function loadDevices(ids: string[]): Promise<Map<string, Device>> {
+  await assertActiveWorkspace();
   const rows = await tx()
     .select()
     .from(devices)
@@ -308,7 +347,7 @@ async function loadDevices(ids: string[]): Promise<Map<string, Device>> {
 }
 
 /** The id of the key making this request, for devices bound to one key. */
-async function callerKeyId(rawKey: string): Promise<string | null> {
+export async function callerKeyId(rawKey: string): Promise<string | null> {
   const [row] = await tx().select({ id: apiKeys.id }).from(apiKeys).where(eq(apiKeys.keyHash, sha256(rawKey)));
   return row?.id ?? null;
 }
@@ -373,7 +412,7 @@ async function store(device: Device, e: DeviceEvent): Promise<boolean> {
  * Record that devices are alive. A signal every few seconds is telemetry, not a change anyone
  * edited, so the audit trigger is off for this one statement and on again straight after.
  */
-async function markSeen(seen: Device[]): Promise<void> {
+export async function markSeen(seen: Pick<Device, 'id' | 'name' | 'status' | 'type'>[]): Promise<void> {
   if (seen.length === 0) return;
   const now = new Date();
   await tx().execute(sql`select set_config('app.skip_audit', 'on', true)`);
@@ -525,7 +564,11 @@ export async function eventSnapshot(eventId: string, token: string): Promise<{ t
   return { type, body: answer.body };
 }
 
-/** Spec 16.2: warn when a device stops reporting. Runs as a job, once per farm. */
+/**
+ * Spec 16.2: warn when a device stops reporting. Runs as a job, once per farm. Animal trackers are
+ * left to the tracking module, which counts silent ones into one alert: when a gateway goes down,
+ * 700 collars stop together, and 700 alerts would bury it.
+ */
 export async function detectOffline(now: Date = new Date()): Promise<number> {
   const rows = await tx()
     .select()
@@ -536,6 +579,7 @@ export async function detectOffline(now: Date = new Date()): Promise<number> {
         eq(devices.status, 'online'),
         isNotNull(devices.lastSeenAt),
         lt(devices.lastSeenAt, now),
+        sql`${devices.config}->>'trackerKind' is null`,
       ),
     );
   let count = 0;

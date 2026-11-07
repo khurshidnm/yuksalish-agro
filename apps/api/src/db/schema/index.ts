@@ -10,5 +10,6 @@ export * from './assets';
 export * from './sales';
 export * from './tasks';
 export * from './devices';
+export * from './tracking';
 export * from './ai';
 export * from './reports';

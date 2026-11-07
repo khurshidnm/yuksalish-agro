@@ -174,7 +174,7 @@ afterAll(() => {
 describe('passport tabs', () => {
   it('puts breeding and veterinary right after the overview', () => {
     auth.permissions.add('health.view');
-    expect(tabLabels(page(baseAnimal))).toEqual(['Umumiy', 'Naslchilik', 'Veterinariya', 'Vazn', 'Identifikatorlar', "Ko'chirishlar"]);
+    expect(tabLabels(page(baseAnimal))).toEqual(['Umumiy', 'Naslchilik', 'Veterinariya', 'Joylashuv va salomatlik', 'Vazn', 'Identifikatorlar', "Ko'chirishlar"]);
   });
 
   it('keeps breeding from a male and from poultry, and veterinary from anyone without health.view', () => {

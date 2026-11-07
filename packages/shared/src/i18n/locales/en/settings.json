@@ -72,6 +72,8 @@
     "aiToolDataDaysHint": "The assistant's answers stay. Only what it looked up for them is removed.",
     "importDays": "Spreadsheet rows from imports",
     "importDaysHint": "Personal data from an uploaded spreadsheet. An import nobody finished is removed whole.",
+    "trackerReadingsDays": "Readings from collars and boluses",
+    "trackerReadingsDaysHint": "Every position and temperature as it came in. Each animal's daily summary stays. 7 to 365 days.",
     "idempotencyDays": "Protection against double entries",
     "idempotencyDaysHint": "A record sent twice from a phone is recognised for this long. At least 30 days."
   },

@@ -150,6 +150,34 @@
       "title": "{{deviceName}} is offline",
       "body": "No signal for {{minutes}} minutes."
     },
+    "animal_isolated": {
+      "title": "{{tag}} is apart from its herd",
+      "body": "{{distance}} m from the rest of the flock on its last two positions."
+    },
+    "animal_inactive": {
+      "title": "{{tag}} has hardly moved",
+      "body": "Almost still for {{hours}} hours while its herd grazed. Worth a look."
+    },
+    "animal_fever": {
+      "title": "{{tag}} may have a fever",
+      "body": "{{temperature}} °C, {{overHerd}} °C above its herd and above its own normal."
+    },
+    "tracking_herd_split": {
+      "title": "{{herd}} has split up",
+      "body": "{{apart}} of {{tracked}} tracked sheep are far from the rest."
+    },
+    "tracking_silent": {
+      "title": "Trackers not reporting: {{count}}",
+      "body": "No reading for over {{hours}} hours. Check the collars, or whether the flock is out of the gateway's reach."
+    },
+    "tracking_silent_all": {
+      "title": "No tracker is reporting",
+      "body": "None of {{total}} trackers sent anything for {{hours}} hours. Check the gateway, its power and internet, and the network server."
+    },
+    "tracking_battery": {
+      "title": "Trackers with low battery: {{count}}",
+      "body": "Below {{percent}}%. Plan replacements."
+    },
     "crop_weak_zone": {
       "title": "Weak spots in field {{field}}: {{areaHa}} ha",
       "body": "The satellite image of {{date}} shows weak zones: {{count}}. Walk to them and check for pests, water and nutrients."

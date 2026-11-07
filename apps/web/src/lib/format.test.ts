@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import { formatCompact, formatDate, formatDateLong, formatDateTime, formatMoney, formatMonth, formatMonthShort, formatNumber, formatPercent, formatQty } from './format';
+import { formatAgo, formatCompact, formatDate, formatDateLong, formatDateTime, formatMoney, formatMonth, formatMonthShort, formatNumber, formatPercent, formatQty } from './format';
 import i18n from './i18n';
 
 // Group separators are non-breaking spaces in these locales.
@@ -110,6 +110,20 @@ describe('format, in Uzbek (browsers ship almost no `uz` data, so nothing may re
     await i18n.changeLanguage('ru');
     expect(formatDateLong('2026-11-04')).toBe('4 ноября 2026');
     expect(formatMonth('2026-11')).toBe('Ноябрь 2026');
+  });
+
+  it("says how long ago in the reader's own words, and gives the date after a week", async () => {
+    const now = Date.parse('2026-11-08T10:00:00Z');
+    const back = (minutes: number) => new Date(now - minutes * 60_000).toISOString();
+    await i18n.changeLanguage('uz');
+    expect(formatAgo(back(0), now)).toBe('hozirgina');
+    expect(formatAgo(back(5), now)).toBe('5 daq. oldin');
+    expect(formatAgo(back(150), now)).toBe('2 soat oldin');
+    expect(formatAgo(back(3 * 24 * 60), now)).toBe('3 kun oldin');
+    expect(formatAgo(back(8 * 24 * 60), now)).toBe('31.10.2026, 15:00');
+    expect(formatAgo(null, now)).toBe('—');
+    await i18n.changeLanguage('ru');
+    expect(formatAgo(back(5), now)).toBe('5 мин назад');
   });
 
   it('reads a timestamp in farm time for the long form', async () => {

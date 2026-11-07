@@ -18,6 +18,7 @@ import { jobs as notificationJobs } from '../modules/notifications/jobs';
 import { jobs as reportJobs } from '../modules/reports/jobs';
 import { jobs as settingsJobs } from '../modules/settings/jobs';
 import { jobs as taskJobs } from '../modules/tasks/jobs';
+import { jobs as trackingJobs } from '../modules/tracking/jobs';
 import { CATCH_UP_MS, markDone, markSkipped, missedRuns, owed, tracked } from './catch-up';
 import { periodMs, scheduleProblem } from './schedule';
 import type { ScheduledJob } from './types';
@@ -33,6 +34,7 @@ export const ALL_JOBS: ScheduledJob[] = [
   ...reportJobs,
   ...aiJobs,
   ...deviceJobs,
+  ...trackingJobs,
   ...settingsJobs,
 ];
 

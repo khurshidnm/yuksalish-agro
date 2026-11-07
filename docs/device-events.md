@@ -8,6 +8,10 @@ short clips go to the cloud. The platform stores events in the journal, shows th
 page, and raises an alert for urgent ones. It detects nothing by itself: a fire is known only once a
 device reports it, see [Smoke detectors and relays](#smoke-detectors-and-relays).
 
+Animal collars and boluses do not use this API. Their readings are telemetry, about 100,000 a day for a
+flock of 700, so they arrive through a LoRaWAN network server and are kept apart from the journal. See
+[Animal tracking](tracking.md).
+
 ## Setup
 
 1. Register the device under **Cameras** (or `POST /api/v1/devices`). Note its `id`.

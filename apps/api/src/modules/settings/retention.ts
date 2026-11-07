@@ -8,7 +8,7 @@ import { ctx, tx } from '../../core/context';
 import { recordEvent } from '../../core/journal';
 import type { FarmJob } from '../../jobs/types';
 
-const { aiConversations, aiMessages, idempotencyKeys, importJobs, notifications, refreshTokens, telegramLinkCodes, webhookDeliveries } = schema;
+const { aiConversations, aiMessages, idempotencyKeys, importJobs, notifications, refreshTokens, telegramLinkCodes, trackerReadings, webhookDeliveries } = schema;
 
 const DAY_MS = 86_400_000;
 /** Global tables, so not a farm's to set. A dead session is kept a while for looking into a break-in. */
@@ -93,6 +93,12 @@ export async function applyRetention(now = new Date()) {
             sql`(${importJobs.rows} <> '[]'::jsonb or ${importJobs.errors} <> '[]'::jsonb or ${importJobs.warnings} <> '[]'::jsonb)`,
           ),
         ),
+    ),
+    // The tracking job has already kept each animal's day in animal_track_days.
+    trackerReadings: rowsIn(
+      await tx()
+        .delete(trackerReadings)
+        .where(and(eq(trackerReadings.farmId, farmId), lt(trackerReadings.recordedAt, ago(days.trackerReadingsDays)))),
     ),
     sessions: rowsIn(await tx().delete(refreshTokens).where(lt(refreshTokens.expiresAt, ago(DEAD_SESSION_DAYS)))),
     linkCodes: rowsIn(await tx().delete(telegramLinkCodes).where(lt(telegramLinkCodes.expiresAt, ago(DEAD_LINK_CODE_DAYS)))),

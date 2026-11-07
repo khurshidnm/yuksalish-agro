@@ -1,0 +1,146 @@
+{
+  "title": "Flock map",
+  "description": "Where every sheep wearing a collar is, and which ones need someone to walk over.",
+  "map": "Flock map",
+  "tabs": {
+    "map": "Map",
+    "trackers": "Trackers"
+  },
+  "kind": {
+    "collar": "Collar",
+    "bolus": "Bolus",
+    "ear_tag": "Ear sensor"
+  },
+  "flag": {
+    "fever": "Fever",
+    "isolated": "Apart from flock",
+    "inactive": "Not moving"
+  },
+  "legend": {
+    "title": "Map legend",
+    "ok": "All well",
+    "stale": "No recent reading"
+  },
+  "stats": {
+    "located": "On the map",
+    "flagged": "Need a look",
+    "silent": "Silent trackers",
+    "lowBattery": "Low battery"
+  },
+  "live": {
+    "noReading": "No reading yet",
+    "temperature": "{{value}} °C",
+    "passport": "Passport",
+    "herdFilter": "Show a herd",
+    "allHerds": "All herds",
+    "unnamedHerd": "Herd",
+    "updatedAt": "Updated {{time}}",
+    "refresh": "Refresh",
+    "noPositions": "No positions yet. A collar sends its first one within 15 minutes of being switched on.",
+    "attention": "Needs attention",
+    "allWell": "Every tracked sheep looks well.",
+    "silentCount": "Trackers silent for over {{hours}} h: {{count}}.",
+    "seeTrackers": "See trackers"
+  },
+  "empty": {
+    "title": "No trackers fitted yet",
+    "description": "Import the seller's list of collars with the ear tag each one went on, and the flock appears here.",
+    "action": "Import trackers"
+  },
+  "fields": {
+    "externalId": "DevEUI",
+    "animal": "Animal",
+    "animalCode": "Ear tag or RFID",
+    "kind": "Kind",
+    "herd": "Herd",
+    "battery": "Battery",
+    "lastReading": "Last reading",
+    "fittedOn": "Fitted on",
+    "temperature": "Temperature",
+    "position": "Last position",
+    "activity": "Activity",
+    "distance": "Distance"
+  },
+  "trackers": {
+    "search": "DevEUI or ear tag",
+    "filter": "Fitted or free",
+    "fitted": {
+      "all": "All",
+      "yes": "Fitted",
+      "no": "Free"
+    },
+    "free": "Not fitted",
+    "never": "Never",
+    "fit": "Fit to an animal",
+    "fitTitle": "Fit tracker {{id}}",
+    "fitMoves": "It comes off {{tag}} first.",
+    "animalHint": "The animal's ear tag, RFID or QR code. A tracker of the same kind on that animal comes off.",
+    "remove": "Take off",
+    "removeTitle": "Take the tracker off {{tag}}?",
+    "removeDescription": "Its readings stay in the animal's history. The tracker becomes free for another animal.",
+    "emptyTitle": "No trackers",
+    "emptyDescription": "Collars and boluses appear here once imported."
+  },
+  "import": {
+    "open": "Import trackers",
+    "title": "Import trackers",
+    "description": "Paste the list from the seller or a spreadsheet. It is checked first, and nothing changes until every line is right.",
+    "list": "One tracker per line",
+    "listHint": "DevEUI, then the ear tag of the animal it is on. Optionally the kind between them: collar, bolus or ear_tag.",
+    "placeholder": "A840410000000001, YA-0001\nA840410000000002, bolus, YA-0002",
+    "defaultKind": "Kind, where a line does not say",
+    "lines": "Lines: {{count}}",
+    "check": "Check",
+    "apply": "Import ({{count}})",
+    "allGood": "Every line is right. Press Import to save.",
+    "line": "Line {{line}}:",
+    "tooMany": "At most {{max}} lines at a time.",
+    "done": "Registered: {{registered}}. Fitted: {{fitted}}.",
+    "summary": {
+      "register": "New: {{count}}",
+      "fit": "To fit: {{count}}",
+      "move": "Moving: {{count}}",
+      "unchanged": "Unchanged: {{count}}",
+      "errors": "Errors: {{count}}"
+    }
+  },
+  "passport": {
+    "tab": "Location & health",
+    "noTracker": "No tracker on this animal",
+    "noTrackerHint": "Fit a collar or a bolus, and its location, activity and temperature appear here.",
+    "toTrackers": "Trackers",
+    "removed": "The tracker was taken off. Its history is below.",
+    "flaggedHint": "Raised by the health rules. Go and look at her: a tracker cannot diagnose.",
+    "track": "Last 24 hours",
+    "temperatureChart": "Temperature, last 7 days",
+    "noTemperature": "No temperature readings. Only a rumen bolus measures it.",
+    "activityChart": "Activity, last 7 days",
+    "noActivity": "No activity readings.",
+    "distanceChart": "Walked per day",
+    "km": "{{value}} km",
+    "noHistory": "The first day's summary appears the morning after.",
+    "trackers": "Trackers worn"
+  },
+  "toast": {
+    "fitted": "Tracker fitted",
+    "removed": "Tracker taken off"
+  },
+  "errors": {
+    "INVALID_EXTERNAL_ID": "This is not a DevEUI (16 hex digits) or a serial number.",
+    "DUPLICATE_IN_IMPORT": "This tracker is listed twice.",
+    "EXTERNAL_ID_TAKEN": "This id is already used by another device or farm.",
+    "TRACKER_KIND_MISMATCH": "This tracker is registered as a different kind.",
+    "ANIMAL_NOT_FOUND": "No animal with this tag on the farm.",
+    "ANIMAL_NOT_ON_FARM": "This animal is no longer on the farm.",
+    "DUPLICATE_ANIMAL": "This animal would get two trackers of the same kind.",
+    "TRACKER_ALREADY_FITTED": "This tracker is already on this animal.",
+    "TRACKER_ALREADY_REMOVED": "This tracker was already taken off.",
+    "REMOVED_BEFORE_FITTED": "A tracker cannot come off before it was fitted.",
+    "INVALID_UPLINK": "The message has no device id.",
+    "NOT_A_TRACKER": "This device is not an animal tracker.",
+    "INVALID_READING_TIME": "The reading's time is in the future.",
+    "INVALID_RANGE": "The start must be before the end.",
+    "RANGE_TOO_LONG": "At most 31 days at a time.",
+    "DATE_IN_FUTURE": "The date is in the future."
+  }
+}

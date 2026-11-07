@@ -106,6 +106,10 @@
   "date": {
     "months": ["Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun", "Iyul", "Avgust", "Sentabr", "Oktabr", "Noyabr", "Dekabr"],
     "monthsOf": ["yanvar", "fevral", "mart", "aprel", "may", "iyun", "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr"],
-    "monthsShort": ["Yan", "Fev", "Mar", "Apr", "May", "Iyn", "Iyl", "Avg", "Sen", "Okt", "Noy", "Dek"]
+    "monthsShort": ["Yan", "Fev", "Mar", "Apr", "May", "Iyn", "Iyl", "Avg", "Sen", "Okt", "Noy", "Dek"],
+    "justNow": "hozirgina",
+    "minutesAgo": "{{count}} daq. oldin",
+    "hoursAgo": "{{count}} soat oldin",
+    "daysAgo": "{{count}} kun oldin"
   }
 }

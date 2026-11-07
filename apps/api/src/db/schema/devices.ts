@@ -1,4 +1,5 @@
-import { boolean, doublePrecision, index, integer, jsonb, pgTable, text, uuid } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { boolean, doublePrecision, index, integer, jsonb, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { pk, ts } from './_helpers';
 import { tenantColumns } from './_tenant';
 import { facilities } from './land';
@@ -26,11 +27,16 @@ export const devices = pgTable(
     status: text().notNull().default('planned'),
     lastSeenAt: ts(),
     apiKeyId: uuid().references(() => apiKeys.id),
-    /** { zone, liveUrl, offlineAfterMinutes } */
+    /** The device's own identity on its network: a LoRaWAN DevEUI (16 hex digits) or a vendor serial. */
+    externalId: text(),
+    /** { zone, liveUrl, offlineAfterMinutes } for cameras; { trackerKind, fieldMap } for animal trackers. */
     config: jsonb().$type<Record<string, unknown>>().notNull().default({}),
     notes: text(),
   },
-  (t) => [index().on(t.farmId, t.type)],
+  (t) => [
+    index().on(t.farmId, t.type),
+    uniqueIndex('devices_external_id').on(t.tenantId, t.externalId).where(sql`external_id is not null`),
+  ],
 );
 
 /** Outgoing webhook subscription (spec 19.1). `eventTypes` holds exact types, "prefix.*" or "*". */

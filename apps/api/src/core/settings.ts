@@ -42,6 +42,8 @@ export interface TenantSettings {
     aiToolDataDays: number;
     /** Spreadsheet rows an import still holds, which can be personal data. */
     importDays: number;
+    /** Raw collar and bolus readings. Each animal's daily summary stays. */
+    trackerReadingsDays: number;
   };
 }
 
@@ -52,7 +54,7 @@ export const DEFAULT_SETTINGS: TenantSettings = {
   livestock: { quarantineDays: 21, defaultGestationDays: 150 },
   security: { enforce2fa: true },
   storage: { quotaMb: 20_480, dailyUploadMb: 500 },
-  retention: { notificationDays: 365, idempotencyDays: 30, webhookDeliveryDays: 90, aiToolDataDays: 90, importDays: 90 },
+  retention: { notificationDays: 365, idempotencyDays: 30, webhookDeliveryDays: 90, aiToolDataDays: 90, importDays: 90, trackerReadingsDays: 30 },
 };
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
