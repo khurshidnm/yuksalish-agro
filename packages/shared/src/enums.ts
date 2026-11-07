@@ -68,7 +68,7 @@ export const TIMESHEET_STATUSES = e(['present', 'absent', 'sick', 'vacation', 'd
 export const PAYROLL_STATUSES = e(['draft', 'pending', 'approved', 'paid']);
 
 // Assets
-export const ASSET_TYPES = e(['tractor', 'combine', 'seeder', 'plough', 'pump', 'generator', 'scale', 'camera', 'vehicle', 'other']);
+export const ASSET_TYPES = e(['tractor', 'combine', 'excavator', 'seeder', 'plough', 'pump', 'generator', 'scale', 'camera', 'vehicle', 'other']);
 export const ASSET_STATUSES = e(['working', 'idle', 'repair', 'written_off']);
 export const DEPRECIATION_METHODS = e(['straight_line', 'units']);
 export const MAINTENANCE_TYPES = e(['planned', 'repair']);

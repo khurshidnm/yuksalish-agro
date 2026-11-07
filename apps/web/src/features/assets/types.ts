@@ -5,6 +5,9 @@ export interface Asset {
   inventoryNo: string | null;
   purchaseDate: string | null;
   purchasePrice: number | null;
+  purchaseAmount: number | null;
+  purchaseCurrency: string | null;
+  purchaseFxRate: number | null;
   status: string;
   usefulLifeMonths: number | null;
   salvageValue: number | null;

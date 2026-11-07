@@ -56,6 +56,7 @@ export const CATEGORY_RULES: Record<string, CategoryRule> = {
   barn_construction: { ...general, treatment: 'capex' },
   machinery_purchase: { ...general, treatment: 'capex' },
   camera_system: { ...general, treatment: 'capex' },
+  land_purchase: { ...general, treatment: 'capex' },
   // Owned elsewhere
   salary: { targets: [], ownedBy: 'payroll' },
   bonus: { targets: [], ownedBy: 'payroll' },

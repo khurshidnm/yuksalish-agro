@@ -46,7 +46,7 @@
   "employeeStatus": { "active": "Ishlamoqda", "on_leave": "Ta'tilda", "terminated": "Ishdan ketgan" },
   "timesheetStatus": { "present": "Ishda", "absent": "Kelmagan", "sick": "Kasal", "vacation": "Ta'til", "day_off": "Dam olish" },
   "payrollStatus": { "draft": "Qoralama", "pending": "Tasdiqlash kutilmoqda", "approved": "Tasdiqlangan", "paid": "To'langan" },
-  "assetType": { "tractor": "Traktor", "combine": "Kombayn", "seeder": "Seyalka", "plough": "Plug", "pump": "Nasos", "generator": "Generator", "scale": "Tarozi", "camera": "Kamera", "vehicle": "Transport", "other": "Boshqa" },
+  "assetType": { "tractor": "Traktor", "combine": "Kombayn", "excavator": "Ekskavator", "seeder": "Seyalka", "plough": "Plug", "pump": "Nasos", "generator": "Generator", "scale": "Tarozi", "camera": "Kamera", "vehicle": "Transport", "other": "Boshqa" },
   "assetStatus": { "working": "Ishlamoqda", "idle": "Bo'sh turibdi", "repair": "Ta'mirda", "written_off": "Hisobdan chiqarilgan" },
   "depreciationMethod": { "straight_line": "Chiziqli", "units": "Ish hajmi bo'yicha" },
   "maintenanceType": { "planned": "Rejali xizmat", "repair": "Ta'mirlash" },

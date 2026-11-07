@@ -1,11 +1,12 @@
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
-import { ASSET_STATUSES, ASSET_TYPES, DEPRECIATION_METHODS, assetBookValue, monthRange, round } from '@yap/shared';
+import { ASSET_STATUSES, ASSET_TYPES, CURRENCIES, DEPRECIATION_METHODS, assetBookValue, monthRange, round, toBaseAmount } from '@yap/shared';
 import { schema } from '../../db/client';
 import { canSeeMoney, ctx, today, tx } from '../../core/context';
 import { activateCostCenter, deactivateCostCenter, ensureCostCenter, renameCostCenter } from '../../core/costCenters';
 import { badRequest, conflict, forbidden, notFound } from '../../core/errors';
 import { recordEvent } from '../../core/journal';
+import { resolveFxRate } from '../../core/ledger';
 import { hideMoney } from '../../core/privacy';
 import { clientId, isoDate, listQuery, paged, searchAny, sortBy, sumOf } from '../../core/query';
 
@@ -13,7 +14,7 @@ const { assets: t, assetUsageLogs, contracts, counterparties, depreciationEntrie
 
 export const RENTAL_UNITS = ['ha', 'hour', 'day'] as const;
 
-const MONEY_FIELDS = ['purchasePrice', 'salvageValue', 'rentalPrice', 'openingDepreciation', 'openingDepreciationDate'] as const;
+const MONEY_FIELDS = ['purchasePrice', 'purchaseAmount', 'purchaseCurrency', 'purchaseFxRate', 'salvageValue', 'rentalPrice', 'openingDepreciation', 'openingDepreciationDate'] as const;
 
 type AssetRow = typeof t.$inferSelect;
 
@@ -24,6 +25,11 @@ export const assetInput = z.object({
   inventoryNo: z.string().trim().min(1).max(60).nullish(),
   purchaseDate: isoDate.nullish(),
   purchasePrice: z.number().min(0).nullish(),
+  /** A price paid in another currency. purchasePrice is then worked out here, not taken from the request. */
+  purchaseAmount: z.number().positive().nullish(),
+  purchaseCurrency: z.enum(CURRENCIES).nullish(),
+  /** Empty takes the stored rate for the purchase date. */
+  purchaseFxRate: z.number().positive().nullish(),
   status: z.enum(ASSET_STATUSES).optional(),
   usefulLifeMonths: z.number().int().positive().max(1200).nullish(),
   salvageValue: z.number().min(0).optional(),
@@ -66,6 +72,30 @@ async function assertRentalRefs(input: Partial<AssetInput>): Promise<void> {
 /** Who cannot see a figure cannot set it either. The web form leaves these fields out for them. */
 function assertMayWriteMoney(input: Partial<AssetInput>): void {
   if (!canSeeMoney() && MONEY_FIELDS.some((field) => input[field] !== undefined)) throw forbidden();
+}
+
+type PriceFields = Pick<AssetInput, 'purchasePrice' | 'purchaseAmount' | 'purchaseFxRate'> & { purchaseCurrency?: string | null };
+
+/**
+ * What a request does to the price. Paid in another currency, the contract figure and its rate are kept
+ * and purchasePrice holds what that came to in the base currency. A bare purchasePrice is a base price.
+ */
+async function priceFields(input: Partial<AssetInput>, before?: AssetRow): Promise<PriceFields> {
+  const { purchaseAmount, purchaseCurrency, purchaseFxRate, purchasePrice } = input;
+  const foreignGiven = [purchaseAmount, purchaseCurrency, purchaseFxRate].some((value) => value !== undefined);
+  if (!foreignGiven && purchasePrice === undefined) return {};
+
+  const currency = !foreignGiven ? null : purchaseCurrency === undefined ? before?.purchaseCurrency : purchaseCurrency;
+  if (!currency || currency === ctx().currency) return { purchaseAmount: null, purchaseCurrency: null, purchaseFxRate: null };
+
+  const amount = purchaseAmount === undefined ? before?.purchaseAmount : purchaseAmount;
+  if (!amount) throw badRequest('PURCHASE_AMOUNT_REQUIRED', 'A price in another currency needs its amount');
+  const date = input.purchaseDate === undefined ? before?.purchaseDate : input.purchaseDate;
+  if (!date) throw badRequest('PURCHASE_DATE_REQUIRED', 'A price in another currency needs the purchase date for its rate');
+  // A saved rate belongs to the currency it was saved with.
+  const saved = currency === before?.purchaseCurrency ? before.purchaseFxRate : null;
+  const fxRate = await resolveFxRate(currency, date, purchaseFxRate === undefined ? saved : purchaseFxRate);
+  return { purchaseAmount: amount, purchaseCurrency: currency, purchaseFxRate: fxRate, purchasePrice: toBaseAmount(amount, fxRate) };
 }
 
 export function isInOpening(asset: AssetRow, month: string): boolean {
@@ -221,7 +251,8 @@ export async function create(input: AssetInput) {
   assertMayWriteMoney(input);
   await assertRentalRefs(input);
   const c = ctx();
-  const { id, ...values } = input;
+  const { id, ...rest } = input;
+  const values = { ...rest, ...(await priceFields(rest)) };
   await assertOpening(values);
   const [row] = await tx()
     .insert(t)
@@ -243,7 +274,8 @@ export async function update(id: string, input: Partial<AssetInput>) {
   assertMayWriteMoney(input);
   const before = await lockAssetRow(id);
   await assertRentalRefs(input);
-  const { id: _ignored, ...values } = input;
+  const { id: _ignored, ...rest } = input;
+  const values = { ...rest, ...(await priceFields(rest, before)) };
   await assertOpening({ ...before, ...values });
   const [row] = await tx().update(t).set(values).where(eq(t.id, id)).returning();
   if (values.name && values.name !== before.name && row.costCenterId) {

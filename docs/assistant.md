@@ -65,7 +65,7 @@ Category rules:
 | `shearing`, `tags_devices`, `veterinary` as a service | A herd | The farm's only herd when there is exactly one, otherwise ask |
 | `repair`, `equipment_rent` | A machine or field | Ask which |
 | `electricity`, `gas`, `utility_water`, `security_guard`, `communication`, `transport`, `paperwork`, `licenses`, `bank_fees`, `insurance`, `meals`, `clothing`, `construction_repair` | General cost center | General, shown on the card, and the person may change it |
-| `barn_construction`, `machinery_purchase`, `camera_system` | General | `capex` |
+| `barn_construction`, `machinery_purchase`, `camera_system`, `land_purchase` | General | `capex` |
 | `animal_purchase` | A herd | Ask which |
 
 ## Which words count

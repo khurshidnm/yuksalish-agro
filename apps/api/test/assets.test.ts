@@ -2,7 +2,7 @@ import { addDays, monthOf, monthRange, round, todayIso } from '@yap/shared';
 import { and, eq, sql } from 'drizzle-orm';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { tx, withPlatform } from '../src/core/context';
-import { ensureCostCenter } from '../src/core/costCenters';
+import { ensureCostCenter, generalCostCenterId } from '../src/core/costCenters';
 import { receiveStock, stockOnHand } from '../src/core/inventory';
 import { postTransaction } from '../src/core/ledger';
 import { schema } from '../src/db/client';
@@ -10,6 +10,7 @@ import { update as updateAsset } from '../src/modules/assets/assets.service';
 import { monthsToRun, previousMonth, runDepreciation } from '../src/modules/assets/depreciation.service';
 import { jobs } from '../src/modules/assets/jobs';
 import { machineryCostByField } from '../src/modules/assets/costs.service';
+import { costCenterCosts } from '../src/modules/finance/summary';
 import { dueMaintenance } from '../src/modules/assets/maintenance.service';
 import { assetStatus, fuelUsage } from '../src/modules/assets/summary';
 import { RENTED_COMBINE, seedAssets, seedDepreciation } from '../src/seed/assets';
@@ -1483,5 +1484,118 @@ describe('tenant isolation', () => {
     expect((await stranger.patch(`/assets/${asset.id}`, { name: 'Hack' })).status).toBe(404);
     expect((await stranger.post(`/assets/${asset.id}/usage`, { date: today, motoHours: 1 })).status).toBe(404);
     expect((await stranger.get(`/assets/${asset.id}/costs`)).status).toBe(404);
+  });
+});
+
+describe('a price paid in another currency', () => {
+  const DOLLARS = { purchaseDate: '2026-03-10', purchaseAmount: 48_000, purchaseCurrency: 'USD', usefulLifeMonths: 120 };
+
+  it('keeps the contract figure, and holds 48,000 x 12,650 = 607,200,000 as the price', async () => {
+    const { owner } = await setup();
+    const asset = await newAsset(owner, { ...DOLLARS, purchaseFxRate: 12_650 });
+    expect(asset.purchasePrice).toBe(607_200_000);
+
+    const card = (await owner.get(`/assets/${asset.id}`)).data;
+    expect(card).toMatchObject({ purchaseAmount: 48_000, purchaseCurrency: 'USD', purchaseFxRate: 12_650, purchasePrice: 607_200_000, bookValue: 607_200_000 });
+  });
+
+  it('depreciates the so\'m figure: 607,200,000 / 120 = 5,060,000 a month', async () => {
+    const { f, owner } = await setup();
+    await farmCreatedAt(f, '2026-01-01');
+    const asset = await newAsset(owner, { ...DOLLARS, purchaseFxRate: 12_650 });
+    await f.run(() => runDepreciation('2026-04'));
+    const card = (await owner.get(`/assets/${asset.id}`)).data;
+    expect(card.accumulatedDepreciation).toBe(5_060_000);
+    expect(card.bookValue).toBe(602_140_000);
+  });
+
+  it('takes the stored rate for the purchase date when none is typed', async () => {
+    const { owner } = await setup();
+    await owner.put('/finance/fx-rates', { date: '2026-03-01', currency: 'USD', rate: 12_500 });
+    await owner.put('/finance/fx-rates', { date: '2026-04-01', currency: 'USD', rate: 13_000 });
+    const asset = await newAsset(owner, DOLLARS);
+    expect(asset.purchaseFxRate).toBe(12_500);
+    expect(asset.purchasePrice).toBe(600_000_000);
+  });
+
+  it('refuses without a rate, a date or an amount, and refuses a rate typed by mistake', async () => {
+    const { owner } = await setup();
+    const post = (over: object) => owner.post('/assets', { name: 'JCB', type: 'excavator', ...DOLLARS, ...over });
+
+    expect((await post({})).body.error.code).toBe('FX_RATE_REQUIRED');
+    expect((await post({ purchaseDate: null, purchaseFxRate: 12_650 })).body.error.code).toBe('PURCHASE_DATE_REQUIRED');
+    expect((await post({ purchaseAmount: null, purchaseFxRate: 12_650 })).body.error.code).toBe('PURCHASE_AMOUNT_REQUIRED');
+
+    await owner.put('/finance/fx-rates', { date: '2026-03-01', currency: 'USD', rate: 12_500 });
+    expect((await post({ purchaseFxRate: 1 })).body.error.code).toBe('FX_RATE_OUT_OF_RANGE');
+  });
+
+  it('works the price out again on a change, keeps it on an unrelated one, and clears the dollars for a so\'m price', async () => {
+    const { owner } = await setup();
+    const asset = await newAsset(owner, { ...DOLLARS, purchaseFxRate: 12_650 });
+
+    const renamed = (await owner.patch(`/assets/${asset.id}`, { name: 'MTZ-1221' })).data;
+    expect(renamed).toMatchObject({ purchaseAmount: 48_000, purchasePrice: 607_200_000 });
+
+    const repriced = (await owner.patch(`/assets/${asset.id}`, { purchaseAmount: 50_000 })).data;
+    expect(repriced).toMatchObject({ purchaseFxRate: 12_650, purchasePrice: 632_500_000 });
+
+    const inSoms = (await owner.patch(`/assets/${asset.id}`, { purchasePrice: 640_000_000 })).data;
+    expect(inSoms).toMatchObject({ purchasePrice: 640_000_000, purchaseAmount: null, purchaseCurrency: null, purchaseFxRate: null });
+  });
+
+  it('holds opening depreciation against the so\'m figure', async () => {
+    const { owner } = await setup();
+    const res = await owner.post('/assets', {
+      name: 'MTZ', type: 'tractor', ...DOLLARS, purchaseFxRate: 12_650,
+      openingDepreciation: 607_200_001, openingDepreciationDate: '2026-04-30',
+    });
+    expect(res.body.error.code).toBe('OPENING_TOO_HIGH');
+  });
+
+  it('shows none of it to someone without finance.view, and takes none of it from them', async () => {
+    const { f, owner } = await setup();
+    const asset = await newAsset(owner, { ...DOLLARS, purchaseFxRate: 12_650 });
+    const mechanic = await f.as('mechanic');
+    const card = (await mechanic.get(`/assets/${asset.id}`)).data;
+    expect(card).toMatchObject({ purchasePrice: null, purchaseAmount: null, purchaseCurrency: null, purchaseFxRate: null });
+
+    // May edit machines, may not see money: no default role is like this, but a tenant can make one.
+    const editor = { permissions: ['assets.view', 'assets.update'] };
+    for (const field of ['purchaseAmount', 'purchaseFxRate']) {
+      await expect(f.run(() => updateAsset(asset.id, { [field]: 1 }), editor)).rejects.toMatchObject({ status: 403 });
+    }
+    await expect(f.run(() => updateAsset(asset.id, { purchaseCurrency: 'EUR' }), editor)).rejects.toMatchObject({ status: 403 });
+
+    // The web form still sends them the purchase date, and that must leave the price alone.
+    await f.run(() => updateAsset(asset.id, { purchaseDate: '2026-03-12' }), editor);
+    expect((await owner.get(`/assets/${asset.id}`)).data).toMatchObject({ purchaseDate: '2026-03-12', purchaseAmount: 48_000, purchasePrice: 607_200_000 });
+  });
+});
+
+describe('land bought in dollars', () => {
+  it('moves the account at the so\'m amount and reaches no cost center, because land is never depreciated', async () => {
+    const { f, owner } = await setup();
+    const { accountId, categoryId, generalId } = await f.run(async () => {
+      const [account] = await tx()
+        .insert(accounts)
+        .values({ tenantId: f.tenantId, farmId: f.farmId, name: 'Bank', type: 'bank', currency: 'UZS', createdBy: owner.userId })
+        .returning();
+      const [category] = await tx().select().from(financeCategories).where(eq(financeCategories.key, 'land_purchase'));
+      expect(category).toMatchObject({ group: 'investment', kind: 'expense' });
+      return { accountId: account.id, categoryId: category.id, generalId: await generalCostCenterId() };
+    });
+
+    await f.run(() =>
+      postTransaction({
+        date: '2026-03-10', type: 'expense', amount: 100_000, currency: 'USD', fxRate: 12_650, categoryId, costCenterId: generalId,
+        costTreatment: 'capex', paymentMethod: 'bank', accountId, autoApprove: true,
+      }),
+    );
+
+    const list = (await owner.get('/finance/accounts')).data;
+    expect(list.find((row: { id: string }) => row.id === accountId).balance).toBe(-1_265_000_000);
+    const centers = await f.run(() => costCenterCosts('2026-03-01', '2026-03-31'));
+    expect(centers.reduce((sum, center) => sum + center.total, 0)).toBe(0);
   });
 });

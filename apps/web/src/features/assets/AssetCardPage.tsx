@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { ErrorCard, MoneyText, PageHeader, StatCard, UrlTabs } from '@/components';
 import { Alert, Badge, Button, Card, CardContent, Skeleton } from '@/components/ui';
 import { useCan, usePermission } from '@/lib/auth';
-import { formatDate, formatNumber } from '@/lib/format';
+import { formatDate, formatMoney, formatNumber } from '@/lib/format';
 import { useDetail } from '@/lib/query';
 import { AssetCostsTab } from './AssetCostsTab';
 import { AssetFormDialog } from './AssetFormDialog';
@@ -62,6 +62,11 @@ function Overview({ asset }: { asset: AssetCard }) {
             <>
               <Fact label={t('fields.purchasePrice')}>
                 <MoneyText value={asset.purchasePrice} />
+                {asset.purchaseCurrency && asset.purchaseAmount !== null && (
+                  <span className="block text-xs font-normal text-muted-foreground">
+                    {t('overview.original', { amount: formatMoney(asset.purchaseAmount, { currency: asset.purchaseCurrency }), rate: formatNumber(asset.purchaseFxRate, 2) })}
+                  </span>
+                )}
               </Fact>
               {!!asset.openingDepreciation && (
                 <Fact label={t('overview.opening', { date: formatDate(asset.openingDepreciationDate) })}>

@@ -4,7 +4,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { canDeleteEntry, canEditEntry, canVoidEntry } from './lib';
+import { canDeleteEntry, canEditEntry, canVoidEntry, treatmentForCategory } from './lib';
 import type { Transaction } from './types';
 
 const read = (path: string) => readFileSync(new URL(`../../../../api/src/${path}`, import.meta.url), 'utf8');
@@ -63,5 +63,19 @@ describe('edit and delete', () => {
       expect(canEditEntry(entry('pending', null, type)), type).toBe(false);
       expect(canDeleteEntry(entry('pending', null, type)), type).toBe(true);
     }
+  });
+});
+
+describe('treatmentForCategory', () => {
+  it('makes an investment category capex', () => {
+    expect(treatmentForCategory('investment', 'expense')).toBe('capex');
+  });
+
+  it('takes capex back when the category is changed to an ordinary one', () => {
+    expect(treatmentForCategory('machinery', 'capex')).toBe('expense');
+  });
+
+  it('leaves a treatment the person chose for an ordinary category', () => {
+    expect(treatmentForCategory('livestock', 'inventory')).toBe('inventory');
   });
 });

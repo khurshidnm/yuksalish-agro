@@ -46,7 +46,7 @@
   "employeeStatus": { "active": "Working", "on_leave": "On leave", "terminated": "Left" },
   "timesheetStatus": { "present": "Present", "absent": "Absent", "sick": "Sick", "vacation": "Vacation", "day_off": "Day off" },
   "payrollStatus": { "draft": "Draft", "pending": "Awaiting approval", "approved": "Approved", "paid": "Paid" },
-  "assetType": { "tractor": "Tractor", "combine": "Combine", "seeder": "Seeder", "plough": "Plough", "pump": "Pump", "generator": "Generator", "scale": "Scale", "camera": "Camera", "vehicle": "Vehicle", "other": "Other" },
+  "assetType": { "tractor": "Tractor", "combine": "Combine", "excavator": "Excavator", "seeder": "Seeder", "plough": "Plough", "pump": "Pump", "generator": "Generator", "scale": "Scale", "camera": "Camera", "vehicle": "Vehicle", "other": "Other" },
   "assetStatus": { "working": "Working", "idle": "Idle", "repair": "In repair", "written_off": "Written off" },
   "depreciationMethod": { "straight_line": "Straight line", "units": "By work volume" },
   "maintenanceType": { "planned": "Scheduled service", "repair": "Repair" },

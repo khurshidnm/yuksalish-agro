@@ -46,7 +46,7 @@
   "employeeStatus": { "active": "Работает", "on_leave": "В отпуске", "terminated": "Уволен" },
   "timesheetStatus": { "present": "На работе", "absent": "Отсутствует", "sick": "Болеет", "vacation": "Отпуск", "day_off": "Выходной" },
   "payrollStatus": { "draft": "Черновик", "pending": "Ожидает подтверждения", "approved": "Подтверждено", "paid": "Выплачено" },
-  "assetType": { "tractor": "Трактор", "combine": "Комбайн", "seeder": "Сеялка", "plough": "Плуг", "pump": "Насос", "generator": "Генератор", "scale": "Весы", "camera": "Камера", "vehicle": "Транспорт", "other": "Другое" },
+  "assetType": { "tractor": "Трактор", "combine": "Комбайн", "excavator": "Экскаватор", "seeder": "Сеялка", "plough": "Плуг", "pump": "Насос", "generator": "Генератор", "scale": "Весы", "camera": "Камера", "vehicle": "Транспорт", "other": "Другое" },
   "assetStatus": { "working": "В работе", "idle": "Простаивает", "repair": "В ремонте", "written_off": "Списано" },
   "depreciationMethod": { "straight_line": "Линейный", "units": "По объёму работ" },
   "maintenanceType": { "planned": "Плановое обслуживание", "repair": "Ремонт" },

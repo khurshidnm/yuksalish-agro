@@ -50,6 +50,13 @@
       "when": 1793919907528,
       "tag": "0006_asset_opening_and_notification_words",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793989213227,
+      "tag": "0007_asset_foreign_price_and_land_purchase",
+      "breakpoints": true
     }
   ]
 }

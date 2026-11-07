@@ -52,6 +52,15 @@ export function budgetYearRange(year: number): { from: string; to: string } {
 
 export const budgetYearLabel = (year: number) => `${year}/${String(year + 1).slice(2)}`;
 
+/**
+ * Buying a long-lived thing reaches cost centers through depreciation, so it is capex from the start.
+ * Left as a plain expense it would count once on entry and again each month.
+ */
+export function treatmentForCategory<T extends string>(group: string | undefined, current: T): T | 'capex' | 'expense' {
+  if (group === 'investment') return 'capex';
+  return current === 'capex' ? 'expense' : current;
+}
+
 export const FINANCE_PATHS = {
   transactions: '/finance/transactions',
   accounts: '/finance/accounts',

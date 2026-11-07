@@ -15,7 +15,12 @@ export const assets = pgTable(
     type: text().notNull(),
     inventoryNo: text(),
     purchaseDate: day(),
+    /** Always in the base currency: depreciation, book value and reports read this. */
     purchasePrice: money(),
+    /** Set only when the price was paid in another currency: the figure on the contract, and its rate. */
+    purchaseAmount: money(),
+    purchaseCurrency: text(),
+    purchaseFxRate: dec(18, 6),
     status: text().notNull().default('working'),
     usefulLifeMonths: dec(6, 0),
     salvageValue: money().notNull().default(0),
