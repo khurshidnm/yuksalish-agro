@@ -100,7 +100,7 @@ export const stockMovements = pgTable(
     notes: text(),
   },
   (t) => [
-    index().on(t.farmId, t.date.desc()),
+    index().on(t.farmId, t.date),
     index().on(t.itemId, t.date),
     index().on(t.costCenterId, t.date),
     index().on(t.refType, t.refId),

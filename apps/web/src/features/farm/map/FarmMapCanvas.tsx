@@ -4,7 +4,10 @@ import L from 'leaflet';
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import type { FarmMapData, MapProps } from '../types';
 import { loadGeoman } from './geoman';
+import { CROP_SLOT, LAND_USE_SLOT } from './slots';
 import './farm-map.css';
+
+export { CROP_SLOT, LAND_USE_SLOT };
 
 export type BaseLayer = 'satellite' | 'streets';
 export type ColorBy = 'landUse' | 'crop';
@@ -23,11 +26,9 @@ const BASE_LAYERS: Record<BaseLayer, { url: string; attribution: string; maxZoom
   },
 };
 
-/** Colour slots of the chart palette. Fixed, so a land use keeps its colour between farms. */
-export const LAND_USE_SLOT: Record<string, number> = { arable: 1, pasture: 7, reserve: 5, yard: 4, infrastructure: 8 };
-export const CROP_SLOT: Record<string, number> = { wheat: 2, barley: 7, rice: 3, alfalfa: 1, corn: 6, cotton: 8 };
-
-const FALLBACK_CENTER: [number, number] = [39.5, 64.8];
+/** Uzbekistan as a whole: a farm with no location set is not anywhere in particular. */
+const FALLBACK_CENTER: [number, number] = [41.3, 64.6];
+const FALLBACK_ZOOM = 6;
 
 /** Below this zoom only crop fields keep a label. */
 const COMPACT_BELOW_ZOOM = 14;
@@ -92,6 +93,8 @@ export interface FarmMapCanvasProps {
   colorBy: ColorBy;
   selectedId: string | null;
   className?: string;
+  /** Height of whatever covers the bottom of the map, so the first view does not hide fields under it. */
+  fitBottom?: number;
   onSelect: (props: MapProps | null) => void;
   onDrawn: (shape: DrawnShape) => void;
   onLiveArea: (hectares: number | null) => void;
@@ -104,7 +107,7 @@ export interface FarmMapCanvasProps {
  * render cycle would fight. React state stays in FarmMapPage, which drives this through a handle.
  */
 export const FarmMapCanvas = forwardRef<FarmMapHandle, FarmMapCanvasProps>(function FarmMapCanvas(props, ref) {
-  const { data, baseLayer, colorBy, selectedId, className } = props;
+  const { data, baseLayer, colorBy, selectedId, className, fitBottom = 24 } = props;
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const tiles = useRef<L.TileLayer | null>(null);
@@ -140,8 +143,10 @@ export const FarmMapCanvas = forwardRef<FarmMapHandle, FarmMapCanvasProps>(funct
       )
       .then((canDraw) => {
         if (cancelled || !container.current) return;
-        const instance = L.map(container.current, { center: FALLBACK_CENTER, zoom: 14, zoomControl: false });
-        L.control.zoom({ position: 'bottomright' }).addTo(instance);
+        const instance = L.map(container.current, { center: FALLBACK_CENTER, zoom: FALLBACK_ZOOM, zoomControl: false });
+        L.control.zoom({ position: 'topright' }).addTo(instance);
+        // On the left, where the assistant button can never cover the imagery credit.
+        instance.attributionControl.setPosition('bottomleft');
         instance.on('click', () => {
           if (mode.current === 'view') latest.current.onSelect(null);
         });
@@ -224,9 +229,15 @@ export const FarmMapCanvas = forwardRef<FarmMapHandle, FarmMapCanvasProps>(funct
     features.current = group;
 
     if (!fitted.current) {
-      const bounds = group.getBounds();
+      // The fields and the yard, not a pasture far off that would shrink them to specks.
+      const core = L.latLngBounds([]);
+      group.eachLayer((layer) => {
+        const feature = (layer as L.Polygon & { feature?: { properties?: { landUse?: string } } }).feature;
+        if ('getBounds' in layer && feature?.properties?.landUse !== 'pasture') core.extend((layer as L.Polygon).getBounds());
+      });
+      const bounds = core.isValid() ? core : group.getBounds();
       if (bounds.isValid()) {
-        instance.fitBounds(bounds, { padding: [24, 24] });
+        instance.fitBounds(bounds, { paddingTopLeft: [24, 24], paddingBottomRight: [24, fitBottom] });
         fitted.current = true;
       } else if (data.center) {
         instance.setView([data.center.lat, data.center.lng], 14);

@@ -44,7 +44,9 @@ export async function createRentalAct(assetId: string, input: z.infer<typeof ren
         isNull(logs.billedTransactionId),
         sql`${logs.date} between ${input.from} and ${input.to}`,
       ),
-    );
+    )
+    .orderBy(logs.id)
+    .for('update', { of: logs });
   if (shifts.length === 0) throw conflict('NOTHING_TO_BILL', 'There are no unbilled shifts in this period');
 
   const quantityOf = (shift: (typeof shifts)[number]): number => {
@@ -69,10 +71,15 @@ export async function createRentalAct(assetId: string, input: z.infer<typeof ren
     .where(and(eq(financeCategories.tenantId, c.tenantId), eq(financeCategories.key, 'equipment_rent')));
   if (!category) throw badRequest('CATEGORY_NOT_FOUND', 'Finance category equipment_rent does not exist');
 
+  const price = asset.rentalPrice;
+  const bills = [...groups.values()].map((group) => ({ ...group, amount: round(group.quantity * price, 2) }));
+  if (bills.some((bill) => bill.amount <= 0)) {
+    throw badRequest('RENTAL_QUANTITY_MISSING', 'Some shifts have no hectares or hours to bill');
+  }
+  const documentBase = round(bills.reduce((sum, bill) => sum + bill.amount, 0), 2);
+
   const lines = [];
-  for (const group of groups.values()) {
-    const amount = round(group.quantity * asset.rentalPrice, 2);
-    if (amount <= 0) throw badRequest('RENTAL_QUANTITY_MISSING', 'Some shifts have no hectares or hours to bill');
+  for (const { amount, ...group } of bills) {
     const costCenterId = group.fieldId
       ? await ensureCostCenter('field', group.fieldId, group.fieldName ?? group.fieldId)
       : await generalCostCenterId();
@@ -81,6 +88,7 @@ export async function createRentalAct(assetId: string, input: z.infer<typeof ren
       type: 'expense',
       categoryId: category.id,
       amount,
+      documentBase,
       paymentMethod: 'debt',
       counterpartyId: asset.rentalCounterpartyId,
       costCenterId,
@@ -102,13 +110,12 @@ export async function createRentalAct(assetId: string, input: z.infer<typeof ren
     });
   }
 
-  const total = round(lines.reduce((sum, line) => sum + line.amount, 0), 2);
   await recordEvent({
     type: 'asset.rental_act',
     entityType: 'asset',
     entityId: asset.id,
     occurredAt: input.to,
-    data: { from: input.from, to: input.to, total, shifts: shifts.length },
+    data: { from: input.from, to: input.to, total: documentBase, shifts: shifts.length },
   });
-  return { assetId, from: input.from, to: input.to, unit: asset.rentalUnit, price: asset.rentalPrice, lines, total };
+  return { assetId, from: input.from, to: input.to, unit: asset.rentalUnit, price, lines, total: documentBase };
 }

@@ -1,10 +1,13 @@
 import { addDays, todayIso } from '@yap/shared';
-import { eq, sql } from 'drizzle-orm';
+import { resources } from '@yap/shared/i18n';
+import { and, eq, sql } from 'drizzle-orm';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { generalCostCenterId } from '../src/core/costCenters';
 import { tx } from '../src/core/context';
-import { issueStock } from '../src/core/inventory';
+import { issueStock, receiveStock, stockOnHand, transferStock } from '../src/core/inventory';
 import { schema } from '../src/db/client';
+import { evaluateRules } from '../src/modules/alerts/rules';
+import * as counts from '../src/modules/inventory/counts.service';
 import { countLayout, documentLayout } from '../src/modules/inventory/documents.service';
 import { feedBalance, feedConsumption, lowStock } from '../src/modules/inventory/summary';
 import { seedInventory } from '../src/seed/inventory';
@@ -12,7 +15,7 @@ import { SEED } from '../src/seed/names';
 import type { SeedContext } from '../src/seed/types';
 import { createFixture, type Client, type Fixture } from './helpers';
 
-const { accounts, animals, crops, financeCategories, herds, species, transactions } = schema;
+const { accounts, animals, crops, financeCategories, herds, notifications, species, transactions } = schema;
 
 const TODAY = todayIso();
 const daysAgo = (n: number) => addDays(TODAY, -n);
@@ -358,6 +361,717 @@ describe('receipts', () => {
   });
 });
 
+describe('receipts with no money behind them', () => {
+  const LIST = '/finance/debts/unpaid-receipts';
+  const OPENING_CASH = 20_000_000;
+
+  let f: Fixture;
+  let owner: Client;
+  let director: Client;
+  let accountant: Client;
+  let storekeeper: Client;
+  let w: string;
+  let vendor: string;
+  let cash: string;
+  let dollars: string;
+  let barley: string;
+  let drug: string;
+  let general: string;
+
+  let names = 0;
+  const unique = (name: string) => `${name} ${++names}`;
+  const newSupplier = async (name = 'Buxoro Yem Savdo') =>
+    (await owner.post('/finance/counterparties', { name: unique(name), type: 'supplier' })).data.id as string;
+
+  beforeAll(async () => {
+    f = await createFixture();
+    owner = await f.as('owner');
+    director = await f.as('director');
+    accountant = await f.as('accountant');
+    storekeeper = await f.as('storekeeper');
+    w = await warehouse(owner, 'Asosiy ombor');
+    vendor = await newSupplier();
+    barley = await item(owner, { name: 'Arpa doni' });
+    drug = await item(owner, { name: 'Antibiotik', category: 'vet_drug', unit: 'vial' });
+    [cash, dollars, general] = await f.run(async () => {
+      const base = { tenantId: f.tenantId, farmId: f.farmId };
+      const [till] = await tx().insert(accounts).values({ ...base, name: 'Kassa', type: 'cash', openingBalance: OPENING_CASH }).returning();
+      const [safe] = await tx().insert(accounts).values({ ...base, name: 'Dollar seyf', type: 'cash', currency: 'USD' }).returning();
+      return [till.id, safe.id, await generalCostCenterId()];
+    });
+  });
+
+  /** 1 000 kg x 3 300 = 3 300 000: below the threshold, so money for it is approved at once. */
+  const small = () => [{ itemId: barley, qty: 1000, unitCost: 3300 }];
+  /** 3 000 kg x 3 300 = 9 900 000: the receipt KO-2026-0006 of the first-day check. Needs a second person. */
+  const large = () => [{ itemId: barley, qty: 3000, unitCost: 3300 }];
+  /** 1 000 kg x 4 000 + 100 x 15 000 = 5 500 000. Neither line reaches 5 000 000, together they do. */
+  const mixed = () => [
+    { itemId: barley, qty: 1000, unitCost: 4000 },
+    { itemId: drug, qty: 100, unitCost: 15_000 },
+  ];
+
+  async function received(lines = small(), over: object = {}) {
+    const res = await storekeeper.post('/inventory/receipts', { warehouseId: w, date: TODAY, counterpartyId: vendor, lines, ...over });
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    return res.data as { docNo: string; refId: string; batches: { id: string }[] };
+  }
+
+  const listed = async (refId: string) => (await accountant.get(LIST, { pageSize: 200 })).data.find((row: any) => row.id === refId);
+  const total = async () => (await accountant.get(LIST)).body.meta.total as number;
+  const record = (refId: string, body: object, who = accountant) => who.post(`${LIST}/${refId}/record`, body);
+  const onCredit = { paymentMethod: 'debt' };
+  const paidInCash = () => ({ paymentMethod: 'cash', accountId: cash });
+
+  async function recorded(refId: string, body: object = onCredit) {
+    const res = await record(refId, body);
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    return res.data as { docNo: string; transactions: { id: string; status: string }[] };
+  }
+
+  const moneyOf = (refId: string) => f.run(() => tx().select().from(transactions).where(eq(transactions.sourceId, refId)).orderBy(transactions.id));
+  const owed = async (counterpartyId: string): Promise<number> =>
+    (await accountant.get('/finance/debts', { direction: 'payable' })).data.find((d: any) => d.counterpartyId === counterpartyId)?.outstanding ?? 0;
+  const cashLeft = async (): Promise<number> => (await accountant.get('/finance/accounts')).data.find((a: any) => a.id === cash).balance;
+  const onHand = (itemId: string) => f.run(() => stockOnHand(itemId));
+  const reject = (id: string) => director.post(`/finance/transactions/${id}/reject`, { reason: 'Xato hisob' });
+  const voidEntry = (id: string) => director.post(`/finance/transactions/${id}/void`, { reason: 'Xato hisob' });
+
+  it('shows finance what a storekeeper received: the supplier, the goods and their value', async () => {
+    const supplierId = await newSupplier('Qarshi Don');
+    const { refId, docNo } = await received(
+      [
+        { itemId: barley, qty: 3000, unitCost: 3300 },
+        { itemId: drug, qty: 40, unitCost: 12_500 },
+      ],
+      { counterpartyId: supplierId, invoiceNo: 'HF-12' },
+    );
+    // 9 900 000 + 500 000
+    expect(await listed(refId)).toMatchObject({
+      id: refId,
+      docNo,
+      date: TODAY,
+      counterpartyId: supplierId,
+      supplier: expect.stringContaining('Qarshi Don'),
+      invoiceNo: 'HF-12',
+      value: 10_400_000,
+      goods: 'Arpa doni, Antibiotik',
+      lines: [
+        { itemName: 'Arpa doni', itemCategory: 'feed', unit: 'kg', qty: 3000, value: 9_900_000 },
+        { itemName: 'Antibiotik', itemCategory: 'vet_drug', unit: 'vial', qty: 40, value: 500_000 },
+      ],
+    });
+  });
+
+  it('the first-day story: 2 500 000 + 6 200 000 + 9 900 000 = 18 600 000 really owed', async () => {
+    const supplierId = await newSupplier();
+    const categories = (await accountant.get('/finance/categories', { kind: 'expense' })).data;
+    const feed = categories.find((c: any) => c.key === 'feed').id;
+    const earlier = await accountant.post('/finance/transactions', {
+      date: TODAY, type: 'expense', amount: 2_500_000, categoryId: feed, costCenterId: general, paymentMethod: 'debt', counterpartyId: supplierId,
+    });
+    expect(earlier.status).toBe(201);
+
+    const byOwner = await owner.post('/inventory/receipts', {
+      warehouseId: w, date: TODAY, counterpartyId: supplierId, lines: [{ itemId: barley, qty: 2000, unitCost: 3100 }], payment: { paymentMethod: 'debt' },
+    });
+    expect((await accountant.post(`/finance/transactions/${byOwner.data.transactions[0].id}/approve`)).status).toBe(200);
+    expect(await listed(byOwner.data.refId)).toBeUndefined();
+
+    const { refId } = await received(large(), { counterpartyId: supplierId });
+    expect(await owed(supplierId)).toBe(8_700_000);
+    expect((await listed(refId)).value).toBe(9_900_000);
+
+    const { transactions: [money] } = await recorded(refId);
+    expect(money.status).toBe('pending');
+    expect(await listed(refId)).toBeUndefined();
+    expect(await owed(supplierId)).toBe(8_700_000);
+    expect((await director.post(`/finance/transactions/${money.id}/approve`)).status).toBe(200);
+    expect(await owed(supplierId)).toBe(18_600_000);
+  });
+
+  it('recorded as a debt, it opens the debt, links to the receipt and leaves the list', async () => {
+    const supplierId = await newSupplier();
+    const { refId, docNo } = await received(small(), { counterpartyId: supplierId, invoiceNo: 'HF-7', notes: 'Bahorgi partiya' });
+    const stock = await onHand(barley);
+    const money = await recorded(refId, { paymentMethod: 'debt', dueDate: addDays(TODAY, 30) });
+    expect(money).toMatchObject({ docNo, transactions: [{ status: 'approved' }] });
+
+    const [row] = await moneyOf(refId);
+    const [category] = await f.run(() => tx().select().from(financeCategories).where(eq(financeCategories.id, row.categoryId!)));
+    expect(category.key).toBe('feed');
+    expect(row).toMatchObject({
+      type: 'expense',
+      date: TODAY,
+      amount: 3_300_000,
+      amountBase: 3_300_000,
+      paymentMethod: 'debt',
+      accountId: null,
+      counterpartyId: supplierId,
+      costCenterId: general,
+      costTreatment: 'inventory',
+      dueDate: addDays(TODAY, 30),
+      sourceType: 'stock_doc',
+      sourceId: refId,
+      description: `${docNo} / HF-7 / Bahorgi partiya`,
+      createdBy: accountant.userId,
+    });
+    expect(await listed(refId)).toBeUndefined();
+    expect(await owed(supplierId)).toBe(3_300_000);
+    expect(await onHand(barley)).toBe(stock);
+  });
+
+  it('recorded as paid, the money leaves the account and no debt opens', async () => {
+    const supplierId = await newSupplier();
+    const { refId } = await received(small(), { counterpartyId: supplierId });
+    const before = await cashLeft();
+    await recorded(refId, paidInCash());
+    expect(await cashLeft()).toBe(before - 3_300_000);
+    expect(await owed(supplierId)).toBe(0);
+    expect(await listed(refId)).toBeUndefined();
+    expect((await moneyOf(refId))[0]).toMatchObject({ paymentMethod: 'cash', accountId: cash, costTreatment: 'inventory' });
+  });
+
+  it('the cost still reaches a cost center only when the goods are issued', async () => {
+    const hay = await item(owner, { name: unique('Pichan') });
+    const costs = async (): Promise<number> => (await accountant.get('/finance/costs/centers')).data.find((c: any) => c.costCenterId === general).total;
+    const before = await costs();
+    const { refId } = await received([{ itemId: hay, qty: 1000, unitCost: 3300 }]);
+    await recorded(refId, paidInCash());
+    expect(await costs()).toBe(before);
+    // 250 kg x 3 300
+    await storekeeper.post('/inventory/issues', { warehouseId: w, date: TODAY, costCenterId: general, lines: [{ itemId: hay, qty: 250 }] });
+    expect(await costs()).toBe(before + 825_000);
+  });
+
+  it('stays listed while the goods are being used: the supplier is still owed all of it', async () => {
+    const hay = await item(owner, { name: unique('Somon') });
+    const { refId } = await received([{ itemId: hay, qty: 10, unitCost: 2000 }]);
+    await storekeeper.post('/inventory/issues', { warehouseId: w, date: TODAY, costCenterId: general, lines: [{ itemId: hay, qty: 10 }] });
+    expect((await listed(refId)).value).toBe(20_000);
+    expect((await moneyOf(refId))).toEqual([]);
+    await recorded(refId);
+    expect((await moneyOf(refId))[0].amountBase).toBe(20_000);
+  });
+
+  it('takes the day of the receipt unless told when the money moved', async () => {
+    const debt = await received(small(), { date: daysAgo(5) });
+    await recorded(debt.refId);
+    expect((await moneyOf(debt.refId))[0].date).toBe(daysAgo(5));
+
+    const paid = await received(small(), { date: daysAgo(5) });
+    await recorded(paid.refId, { ...paidInCash(), date: TODAY });
+    expect((await moneyOf(paid.refId))[0].date).toBe(TODAY);
+  });
+
+  it('leaves out everything that is not a purchase from a supplier waiting for money', async () => {
+    const before = await total();
+    const take = (body: object) => owner.post('/inventory/receipts', { warehouseId: w, date: TODAY, lines: small(), ...body });
+
+    expect((await take({ source: 'opening' })).status).toBe(201);
+    expect((await take({ source: 'return', counterpartyId: vendor })).status).toBe(201);
+    expect((await take({ counterpartyId: vendor, payment: paidInCash() })).status).toBe(201);
+    expect((await take({ counterpartyId: vendor, payment: { paymentMethod: 'debt' } })).status).toBe(201);
+    expect((await take({ payment: paidInCash() })).status).toBe(201);
+    expect((await take({ counterpartyId: vendor, lines: [{ itemId: barley, qty: 5, unitCost: 0 }] })).status).toBe(201);
+    expect(await total()).toBe(before);
+  });
+
+  it('a money row on one batch covers the whole receipt, not only that line', async () => {
+    const res = await owner.post('/inventory/receipts', {
+      warehouseId: w, date: TODAY, counterpartyId: vendor, lines: small().concat(small()), payment: { paymentMethod: 'debt' },
+    });
+    expect(res.data.batches).toHaveLength(2);
+    expect(res.data.transactions).toHaveLength(1);
+    expect(await listed(res.data.refId)).toBeUndefined();
+    const again = await record(res.data.refId, onCredit);
+    expect(again.status).toBe(409);
+    expect(again.body.error.code).toBe('RECEIPT_HAS_MONEY');
+  });
+
+  it('goods of a purchase request are paid through the request, so they never show', async () => {
+    const before = await total();
+    const { data: request } = await owner.post('/sales/purchases', { itemId: barley, qty: 100, expectedPrice: 3000, counterpartyId: vendor });
+    expect((await director.post(`/sales/purchases/${request.id}/approve`)).status).toBe(200);
+    const paid = await owner.post(`/sales/purchases/${request.id}/pay`, { date: TODAY, amount: 300_000, paymentMethod: 'cash', accountId: cash });
+    expect(paid.status).toBe(200);
+    const came = await owner.post(`/sales/purchases/${request.id}/receive`, { date: TODAY, qty: 100, warehouseId: w, quality: 'Yaxshi' });
+    expect(came.status, JSON.stringify(came.body)).toBe(200);
+    expect(await total()).toBe(before);
+  });
+
+  describe('goods a paid purchase request is still waiting for', () => {
+    async function paidRequest(itemId: string, counterpartyId: string | null) {
+      const { data: request } = await owner.post('/sales/purchases', { itemId, qty: 10, expectedPrice: 100, counterpartyId });
+      expect((await director.post(`/sales/purchases/${request.id}/approve`)).status).toBe(200);
+      const paid = await owner.post(`/sales/purchases/${request.id}/pay`, { date: TODAY, amount: 1000, paymentMethod: 'cash', accountId: cash });
+      expect(paid.status, JSON.stringify(paid.body)).toBe(200);
+      return request.id as string;
+    }
+    const newItem = () => item(owner, { name: unique('Xarid tovari') });
+
+    it('are flagged when entered as a plain receipt, because money here would count twice', async () => {
+      const goods = await newItem();
+      await paidRequest(goods, vendor);
+      const { refId } = await received([{ itemId: barley, qty: 1, unitCost: 100 }, { itemId: goods, qty: 10, unitCost: 100 }]);
+      expect((await listed(refId)).paidRequest).toBe(true);
+    });
+
+    it('a request that named no supplier could be any delivery of that item', async () => {
+      const goods = await newItem();
+      await paidRequest(goods, null);
+      expect((await listed((await received([{ itemId: goods, qty: 10, unitCost: 100 }])).refId)).paidRequest).toBe(true);
+    });
+
+    it('are not flagged for another supplier, another item, or a request already received', async () => {
+      const goods = await newItem();
+      const id = await paidRequest(goods, vendor);
+      const other = await newItem();
+      expect((await listed((await received([{ itemId: goods, qty: 1, unitCost: 100 }], { counterpartyId: await newSupplier() })).refId)).paidRequest).toBe(false);
+      expect((await listed((await received([{ itemId: other, qty: 1, unitCost: 100 }])).refId)).paidRequest).toBe(false);
+
+      await owner.post(`/sales/purchases/${id}/receive`, { date: TODAY, qty: 10, warehouseId: w, quality: 'Yaxshi' });
+      expect((await listed((await received([{ itemId: goods, qty: 1, unitCost: 100 }])).refId)).paidRequest).toBe(false);
+    });
+
+    it('cannot be paid a second time: the money is refused and the receipt stays on the list', async () => {
+      const goods = await newItem();
+      const request = await paidRequest(goods, vendor);
+      const { refId, docNo } = await received([{ itemId: barley, qty: 1, unitCost: 100 }, { itemId: goods, qty: 10, unitCost: 100 }]);
+      const before = await total();
+
+      const refused = await record(refId, onCredit);
+      expect(refused.status).toBe(409);
+      expect(refused.body.error).toMatchObject({ code: 'RECEIPT_PAID_BY_REQUEST', details: { docNo, requestId: request } });
+
+      expect(await total()).toBe(before);
+      expect((await listed(refId)).paidRequest).toBe(true);
+    });
+
+    it('money entered with the receipt itself is refused the same way', async () => {
+      const goods = await newItem();
+      const request = await paidRequest(goods, vendor);
+      const res = await owner.post('/inventory/receipts', {
+        warehouseId: w,
+        date: TODAY,
+        counterpartyId: vendor,
+        lines: [{ itemId: goods, qty: 10, unitCost: 100 }],
+        payment: onCredit,
+      });
+      expect(res.status).toBe(409);
+      expect(res.body.error).toMatchObject({ code: 'RECEIPT_PAID_BY_REQUEST', details: { requestId: request } });
+    });
+
+    it('own produce stays own produce when it moves to another warehouse', async () => {
+      const goods = await newItem();
+      const other = await warehouse(owner, unique('Ikkinchi'));
+      const [moved] = await f.run(async () => {
+        await receiveStock({ itemId: goods, warehouseId: w, qty: 10, unitCost: 5, date: TODAY, source: 'own_harvest' });
+        await transferStock({ itemId: goods, fromWarehouseId: w, toWarehouseId: other, qty: 4, date: TODAY });
+        return tx().select().from(schema.stockBatches).where(and(eq(schema.stockBatches.itemId, goods), eq(schema.stockBatches.warehouseId, other)));
+      });
+      expect(moved.source).toBe('own_harvest');
+    });
+
+    it('a request that named no supplier holds back any delivery of that item', async () => {
+      const goods = await newItem();
+      await paidRequest(goods, null);
+      const { refId } = await received([{ itemId: goods, qty: 10, unitCost: 100 }]);
+      expect((await record(refId, onCredit)).body.error.code).toBe('RECEIPT_PAID_BY_REQUEST');
+    });
+
+    it('another supplier and another item are recorded as usual', async () => {
+      const goods = await newItem();
+      await paidRequest(goods, vendor);
+      const fromAnother = await received([{ itemId: goods, qty: 1, unitCost: 100 }], { counterpartyId: await newSupplier() });
+      expect((await record(fromAnother.refId, onCredit)).status).toBe(201);
+      const otherGoods = await received([{ itemId: await newItem(), qty: 1, unitCost: 100 }]);
+      expect((await record(otherGoods.refId, onCredit)).status).toBe(201);
+    });
+
+    it('the request received, a later delivery is recorded once', async () => {
+      const goods = await newItem();
+      const id = await paidRequest(goods, vendor);
+      const { refId } = await received([{ itemId: goods, qty: 10, unitCost: 100 }]);
+      expect((await record(refId, onCredit)).status).toBe(409);
+
+      await owner.post(`/sales/purchases/${id}/receive`, { date: TODAY, qty: 10, warehouseId: w, quality: 'Yaxshi' });
+      expect((await record(refId, onCredit)).status).toBe(201);
+      expect((await record(refId, onCredit)).body.error.code).toBe('RECEIPT_HAS_MONEY');
+    });
+
+    it('the receipt cancelled, the goods come in through the request and are paid once', async () => {
+      const goods = await newItem();
+      const id = await paidRequest(goods, vendor);
+      const { docNo } = await received([{ itemId: goods, qty: 10, unitCost: 100 }]);
+
+      expect((await owner.post(`/inventory/documents/${docNo}/reverse`)).status).toBe(200);
+      const came = await owner.post(`/sales/purchases/${id}/receive`, { date: TODAY, qty: 10, warehouseId: w, quality: 'Yaxshi' });
+      expect(came.status, JSON.stringify(came.body)).toBe(200);
+    });
+  });
+
+  it('a receipt that was reversed leaves the list', async () => {
+    const { refId, docNo } = await received();
+    expect(await listed(refId)).toBeDefined();
+    expect((await owner.post(`/inventory/documents/${docNo}/reverse`)).status).toBe(200);
+    expect(await listed(refId)).toBeUndefined();
+    expect((await record(refId, onCredit)).status).toBe(404);
+  });
+
+  it('reads oldest first, pages, and finds by supplier, number or goods', async () => {
+    const supplierId = await newSupplier('Uzoq Savdo');
+    const rare = await item(owner, { name: unique('Noyob yem') });
+    const later = await received(small(), { counterpartyId: supplierId, date: daysAgo(1) });
+    const earlier = await received([{ itemId: rare, qty: 1, unitCost: 100 }], { counterpartyId: supplierId, date: daysAgo(3) });
+
+    const bySupplier = await accountant.get(LIST, { search: 'Uzoq Savdo' });
+    expect(bySupplier.data.map((row: any) => row.id)).toEqual([earlier.refId, later.refId]);
+    expect(bySupplier.body.meta.total).toBe(2);
+    const biggest = await accountant.get(LIST, { search: 'Uzoq Savdo', sort: '-value' });
+    expect(biggest.data[0].id).toBe(later.refId);
+
+    const first = await accountant.get(LIST, { search: 'Uzoq Savdo', pageSize: 1 });
+    expect(first.data.map((row: any) => row.id)).toEqual([earlier.refId]);
+    expect(first.body.meta).toMatchObject({ page: 1, pageSize: 1, total: 2 });
+
+    expect((await accountant.get(LIST, { search: later.docNo })).data.map((row: any) => row.id)).toEqual([later.refId]);
+    expect((await accountant.get(LIST, { search: 'Noyob yem' })).data.map((row: any) => row.id)).toEqual([earlier.refId]);
+  });
+
+  describe('who may see and record it (rule 7)', () => {
+    it('a storekeeper gets no list and cannot record, though they entered the goods', async () => {
+      const { refId } = await received();
+      const seen = await storekeeper.get(LIST);
+      expect(seen.status).toBe(403);
+      expect(JSON.stringify(seen.body)).not.toContain('3300000');
+      expect((await record(refId, onCredit, storekeeper)).status).toBe(403);
+      expect(await moneyOf(refId)).toEqual([]);
+    });
+
+    it('neither do other warehouse users, whatever else they manage', async () => {
+      for (const role of ['agronomist', 'zootechnician', 'veterinarian', 'investor'] as const) {
+        expect((await (await f.as(role)).get(LIST)).status, role).toBe(403);
+      }
+    });
+
+    it('an auditor reads the list and records nothing', async () => {
+      const { refId } = await received();
+      const auditor = await f.as('auditor');
+      expect((await auditor.get(LIST)).status).toBe(200);
+      expect((await record(refId, onCredit, auditor)).status).toBe(403);
+    });
+
+    it('another tenant cannot see it or record it', async () => {
+      const { refId } = await received();
+      const stranger = await (await createFixture()).as('accountant');
+      expect((await stranger.get(LIST)).data).toEqual([]);
+      expect((await record(refId, onCredit, stranger)).status).toBe(404);
+      expect(await moneyOf(refId)).toEqual([]);
+    });
+  });
+
+  describe('the alert', () => {
+    const alertsOf = async (who: Client, refId: string) =>
+      (await who.get('/alerts', { active: 'true', pageSize: 200 })).data.filter((alert: any) => alert.entityId === refId);
+    const toldUsers = async (refId: string) => {
+      const [alert] = await alertsOf(accountant, refId);
+      const rows = await f.run(() => tx().select().from(notifications).where(eq(notifications.alertId, alert.id)));
+      return rows.map((row) => row.userId);
+    };
+
+    it('tells the accountant once, and no one who may not see money', async () => {
+      const { refId, docNo } = await received();
+      await f.run(() => evaluateRules());
+      await f.run(() => evaluateRules());
+
+      const raised = await alertsOf(accountant, refId);
+      expect(raised).toHaveLength(1);
+      expect(raised[0]).toMatchObject({ ruleKey: 'receipt_unpaid', severity: 'attention', link: '/finance/debts?tab=receipts' });
+      expect(raised[0].title).toContain(docNo);
+      expect(raised[0].body).toContain('Buxoro Yem Savdo');
+      expect(raised[0].body).toContain('Arpa doni');
+      expect(await toldUsers(refId)).toEqual([accountant.userId]);
+      expect(await alertsOf(storekeeper, refId)).toEqual([]);
+    });
+
+    it('each new delivery raises its own alert, so the second one is heard as well', async () => {
+      const first = await received();
+      await f.run(() => evaluateRules());
+      const second = await received();
+      await f.run(() => evaluateRules());
+      expect(await alertsOf(accountant, first.refId)).toHaveLength(1);
+      expect(await toldUsers(second.refId)).toEqual([accountant.userId]);
+    });
+
+    it('resolves once the money is recorded, even while it waits for approval', async () => {
+      const { refId } = await received(large());
+      await f.run(() => evaluateRules());
+      expect(await alertsOf(accountant, refId)).toHaveLength(1);
+      await recorded(refId);
+      await f.run(() => evaluateRules());
+      expect(await alertsOf(accountant, refId)).toEqual([]);
+    });
+
+    it('comes back when that money is refused', async () => {
+      const { refId } = await received(large());
+      const { transactions: [money] } = await recorded(refId);
+      expect((await reject(money.id)).status).toBe(200);
+      await f.run(() => evaluateRules());
+      expect(await alertsOf(accountant, refId)).toHaveLength(1);
+    });
+  });
+
+  describe('a mixed invoice', () => {
+    it('lands on one line per category, and approval looks at the whole receipt', async () => {
+      const { refId } = await received(mixed());
+      expect((await listed(refId)).value).toBe(5_500_000);
+      const money = await recorded(refId);
+      expect(money.transactions.map((t) => t.status)).toEqual(['pending', 'pending']);
+
+      const rows = await f.run(() =>
+        tx()
+          .select({ key: financeCategories.key, amount: transactions.amount })
+          .from(transactions)
+          .innerJoin(financeCategories, eq(financeCategories.id, transactions.categoryId))
+          .where(eq(transactions.sourceId, refId)),
+      );
+      expect(rows.sort((a, b) => a.key.localeCompare(b.key))).toEqual([
+        { key: 'feed', amount: 4_000_000 },
+        { key: 'veterinary', amount: 1_500_000 },
+      ]);
+    });
+
+    it('a category chosen by a person takes the whole receipt, as on the receipt form', async () => {
+      const { refId } = await received(mixed());
+      const categories = (await accountant.get('/finance/categories', { kind: 'expense' })).data;
+      const other = categories.find((c: any) => c.key === 'feed').id;
+      await recorded(refId, { ...onCredit, categoryId: other });
+      const rows = await moneyOf(refId);
+      expect(rows.map((row) => [row.categoryId, row.amount])).toEqual([[other, 5_500_000]]);
+    });
+
+    it('refused on one line, the other goes too, and the whole receipt is back', async () => {
+      const { refId } = await received(mixed());
+      const { transactions: [first] } = await recorded(refId);
+      expect((await reject(first.id)).status).toBe(200);
+
+      const rows = await moneyOf(refId);
+      expect(rows.map((row) => row.status)).toEqual(['rejected', 'rejected']);
+      expect(rows.map((row) => row.rejectedReason)).toEqual(['Xato hisob', 'Xato hisob']);
+      expect((await listed(refId)).value).toBe(5_500_000);
+    });
+
+    it('takes a line that was already approved with it', async () => {
+      const supplierId = await newSupplier();
+      const { refId } = await received(mixed(), { counterpartyId: supplierId });
+      const { transactions: [first, second] } = await recorded(refId);
+      expect((await director.post(`/finance/transactions/${first.id}/approve`)).status).toBe(200);
+      expect(await owed(supplierId)).toBeGreaterThan(0);
+
+      expect((await reject(second.id)).status).toBe(200);
+      expect((await moneyOf(refId)).map((row) => row.status)).toEqual(['rejected', 'rejected']);
+      expect(await owed(supplierId)).toBe(0);
+      expect(await listed(refId)).toBeDefined();
+    });
+
+    it('a payment standing on an approved line keeps the whole invoice', async () => {
+      const supplierId = await newSupplier();
+      const { refId } = await received(mixed(), { counterpartyId: supplierId });
+      const { transactions: [first, second] } = await recorded(refId);
+      expect((await director.post(`/finance/transactions/${first.id}/approve`)).status).toBe(200);
+      const settled = await accountant.post('/finance/debts/settle', { counterpartyId: supplierId, direction: 'payable', amount: 1_000_000, date: TODAY, accountId: cash });
+      expect(settled.status, JSON.stringify(settled.body)).toBe(201);
+
+      const refused = await reject(second.id);
+      expect(refused.status).toBe(409);
+      expect(refused.body.error.code).toBe('DEBT_ALREADY_SETTLED');
+      expect((await moneyOf(refId)).filter((row) => row.status === 'rejected')).toEqual([]);
+      expect(await listed(refId)).toBeUndefined();
+    });
+  });
+
+  describe('money entered by mistake', () => {
+    it('refused by the second person, the goods stay and the receipt comes back to be entered again', async () => {
+      const { refId } = await received(large());
+      const stock = await onHand(barley);
+      const { transactions: [money] } = await recorded(refId);
+      expect(await listed(refId)).toBeUndefined();
+
+      expect((await reject(money.id)).status).toBe(200);
+      expect(await onHand(barley)).toBe(stock);
+      expect((await listed(refId)).value).toBe(9_900_000);
+
+      const again = await recorded(refId);
+      expect(again.transactions[0].status).toBe('pending');
+      expect((await moneyOf(refId)).map((row) => row.status)).toEqual(['rejected', 'pending']);
+    });
+
+    it('can be refused even after the goods were used, unlike money posted with the receipt', async () => {
+      const hay = await item(owner, { name: unique('Beda') });
+      const { refId } = await received([{ itemId: hay, qty: 2000, unitCost: 3000 }]);
+      const { transactions: [money] } = await recorded(refId);
+      await storekeeper.post('/inventory/issues', { warehouseId: w, date: TODAY, costCenterId: general, lines: [{ itemId: hay, qty: 500 }] });
+
+      expect((await reject(money.id)).status).toBe(200);
+      expect(await onHand(hay)).toBe(1500);
+      expect((await listed(refId)).value).toBe(6_000_000);
+    });
+
+    it('voided after approval, the debt goes, the goods stay and the receipt comes back', async () => {
+      const supplierId = await newSupplier();
+      const { refId } = await received(small(), { counterpartyId: supplierId });
+      const stock = await onHand(barley);
+      const { transactions: [money] } = await recorded(refId);
+      expect(await owed(supplierId)).toBe(3_300_000);
+
+      expect((await voidEntry(money.id)).status).toBe(200);
+      expect(await owed(supplierId)).toBe(0);
+      expect(await onHand(barley)).toBe(stock);
+      expect((await listed(refId)).value).toBe(3_300_000);
+    });
+
+    it('the void stays with a second person', async () => {
+      const { refId } = await received();
+      const { transactions: [money] } = await recorded(refId);
+      const own = await accountant.post(`/finance/transactions/${money.id}/void`, { reason: 'Xato' });
+      expect(own.status).toBe(403);
+      expect(own.body.error.code).toBe('SAME_MAKER_CHECKER');
+      expect(await listed(refId)).toBeUndefined();
+    });
+
+    it('cannot be changed in the journal, because its amount is the value of the receipt', async () => {
+      const { refId } = await received(large());
+      const { transactions: [money] } = await recorded(refId);
+      expect((await accountant.patch(`/finance/transactions/${money.id}`, { amount: 1 })).body.error.code).toBe('TRANSACTION_HAS_SOURCE');
+      expect((await accountant.delete(`/finance/transactions/${money.id}`)).body.error.code).toBe('TRANSACTION_HAS_SOURCE');
+    });
+  });
+
+  describe('stock and money stay together', () => {
+    it('a receipt with money on it cannot be reversed until the money is cancelled', async () => {
+      const { refId, docNo } = await received();
+      const { transactions: [money] } = await recorded(refId);
+
+      const refused = await owner.post(`/inventory/documents/${docNo}/reverse`);
+      expect(refused.status).toBe(409);
+      expect(refused.body.error.code).toBe('DOCUMENT_HAS_PAYMENT');
+
+      expect((await voidEntry(money.id)).status).toBe(200);
+      expect((await owner.post(`/inventory/documents/${docNo}/reverse`)).status).toBe(200);
+      expect(await listed(refId)).toBeUndefined();
+    });
+
+    it('money waiting for approval holds the receipt too', async () => {
+      const { refId, docNo } = await received(large());
+      await recorded(refId);
+      expect((await owner.post(`/inventory/documents/${docNo}/reverse`)).body.error.code).toBe('DOCUMENT_HAS_PAYMENT');
+    });
+
+    it('cannot be recorded twice', async () => {
+      const { refId, docNo } = await received();
+      await recorded(refId);
+      const twice = await record(refId, paidInCash());
+      expect(twice.status).toBe(409);
+      expect(twice.body.error).toMatchObject({ code: 'RECEIPT_HAS_MONEY', details: { docNo } });
+      expect(await moneyOf(refId)).toHaveLength(1);
+    });
+
+    it('two people at the same moment record it once', async () => {
+      const { refId } = await received();
+      const results = await Promise.all([record(refId, onCredit), record(refId, paidInCash(), owner)]);
+      expect(results.map((res) => res.status).sort()).toEqual([201, 409]);
+      expect(await moneyOf(refId)).toHaveLength(1);
+    });
+
+    it('an entry and a reversal at the same moment: goods and money never part', async () => {
+      const { refId, docNo } = await received();
+      const [entry, reversal] = await Promise.all([record(refId, onCredit), owner.post(`/inventory/documents/${docNo}/reverse`)]);
+      expect([entry.status === 201, reversal.status === 200].filter(Boolean)).toHaveLength(1);
+      const money = await moneyOf(refId);
+      const goods = (await accountant.get('/inventory/movements', { docNo })).data;
+      expect(money.length > 0).toBe(goods.length > 0);
+    });
+  });
+
+  describe('what cannot be recorded', () => {
+    it('an item with no default category needs one chosen, and nothing stays behind', async () => {
+      const product = await item(owner, { name: unique('Tayyor mahsulot'), category: 'product' });
+      const { refId } = await received([{ itemId: product, qty: 1, unitCost: 5000 }]);
+      const missing = await record(refId, onCredit);
+      expect(missing.status).toBe(400);
+      expect(missing.body.error.code).toBe('CATEGORY_REQUIRED');
+      expect(await moneyOf(refId)).toEqual([]);
+
+      const categories = (await accountant.get('/finance/categories', { kind: 'expense' })).data;
+      await recorded(refId, { ...onCredit, categoryId: categories[0].id });
+      expect((await moneyOf(refId))[0].categoryId).toBe(categories[0].id);
+    });
+
+    it('an income category is not an answer', async () => {
+      const product = await item(owner, { name: unique('Tayyor mahsulot'), category: 'product' });
+      const { refId } = await received([{ itemId: product, qty: 1, unitCost: 5000 }]);
+      const income = (await accountant.get('/finance/categories', { kind: 'income' })).data[0].id;
+      expect((await record(refId, { ...onCredit, categoryId: income })).body.error.code).toBe('CATEGORY_REQUIRED');
+    });
+
+    it('a payment needs an account', async () => {
+      const { refId } = await received();
+      const res = await record(refId, { paymentMethod: 'bank' });
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('ACCOUNT_REQUIRED');
+      expect(await moneyOf(refId)).toEqual([]);
+    });
+
+    it('a receipt with no value has nothing to record', async () => {
+      const { refId } = await received([{ itemId: barley, qty: 1, unitCost: 0 }]);
+      const res = await record(refId, onCredit);
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('INVALID_AMOUNT');
+    });
+
+    it('an unknown receipt is not found', async () => {
+      expect((await record('0190a7e2-7b1c-7c3d-8e4f-000000000001', onCredit)).status).toBe(404);
+    });
+
+    it('an issue document is not a receipt', async () => {
+      const hay = await item(owner, { name: unique('Yem') });
+      await received([{ itemId: hay, qty: 10, unitCost: 100 }]);
+      await storekeeper.post('/inventory/issues', { warehouseId: w, date: TODAY, costCenterId: general, lines: [{ itemId: hay, qty: 1 }] });
+      const [{ refId }] = await f.run(() =>
+        tx().select({ refId: schema.stockMovements.refId }).from(schema.stockMovements).where(sql`type = 'issue' and item_id = ${hay}`),
+      );
+      expect((await record(refId!, onCredit)).status).toBe(404);
+    });
+  });
+
+  describe('a purchase priced in dollars', () => {
+    const bought = async () => {
+      const res = await owner.post('/inventory/receipts', {
+        warehouseId: w, date: TODAY, counterpartyId: vendor, currency: 'USD', fxRate: 12_500, lines: [{ itemId: barley, qty: 100, unitCost: 2 }],
+      });
+      expect(res.status, JSON.stringify(res.body)).toBe(201);
+      return res.data.refId as string;
+    };
+
+    it('is recorded at what it put in stock: 100 x 2 x 12 500 = 2 500 000 in so\'m', async () => {
+      const refId = await bought();
+      expect((await listed(refId)).value).toBe(2_500_000);
+      await recorded(refId);
+      expect((await moneyOf(refId))[0]).toMatchObject({ amount: 2_500_000, currency: 'UZS', fxRate: 1, amountBase: 2_500_000 });
+    });
+
+    it('cannot come straight from a dollar account, and nothing stays behind', async () => {
+      const refId = await bought();
+      const res = await record(refId, { paymentMethod: 'cash', accountId: dollars });
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('ACCOUNT_CURRENCY_MISMATCH');
+      expect(await moneyOf(refId)).toEqual([]);
+      expect(await listed(refId)).toBeDefined();
+    });
+  });
+});
+
 describe('money stays hidden without finance.view', () => {
   it('a storekeeper sees quantities but no prices, a director sees both', async () => {
     const f = await createFixture();
@@ -443,6 +1157,35 @@ describe('issues, transfers and reversals', () => {
   }
 
   const onHand = async (name: string) => (await owner.get('/inventory/items/lookup', { search: name })).data[0].qtyOnHand;
+
+  it('locks the unit once an item has stock, because quantities are plain numbers in it', async () => {
+    const fresh = await item(owner, { name: 'Unit free' });
+    expect((await owner.patch(`/inventory/items/${fresh}`, { unit: 't' })).status).toBe(200);
+    const used = await stocked('Unit used', 253, 2000);
+    const res = await owner.patch(`/inventory/items/${used}`, { unit: 't' });
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('ITEM_UNIT_LOCKED');
+    expect((await owner.patch(`/inventory/items/${used}`, { unit: 'kg', minQty: 5 })).status).toBe(200);
+  });
+
+  it('refuses stock documents dated in the future', async () => {
+    const i = await stocked('Future', 10, 10);
+    const later = '2099-01-01';
+    const lines = [{ itemId: i, qty: 1 }];
+    const issue = await owner.post('/inventory/issues', { warehouseId: w, date: later, costCenterId, reason: 'ration', lines });
+    expect(issue.body.error.code).toBe('FUTURE_DATE');
+    const receipt = await owner.post('/inventory/receipts', { warehouseId: w, date: later, source: 'opening', lines: [{ itemId: i, qty: 1, unitCost: 1 }] });
+    expect(receipt.body.error.code).toBe('FUTURE_DATE');
+  });
+
+  it('feed written off says nothing about how fast it is eaten', async () => {
+    const feedItem = await item(owner, { name: 'Spoiled hay', category: 'feed', unit: 'kg' });
+    await owner.post('/inventory/receipts', { warehouseId: w, date: daysAgo(3), source: 'opening', lines: [{ itemId: feedItem, qty: 1000, unitCost: 10 }] });
+    await owner.post('/inventory/issues', { warehouseId: w, date: daysAgo(1), costCenterId, reason: 'write_off', lines: [{ itemId: feedItem, qty: 100 }] });
+    const row = (await owner.get('/feed/balance')).data.find((r: any) => r.itemId === feedItem);
+    expect(row.stockQty).toBe(900);
+    expect(row.actualDaily).toBeNull();
+  });
 
   it('charges the issue to the cost center at FIFO cost', async () => {
     const i = await stocked('FIFO', 100, 10);
@@ -574,6 +1317,209 @@ describe('issues, transfers and reversals', () => {
   });
 });
 
+/** Starts `second` while `first` is still uncommitted, so it has to wait for the outcome. */
+async function overlapping(f: Fixture, first: () => Promise<unknown>, second: () => Promise<unknown>): Promise<string> {
+  let other: Promise<string> = Promise.resolve('');
+  await f.run(async () => {
+    await first();
+    other = f.run(second).then(
+      () => 'done',
+      (error) => error.code,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  });
+  return other;
+}
+
+describe('stock moving while a count is open', () => {
+  /** One item on a shelf, and the steps a count takes on it. */
+  async function shelf(qty: number, unitCost = 6_000) {
+    const f = await createFixture();
+    const owner = await f.as('owner');
+    const w = await warehouse(owner, 'Ozuqa');
+    const i = await item(owner, { name: 'NZ Nazorat ozuqa' });
+    await owner.post('/inventory/receipts', { warehouseId: w, date: daysAgo(5), source: 'opening', lines: [{ itemId: i, qty, unitCost }] });
+    const costCenterId = await f.run(() => generalCostCenterId());
+    const issue = (issued: number) =>
+      owner.post('/inventory/issues', { warehouseId: w, date: TODAY, costCenterId, reason: 'ration', lines: [{ itemId: i, qty: issued }] });
+    const open = async () => {
+      const res = await owner.post('/inventory/counts', { warehouseId: w, date: TODAY, itemIds: [i] });
+      expect(res.status, JSON.stringify(res.body)).toBe(201);
+      return res.data.id as string;
+    };
+    const save = async (id: string, actualQty: number, systemQty?: number) => {
+      const res = await owner.patch(`/inventory/counts/${id}`, { lines: [{ itemId: i, actualQty, systemQty }] });
+      expect(res.status, JSON.stringify(res.body)).toBe(200);
+      return res.data.lines[0];
+    };
+    const sheet = async (id: string) => (await owner.get(`/inventory/counts/${id}`)).data.lines[0];
+    const approve = async (id: string) => {
+      const res = await owner.post(`/inventory/counts/${id}/approve`);
+      expect(res.status, JSON.stringify(res.body)).toBe(200);
+      return res.data.lines[0];
+    };
+    const stored = async (id: string) => {
+      const [row] = await f.run(() => tx().select().from(schema.stockCountLines).where(eq(schema.stockCountLines.countId, id)));
+      return row;
+    };
+    const onHand = () => f.run(() => stockOnHand(i));
+    return { f, owner, w, i, costCenterId, issue, open, save, sheet, approve, stored, onHand };
+  }
+
+  it('a shortage typed on the page survives an issue made before Approve', async () => {
+    const s = await shelf(1521.333);
+    const id = await s.open();
+    // The number is only typed, against 1521.333, when 7 go out from another session.
+    await s.issue(7);
+    await s.save(id, 1518.333, 1521.333);
+    const line = await s.approve(id);
+
+    // 1521.333 − 3 short − 7 issued. A surplus of 4 would leave 1518.333.
+    expect(await s.onHand()).toBe(1511.333);
+    expect(line).toMatchObject({ systemQty: 1514.333, actualQty: 1511.333, diffQty: -3, diffCost: -18_000 });
+    const { docNo } = (await s.owner.get(`/inventory/counts/${id}`)).data;
+    const moves = (await s.owner.get('/inventory/movements', { type: 'adjustment_out,adjustment_in', docNo })).data;
+    expect(moves.map((m: any) => [m.type, m.totalCost])).toEqual([['adjustment_out', 18_000]]);
+  });
+
+  it('a client that sends no book keeps the difference against the book the line was first read at', async () => {
+    const s = await shelf(1531.333);
+    const id = await s.open();
+    await s.issue(7);
+    await s.save(id, 1528.333);
+    const line = await s.approve(id);
+
+    // 1531.333 − 3 short − 7 issued, not 1528.333 with an adjustment_in of 4.
+    expect(await s.onHand()).toBe(1521.333);
+    expect(line).toMatchObject({ systemQty: 1524.333, actualQty: 1521.333, diffQty: -3, diffCost: -18_000 });
+  });
+
+  it('a second save with no book still measures from that first read', async () => {
+    const s = await shelf(100, 10);
+    const id = await s.open();
+    await s.save(id, 97);
+    await s.issue(10);
+    await s.save(id, 96);
+    // 96 − 100 = −4 found; the book is 90, so the sheet reads 86.
+    expect(await s.sheet(id)).toMatchObject({ systemQty: 90, actualQty: 86, diffQty: -4 });
+    await s.approve(id);
+    expect(await s.onHand()).toBe(86);
+  });
+
+  it('a saved number can be corrected against the book the page now shows', async () => {
+    const s = await shelf(100, 10);
+    const id = await s.open();
+    await s.save(id, 95, 100);
+    await s.issue(10);
+    expect(await s.sheet(id)).toMatchObject({ systemQty: 90, actualQty: 85, diffQty: -5 });
+    // Read back at 90, corrected to 84: a difference of −6, not 84 − 100.
+    expect(await s.save(id, 84, 90)).toMatchObject({ systemQty: 90, actualQty: 84, diffQty: -6 });
+    expect(await s.approve(id)).toMatchObject({ systemQty: 90, actualQty: 84, diffQty: -6, diffCost: -60 });
+    expect(await s.onHand()).toBe(84);
+  });
+
+  it('an item added to the sheet is measured from the book at that moment', async () => {
+    const s = await shelf(100, 10);
+    const late = await item(s.owner, { name: 'Late' });
+    await s.owner.post('/inventory/receipts', { warehouseId: s.w, date: daysAgo(5), source: 'opening', lines: [{ itemId: late, qty: 20, unitCost: 10 }] });
+    const id = await s.open();
+    await s.owner.patch(`/inventory/counts/${id}`, { lines: [{ itemId: late, actualQty: 18 }] });
+    await s.owner.post('/inventory/issues', { warehouseId: s.w, date: TODAY, costCenterId: s.costCenterId, reason: 'ration', lines: [{ itemId: late, qty: 5 }] });
+    const sheet = (await s.owner.get(`/inventory/counts/${id}`)).data.lines;
+    // 20 − 5 issued = 15 on the book, and 2 short of it.
+    expect(sheet.find((l: any) => l.itemId === late)).toMatchObject({ systemQty: 15, actualQty: 13, diffQty: -2 });
+    await s.approve(id);
+    expect(await s.f.run(() => stockOnHand(late))).toBe(13);
+  });
+
+  it('an issue landing during approval refuses it, instead of booking a surplus', async () => {
+    const s = await shelf(100, 10);
+    const id = await s.open();
+    await s.save(id, 95, 100);
+    const issuing = () => issueStock({ itemId: s.i, warehouseId: s.w, qty: 10, date: TODAY, costCenterId: s.costCenterId, reason: 'ration' });
+    // Approval reads a book of 100, waits for the issue's lock, then finds 90. 100 − 5 against 90 would add 5.
+    expect(await overlapping(s.f, issuing, () => counts.approve(id))).toBe('COUNT_BOOK_MOVED');
+    expect(await s.onHand()).toBe(90);
+    expect(await s.sheet(id)).toMatchObject({ systemQty: 90, actualQty: 85, diffQty: -5 });
+    await s.approve(id);
+    expect(await s.onHand()).toBe(85);
+  });
+
+  describe('the approved act', () => {
+    it('shows no difference when none was found and stock only moved', async () => {
+      const s = await shelf(1548.333);
+      const id = await s.open();
+      await s.issue(7);
+      const line = await s.approve(id);
+
+      // 1548.333 − 7, with nothing short: the old act read 1548.333 and a difference of +7.
+      expect(await s.onHand()).toBe(1541.333);
+      expect(line).toMatchObject({ systemQty: 1541.333, actualQty: 1541.333, diffQty: 0, diffCost: 0 });
+      expect(await s.stored(id)).toMatchObject({ systemQty: 1541.333, actualQty: 1541.333, diffQty: 0, diffCost: 0 });
+    });
+
+    it('agrees with the database, the printed act and the differences report', async () => {
+      const s = await shelf(1541.333);
+      const id = await s.open();
+      await s.save(id, 1538.333, 1541.333);
+      await s.issue(7);
+      const line = await s.approve(id);
+
+      // 1541.333 − 7 = 1534.333 on the book at approval, and 3 short of it: 3 × 6,000 = 18,000.
+      const applied = { systemQty: 1534.333, actualQty: 1531.333, diffQty: -3, diffCost: -18_000 };
+      expect(await s.onHand()).toBe(1531.333);
+      expect(line).toMatchObject(applied);
+      expect(await s.sheet(id)).toMatchObject(applied);
+      expect(await s.stored(id)).toMatchObject(applied);
+
+      const report = await s.owner.get('/reports/inventory.count_differences', { from: daysAgo(1), to: TODAY });
+      expect(report.status, JSON.stringify(report.body)).toBe(200);
+      expect(report.data.rows).toHaveLength(1);
+      expect(report.data.rows[0]).toMatchObject(applied);
+
+      const act = await s.f.run(() => countLayout(id, 'en'));
+      expect((act.table[1] as { text: string }[]).slice(3, 6).map((cell) => cell.text)).toEqual(['1,534.333', '1,531.333', '-3']);
+    });
+
+    it('shows what was applied when the shortage is larger than what is left', async () => {
+      const s = await shelf(10, 10);
+      const id = await s.open();
+      await s.save(id, 2, 10);
+      await s.issue(5);
+      // 8 short was found, only 5 remain to write off: stock stops at 0.
+      expect(await s.approve(id)).toMatchObject({ systemQty: 5, actualQty: 0, diffQty: -5, diffCost: -50 });
+      expect(await s.onHand()).toBe(0);
+    });
+  });
+
+  it('books no false surplus, and keeps a difference that was really found', async () => {
+    const f = await createFixture();
+    const owner = await f.as('owner');
+    const w = await warehouse(owner, 'Ozuqa');
+    const stock = async (name: string) => {
+      const id = await item(owner, { name });
+      await owner.post('/inventory/receipts', { warehouseId: w, date: daysAgo(5), source: 'opening', lines: [{ itemId: id, qty: 100, unitCost: 10 }] });
+      return id;
+    };
+    const untouched = await stock('Untouched');
+    const found = await stock('Found short');
+    const costCenterId = await f.run(() => generalCostCenterId());
+    const count = await owner.post('/inventory/counts', { warehouseId: w, date: TODAY, itemIds: [untouched, found] });
+    await owner.patch(`/inventory/counts/${count.data.id}`, { lines: [{ itemId: found, actualQty: 95 }] });
+
+    // 10 kg of each is fed out while the sheet stays open.
+    const lines = [{ itemId: untouched, qty: 10 }, { itemId: found, qty: 10 }];
+    await owner.post('/inventory/issues', { warehouseId: w, date: TODAY, costCenterId, reason: 'ration', lines });
+    const sheet = (await owner.get(`/inventory/counts/${count.data.id}`)).data.lines;
+    expect(sheet.find((l: any) => l.itemId === untouched)).toMatchObject({ systemQty: 90, actualQty: 90, diffQty: 0 });
+
+    expect((await owner.post(`/inventory/counts/${count.data.id}/approve`)).status).toBe(200);
+    const onHand = async (id: string) => f.run(() => stockOnHand(id));
+    expect(await onHand(untouched)).toBe(90);
+    expect(await onHand(found)).toBe(85); // the 5 short that was counted, and the 10 fed out
+  });
+});
+
 describe('stock counts', () => {
   let f: Fixture;
   let owner: Client;
@@ -634,12 +1580,12 @@ describe('stock counts', () => {
     expect((await owner.delete(`/inventory/counts/${id}`)).status).toBe(409);
   });
 
-  it('measures the difference at approval, not at the time the sheet was opened', async () => {
+  it('measures the difference from the book the person saw, not the one the sheet opened with', async () => {
     const i = await stocked('Moving', 100, 10);
     const id = (await owner.post('/inventory/counts', { warehouseId: w, date: TODAY, itemIds: [i] })).data.id;
     const costCenterId = await f.run(() => generalCostCenterId());
     await owner.post('/inventory/issues', { warehouseId: w, date: TODAY, costCenterId, lines: [{ itemId: i, qty: 30 }] });
-    await owner.patch(`/inventory/counts/${id}`, { lines: [{ itemId: i, actualQty: 68 }] });
+    await owner.patch(`/inventory/counts/${id}`, { lines: [{ itemId: i, actualQty: 68, systemQty: 70 }] });
     const approved = await owner.post(`/inventory/counts/${id}/approve`);
     expect(approved.data.lines[0]).toMatchObject({ systemQty: 70, actualQty: 68, diffQty: -2 });
   });
@@ -649,7 +1595,7 @@ describe('stock counts', () => {
     const id = (await owner.post('/inventory/counts', { warehouseId: w, date: TODAY, itemIds: [i] })).data.id;
     const costCenterId = await f.run(() => generalCostCenterId());
     await owner.post('/inventory/issues', { warehouseId: w, date: TODAY, costCenterId, lines: [{ itemId: i, qty: 25 }] });
-    expect((await owner.get(`/inventory/counts/${id}`)).data.lines[0]).toMatchObject({ systemQty: 75, actualQty: 100, diffQty: 25 });
+    expect((await owner.get(`/inventory/counts/${id}`)).data.lines[0]).toMatchObject({ systemQty: 75, actualQty: 75, diffQty: 0 });
   });
 
   it('counts everything in stock by default and can add a new item', async () => {
@@ -682,6 +1628,49 @@ describe('stock counts', () => {
     expect((await o.get(`/inventory/counts/${id}`)).status).toBe(404);
   });
 
+  it('a deleted draft never gives its number to the next count', async () => {
+    const f2 = await createFixture();
+    const o = await f2.as('owner');
+    const store = await warehouse(o, 'Bosh');
+    const year = TODAY.slice(0, 4);
+    const one = (await o.post('/inventory/counts', { warehouseId: store, date: TODAY })).data;
+    expect(one.docNo).toBe(`IA-${year}-0001`);
+    expect((await o.delete(`/inventory/counts/${one.id}`)).status).toBe(200);
+    const two = (await o.post('/inventory/counts', { warehouseId: store, date: TODAY })).data;
+    expect(two.docNo).toBe(`IA-${year}-0002`);
+
+    expect((await o.delete(`/inventory/counts/${two.id}`)).status).toBe(200);
+    expect((await o.post('/inventory/counts', { warehouseId: store, date: TODAY })).data.docNo).toBe(`IA-${year}-0003`);
+  });
+
+  it('a deleted draft leaves one journal event, and an empty count deleted moves no stock', async () => {
+    const f2 = await createFixture();
+    const o = await f2.as('owner');
+    const store = await warehouse(o, 'Bosh');
+    const id = (await o.post('/inventory/counts', { warehouseId: store, date: TODAY })).data.id;
+    const { docNo } = (await o.get(`/inventory/counts/${id}`)).data;
+    await o.delete(`/inventory/counts/${id}`);
+    const written = await f2.run(() => tx().select().from(schema.events).where(eq(schema.events.entityId, id)));
+    expect(written).toHaveLength(1);
+    expect(written[0]).toMatchObject({ type: 'stock.document_reversed', entityType: 'stock_count' });
+    expect(written[0].data).toMatchObject({ docNo });
+  });
+
+  it('the numbering holds across kinds of document, and per farm', async () => {
+    const f2 = await createFixture();
+    const f3 = await createFixture();
+    const o = await f2.as('owner');
+    const stranger = await f3.as('owner');
+    const store = await warehouse(o, 'Bosh');
+    const theirs = await warehouse(stranger, 'Bosh');
+    const year = TODAY.slice(0, 4);
+    const count = (await o.post('/inventory/counts', { warehouseId: store, date: TODAY })).data;
+    await o.delete(`/inventory/counts/${count.id}`);
+    // The sequence is shared per farm, and a deleted count keeps its place in it.
+    expect((await stranger.post('/inventory/counts', { warehouseId: theirs, date: TODAY })).data.docNo).toBe(`IA-${year}-0001`);
+    expect((await o.post('/inventory/counts', { warehouseId: store, date: TODAY })).data.docNo).toBe(`IA-${year}-0002`);
+  });
+
   it('entering a count needs inventory.create, approving needs inventory.update', async () => {
     const i = await stocked('Perm', 10);
     const zootechnician = await f.as('zootechnician');
@@ -704,6 +1693,151 @@ describe('stock counts', () => {
     const act = await f.run(() => countLayout(id, 'en'), { permissions: ['inventory.view'] });
     expect(act.footer).toEqual([]);
     expect(act.table[0]).toHaveLength(6);
+  });
+});
+
+describe('one open sheet per warehouse and item', () => {
+  async function store(names: string[], qty = 100, unitCost = 10) {
+    const f = await createFixture();
+    const owner = await f.as('owner');
+    const w = await warehouse(owner, 'Ozuqa');
+    const ids: string[] = [];
+    for (const name of names) {
+      const id = await item(owner, { name });
+      await owner.post('/inventory/receipts', { warehouseId: w, date: daysAgo(5), source: 'opening', lines: [{ itemId: id, qty, unitCost }] });
+      ids.push(id);
+    }
+    const onHand = (id: string) => f.run(() => stockOnHand(id));
+    return { f, owner, w, ids, onHand };
+  }
+
+  it('books a shortage once when two people go to count the same shelf', async () => {
+    const { f, owner, w, ids: [i], onHand } = await store(['NZ Nazorat ozuqa'], 1535.333, 6_000);
+    const storekeeper = await f.as('storekeeper');
+    const zootechnician = await f.as('zootechnician');
+    const first = (await storekeeper.post('/inventory/counts', { warehouseId: w, date: TODAY, itemIds: [i] })).data;
+
+    const second = await zootechnician.post('/inventory/counts', { warehouseId: w, date: TODAY, itemIds: [i] });
+    expect(second.status).toBe(409);
+    expect(second.body.error).toMatchObject({ code: 'COUNT_ALREADY_OPEN', details: { docNo: first.docNo, item: 'NZ Nazorat ozuqa' } });
+
+    await storekeeper.patch(`/inventory/counts/${first.id}`, { lines: [{ itemId: i, actualQty: 1532.333, systemQty: 1535.333 }] });
+    expect((await storekeeper.post(`/inventory/counts/${first.id}/approve`)).status).toBe(200);
+    expect(await onHand(i)).toBe(1532.333);
+
+    // Closed, so the shelf can be counted again, from the new book. Two approvals used to leave 1529.333.
+    const next = await zootechnician.post('/inventory/counts', { warehouseId: w, date: TODAY, itemIds: [i] });
+    expect(next.status).toBe(201);
+    expect(next.data.lines[0]).toMatchObject({ systemQty: 1532.333, actualQty: 1532.333, diffQty: 0 });
+    expect((await owner.post(`/inventory/counts/${next.data.id}/approve`)).status).toBe(200);
+    expect(await onHand(i)).toBe(1532.333);
+  });
+
+  it('a sheet of everything in the warehouse is refused while any of it is open', async () => {
+    const { owner, w, ids: [a, b] } = await store(['Arpa', 'Beda']);
+    const first = (await owner.post('/inventory/counts', { warehouseId: w, date: TODAY, itemIds: [b] })).data;
+    const all = await owner.post('/inventory/counts', { warehouseId: w, date: TODAY });
+    expect(all.status).toBe(409);
+    expect(all.body.error).toMatchObject({ code: 'COUNT_ALREADY_OPEN', details: { docNo: first.docNo, item: 'Beda' } });
+    expect((await owner.post('/inventory/counts', { warehouseId: w, date: TODAY, itemIds: [a] })).status).toBe(201);
+  });
+
+  it('another item, or the same item in another warehouse, can be counted alongside', async () => {
+    const { owner, w, ids: [a, b] } = await store(['Arpa', 'Beda']);
+    const elsewhere = await warehouse(owner, 'Ikkinchi');
+    await owner.post('/inventory/transfers', { fromWarehouseId: w, toWarehouseId: elsewhere, date: TODAY, lines: [{ itemId: a, qty: 10 }] });
+    expect((await owner.post('/inventory/counts', { warehouseId: w, date: TODAY, itemIds: [a] })).status).toBe(201);
+    expect((await owner.post('/inventory/counts', { warehouseId: w, date: TODAY, itemIds: [b] })).status).toBe(201);
+    expect((await owner.post('/inventory/counts', { warehouseId: elsewhere, date: TODAY, itemIds: [a] })).status).toBe(201);
+  });
+
+  it('an item cannot be added to a sheet while another sheet holds it', async () => {
+    const { owner, w, ids: [a, b] } = await store(['Arpa', 'Beda']);
+    const first = (await owner.post('/inventory/counts', { warehouseId: w, date: TODAY, itemIds: [a] })).data;
+    const second = (await owner.post('/inventory/counts', { warehouseId: w, date: TODAY, itemIds: [b] })).data;
+
+    const added = await owner.patch(`/inventory/counts/${second.id}`, { lines: [{ itemId: a, actualQty: 3 }] });
+    expect(added.status).toBe(409);
+    expect(added.body.error).toMatchObject({ code: 'COUNT_ALREADY_OPEN', details: { docNo: first.docNo, item: 'Arpa' } });
+    expect((await owner.get(`/inventory/counts/${second.id}`)).data.lines.map((l: any) => l.itemName)).toEqual(['Beda']);
+
+    expect((await owner.delete(`/inventory/counts/${first.id}`)).status).toBe(200);
+    const after = await owner.patch(`/inventory/counts/${second.id}`, { lines: [{ itemId: a, actualQty: 97 }] });
+    expect(after.data.lines.map((l: any) => [l.itemName, l.diffQty])).toEqual([
+      ['Arpa', -3],
+      ['Beda', 0],
+    ]);
+  });
+
+  it('a refused sheet takes no document number', async () => {
+    const { owner, w, ids: [a, b] } = await store(['Arpa', 'Beda']);
+    const year = TODAY.slice(0, 4);
+    expect((await owner.post('/inventory/counts', { warehouseId: w, date: TODAY, itemIds: [a] })).data.docNo).toBe(`IA-${year}-0001`);
+    expect((await owner.post('/inventory/counts', { warehouseId: w, date: TODAY, itemIds: [a] })).status).toBe(409);
+    expect((await owner.post('/inventory/counts', { warehouseId: w, date: TODAY, itemIds: [b] })).data.docNo).toBe(`IA-${year}-0002`);
+  });
+
+  it('two people starting in the same moment get one sheet', async () => {
+    const { f, w, ids: [a] } = await store(['Arpa']);
+    const start = () => counts.create({ warehouseId: w, date: TODAY, itemIds: [a] });
+    expect(await overlapping(f, start, start)).toBe('COUNT_ALREADY_OPEN');
+  });
+
+  it('two sheets adding the same item in the same moment get one line', async () => {
+    const { f, owner, w, ids: [a, b, c] } = await store(['Arpa', 'Beda', 'Chigit']);
+    const one = (await owner.post('/inventory/counts', { warehouseId: w, date: TODAY, itemIds: [a] })).data.id;
+    const two = (await owner.post('/inventory/counts', { warehouseId: w, date: TODAY, itemIds: [b] })).data.id;
+    const adding = (id: string) => () => counts.update(id, { lines: [{ itemId: c, actualQty: 97 }] });
+    expect(await overlapping(f, adding(one), adding(two))).toBe('COUNT_ALREADY_OPEN');
+  });
+
+  it('two open sheets left from before this rule cannot both apply', async () => {
+    const { f, owner, w, ids: [i], onHand } = await store(['Arpa']);
+    const first = (await owner.post('/inventory/counts', { warehouseId: w, date: TODAY, itemIds: [i] })).data;
+    await owner.patch(`/inventory/counts/${first.id}`, { lines: [{ itemId: i, actualQty: 97, systemQty: 100 }] });
+    const base = { tenantId: f.tenantId, farmId: f.farmId };
+    const older = await f.run(async () => {
+      const [sheet] = await tx().insert(schema.stockCounts).values({ ...base, warehouseId: w, date: TODAY, docNo: 'IA-OLD' }).returning();
+      await tx().insert(schema.stockCountLines).values({ ...base, countId: sheet.id, itemId: i, systemQty: 100, actualQty: 97, diffQty: -3 });
+      return sheet.id;
+    });
+
+    const refused = await owner.post(`/inventory/counts/${first.id}/approve`);
+    expect(refused.status).toBe(409);
+    expect(refused.body.error).toMatchObject({ code: 'COUNT_ALREADY_OPEN', details: { docNo: 'IA-OLD', item: 'Arpa' } });
+    expect(await onHand(i)).toBe(100);
+
+    expect((await owner.delete(`/inventory/counts/${older}`)).status).toBe(200);
+    expect((await owner.post(`/inventory/counts/${first.id}/approve`)).status).toBe(200);
+    expect(await onHand(i)).toBe(97);
+  });
+
+  it('an item named twice in one request is one line, applied once', async () => {
+    const { owner, w, ids: [a, b], onHand } = await store(['Arpa', 'Beda']);
+    const sheet = (await owner.post('/inventory/counts', { warehouseId: w, date: TODAY, itemIds: [a, a] })).data;
+    expect(sheet.lines).toHaveLength(1);
+
+    const saved = await owner.patch(`/inventory/counts/${sheet.id}`, {
+      lines: [
+        { itemId: b, actualQty: 90 },
+        { itemId: b, actualQty: 95 },
+      ],
+    });
+    expect(saved.data.lines.map((l: any) => [l.itemName, l.diffQty])).toEqual([
+      ['Arpa', 0],
+      ['Beda', -5],
+    ]);
+    await owner.post(`/inventory/counts/${sheet.id}/approve`);
+    expect(await onHand(b)).toBe(95);
+  });
+
+  it('the refusals have words in every language, and the sheet is named', () => {
+    for (const lang of ['uz', 'ru', 'en'] as const) {
+      const { COUNT_ALREADY_OPEN, COUNT_BOOK_MOVED } = (resources[lang].inventory as { errors: Record<string, string> }).errors;
+      expect(COUNT_ALREADY_OPEN).toContain('{{docNo}}');
+      expect(COUNT_ALREADY_OPEN).toContain('{{item}}');
+      expect(COUNT_BOOK_MOVED).toBeTruthy();
+    }
   });
 });
 
@@ -1500,29 +2634,29 @@ describe('seed', () => {
     for (const name of Object.values(SEED.item)) expect(names.has(name)).toBe(true);
 
     const qty = (name: string) => all.find((i: any) => i.name === name).qtyOnHand;
-    expect(qty(SEED.item.alfalfa)).toBe(120_000);
-    expect(qty(SEED.item.straw)).toBe(80_000);
-    expect(qty(SEED.item.barley)).toBe(40_000);
-    expect(qty(SEED.item.bran)).toBe(3_000);
-    expect(qty(SEED.item.cake)).toBe(10_000);
-    expect(qty(SEED.item.silage)).toBe(0);
+    expect(qty(SEED.item.alfalfa)).toBe(210_000);
+    expect(qty(SEED.item.straw)).toBe(95_000);
+    expect(qty(SEED.item.barley)).toBe(62_000);
+    expect(qty(SEED.item.bran)).toBe(15_000);
+    expect(qty(SEED.item.cake)).toBe(16_000);
+    expect(qty(SEED.item.silage)).toBe(240_000);
 
     const rations = (await owner.get('/feed/rations')).data;
     expect(rations.map((r: any) => r.name).sort()).toEqual(Object.values(SEED.ration).sort());
     const pregnant = rations.find((r: any) => r.name === SEED.ration.pregnant);
-    expect(pregnant.lines.find((l: any) => l.itemName === SEED.item.alfalfa).kgPerHeadDay).toBe(1.2);
+    expect(pregnant.lines.find((l: any) => l.itemName === SEED.item.alfalfa).kgPerHeadDay).toBe(1.1);
     expect(pregnant.costPerHeadDay).toBeGreaterThan(0);
 
-    // 500 ewes on the pregnant ration: bran and premix are the planned winter shortages.
-    const plan = (await owner.get('/feed/winter-plan', { rationId: pregnant.id, head: 500 })).data;
+    // 700 ewes on the pregnant ration: the farm enters the winter with enough of everything.
+    const plan = (await owner.get('/feed/winter-plan', { rationId: pregnant.id, head: 700 })).data;
     const short = plan.rows.filter((r: any) => r.shortageKg > 0).map((r: any) => r.name);
-    expect(short.sort()).toEqual([SEED.item.bran, SEED.item.premix].sort());
+    expect(short).toEqual([]);
 
     // Stock must cover 14 days of daily logs without INSUFFICIENT_STOCK.
     for (const row of plan.rows) expect(row.coverageDays).toBeGreaterThan(20);
 
     const expiring = (await owner.get('/inventory/stock/expiring', { days: 30 })).data;
-    expect(expiring.map((b: any) => b.itemName)).toEqual([SEED.item.poxVaccine]);
+    expect(expiring).toEqual([]);
   });
 });
 

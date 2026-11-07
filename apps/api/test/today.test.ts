@@ -398,6 +398,7 @@ describe('offline delivery of a daily log', () => {
     const res = await shepherd.patch(`/livestock/daily-logs/${logId}`, { lines: [{ itemId: f.hayId, actualQty: 4 }] });
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('EDIT_WINDOW_CLOSED');
+    expect(res.body.error.details).toEqual({ id: logId });
   });
 });
 
@@ -444,11 +445,33 @@ describe('POST /today/conflicts', () => {
     expect(alert.status).toBe('open');
     expect(alert.severity).toBe('attention');
     expect(alert.body).toContain('Beda: 7 kg');
-    expect(renderAlert(alert, 'en').title).toMatch(/: two different records for \d{2}\.\d{2}\.\d{4}$/);
+    expect(renderAlert(alert, 'en').title).toMatch(/: two different records for \d{2}\/\d{2}\/\d{4}$/);
     expect(renderAlert(alert, 'en').body).toContain('Offline record: Beda: 7 kg');
 
     // Saved stock is untouched: nothing moved until a person decides.
     expect(await f.f.run(() => stockOnHand(f.hayId))).toBe(996.4);
+  });
+
+  it('a record the server refused has no saved log to point at, and still reaches a person', async () => {
+    const f = await makeFarm();
+    const shepherd = await f.f.as('shepherd');
+    const report = { id: uuid(), herdId: f.herdId, date: today, serverLogId: null, mine: { waterL: null, condition: 'normal', notes: null, lines: [{ itemId: f.hayId, actualQty: 9 }] } };
+    const res = await shepherd.post('/today/conflicts', report, { 'idempotency-key': `conflict-${report.id}` });
+    expect(res.status).toBe(200);
+
+    const [event] = await f.f.run(() => tx().select().from(events).where(sql`type = 'herd.daily_log_conflict' and entity_id = ${f.herdId}`));
+    expect(event.data).toMatchObject({ outboxId: report.id, serverLogId: null });
+    expect((event.data as any).mine.lines[0]).toMatchObject({ itemName: 'Beda', actualQty: 9 });
+
+    const [alert] = await f.f.run(() => tx().select().from(alerts).where(eq(alerts.dedupKey, `offline_conflict:${report.id}`)));
+    expect(alert.data).toMatchObject({ textKey: 'offline_refused', summary: 'Beda: 9 kg' });
+  });
+
+  it('a saved log named in a report has to exist on this farm', async () => {
+    const { f, report } = await clash();
+    const shepherd = await f.f.as('shepherd');
+    const res = await shepherd.post('/today/conflicts', { ...report, serverLogId: uuid() });
+    expect(res.status).toBe(404);
   });
 
   it('a repeated report makes one event and one alert', async () => {

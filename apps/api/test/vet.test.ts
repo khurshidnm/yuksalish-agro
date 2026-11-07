@@ -250,6 +250,52 @@ describe('pregnancies', () => {
   });
 });
 
+describe('who can be mated', () => {
+  it('refuses a newborn lamb and a wether, and keeps both out of the mating lists', async () => {
+    const f = await createFixture();
+    const today = todayIso();
+    const client = await f.as('zootechnician');
+    const lamb = await makeAnimal(f, { category: 'lamb_female', birthDate: addDays(today, -1) });
+    const sibling = await makeAnimal(f, { sex: 'male', category: 'lamb_male', birthDate: addDays(today, -1) });
+    const wether = await makeAnimal(f, { sex: 'male', category: 'wether', birthDate: addDays(today, -900) });
+    const grown = await makeAnimal(f, { category: 'lamb_female', birthDate: addDays(today, -300) });
+    const ewe = await makeAnimal(f);
+
+    const refused = await client.post('/livestock/breeding', { eweId: lamb.id, matingDate: today });
+    expect(refused.status).toBe(400);
+    expect(refused.body.error.code).toBe('ANIMAL_CANNOT_BREED');
+    for (const ramId of [sibling.id, wether.id]) {
+      const res = await client.post('/livestock/breeding', { eweId: ewe.id, ramId, matingDate: today });
+      expect(res.body.error.code).toBe('ANIMAL_CANNOT_BREED');
+    }
+    // Grown up, never recategorised: the work must not stop on stale data.
+    expect((await client.post('/livestock/breeding', { eweId: grown.id, matingDate: today })).status).toBe(201);
+
+    const offered = async (sex: string) =>
+      (await client.get('/livestock/animals/lookup', { sex, forBreeding: 'true' })).data.map((a: any) => a.id);
+    expect(await offered('female')).toEqual(expect.arrayContaining([grown.id, ewe.id]));
+    expect(await offered('female')).not.toContain(lamb.id);
+    expect(await offered('male')).toEqual([]);
+  });
+});
+
+describe('lambing on a ewe that has left', () => {
+  it('is refused after her exit, and allowed on the day itself', async () => {
+    const f = await createFixture();
+    const today = todayIso();
+    const client = await f.as('zootechnician');
+    const owner = await f.as('owner');
+    const gone = await makeAnimal(f, { birthDate: addDays(today, -900) });
+    await owner.post('/livestock/exits', { animalId: gone.id, type: 'death', date: addDays(today, -10) });
+    const lamb = { sex: 'female', alive: true };
+    const late = await client.post('/livestock/lambings', { eweId: gone.id, date: today, lambs: [lamb] });
+    expect(late.status).toBe(409);
+    expect(late.body.error.code).toBe('ANIMAL_NOT_ON_FARM');
+    const sameDay = await client.post('/livestock/lambings', { eweId: gone.id, date: addDays(today, -10), lambs: [lamb] });
+    expect(sameDay.body.error?.code).not.toBe('ANIMAL_NOT_ON_FARM');
+  });
+});
+
 describe('lambing calendar', () => {
   it('counts ewes by day and week, leaves out those gone, and flags the overdue', async () => {
     const f = await createFixture();

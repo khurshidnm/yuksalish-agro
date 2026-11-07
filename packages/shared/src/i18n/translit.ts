@@ -1,9 +1,21 @@
+import { PRODUCT_NAME } from '../brand';
+
 /**
  * Uzbek Latin → Cyrillic transliteration. The Cyrillic UI is derived from the Latin
  * dictionaries at load time, so the two scripts can never drift apart.
  */
 
-const KEEP_WORDS = new Set(['Excel', 'Keeping', 'Google', 'Didox', 'Claude', 'iOS', 'Android']);
+const KEEP_WORDS = new Set(['Excel', 'Keeping', 'Google', 'Chrome', 'Safari', 'Didox', 'Claude', 'iOS', 'Android', 'Email', 'Webhook', 'MediaMTX', 'pH']);
+
+/** Uzbek acronyms, which unlike foreign ones change script. */
+const ACRONYMS: Record<string, string> = { STIR: 'СТИР', MFO: 'МФО' };
+
+/** Loanword stems the letters alone get wrong. Any ending follows: kompyuterda → компьютерда. */
+const STEMS: [string, string][] = [
+  ['vaksin', 'вакцин'],
+  ['kompyuter', 'компьютер'],
+  ['obyekt', 'объект'],
+];
 
 /** Words whose regular transliteration is wrong. Key is lower case Latin. */
 const OVERRIDES: Record<string, string> = {
@@ -81,8 +93,10 @@ function transliterateWord(word: string): string {
         continue;
       }
     }
-    // Loanwords: ratsion → рацион, operatsiya → операция, litsenziya → лицензия.
-    if (lower === 't' && nextLower === 's' && 'ie'.includes((word[i + 2] ?? '').toLowerCase()) && word[i + 2]) {
+    // Loanwords: ratsion → рацион, operatsiya → операция, litsenziya → лицензия. Not the Uzbek endings
+    // -siz and -sin after a t: internetsiz → интернетсиз, yetsin → етсин. Meditsina is a loanword.
+    const suffix = /^(siz|sin(?![ao]))/.test(word.slice(i + 1).toLowerCase());
+    if (lower === 't' && nextLower === 's' && 'ie'.includes((word[i + 2] ?? '').toLowerCase()) && word[i + 2] && !suffix) {
       out += ch === lower ? 'ц' : 'Ц';
       i += 2;
       continue;
@@ -107,18 +121,33 @@ function transliterateWord(word: string): string {
 }
 
 const WORD = /[\p{L}ʻʼ‘’'`]+/gu;
-const PROTECTED = /(\{\{[^}]*\}\}|<[^>]+>|https?:\/\/\S+)/g;
+/** Placeholders, tags and addresses, and after a space or bracket a path (/api/docs) or a file type (.xlsx). */
+const PROTECTED = /(\{\{[^}]*\}\}|<[^>]+>|https?:\/\/\S+|(?<=^|[\s(])\/[a-z][\w/-]*|(?<=[\s(])\.[a-z]{3,4}\b)/g;
 
 /** Transliterate text, leaving i18n placeholders, tags, URLs, acronyms and brands untouched. */
 export function latinToCyrillic(text: string): string {
+  // The product name is a brand, written the same way in every script.
+  return text.split(PRODUCT_NAME).map(transliterateText).join(PRODUCT_NAME);
+}
+
+function transliterateText(text: string): string {
   return text
     .split(PROTECTED)
     .map((part, index) => {
       if (index % 2 === 1) return part; // captured protected fragment
       return part.replace(WORD, (word) => {
         if (KEEP_WORDS.has(word)) return word;
+        if (ACRONYMS[word]) return ACRONYMS[word];
         const isAcronym = word.length > 1 && word === word.toUpperCase() && /[A-Z]/.test(word);
         if (isAcronym) return word;
+        // PDF'ga: the acronym stays, its ending changes script.
+        const ending = /^([A-Z]{2,})(['ʻʼ‘’`])(\p{L}+)$/u.exec(word);
+        if (ending) return `${ending[1]}${ending[2]}${transliterateWord(ending[3])}`;
+        const stem = STEMS.find(([latin]) => word.toLowerCase().startsWith(latin));
+        if (stem) {
+          const cyrillic = word[0] === word[0].toLowerCase() ? stem[1] : stem[1][0].toUpperCase() + stem[1].slice(1);
+          return cyrillic + transliterateWord(word.slice(stem[0].length));
+        }
         return transliterateWord(word);
       });
     })

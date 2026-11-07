@@ -16,7 +16,7 @@ happens on Yuksalish Agro's real data, so this is a pre-acceptance check, not si
 | 5 | Every expense on a cost center; cost per ewe; field cost report | Pass | 40 of 40 expenses have a cost center. Cost per ewe 4,436,321.98 so'm equals (purchase + accumulated) / head by hand. All 5 arable fields reported across seasons |
 | 6 | Budget entered, plan and fact on the dashboard | Pass | Year plan 3,381,800,000, fact 3,306,722,272, 97.8 % |
 | 7 | Role limits: a shepherd cannot see finance | Pass | 403 on finance routes. Sweep of all 150 parameterless GET routes as shepherd, mechanic, storekeeper and veterinarian found no money or personal field |
-| 8 | Telegram daily summary and urgent alert | Not verified | Built, and tested with a mocked Telegram API only. Needs a real `TELEGRAM_BOT_TOKEN` |
+| 8 | Telegram daily summary and urgent alert | Pass | Sent through the real delivery job to a real bot on 2026-11-04 and received on the owner's phone: one daily summary, one urgent alert. Scheduled delivery at 07:00 has not yet run unattended |
 | 9 | Autumn sowing data loaded through Excel import | Pass | Real template downloaded, filled with comma decimals, dd.mm.yyyy dates, stray spaces and a Cyrillic crop name, imported through preview and confirm. Re-importing the same file added nothing |
 | 10 | 10 people at once, under 2 seconds | Pass | See volume test below |
 
@@ -36,8 +36,6 @@ happens on Yuksalish Agro's real data, so this is a pre-acceptance check, not si
 
 - UAT with farm staff on real data, then sign-off.
 - Draw the real field boundaries and answer the open questions in spec 6.2.
-- A Telegram bot token and a real message on a phone.
-- An Anthropic API key to enable the assistant; statistical insights work without it.
 - Offline on real low-cost Android phones and on iOS.
 - Confirm the Keeping export format, which is a documented generic double-entry CSV for now.
 - An external security review.

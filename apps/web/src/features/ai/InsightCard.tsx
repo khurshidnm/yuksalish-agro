@@ -1,6 +1,7 @@
 import { Check, ClipboardCheck, ExternalLink, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
+import { useOpenableLink } from '@/app/canOpen';
 import { Badge, Button, Card, CardContent, Meter } from '@/components/ui';
 import { formatDateTime, formatPercent } from '@/lib/format';
 import { RichText } from './RichText';
@@ -57,13 +58,22 @@ export interface InsightCardProps {
   onOutcome: (insight: Insight) => void;
 }
 
-export function InsightCard({ canDecide, insight, onDecide, onOutcome }: InsightCardProps) {
+/** Stored text is in the farm's language. This re-renders it from the values for a viewer who reads another. */
+export function useInsightText() {
   const { i18n, t } = useTranslation('ai');
-  const key = `insight.${insight.data.textKey ?? insight.type}`;
-  // Stored text is in the farm's language. Re-render from the values when the viewer reads another.
-  const translated = insight.data.i18n && i18n.exists(`ai:${key}.title`);
-  const title = translated ? t(`${key}.title`, insight.data.i18n) : insight.title;
-  const body = translated ? t(`${key}.body`, insight.data.i18n) : insight.body;
+  return (insight: Insight): { title: string; body: string } => {
+    const key = `insight.${insight.data.textKey ?? insight.type}`;
+    const translated = insight.data.i18n && i18n.exists(`ai:${key}.title`);
+    return translated
+      ? { title: t(`${key}.title`, insight.data.i18n), body: t(`${key}.body`, insight.data.i18n) }
+      : { title: insight.title, body: insight.body };
+  };
+}
+
+export function InsightCard({ canDecide, insight, onDecide, onOutcome }: InsightCardProps) {
+  const { t } = useTranslation('ai');
+  const { title, body } = useInsightText()(insight);
+  const to = useOpenableLink()(insight.data.link);
   const severity = insight.data.severity ?? 'info';
   const percent = Math.round(insight.confidence * 100);
 
@@ -114,9 +124,9 @@ export function InsightCard({ canDecide, insight, onDecide, onOutcome }: Insight
               )}
             </>
           )}
-          {typeof insight.data.link === 'string' && (
+          {to && (
             <Button asChild variant="ghost">
-              <Link to={insight.data.link}>
+              <Link to={to}>
                 <ExternalLink aria-hidden />
                 {t('insights.open')}
               </Link>

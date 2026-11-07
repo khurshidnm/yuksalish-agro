@@ -22,7 +22,7 @@ function FeedRow({ row, horizonDays }: { row: FeedBalanceRow; horizonDays: numbe
       <div className="flex flex-wrap items-baseline justify-between gap-x-3">
         <p className="min-w-0 font-medium break-words">{row.name}</p>
         <p className="text-lg font-semibold tabular-nums">
-          {row.days === null ? t('balance.noData') : t('balance.days', { days: formatNumber(row.days, 0) })}
+          {row.days === null ? t('balance.noData') : t('balance.days', { days: formatNumber(Math.floor(row.days), 0) })}
         </p>
       </div>
       <Meter value={percent} tone={tone(row)} label={t('balance.daysLabel', { name: row.name })} />
@@ -46,7 +46,7 @@ function PlanSection({ plan, canSeeMoney }: { plan: FeedPlan; canSeeMoney: boole
   return (
     <section className="flex flex-col gap-3">
       <h2 className="text-lg font-semibold">{t('plan.title')}</h2>
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {plan.herds.map((herd) => (
           <Card key={herd.herdId}>
             <CardHeader>
@@ -102,7 +102,7 @@ export default function FeedBalancePage() {
       <PageHeader title={t('balance.title')} description={t('balance.description')} />
 
       <div className="flex flex-col gap-6">
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <StatCard
             label={t('balance.shortest')}
             value={shortest ? t('balance.days', { days: formatNumber(shortest.days, 0) }) : '—'}

@@ -11,11 +11,17 @@ COPY packages/shared/package.json packages/shared/
 RUN pnpm install --frozen-lockfile --filter "@yap/web..."
 COPY packages/shared packages/shared
 COPY apps/web apps/web
+# Public details of the website, fixed into the prerendered pages.
+ARG VITE_SITE_URL=
+ARG VITE_CONTACT_PHONE=
+ARG VITE_CONTACT_TELEGRAM=
 RUN pnpm --filter @yap/web build
 COPY infra/nginx-security-headers.inc infra/csp-hashes.mjs ./
-RUN node csp-hashes.mjs apps/web/dist/index.html nginx-security-headers.inc
+RUN node csp-hashes.mjs nginx-security-headers.inc apps/web/dist/index.html apps/web/dist/landing/*.html
 
-FROM nginxinc/nginx-unprivileged:1.28-alpine
+# The stable line, non-root. Exact, so a deploy cannot change nginx by itself: when nginx.org names a
+# newer stable line, move to it here, because an older line gets no more fixes.
+FROM nginxinc/nginx-unprivileged:1.30.6-alpine
 COPY infra/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/nginx-security-headers.inc /etc/nginx/snippets/security-headers.inc
 COPY --from=build /app/apps/web/dist /usr/share/nginx/html

@@ -6,7 +6,24 @@
   "noData": "Not enough data",
   "head": "{{value}} head",
   "days": "{{value}} days",
-  "tabs": {
+  "setup": {
+    "title": "Set up the farm",
+    "progress": "{{done}} of {{total}} done",
+    "intro": "A new farm is set up in this order. Each step leaves the list once it is done.",
+    "hide": "Hide",
+    "steps": {
+      "accounts": { "title": "Cash and bank accounts", "body": "Say where the money is kept." },
+      "fields": { "title": "Fields", "body": "Draw the fields on the map or add them to the list." },
+      "warehouses": { "title": "Warehouses", "body": "A receipt needs a warehouse first." },
+      "items": { "title": "Items", "body": "The list of feed, medicine and other goods." },
+      "suppliers": { "title": "Suppliers", "body": "A purchase needs a supplier before it can be received." },
+      "stock": { "title": "Opening stock", "body": "Receive what is in the warehouse today." },
+      "rations": { "title": "Ration", "body": "Prepare the ration before creating a herd." },
+      "herds": { "title": "Herds and animals", "body": "Create a herd, then add or import the animals." },
+      "staff": { "title": "Staff", "body": "Add a person and give them their one-time password." }
+    }
+  },
+  "tabs": { "outlook": "Forecast",
     "overview": "Overview",
     "kpi": "KPIs"
   },
@@ -31,8 +48,9 @@
     "cameras": "Cameras"
   },
   "finance": {
+    "cashTotal": "Total cash",
     "cash": "Cash and bank",
-    "monthExpense": "Expenses this month",
+    "monthExpense": "Paid this month",
     "monthIncome": "Income this month",
     "budget": "Budget execution",
     "budgetMonth": "Budget this month",
@@ -188,5 +206,57 @@
   },
   "errors": {
     "INVALID_PERIOD": "Choose a period of 1 to {{max}} months"
+  },
+  "outlook": {
+    "stats": {
+      "lambs": "Lambs expected",
+      "lambsHint": "From {{ewes}} pregnant ewes",
+      "head": "Peak herd",
+      "headHint": "After lambing, head",
+      "feed": "Own feed lasts",
+      "feedHint": "Until the next harvest",
+      "cash": "Cash in 12 months",
+      "cashHint": "Projected balance"
+    },
+    "conclusions": {
+      "title": "Conclusions",
+      "lambing": "Lambing from {{from}} to {{to}}: about {{lambs}} lambs expected from {{ewes}} ewes.",
+      "herd": "The herd peaks at {{peak}} head. {{sold}} lambs go to sale and {{kept}} stay in the flock.",
+      "feedOk": "All {{count}} home-grown feeds last until the next harvest.",
+      "feedShort": "Will not last until the next harvest: {{names}}.",
+      "feedBuy": "Of the bought feeds, {{name}} runs out first: {{month}}. Plan the purchase before then.",
+      "lambIncome": "Selling {{head}} lambs should bring about {{amount}}.",
+      "cashOk": "No cash shortfall expected: the lowest balance is {{amount}}, {{month}}.",
+      "cashShort": "A cash shortfall is expected from {{month}}."
+    },
+    "charts": {
+      "herd": "Herd size",
+      "herdHint": "By month, with lambing and sales",
+      "headSeries": "Head",
+      "cash": "Cash balance",
+      "cashHint": "At month end",
+      "closing": "Balance",
+      "lambs": "Lambs: born and sold",
+      "born": "Born",
+      "sold": "Sold",
+      "flow": "Money in and out",
+      "inflow": "In",
+      "outflow": "Out"
+    },
+    "feed": {
+      "title": "Feed until the next harvest",
+      "line": "{{stock}} t in stock, {{need}} t needed",
+      "harvest": "harvest {{month}}",
+      "enough": "Enough",
+      "until": "Until {{month}}"
+    },
+    "crops": {
+      "title": "Harvest forecast",
+      "area": "{{area}} ha",
+      "yield": "{{value}} t/ha",
+      "tons": "{{value}} t",
+      "lastYear": "Last year {{value}} t"
+    },
+    "assumptions": "Based on actual records and these assumptions: {{lambs}} lambs per ewe, {{survival}}% survival, sale at {{months}} months, {{kept}}% of lambs kept, {{weight}} kg sale weight. From April to October pasture supplies half of the forage."
   }
 }

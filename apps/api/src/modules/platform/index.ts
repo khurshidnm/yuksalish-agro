@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { routes } from '../../core/http';
 import { idParam } from '../../core/query';
 import * as service from './platform.service';
+import * as usersService from './users.service';
 
 export default async function platformModule(app: FastifyInstance) {
   const r = routes(app, 'platform');
@@ -16,7 +17,7 @@ export default async function platformModule(app: FastifyInstance) {
   });
   r.post('/tenants', {
     access: 'platform',
-    summary: 'Create a tenant with its first owner. A new owner\'s password is shown once.',
+    summary: 'Create a tenant. A new owner gets a one-time password, shown once; a phone with an account gets an invitation.',
     body: service.tenantInput,
     handler: async (req, reply) => {
       const result = await service.createTenant(req.body);
@@ -49,6 +50,46 @@ export default async function platformModule(app: FastifyInstance) {
     access: 'platform',
     params: idParam,
     handler: (req) => service.setTenantStatus(req.params.id, 'active'),
+  });
+
+  r.get('/users', {
+    access: 'platform',
+    query: usersService.userListQuery,
+    handler: (req) => usersService.listUsers(req.query),
+  });
+  r.post('/users/:id/block', {
+    access: 'platform',
+    params: idParam,
+    handler: async (req) => {
+      req.log.warn({ userId: req.params.id, adminId: req.adminId }, 'user blocked');
+      return usersService.setUserStatus(req.params.id, 'blocked', req.adminId);
+    },
+  });
+  r.post('/users/:id/unblock', {
+    access: 'platform',
+    params: idParam,
+    handler: async (req) => {
+      req.log.warn({ userId: req.params.id, adminId: req.adminId }, 'user unblocked');
+      return usersService.setUserStatus(req.params.id, 'active', req.adminId);
+    },
+  });
+  r.post('/users/:id/reset-password', {
+    access: 'platform',
+    summary: 'Replace the password. The new one-time password is shown once.',
+    params: idParam,
+    handler: async (req) => {
+      req.log.warn({ userId: req.params.id, adminId: req.adminId }, 'user password reset by platform admin');
+      return usersService.resetUserPassword(req.params.id, req.adminId);
+    },
+  });
+  r.post('/users/:id/reset-2fa', {
+    access: 'platform',
+    summary: 'Turn off two-factor sign-in for someone who lost their authenticator and recovery codes',
+    params: idParam,
+    handler: async (req) => {
+      req.log.warn({ userId: req.params.id, adminId: req.adminId }, 'user 2FA reset by platform admin');
+      return usersService.resetUserTwoFactor(req.params.id, req.adminId);
+    },
   });
 
   r.get('/plans', { access: 'platform', handler: () => service.listPlans() });

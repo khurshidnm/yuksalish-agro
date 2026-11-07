@@ -98,7 +98,7 @@ export default function RationsPage() {
       <PageHeader title={t('rations.title')} description={t('rations.description')} actions={addButton} />
 
       {rations.isLoading && (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <Skeleton className="h-64" />
           <Skeleton className="h-64" />
           <Skeleton className="h-64" />
@@ -107,7 +107,7 @@ export default function RationsPage() {
       {rations.error && <ErrorCard error={rations.error} onRetry={() => void rations.refetch()} />}
       {rations.data?.data.length === 0 && <EmptyState icon={Wheat} title={t('rations.emptyTitle')} description={t('rations.emptyBody')} action={addButton} />}
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {rations.data?.data.map((ration) => (
           <RationCard
             key={ration.id}

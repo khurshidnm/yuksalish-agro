@@ -3,6 +3,8 @@ import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+import { useLocation, useNavigate } from 'react-router';
+import { toast } from 'sonner';
 import { z } from 'zod';
 import { LogoMark } from '@/app/Logo';
 import { FormField, TextField } from '@/components/FormField';
@@ -14,7 +16,7 @@ import { zText } from '@/lib/forms';
 import { normalizePhone } from '@/lib/utils';
 
 const passwordSchema = z.object({ phone: zText(32), password: z.string().min(1) });
-const codeSchema = z.object({ code: z.string().trim().regex(/^\d{6}$/) });
+const codeSchema = z.object({ code: z.string().trim().min(6).max(32) });
 
 function LanguagePicker() {
   const { i18n } = useTranslation();
@@ -67,6 +69,7 @@ function PasswordStep({ onChallenge }: { onChallenge: (token: string) => void })
       <Button type="submit" size="lg" loading={form.formState.isSubmitting}>
         {t('auth:login.submit')}
       </Button>
+      <p className="text-center text-sm text-muted-foreground">{t('auth:login.forgot')}</p>
     </form>
   );
 }
@@ -74,28 +77,49 @@ function PasswordStep({ onChallenge }: { onChallenge: (token: string) => void })
 function CodeStep({ challengeToken, onBack }: { challengeToken: string; onBack: () => void }) {
   const { t } = useTranslation();
   const { verifyTwoFactor } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [error, setError] = useState<string | null>(null);
+  const [recovery, setRecovery] = useState(false);
   const form = useForm({ resolver: zodResolver(codeSchema), defaultValues: { code: '' } });
 
   const submit = form.handleSubmit(async ({ code }) => {
     setError(null);
+    const cameFrom = location.state as unknown;
     try {
-      await verifyTwoFactor(challengeToken, code);
+      // Someone without their phone most likely needs a new one. PublicOnly reads this as the session arrives.
+      if (recovery) navigate(location.pathname, { replace: true, state: { from: '/2fa/setup?replace' } });
+      const session = await verifyTwoFactor(challengeToken, code);
+      if (recovery) toast.info(t('auth:otp.recoveryUsed', { count: session.user.recoveryCodesLeft ?? 0 }));
     } catch (cause) {
+      if (recovery) navigate(location.pathname, { replace: true, state: cameFrom });
       setError(errorMessage(cause));
     }
   });
+
+  const switchMode = () => {
+    setRecovery(!recovery);
+    setError(null);
+    form.reset();
+  };
 
   return (
     <form onSubmit={(e) => void submit(e)} noValidate className="flex flex-col gap-4">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{t('auth:otp.title')}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t('auth:otp.subtitle')}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{recovery ? t('auth:otp.recoverySubtitle') : t('auth:otp.subtitle')}</p>
       </div>
       {error && <Alert tone="danger">{error}</Alert>}
-      <TextField form={form} name="code" label={t('auth:otp.code')} inputMode="numeric" autoComplete="one-time-code" maxLength={6} autoFocus />
+      {recovery ? (
+        <TextField key="recovery" form={form} name="code" label={t('auth:otp.recoveryCode')} autoComplete="off" maxLength={32} autoFocus />
+      ) : (
+        <TextField key="app" form={form} name="code" label={t('auth:otp.code')} inputMode="numeric" autoComplete="one-time-code" maxLength={6} autoFocus />
+      )}
       <Button type="submit" size="lg" loading={form.formState.isSubmitting}>
         {t('auth:otp.submit')}
+      </Button>
+      <Button variant="ghost" onClick={switchMode}>
+        {recovery ? t('auth:otp.useApp') : t('auth:otp.useRecovery')}
       </Button>
       <Button variant="ghost" onClick={onBack}>
         <ArrowLeft aria-hidden />
@@ -116,9 +140,9 @@ function FieldRows() {
           <path d={FIELD_EDGE} />
         </clipPath>
       </defs>
-      <path d="M0 60 C 180 16 340 110 640 34 V300 H0Z" className="fill-sidebar-hover" />
-      <path d={FIELD_EDGE} className="fill-sidebar-border" />
-      <g clipPath="url(#field-edge)" className="stroke-sidebar-active" strokeWidth="2" opacity="0.5">
+      <path d="M0 60 C 180 16 340 110 640 34 V300 H0Z" className="fill-secondary" />
+      <path d={FIELD_EDGE} className="fill-accent" />
+      <g clipPath="url(#field-edge)" className="stroke-primary" strokeWidth="2" opacity="0.35">
         {Array.from({ length: 15 }, (_, i) => (
           <line key={i} x1={470} y1={30} x2={-420 + i * 150} y2={300} />
         ))}
@@ -132,15 +156,15 @@ export default function LoginPage() {
   const [challenge, setChallenge] = useState<string | null>(null);
 
   return (
-    <div className="grid min-h-dvh lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
-      <section className="relative hidden flex-col overflow-hidden bg-sidebar p-10 text-sidebar-foreground lg:flex">
+    <div className="grid grid-cols-1 min-h-dvh lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+      <section className="relative hidden flex-col overflow-hidden bg-muted p-10 text-foreground lg:flex">
         <div className="flex items-center gap-3">
           <LogoMark />
           <span className="text-lg font-semibold">{t('common:app.name')}</span>
         </div>
         <div className="relative z-10 mt-20 max-w-md">
-          <p className="text-4xl leading-tight font-semibold tracking-tight">{t('auth:login.brandTitle')}</p>
-          <p className="mt-4 text-sidebar-muted">{t('auth:login.brandBody')}</p>
+          <p className="text-4xl leading-tight font-semibold tracking-tight text-heading">{t('auth:login.brandTitle')}</p>
+          <p className="mt-4 text-muted-foreground">{t('auth:login.brandBody')}</p>
         </div>
         <FieldRows />
       </section>

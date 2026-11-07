@@ -10,7 +10,7 @@ export function Table({ className, ...props }: ComponentProps<'table'>) {
 }
 
 export function THead({ className, ...props }: ComponentProps<'thead'>) {
-  return <thead className={cn('border-b border-border', className)} {...props} />;
+  return <thead className={cn('border-b border-border bg-muted', className)} {...props} />;
 }
 
 export function TBody({ className, ...props }: ComponentProps<'tbody'>) {

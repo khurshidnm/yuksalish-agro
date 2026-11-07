@@ -79,7 +79,7 @@ function cleanRates(rates: Record<string, number | null>) {
   return Object.fromEntries(Object.entries(rates).filter(([, value]) => value !== null && value > 0));
 }
 
-interface LinkableUser {
+export interface LinkableUser {
   id: string;
   fullName: string;
   phone: string;
@@ -170,13 +170,13 @@ export function EmployeeForm({ open, onOpenChange, employee }: EmployeeFormProps
                 <FormGrid>
                   <SelectField form={form} name="payType" label={t('employees.fields.payType')} required options={enumOptions('payType', PAY_TYPES)} />
                   {payType !== 'piece' && (
-                    <NumberField form={form} name="baseRate" label={t(`employees.rate.${payType}`)} suffix={money} required maxDigits={2} />
+                    <NumberField money form={form} name="baseRate" label={t(`employees.rate.${payType}`)} suffix={money} required maxDigits={2} />
                   )}
                 </FormGrid>
                 <p className="text-sm text-muted-foreground">{t('employees.pieceHint')}</p>
                 <FormGrid>
                   {PIECE_UNITS.map((unit) => (
-                    <NumberField key={unit} form={form} name={`pieceRates.${unit}`} label={t(`employees.pieceUnit.${unit}`)} suffix={money} maxDigits={2} />
+                    <NumberField money key={unit} form={form} name={`pieceRates.${unit}`} label={t(`employees.pieceUnit.${unit}`)} suffix={money} maxDigits={2} />
                   ))}
                 </FormGrid>
               </>

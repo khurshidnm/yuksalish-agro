@@ -105,9 +105,79 @@
     "withdrawalTitle": "Withdrawal period",
     "withdrawalBody": "No sale of meat or slaughter until {{date}}.",
     "pregnancyTitle": "Pregnant",
-    "pregnancyBody": "Expected lambing: {{date}}.",
+    "pregnancyBody": "Expected birth: {{date}}.",
     "quarantineTitle": "In quarantine",
-    "quarantineBody": "This animal cannot be sold or slaughtered until quarantine ends."
+    "quarantineBody": "This animal cannot be sold or slaughtered until quarantine ends.",
+    "breeding": {
+      "title": "Breeding",
+      "more": "Details",
+      "births": "Births",
+      "noBirths": "No births on this farm yet",
+      "times_one": "{{count}} time",
+      "times_other": "{{count}} times",
+      "birthsLine": "{{times}}, {{young}}",
+      "bornTile": "{{word}} born",
+      "aliveTile": "{{word}} born alive",
+      "lastBirth": "Last: {{date}}",
+      "farmOnly": "These counts cover this farm only. A purchased animal's earlier births are not recorded.",
+      "farmOnlyShort": "Births on this farm only",
+      "matings": "Matings",
+      "matingsEmpty": "No mating recorded",
+      "birthsEmpty": "No birth recorded on this farm",
+      "unknown": "Unknown",
+      "arrivedPregnant": "Arrived on the farm already pregnant",
+      "setRam": "Set the sire",
+      "setRamTitle": "{{tag}}: set the sire",
+      "inbreedingBody": "They share an ancestor: {{tags}}. You can still save, but check first.",
+      "noTag": "No tag",
+      "emptyTitle": "No breeding records",
+      "emptyBody": "Matings and births will appear here once they are recorded.",
+      "status": {
+        "pregnant": "Pregnant",
+        "lambed": "Gave birth",
+        "aborted": "Aborted",
+        "failed": "Not pregnant"
+      },
+      "result": {
+        "born": "{{date}}: {{young}}, {{alive}} alive",
+        "pending": "Awaited",
+        "none": "No birth"
+      },
+      "young": {
+        "sheep": "Lambs",
+        "goat": "Kids",
+        "cattle": "Calves",
+        "horse": "Foals",
+        "other": "Young"
+      },
+      "youngCount": {
+        "sheep_one": "{{count}} lamb",
+        "sheep_other": "{{count}} lambs",
+        "goat_one": "{{count}} kid",
+        "goat_other": "{{count}} kids",
+        "cattle_one": "{{count}} calf",
+        "cattle_other": "{{count}} calves",
+        "horse_one": "{{count}} foal",
+        "horse_other": "{{count}} foals",
+        "other_one": "{{count}} young",
+        "other_other": "{{count}} young"
+      }
+    },
+    "health": {
+      "title": "Veterinary",
+      "more": "Details",
+      "lastVaccination": "Last vaccination",
+      "overdue": "Overdue",
+      "sickOpen": "Open sick report",
+      "sickClosed": "Sick report closed",
+      "quarantineOpen": "Quarantine under way",
+      "quarantineUntil": "until {{date}}",
+      "wholeHerd": "Whole-herd record",
+      "upcoming": "Upcoming dates",
+      "endedOn": "Ended on",
+      "emptyTitle": "No veterinary records",
+      "emptyBody": "Vaccinations, treatments and examinations will appear here."
+    }
   },
   "transfer": {
     "title": "Move",
@@ -252,7 +322,7 @@
     "emptyBody": "Record the first shearing."
   },
   "exits": {
-    "title": "Exits",
+    "title": "Animal exits",
     "description": "Sales, slaughter, deaths and losses.",
     "add": "Record an exit",
     "addFor": "{{tag}}: exit",
@@ -283,6 +353,8 @@
     "emptyBody": "Sales, slaughter and deaths will appear here."
   },
   "errors": {
+    "WEIGHT_BEFORE_BIRTH": "The date is before this animal was born",
+    "WEIGHT_NOT_PLAUSIBLE": "Check the weight: {{max}} kg is the most this species can weigh",
     "TAG_TAKEN": "The tag {{tag}} is already in use",
     "IDENTIFIER_TAKEN": "{{value}} belongs to animal {{tag}}",
     "CATEGORY_SEX_MISMATCH": "This category does not match the animal's sex",

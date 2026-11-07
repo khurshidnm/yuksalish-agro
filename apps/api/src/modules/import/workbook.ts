@@ -1,7 +1,8 @@
 /** Files the module hands out: blank templates, rows to fix, and data exports. */
 import ExcelJS from 'exceljs';
+import { PRODUCT_NAME } from '@yap/shared';
 import type { Column, Template } from './check';
-import { LISTS_SHEET } from './file';
+import { LISTS_SHEET } from './reader';
 import { tr, trOptional, type LanguageCode } from './i18n';
 import type { Cell } from './values';
 
@@ -80,7 +81,7 @@ export async function buildTemplate(
   lang: LanguageCode,
 ): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'Yuksalish Agro Platform';
+  workbook.creator = PRODUCT_NAME;
   const sheet = workbook.addWorksheet(tr(lang, `templates.${template.key}.sheet`).slice(0, 31), {
     views: [{ state: 'frozen', ySplit: 1 }],
   });

@@ -5,11 +5,16 @@ export interface Asset {
   inventoryNo: string | null;
   purchaseDate: string | null;
   purchasePrice: number | null;
+  purchaseAmount: number | null;
+  purchaseCurrency: string | null;
+  purchaseFxRate: number | null;
   status: string;
   usefulLifeMonths: number | null;
   salvageValue: number | null;
   depreciationMethod: string;
   totalUnits: number | null;
+  openingDepreciation: number | null;
+  openingDepreciationDate: string | null;
   motoHours: number;
   fuelNormLPerHour: number | null;
   fuelNormLPerHa: number | null;
@@ -84,6 +89,12 @@ export interface AssetCosts {
   costPerHour: number | null;
   costPerHectare: number | null;
   fuelPerHectare: number | null;
+}
+
+export interface DepreciationRun {
+  months: { month: string; posted: number; total: number }[];
+  posted: number;
+  total: number;
 }
 
 export interface DepreciationEntry {

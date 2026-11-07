@@ -83,6 +83,15 @@ function SowingCard({ rows }: { rows: WinterRow[] }) {
 function Conclusion({ plan, canSeeMoney }: { plan: WinterPlan; canSeeMoney: boolean }) {
   const { t } = useTranslation('feed');
   const short = plan.rows.filter((row) => (row.shortageKg ?? 0) > 0);
+  // Stock that cannot be turned into kilograms is not the same as enough stock (rule 5).
+  const unknown = plan.rows.filter((row) => row.shortageKg === null);
+  if (unknown.length > 0 && short.length === 0) {
+    return (
+      <Alert tone="warning" title={t('winter.unknownTitle')}>
+        {t('winter.unknownBody', { names: unknown.map((row) => row.name).join(', ') })}
+      </Alert>
+    );
+  }
   if (short.length === 0) {
     return (
       <Alert tone="success" title={t('winter.enoughTitle')}>
@@ -158,7 +167,7 @@ export default function WinterPlanPage() {
                 <TabsTrigger value="scenario">{t('winter.modeScenario')}</TabsTrigger>
               </TabsList>
             </Tabs>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="winter-days">{t('winter.days')}</Label>
                 <NumberInput
@@ -205,7 +214,7 @@ export default function WinterPlanPage() {
 
         {ready && plan.data && plan.data.rows.length > 0 && (
           <>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <StatCard label={t('winter.stats.herd')} value={t('winter.headValue', { head: formatNumber(plan.data.head, 0) })} hint={t('winter.stats.days', { days: plan.data.days })} icon={CalendarDays} />
               <StatCard label={t('winter.stats.required')} value={formatKg(plan.data.totals.requiredKg)} icon={Scale} />
               <StatCard

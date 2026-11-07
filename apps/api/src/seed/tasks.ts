@@ -64,12 +64,11 @@ export async function seedTasks(s: SeedContext): Promise<void> {
       }),
     );
 
-    // Overdue, so that the board, the alert and the calendar all have something real to show.
     await create(
       task({
         title: "Molxona darvozasini ta'mirlash",
         description: "Sharnir bo'shagan, darvoza to'liq yopilmayapti.",
-        dueDate: addDays(today, -3),
+        dueDate: addDays(today, 2),
         assigneeUserId: s.users.mechanic,
         division: 'machinery',
       }),

@@ -1,4 +1,4 @@
-import { and, eq, inArray, ne, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, ne, sql } from 'drizzle-orm';
 import { yieldPerHectare } from '@yap/shared';
 import { onTimePercent, waterPerTon } from '@yap/shared/formulas/crops';
 import { schema } from '../../db/client';
@@ -7,7 +7,7 @@ import { overdue } from './operations.service';
 import { planFact } from './plan-fact.service';
 import { currentSeason } from './seasons.service';
 
-const { cropPlans, fieldOperations, fields } = schema;
+const { cropPlans, fieldOperations, fields, harvests, seasons } = schema;
 
 /** Fields sown, irrigated and harvested in the current season (spec 14.1). */
 export async function fieldStatus() {
@@ -50,6 +50,22 @@ export async function overdueOperations() {
 export async function harvestPlanFact(seasonId?: string) {
   const { totals } = await planFact(seasonId);
   return { plannedT: totals?.expectedHarvestT ?? 0, actualT: totals?.harvestedT ?? 0 };
+}
+
+/**
+ * The last season with a harvest, of the same kind as the current one where there is one: a yield
+ * means little mixed with crops of another season, such as silage counted beside wheat.
+ */
+export async function lastHarvestedSeason() {
+  const current = await currentSeason();
+  const rows = await tx()
+    .selectDistinct({ id: seasons.id, name: seasons.name, kind: seasons.kind, endDate: seasons.endDate })
+    .from(seasons)
+    .innerJoin(cropPlans, eq(cropPlans.seasonId, seasons.id))
+    .innerJoin(harvests, eq(harvests.cropPlanId, cropPlans.id))
+    .where(eq(seasons.farmId, ctx().farmId))
+    .orderBy(desc(seasons.endDate));
+  return rows.find((season) => season.kind === current?.kind) ?? rows[0] ?? null;
 }
 
 /** Dehqonchilik KPIs (spec 14.3). Cost per ton comes from finance fieldCosts. */

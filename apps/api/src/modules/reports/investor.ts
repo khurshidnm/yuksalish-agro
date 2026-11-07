@@ -87,8 +87,9 @@ export async function investorData(month: string) {
         income: result.income,
         expense: result.expense,
         operatingExpense: result.operatingExpense,
-        net: round(result.income - result.expense, 2),
-        profitabilityPercent: roundOrNull(profitabilityPercent(result.income, result.operatingExpense), 1),
+        net: result.net,
+        // As on the dashboard: before the first sale there is no return to measure.
+        profitabilityPercent: result.income > 0 ? roundOrNull(profitabilityPercent(result.income, result.operatingExpense), 1) : null,
         cash: round(accounts.reduce((sum, a) => sum + a.balanceBase, 0), 2),
         receivable: debts.receivable,
         payable: debts.payable,
@@ -134,8 +135,9 @@ function sections(d: InvestorData, lang: Lang): { title: string; lines: Line[] }
       title: label('finance'),
       lines: [
         [label('income'), money(f.income)],
-        [label('expense'), money(f.expense)],
+        [label('operatingExpense'), money(f.operatingExpense)],
         [label('net'), money(f.net)],
+        [label('expense'), money(f.expense)],
         [label('profitability'), pct(f.profitabilityPercent)],
         [label('budget'), pct(f.budgetPercent)],
         [label('cash'), money(f.cash)],

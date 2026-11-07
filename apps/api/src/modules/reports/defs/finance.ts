@@ -7,8 +7,9 @@ import {
   profitabilityPercent,
   round,
 } from '@yap/shared';
+import { profitPerHead } from '@yap/shared/formulas/kpi';
 import { schema } from '../../../db/client';
-import { ctx, hasPermission, tx } from '../../../core/context';
+import { ctx, hasPermission, today, tx } from '../../../core/context';
 import { monthsBetween } from '../../finance/budget.service';
 import { listDebts } from '../../finance/debts.service';
 import { list as listLoans } from '../../finance/loans.service';
@@ -18,6 +19,7 @@ import {
   cashflowActual,
   cashflowForecastDetail,
   costCenterCosts,
+  herdResult,
   fieldCosts,
   herdCosts,
   incomeExpenseByCategory,
@@ -71,18 +73,15 @@ export const financeReports: ReportDefinition[] = [
     columns: [
       col.month('month'),
       col.money('income', { sum: true }),
-      col.money('expense', { sum: true }),
       col.money('operatingExpense', { sum: true }),
-      col.money('net', { sum: true }),
+      col.money('net', { sum: true, label: 'netResult' }),
+      col.money('expense', { sum: true, label: 'moneyPaid' }),
     ],
-    chart: { kind: 'bar', x: 'month', series: ['income', 'expense'] },
+    chart: { kind: 'bar', x: 'month', series: ['income', 'operatingExpense'] },
     async run({ from, to }) {
       const rows: Row[] = [];
-      for (const month of monthsBetween(from.slice(0, 7), to.slice(0, 7))) {
-        const m = await monthToDate(month);
-        rows.push({ ...m, net: round(m.income - m.expense, 2) });
-      }
-      return { rows };
+      for (const month of monthsBetween(from.slice(0, 7), to.slice(0, 7))) rows.push(await monthToDate(month));
+      return { rows, notes: [{ key: 'net_result_definition' }] };
     },
   },
   {
@@ -94,7 +93,7 @@ export const financeReports: ReportDefinition[] = [
       col.month('month'),
       col.money('inflow', { sum: true }),
       col.money('outflow', { sum: true }),
-      col.money('net', { sum: true }),
+      col.money('net', { sum: true, label: 'netCashFlow' }),
     ],
     chart: { kind: 'bar', x: 'month', series: ['inflow', 'outflow'] },
     run: async ({ from, to }) => ({ rows: await cashflowActual(from, to) }),
@@ -108,7 +107,7 @@ export const financeReports: ReportDefinition[] = [
       col.month('month'),
       col.money('inflow', { sum: true }),
       col.money('outflow', { sum: true }),
-      col.money('net', { sum: true }),
+      col.money('net', { sum: true, label: 'netCashFlow' }),
       col.money('closing'),
     ],
     chart: { kind: 'line', x: 'month', series: ['closing'] },
@@ -224,7 +223,7 @@ export const financeReports: ReportDefinition[] = [
     filters: [filter.period('this_year')],
     columns: [
       col.enum('type', 'costCenterType'),
-      col.text('costCenter'),
+      col.enum('costCenter', 'reports:costCenterName'),
       col.money('direct', { sum: true }),
       col.money('materials', { sum: true }),
       col.money('machinery', { sum: true }),
@@ -371,11 +370,12 @@ export const financeReports: ReportDefinition[] = [
       col.date('date'),
       col.enum('type', 'transactionType'),
       col.name('category', { label: 'financeCategory' }),
-      col.money('amountBase', { sum: true }),
+      // No total: this column mixes money in, money out, transfers and rows not approved.
+      col.money('amountBase'),
       col.enum('paymentMethod', 'paymentMethod'),
       col.text('account'),
       col.text('counterparty'),
-      col.text('costCenter'),
+      col.enum('costCenter', 'reports:costCenterName'),
       col.enum('status', 'transactionStatus'),
       col.text('description'),
     ],
@@ -445,15 +445,16 @@ export const financeReports: ReportDefinition[] = [
         );
       const flow = await cashflowActual(from, to);
       const budget = await budgetExecution(from, to);
-      const profit = income - operating;
-      const perEwe = ratio(profit, ewes.head);
+      // The same figure as the dashboard: a period running past today has no later costs to count.
+      const herds = await herdResult(from, to < today() ? to : today());
+      const perEwe = profitPerHead(herds.income, herds.expense, ewes.head);
       const costRatio = ratio(operating, income);
       const value = (v: number | null) => (v === null ? null : round(v, 2));
       return {
         rows: [
           { indicator: 'income', value: value(income), unit: 'money' },
           { indicator: 'operating_expense', value: value(operating), unit: 'money' },
-          { indicator: 'profitability', value: value(profitabilityPercent(income, operating)), unit: 'percent' },
+          { indicator: 'profitability', value: income > 0 ? value(profitabilityPercent(income, operating)) : null, unit: 'percent' },
           { indicator: 'profit_per_ewe', value: value(perEwe), unit: 'money' },
           { indicator: 'cost_to_income', value: costRatio === null ? null : value(costRatio * 100), unit: 'percent' },
           { indicator: 'net_cash_flow', value: value(flow.reduce((sum, m) => sum + m.net, 0)), unit: 'money' },

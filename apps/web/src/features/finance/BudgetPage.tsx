@@ -108,8 +108,11 @@ function Section({ grid, kind, rows, view, editing, edits, onEdit }: GridProps) 
               <Td key={month} className={cn(amountCell, view === 'diff' && deviationClass(kind, cell.actual - cell.planned))}>
                 {editing ? (
                   <NumberInput
+                    money
                     value={key in edits ? edits[key] : cell.planned || null}
                     onChange={(value) => onEdit(key, value)}
+                    // Not null: an empty cell removes the line, and text nobody can read is not that.
+                    onUnreadable={() => onEdit(key, Number.NaN)}
                     // Tab into a cell and type over it, as in a spreadsheet. The field reformats its
                     // text on focus, which would drop a selection made any earlier than this.
                     onFocus={(e) => {
@@ -340,7 +343,7 @@ export default function BudgetPage() {
               <X aria-hidden />
               {t('common:actions.cancel')}
             </Button>
-            <Button onClick={() => save.mutate()} loading={save.isPending} disabled={changed === 0}>
+            <Button onClick={() => save.mutate()} loading={save.isPending} disabled={changed === 0 || Object.values(edits).some(Number.isNaN)}>
               <Save aria-hidden />
               {changed > 0 ? t('budget.saveCount', { n: changed }) : t('common:actions.save')}
             </Button>

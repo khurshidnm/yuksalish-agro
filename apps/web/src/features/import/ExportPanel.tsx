@@ -31,7 +31,7 @@ function ExportCard({ entity }: { entity: string }) {
       </CardHeader>
       <CardContent className="space-y-3">
         {entity === 'transactions' && (
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1">
               <Label htmlFor="export-from">{t('exports.from')}</Label>
               <DateInput id="export-from" value={from} onChange={(event) => setFrom(event.target.value)} />
@@ -67,7 +67,7 @@ export function ExportPanel({ entities }: { entities: ExportInfo[] }) {
       <Alert tone="info" title={t('exports.title')}>
         {t('exports.description')}
       </Alert>
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {entities
           .filter((entity) => entity.allowed)
           .map((entity) => (

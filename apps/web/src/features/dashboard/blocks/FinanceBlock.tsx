@@ -38,14 +38,15 @@ export function FinanceBlock({ data, link }: { data: FinanceData; link: LinkTo }
   const transactions = link('/finance/transactions', 'finance.view');
 
   return (
-    <div className="grid gap-3 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
       <Card>
         <CardHeader>
           <CardTitle>{t('finance.cash')}</CardTitle>
         </CardHeader>
         <CardContent>
-          {cash.accounts.length === 0 && <NoData />}
+          {cash.accounts.length === 0 && !cash.total && <NoData />}
           <ul>
+            {cash.accounts.length === 0 && !!cash.total && <FigureRow label={t('finance.cashTotal')} value={<MoneyText value={cash.total} compact />} />}
             {cash.accounts.map((account) => (
               <FigureRow
                 key={account.id}

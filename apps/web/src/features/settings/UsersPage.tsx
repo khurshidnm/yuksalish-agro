@@ -1,13 +1,14 @@
-import { KeyRound, Plus, ShieldCheck, ShieldOff, UserCog, UserX, Users } from 'lucide-react';
+import { KeyRound, Plus, ShieldCheck, ShieldOff, ShieldX, UserCog, UserX, Users } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { type Column, DataTable, FormDialog, FormGrid, PageHeader, SelectField, TextField, UrlTabs, useConfirm, useUrlParam } from '@/components';
-import { Badge, Button, Select } from '@/components/ui';
+import { ErrorCard } from '@/components/ErrorCard';
+import { Badge, Button, Card, Select } from '@/components/ui';
 import { api } from '@/lib/api';
 import { useCan, useSession } from '@/lib/auth';
-import { formatDateTime } from '@/lib/format';
+import { formatDate, formatDateTime } from '@/lib/format';
 import { zOptionalText, zRef, zText } from '@/lib/forms';
 import { useApiMutation, useDetail } from '@/lib/query';
 import { LANGUAGES } from '@yap/shared/i18n';
@@ -15,6 +16,7 @@ import { ROLES, type Role, RolesTab } from './RolesTab';
 import { ShowOnceDialog, useRoleLabel } from './shared';
 
 const USERS = '/settings/users';
+const INVITATIONS = '/settings/invitations';
 
 interface Member {
   id: string;
@@ -30,10 +32,21 @@ interface Member {
   roleName: string;
 }
 
+/** Holds what the inviter typed, and nothing about the account behind the phone. */
+interface Invitation {
+  id: string;
+  phone: string | null;
+  fullName: string;
+  roleKey: string;
+  roleName: string;
+  expiresAt: string;
+}
+
+/** Someone with an account elsewhere comes back as an invitation, with no member yet. */
 interface AddResult {
-  member: Member;
+  member: Member | null;
+  invitation: Invitation | null;
   oneTimePassword: string | null;
-  existingUser: boolean;
 }
 
 const addSchema = z.object({
@@ -45,6 +58,57 @@ const addSchema = z.object({
 });
 
 const roleSchema = z.object({ roleId: zRef() });
+
+function PendingInvitations() {
+  const { t } = useTranslation('settings');
+  const can = useCan();
+  const confirm = useConfirm();
+  const roleLabel = useRoleLabel();
+  const invitations = useDetail<Invitation[]>(INVITATIONS);
+  const cancel = useApiMutation<string>({
+    mutationFn: (id) => api.delete(`${INVITATIONS}/${id}`),
+    invalidate: [INVITATIONS],
+    successMessage: 'common:toast.updated',
+  });
+
+  if (invitations.isError) return <ErrorCard error={invitations.error} onRetry={() => void invitations.refetch()} className="mb-4" />;
+  if (!invitations.data?.length) return null;
+  return (
+    <section className="mb-4">
+      <h2 className="mb-2 text-sm font-medium text-muted-foreground">{t('users.invitationsTitle')}</h2>
+      <ul className="flex flex-col gap-2">
+        {invitations.data.map((row) => (
+          <li key={row.id}>
+            <Card className="flex flex-wrap items-center justify-between gap-2 p-3">
+              <div className="min-w-0">
+                <p className="font-medium break-words">{row.fullName}</p>
+                <p className="text-sm text-muted-foreground">
+                  {row.phone ?? '—'} · {roleLabel({ key: row.roleKey, name: row.roleName })} · {t('users.invitationUntil', { date: formatDate(row.expiresAt) })}
+                </p>
+              </div>
+              {can('users.update') && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    void confirm({
+                      title: t('users.cancelInvitationTitle'),
+                      description: t('users.cancelInvitationBody', { name: row.fullName }),
+                      confirmLabel: t('users.cancelInvitation'),
+                      destructive: true,
+                    }).then((ok) => ok && cancel.mutate(row.id))
+                  }
+                >
+                  {t('users.cancelInvitation')}
+                </Button>
+              )}
+            </Card>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 
 function PeopleTab() {
   const { t } = useTranslation('settings');
@@ -63,11 +127,12 @@ function PeopleTab() {
 
   const add = useApiMutation<z.output<typeof addSchema>, AddResult>({
     mutationFn: (values) => api.post(USERS, values),
-    invalidate: [USERS, ROLES],
+    invalidate: [USERS, ROLES, INVITATIONS],
     silentError: true,
     onSuccess: (result) => {
-      if (result.oneTimePassword) setSecret({ value: result.oneTimePassword, name: result.member.fullName });
-      else toast.success(t('users.addedExisting', { name: result.member.fullName }));
+      if (result.invitation) toast.success(t('users.invited', { name: result.invitation.fullName }));
+      else if (result.oneTimePassword) setSecret({ value: result.oneTimePassword, name: result.member?.fullName ?? '' });
+      else toast.success(t('users.addedExisting', { name: result.member?.fullName }));
     },
   });
   const changeRole = useApiMutation<{ id: string; roleId: string }>({
@@ -83,6 +148,11 @@ function PeopleTab() {
   const resetPassword = useApiMutation<Member, { oneTimePassword: string }>({
     mutationFn: (member) => api.post(`${USERS}/${member.id}/reset-password`),
     onSuccess: (result, member) => setSecret({ value: result.oneTimePassword, name: member.fullName }),
+  });
+  const resetTwoFactor = useApiMutation<string>({
+    mutationFn: (id) => api.post(`${USERS}/${id}/reset-2fa`),
+    invalidate: [USERS],
+    successMessage: 'settings:users.reset2faDone',
   });
 
   const columns: Column<Member>[] = [
@@ -130,6 +200,7 @@ function PeopleTab() {
   return (
     <>
       <div className="mb-3 flex justify-end empty:hidden">{addButton}</div>
+      <PendingInvitations />
       <DataTable<Member>
         path={USERS}
         params={{ roleId: roleFilter || undefined, status: statusFilter || undefined }}
@@ -163,6 +234,18 @@ function PeopleTab() {
               hidden: self || !can('users.update'),
               onClick: () =>
                 void confirm({ title: t('users.resetTitle'), description: t('users.resetBody', { name: row.fullName }) }).then((ok) => ok && resetPassword.mutate(row)),
+            },
+            {
+              label: t('users.reset2fa'),
+              icon: ShieldX,
+              hidden: self || !can('users.update') || !row.totpEnabled,
+              onClick: () =>
+                void confirm({
+                  title: t('users.reset2faTitle'),
+                  description: t('users.reset2faBody', { name: row.fullName }),
+                  confirmLabel: t('users.reset2fa'),
+                  destructive: true,
+                }).then((ok) => ok && resetTwoFactor.mutate(row.id)),
             },
             row.status === 'active'
               ? {

@@ -12,6 +12,8 @@ import { z } from 'zod';
 import { storageGet, storageSet } from './utils';
 
 const STORAGE_KEY = 'yap.language';
+/** Set by a choice made by hand, until the account has it (lib/accountLanguage). */
+export const CHOSEN_LANGUAGE_KEY = 'yap.language.chosen';
 
 function initialLanguage(): string {
   const saved = storageGet(STORAGE_KEY);
@@ -45,7 +47,7 @@ z.config({
     switch (issue.code) {
       case 'invalid_type':
         if (issue.input === undefined || issue.input === null || issue.input === '') return t('common:validation.required');
-        return t('common:validation.invalid');
+        return t(Number.isNaN(issue.input) ? 'common:validation.unreadableNumber' : 'common:validation.invalid');
       case 'too_small': {
         const min = Number(issue.minimum);
         if (issue.origin === 'string') {
@@ -78,6 +80,7 @@ export function enumOptions(group: string, values: readonly string[]): EnumOptio
 }
 
 export function changeLanguage(code: string): void {
+  storageSet(CHOSEN_LANGUAGE_KEY, code);
   void i18n.changeLanguage(code);
 }
 

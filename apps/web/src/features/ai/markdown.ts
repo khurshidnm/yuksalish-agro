@@ -33,6 +33,15 @@ export function parseBlocks(text: string): Block[] {
   return blocks.filter((block) => block.type !== 'paragraph' || block.text !== '');
 }
 
+/** The text alone, on one line, for a preview. Headings and list items become sentences of it. */
+export function plainText(text: string): string {
+  return parseBlocks(text)
+    .flatMap((block) => (block.type === 'list' ? block.items : [block.text]))
+    .map((part) => parseInline(part.replace(/\s*\n\s*/g, ' ')).map((run) => run.text).join('').trim())
+    .filter(Boolean)
+    .join(' · ');
+}
+
 /** "**bold** rest" becomes [{ text: 'bold', bold: true }, { text: ' rest', bold: false }]. */
 export function parseInline(text: string): { text: string; bold: boolean }[] {
   return text

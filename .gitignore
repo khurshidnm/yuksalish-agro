@@ -9,3 +9,7 @@ storage/
 *.tsbuildinfo
 .vite/
 .env.production
+infra/camera-sim/videos/
+infra/camera-sim/snapshots/
+infra/camera-sim/.key
+dist-ssr

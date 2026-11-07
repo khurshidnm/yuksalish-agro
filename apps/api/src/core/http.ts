@@ -8,25 +8,27 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { and, eq } from 'drizzle-orm';
 import { z, type ZodType } from 'zod';
-import { ROLES_REQUIRING_2FA, type Permission, type RoleKey } from '@yap/shared';
+import { MODULES, ROLES_REQUIRING_2FA, type Permission, type RoleKey } from '@yap/shared';
+import { isTest } from '../config';
 import { db, schema } from '../db/client';
 import { ctx, tx, updateCtx, withPlatform, withTenant, type Identity } from './context';
 import { sha256 } from './crypto';
-import { AppError, forbidden, unauthorized } from './errors';
+import { AppError, conflict, forbidden, unauthorized } from './errors';
 import { isPage } from './query';
 import { mergeSettings } from './settings';
 import { verifyAccessToken } from './tokens';
 
-const { apiKeys, idempotencyKeys, memberships, roles, tenants, users } = schema;
+const { apiKeys, idempotencyKeys, memberships, platformAudit, roles, tenants, users } = schema;
 
 /**
  * - a Permission, or several (any one is enough)
  * - 'authenticated': any signed-in member; skips the 2FA enrolment gate (used by auth itself)
+ * - 'member': any signed-in member, past the 2FA enrolment gate
  * - 'public': no authentication and no tenant context
  * - 'platform': platform administrator only. Handler uses withPlatform().
  * - { apiKey: scope }: machine access for devices and integrations
  */
-export type Access = Permission | Permission[] | 'authenticated' | 'public' | 'platform' | { apiKey: string };
+export type Access = Permission | Permission[] | 'authenticated' | 'member' | 'public' | 'platform' | { apiKey: string };
 
 type Infer<T> = T extends ZodType ? z.output<T> : undefined;
 
@@ -36,6 +38,8 @@ export type Req<Q, B, P> = Omit<FastifyRequest, 'query' | 'body' | 'params'> & {
   params: Infer<P>;
   /** Set when the route uses `transaction: false`: pass to withTenant() around each DB step. */
   identity: Identity;
+  /** Set on 'platform' routes: the administrator making the request, who has 2FA on. */
+  adminId?: string;
 };
 
 export interface RouteDef<Q, B, P> {
@@ -68,6 +72,13 @@ function bearer(req: FastifyRequest): string {
 /** Modules that cannot be switched off, because the app does not work without them. */
 const ALWAYS_ON = new Set(['dashboard', 'users', 'settings', 'audit', 'tasks']);
 
+/** What a role can really do: a module switched off for the workspace grants nothing. */
+export const enabledPermissions = (permissions: string[], modules: string[]) =>
+  permissions.filter((p) => {
+    const module = p.split('.')[0];
+    return !(MODULES as readonly string[]).includes(module) || ALWAYS_ON.has(module) || modules.includes(module);
+  });
+
 /** Load who is calling. Runs on every request, so blocking someone takes effect immediately. */
 async function loadMember(membershipId: string) {
   const [row] = await tx()
@@ -75,6 +86,7 @@ async function loadMember(membershipId: string) {
       status: memberships.status,
       userStatus: users.status,
       totpEnabled: users.totpEnabled,
+      mustChangePassword: users.mustChangePassword,
       tenantStatus: tenants.status,
       tenantModules: tenants.modules,
       tenantSettings: tenants.settings,
@@ -98,14 +110,20 @@ async function loadMember(membershipId: string) {
 function requiredPermissions(access: Access): Permission[] | null {
   if (typeof access === 'object' && !Array.isArray(access)) return null;
   if (access === 'authenticated' || access === 'public' || access === 'platform') return null;
+  if (access === 'member') return [];
   return Array.isArray(access) ? access : [access];
 }
 
+const passwordChangeRequired = () => forbidden('Choose your own password first', 'PASSWORD_CHANGE_REQUIRED');
+
 async function authorize(access: Access, member: Awaited<ReturnType<typeof loadMember>>) {
+  if (member.mustChangePassword) throw passwordChangeRequired();
   const settings = mergeSettings(member.tenantSettings);
+  const enabled = new Set(enabledPermissions(member.permissions, member.tenantModules));
   updateCtx({
     roleKey: member.roleKey,
-    permissions: new Set(member.permissions),
+    permissions: enabled,
+    withheld: new Set(member.permissions.filter((p) => !enabled.has(p))),
     settings,
     currency: member.currency,
     timezone: member.timezone,
@@ -120,14 +138,14 @@ async function authorize(access: Access, member: Awaited<ReturnType<typeof loadM
     ROLES_REQUIRING_2FA.includes(member.roleKey as RoleKey);
   if (mustEnroll) throw forbidden('Two-factor authentication is required', 'TWO_FACTOR_ENROLLMENT_REQUIRED');
 
-  const granted = required.find((p) => ctx().permissions.has(p));
-  if (!granted) throw forbidden(undefined, 'FORBIDDEN', { required });
-
-  const module = granted.split('.')[0];
-  if (!ALWAYS_ON.has(module) && !member.tenantModules.includes(module)) {
-    throw forbidden('This module is not enabled for your workspace', 'MODULE_DISABLED', { module });
-  }
+  if (required.length === 0 || required.some((p) => ctx().permissions.has(p))) return;
+  const held = required.find((p) => member.permissions.includes(p));
+  if (!held) throw forbidden(undefined, 'FORBIDDEN', { required });
+  throw forbidden('This module is not enabled for your workspace', 'MODULE_DISABLED', { module: held.split('.')[0] });
 }
+
+/** "Last used" on the keys page needs no more than this, and a camera calls every few seconds. */
+const KEY_USE_PRECISION_MS = 60 * 60 * 1000;
 
 async function identityFromKey(req: FastifyRequest, scope: string): Promise<Identity> {
   const raw = req.headers['x-api-key'];
@@ -135,13 +153,17 @@ async function identityFromKey(req: FastifyRequest, scope: string): Promise<Iden
   const [key] = await withPlatform((trx) =>
     trx.select().from(apiKeys).where(eq(apiKeys.keyHash, sha256(raw))),
   );
-  if (!key || key.revokedAt) throw unauthorized('INVALID_API_KEY', 'Invalid API key');
+  if (!key || key.revokedAt || (key.expiresAt && key.expiresAt <= new Date())) {
+    throw unauthorized('INVALID_API_KEY', 'Invalid API key');
+  }
   if (!key.scopes.includes(scope) && !key.scopes.includes('*')) {
     throw forbidden('This key does not allow this action', 'INSUFFICIENT_SCOPE', { scope });
   }
-  await withPlatform((trx) =>
-    trx.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, key.id)),
-  );
+  if (!key.lastUsedAt || Date.now() - key.lastUsedAt.getTime() >= KEY_USE_PRECISION_MS) {
+    await withPlatform((trx) =>
+      trx.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, key.id)),
+    );
+  }
   return { userId: null, tenantId: key.tenantId, farmId: key.farmId, source: 'sensor', ...requestMeta(req) };
 }
 
@@ -180,7 +202,12 @@ async function runIdempotent(
     .select()
     .from(idempotencyKeys)
     .where(and(eq(idempotencyKeys.tenantId, c.tenantId), eq(idempotencyKeys.key, key)));
+  const path = req.url.split('?')[0];
   if (stored) {
+    // A key belongs to one request by one person. Replaying it elsewhere would answer for something else.
+    if (stored.path !== path || stored.userId !== c.userId) {
+      throw conflict('IDEMPOTENCY_KEY_REUSED', 'This Idempotency-Key was already used for a different request');
+    }
     reply.code(stored.statusCode).header('idempotent-replay', 'true');
     return stored.response;
   }
@@ -189,11 +216,26 @@ async function runIdempotent(
   await tx().insert(idempotencyKeys).values({
     tenantId: c.tenantId,
     key,
-    path: req.url.split('?')[0],
+    path,
+    userId: c.userId,
     statusCode: reply.statusCode,
     response: result,
   });
   return result;
+}
+
+/** Runs after the change has been made, so what is written here did happen. */
+async function auditPlatformChange(req: FastifyRequest, adminId: string, result: unknown): Promise<void> {
+  if (req.method === 'GET') return;
+  const created = result as { id?: string; tenant?: { id?: string } } | null | undefined;
+  const { ip, device } = requestMeta(req);
+  await db.insert(platformAudit).values({
+    adminId,
+    action: `${req.method} ${req.routeOptions.url}`,
+    targetId: (req.params as { id?: string }).id ?? created?.id ?? created?.tenant?.id,
+    ip,
+    device,
+  });
 }
 
 function wrap<Q, B, P>(def: RouteDef<Q, B, P>) {
@@ -212,9 +254,16 @@ function wrap<Q, B, P>(def: RouteDef<Q, B, P>) {
     } else {
       const claims = await verifyAccessToken(bearer(fastifyReq));
       if (def.access === 'platform') {
-        const [user] = await db.select({ admin: users.isPlatformAdmin, status: users.status }).from(users).where(eq(users.id, claims.userId));
+        const [user] = await db
+          .select({ admin: users.isPlatformAdmin, status: users.status, totpEnabled: users.totpEnabled, mustChangePassword: users.mustChangePassword })
+          .from(users)
+          .where(eq(users.id, claims.userId));
         if (!user?.admin || user.status !== 'active') throw forbidden();
+        if (user.mustChangePassword) throw passwordChangeRequired();
+        if (!user.totpEnabled) throw forbidden('Two-factor authentication is required', 'TWO_FACTOR_ENROLLMENT_REQUIRED');
+        req.adminId = claims.userId;
         const result = await def.handler(req, reply);
+        await auditPlatformChange(fastifyReq, claims.userId, result);
         return result === reply || reply.sent ? reply : envelope(result);
       }
       if (!claims.membershipId || !claims.tenantId || !claims.farmId) {
@@ -254,6 +303,11 @@ function wrap<Q, B, P>(def: RouteDef<Q, B, P>) {
 
 type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
+/** A wrong key costs a database lookup, so guessing has to cost something too. A farm's devices share an address. */
+const KEY_ROUTE_LIMIT = isTest ? {} : { rateLimit: { max: 1200, timeWindow: '1 minute' } };
+
+const isKeyRoute = (access: Access) => typeof access === 'object' && !Array.isArray(access);
+
 /** Every route defined through routes(), for contract tests. */
 export const routeRegistry: { method: Method; url: string; access: Access; body?: ZodType }[] = [];
 
@@ -271,7 +325,7 @@ export function routes(app: FastifyInstance, tag: string) {
         method,
         url,
         ...(method === 'PATCH' ? { preValidation: rememberSentKeys } : {}),
-        config: def.config,
+        config: isKeyRoute(def.access) ? { ...KEY_ROUTE_LIMIT, ...def.config } : def.config,
         bodyLimit: def.bodyLimit,
         schema: {
           tags: [tag],

@@ -45,8 +45,8 @@ export function fieldLabel(field: Pick<Field, 'number' | 'name'>): string {
   return field.name ? `№${field.number} ${field.name}` : `№${field.number}`;
 }
 
-/** Spec 6.2: arable fields are the cost centers; other contours only account for the land. */
-const isCostCenter = (landUse: string | undefined) => landUse === undefined || landUse === 'arable';
+/** Land people spend money on, such as a pasture's fence or water. A yard or a road is overhead: it goes to the general center. */
+const HAS_COST_CENTER: readonly string[] = ['arable', 'pasture', 'reserve'];
 
 async function assertNumberFree(number: string, exceptId?: string): Promise<void> {
   const [taken] = await tx()
@@ -81,7 +81,7 @@ export async function createField(input: FieldInput): Promise<Field> {
     .returning();
 
   let field = row;
-  if (isCostCenter(input.landUse)) {
+  if (HAS_COST_CENTER.includes(row.landUse)) {
     const costCenterId = await ensureCostCenter('field', row.id, fieldLabel(row));
     [field] = await tx().update(t).set({ costCenterId }).where(eq(t.id, row.id)).returning();
   }
@@ -219,7 +219,7 @@ export async function updateField(id: string, input: FieldPatch): Promise<Field>
 
   const [row] = await tx().update(t).set(patch).where(eq(t.id, id)).returning();
 
-  if (row.landUse === 'arable' && !row.costCenterId) {
+  if (HAS_COST_CENTER.includes(row.landUse) && !row.costCenterId) {
     const costCenterId = await ensureCostCenter('field', row.id, fieldLabel(row));
     await tx().update(t).set({ costCenterId }).where(eq(t.id, id));
     row.costCenterId = costCenterId;

@@ -11,7 +11,7 @@ import { useSession } from '@/lib/auth';
 import { zDate, zEnum, zOptionalDate, zOptionalNumber, zOptionalRef, zOptionalText, zPositive } from '@/lib/forms';
 import i18n, { enumOptions } from '@/lib/i18n';
 import { errorMessage, useApiMutation, useDetail } from '@/lib/query';
-import { FINANCE_PATHS, MONEY_QUERIES, useCenterName, useLocalName } from './lib';
+import { FINANCE_PATHS, MONEY_QUERIES, treatmentForCategory, useCenterName, useLocalName } from './lib';
 import type { AccountOption, CategoryOption, CostCenterOption, Transaction } from './types';
 
 const TYPES = ['expense', 'income', 'transfer'] as const;
@@ -201,6 +201,7 @@ function Fields({
             onClick={() => {
               form.setValue('type', value);
               form.setValue('categoryId', null);
+              form.setValue('costTreatment', 'expense');
             }}
             className={`focus-ring min-h-11 rounded-md px-2 text-sm font-medium transition-colors ${
               type === value ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
@@ -214,13 +215,13 @@ function Fields({
       <FormGrid>
         <DateField form={form} name="date" label={t('journal.fields.date')} required />
         <div className="grid grid-cols-[1fr_6rem] gap-2">
-          <NumberField form={form} name="amount" label={t('journal.fields.amount')} required />
+          <NumberField money form={form} name="amount" label={t('journal.fields.amount')} required />
           <SelectField form={form} name="currency" label={t('journal.fields.currency')} options={enumOptions('currency', CURRENCIES)} />
         </div>
       </FormGrid>
 
       {currency !== baseCurrency && (
-        <NumberField form={form} name="fxRate" label={t('journal.fields.fxRate')} hint={t('journal.fxHint')} maxDigits={4} />
+        <NumberField money form={form} name="fxRate" label={t('journal.fields.fxRate')} hint={t('journal.fxHint')} maxDigits={4} />
       )}
 
       {isTransfer ? (
@@ -238,6 +239,7 @@ function Fields({
             options={categoryOptions}
             placeholder={t('journal.chooseCategory')}
             selectedLabel={editing?.categoryName ? localName(editing.categoryName) : undefined}
+            onSelect={(id) => form.setValue('costTreatment', treatmentForCategory(categories.find((c) => c.id === id)?.group, form.getValues('costTreatment')))}
           />
           <ComboboxField
             form={form}
@@ -312,7 +314,9 @@ export function TransactionFormDialog({ open, onOpenChange, editing, defaultType
   const save = useApiMutation<FormOutput, Transaction>({
     mutationFn: (values) => {
       const payload = toPayload(values, accounts);
-      return editing ? api.patch(`${FINANCE_PATHS.transactions}/${editing.id}`, payload) : api.post(FINANCE_PATHS.transactions, payload);
+      return editing
+        ? api.patch(`${FINANCE_PATHS.transactions}/${editing.id}`, { ...payload, baseUpdatedAt: editing.updatedAt })
+        : api.postOnce(FINANCE_PATHS.transactions, payload);
     },
     invalidate: MONEY_QUERIES,
     silentError: true,

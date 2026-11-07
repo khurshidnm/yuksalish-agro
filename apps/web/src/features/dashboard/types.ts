@@ -138,3 +138,64 @@ export interface KpiData {
   period: { from: string; to: string };
   groups: Partial<Record<KpiGroupKey, Block<Record<string, number | string | null>>>>;
 }
+
+export interface OutlookFeedRow {
+  itemId: string;
+  name: string;
+  stockKg: number;
+  /** Grown on the farm, so it next comes in at harvest. */
+  ownCrop: boolean;
+  nextHarvest: string | null;
+  needKg: number;
+  surplusKg: number;
+  runsOutMonth: string | null;
+}
+
+export interface OutlookHerdRow {
+  month: string;
+  ewesLambing: number;
+  lambsBorn: number;
+  lambsSold: number;
+  lambsOnFarm: number;
+  head: number;
+}
+
+export interface OutlookMoneyRow {
+  month: string;
+  inflow: number;
+  outflow: number;
+  net: number;
+  closing: number;
+}
+
+export interface OutlookData {
+  asOf: string;
+  months: string[];
+  herd: {
+    assumptions: { lambsPerEwe: number; survival: number; monthsToSale: number; keepShare: number; saleWeightKg: number };
+    pregnant: number;
+    lambing: { from: string | null; to: string | null };
+    lambsBorn: number;
+    lambsSold: number;
+    lambsKept: number;
+    peakHead: number;
+    closingHead: number;
+    rows: OutlookHerdRow[];
+  } | null;
+  feed: OutlookFeedRow[] | null;
+  crops: {
+    rows: { crop: string; name: { uz: string; ru: string; en: string }; areaHa: number; expectedT: number | null; expectedYieldTHa: number | null; lastYearT: number | null }[];
+    areaHa: number;
+  } | null;
+  money: {
+    opening: number;
+    inflow: number;
+    outflow: number;
+    closing: number;
+    lowest: { month: string; closing: number } | null;
+    firstNegativeMonth: string | null;
+    lambPricePerKg: number | null;
+    lambIncome: number | null;
+    rows: OutlookMoneyRow[];
+  } | null;
+}

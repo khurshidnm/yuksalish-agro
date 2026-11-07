@@ -27,6 +27,8 @@ export interface Ctx {
   membershipId: string | null;
   roleKey: string | null;
   permissions: Set<string>;
+  /** Held by the role, but its module is switched off for this workspace. */
+  withheld: Set<string>;
   ip: string | null;
   device: string | null;
   source: EventSource;
@@ -60,7 +62,11 @@ export const canSeeMoney = (domain?: Permission): boolean =>
   hasPermission('finance.view') || (domain !== undefined && hasPermission(domain));
 
 export function assertPermission(permission: Permission): void {
-  if (!hasPermission(permission)) throw forbidden(undefined, 'FORBIDDEN', { required: permission });
+  if (hasPermission(permission)) return;
+  if (ctx().withheld.has(permission)) {
+    throw forbidden('This module is not enabled for your workspace', 'MODULE_DISABLED', { module: permission.split('.')[0] });
+  }
+  throw forbidden(undefined, 'FORBIDDEN', { required: permission });
 }
 
 async function setSession(trx: Tx, identity: Identity): Promise<void> {
@@ -82,6 +88,7 @@ export async function withTenant<T>(identity: Identity, fn: () => Promise<T>): P
       membershipId: identity.membershipId ?? null,
       roleKey: identity.roleKey ?? null,
       permissions: new Set(identity.permissions ?? []),
+      withheld: new Set(),
       ip: identity.ip ?? null,
       device: identity.device ?? null,
       source: identity.source ?? 'user',

@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import { CompleteTaskDialog } from './CompleteTaskDialog';
 import { TaskBoard } from './TaskBoard';
 import { TaskFormDialog, memberOptions } from './TaskFormDialog';
-import { DIVISIONS, entityText, isClosed, type Task } from './types';
+import { DIVISIONS, entityText, isClosed, PRIORITY_TONE, type Task } from './types';
 import { useTaskActions } from './useTaskActions';
 
 const STATUS_TONE: Record<Task['status'], BadgeVariant> = {
@@ -24,7 +24,6 @@ const STATUS_TONE: Record<Task['status'], BadgeVariant> = {
   cancelled: 'outline',
 };
 
-const PRIORITY_TONE: Record<Task['priority'], BadgeVariant> = { low: 'outline', normal: 'neutral', high: 'warning' };
 
 function QuickAdd() {
   const { t } = useTranslation('tasks');
@@ -85,7 +84,7 @@ function TaskList({ onEdit, onComplete }: ListProps) {
         <div className="min-w-0">
           <p className="font-medium break-words">{task.title}</p>
           {task.entityLink && task.entityLabel && (
-            <Link to={task.entityLink} className="text-sm text-muted-foreground underline">
+            <Link to={task.entityLink} className="inline-flex min-h-11 items-center text-sm text-muted-foreground underline">
               {entityText(task, t)}
             </Link>
           )}

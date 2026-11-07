@@ -9,7 +9,7 @@ export function CamerasBlock({ data, link }: { data: CamerasData; link: LinkTo }
   const cameras = link('/cameras', 'cameras.view');
   const { fleet } = data;
   return (
-    <div className="grid gap-3 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
       <Card>
         <CardHeader>
           <CardTitle>{t('cameras.fleet')}</CardTitle>

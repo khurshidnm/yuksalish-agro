@@ -1,7 +1,7 @@
 # Data model
 
 Generated from `apps/api/src/db/schema` by `apps/api/src/db/erd.ts`. Do not edit by hand; run
-`pnpm --filter @yap/api exec tsx src/db/erd.ts` after a schema change. 92 tables.
+`pnpm --filter @yap/api exec tsx src/db/erd.ts` after a schema change. 100 tables.
 
 Links to `tenants`, `farms` and `users` (`tenant_id`, `farm_id`, `created_by`) are on almost every
 table and are left out of the lines to keep the diagrams readable. A table from another domain appears
@@ -22,6 +22,7 @@ erDiagram
     text key_prefix
     jsonb scopes
     timestamp_with_time_zone last_used_at
+    timestamp_with_time_zone expires_at
     timestamp_with_time_zone revoked_at
     uuid created_by FK
     timestamp_with_time_zone created_at
@@ -45,9 +46,44 @@ erDiagram
     uuid tenant_id FK
     text key
     text path
+    uuid user_id
     integer status_code
     jsonb response
     timestamp_with_time_zone created_at
+  }
+  invitations {
+    uuid id PK
+    uuid tenant_id FK
+    uuid farm_id FK
+    uuid role_id FK
+    text phone
+    text full_name
+    text status
+    timestamp_with_time_zone expires_at
+    uuid created_by FK
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+  }
+  leads {
+    uuid id PK
+    text full_name
+    text phone
+    text farm_name
+    text region
+    text farm_type
+    text farm_size
+    text message
+    text language
+    text source
+    jsonb utm
+    text status
+    text notes
+    integer submissions
+    jsonb repeats
+    timestamp_with_time_zone consent_at
+    timestamp_with_time_zone contacted_at
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
   }
   memberships {
     uuid id PK
@@ -66,6 +102,22 @@ erDiagram
     jsonb modules
     numeric price_monthly
     boolean active
+    timestamp_with_time_zone created_at
+  }
+  platform_audit {
+    uuid id PK
+    uuid admin_id FK
+    text action
+    text target_id
+    text ip
+    text device
+    timestamp_with_time_zone created_at
+  }
+  recovery_codes {
+    uuid id PK
+    uuid user_id FK
+    text code_hash
+    timestamp_with_time_zone used_at
     timestamp_with_time_zone created_at
   }
   refresh_tokens {
@@ -91,6 +143,13 @@ erDiagram
     timestamp_with_time_zone created_at
     timestamp_with_time_zone updated_at
   }
+  sign_in_failures {
+    text phone
+    text address
+    integer failures
+    timestamp_with_time_zone window_started_at
+    timestamp_with_time_zone locked_until
+  }
   tenants {
     uuid id PK
     text name
@@ -114,18 +173,23 @@ erDiagram
     text email
     text full_name
     text password_hash
+    boolean must_change_password
     text locale
     text status
     text totp_secret
     boolean totp_enabled
+    integer totp_last_step
     boolean is_platform_admin
     text telegram_chat_id
+    uuid telegram_membership_id FK
     timestamp_with_time_zone last_login_at
     timestamp_with_time_zone created_at
     timestamp_with_time_zone updated_at
   }
   memberships ||--o{ refresh_tokens : "membership_id"
+  memberships ||--o{ users : "telegram_membership_id"
   plans ||--o{ tenants : "plan_id"
+  roles ||--o{ invitations : "role_id"
   roles ||--o{ memberships : "role_id"
 ```
 
@@ -207,6 +271,7 @@ erDiagram
     jsonb data
     uuid photo_file_id
     uuid device_id
+    text dedup_key
     uuid created_by FK
     timestamp_with_time_zone created_at
   }
@@ -1291,6 +1356,8 @@ erDiagram
     numeric salvage_value
     text depreciation_method
     numeric total_units
+    numeric opening_depreciation
+    date opening_depreciation_date
     numeric moto_hours
     numeric fuel_norm_l_per_hour
     numeric fuel_norm_l_per_ha
@@ -1501,6 +1568,7 @@ erDiagram
     timestamp_with_time_zone resolved_at
     integer notify_count
     timestamp_with_time_zone next_notify_at
+    timestamp_with_time_zone undelivered_since
     jsonb notify_roles
     text permission
   }
@@ -1521,6 +1589,17 @@ erDiagram
     uuid entity_id
     text notes
   }
+  job_runs {
+    uuid id PK
+    uuid tenant_id FK
+    uuid farm_id FK
+    uuid created_by FK
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+    text job
+    timestamp_with_time_zone next_due_at
+    timestamp_with_time_zone last_run_at
+  }
   notification_prefs {
     uuid id PK
     uuid tenant_id FK
@@ -1537,8 +1616,10 @@ erDiagram
     text severity
     text title
     text body
+    jsonb texts
     text link
     uuid alert_id
+    text permission
     jsonb deliveries
     timestamp_with_time_zone read_at
     timestamp_with_time_zone created_at
@@ -1644,6 +1725,17 @@ erDiagram
 
 ```mermaid
 erDiagram
+  ai_aliases {
+    uuid id PK
+    uuid tenant_id FK
+    uuid farm_id FK
+    uuid created_by FK
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+    text phrase
+    text target_type
+    uuid target_id
+  }
   ai_conversations {
     uuid id PK
     uuid tenant_id FK
@@ -1653,6 +1745,7 @@ erDiagram
     timestamp_with_time_zone updated_at
     uuid user_id FK
     text title
+    text channel
   }
   ai_insights {
     uuid id PK
@@ -1689,7 +1782,31 @@ erDiagram
     jsonb content
     timestamp_with_time_zone created_at
   }
+  ai_proposals {
+    uuid id PK
+    uuid tenant_id FK
+    uuid farm_id FK
+    uuid created_by FK
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+    uuid user_id FK
+    uuid conversation_id FK
+    text kind
+    text status
+    text channel
+    text source_text
+    jsonb fields
+    jsonb warnings
+    jsonb learn
+    timestamp_with_time_zone expires_at
+    timestamp_with_time_zone confirmed_at
+    timestamp_with_time_zone undo_until
+    text result_type
+    uuid result_id
+    text result_status
+  }
   ai_conversations ||--o{ ai_messages : "conversation_id"
+  ai_conversations ||--o{ ai_proposals : "conversation_id"
 ```
 
 ## Reports and import

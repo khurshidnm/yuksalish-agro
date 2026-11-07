@@ -154,7 +154,7 @@ export function parseNumber(raw: Cell, kind: NumberKind = 'quantity'): number | 
 
   const negative = /^[-−–]/.test(text);
   if (negative) text = text.slice(1);
-  if (!/^[\d.,]*\d[\d.,]*$/.test(text)) return null;
+  if (!/^[\d.,]+$/.test(text) || !/\d/.test(text)) return null;
 
   const dots = (text.match(/\./g) ?? []).length;
   const commas = (text.match(/,/g) ?? []).length;

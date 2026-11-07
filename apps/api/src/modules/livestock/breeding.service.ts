@@ -9,7 +9,7 @@ import {
   expectedLambingDate,
   lambingWindow,
 } from '@yap/shared';
-import { commonAncestors, type ParentLinks } from '@yap/shared/formulas/reproduction';
+import { canBreed, commonAncestors, type ParentLinks } from '@yap/shared/formulas/reproduction';
 import { schema } from '../../db/client';
 import { ctx, today, tx } from '../../core/context';
 import { badRequest, conflict, notFound } from '../../core/errors';
@@ -98,10 +98,15 @@ function pregnancyDates(matingDate: string, g: Gestation) {
   };
 }
 
-async function assertRam(ramId: string | null | undefined): Promise<void> {
+function assertCanBreed(animal: Animal, on: string): void {
+  if (!canBreed(animal, on)) throw badRequest('ANIMAL_CANNOT_BREED', `Animal ${animal.tag} is too young to breed, or castrated`);
+}
+
+async function assertRam(ramId: string | null | undefined, on: string): Promise<void> {
   if (!ramId) return;
   const row = await getAnimalOrThrow(ramId);
   if (row.sex !== 'male') throw badRequest('RAM_NOT_MALE', `Animal ${row.tag} is not a male`);
+  assertCanBreed(row, on);
 }
 
 async function openPregnancy(eweId: string): Promise<BreedingRecord | undefined> {
@@ -121,7 +126,8 @@ export async function createPregnancy(i: PregnancyInput): Promise<BreedingRecord
   const target = await getAnimalOrThrow(i.eweId, { lock: true });
   assertOnFarm(target);
   if (target.sex !== 'female') throw badRequest('ANIMAL_NOT_FEMALE', `Animal ${target.tag} is not a female`);
-  await assertRam(i.ramId);
+  assertCanBreed(target, i.matingDate);
+  await assertRam(i.ramId, i.matingDate);
   if (await openPregnancy(i.eweId)) {
     throw conflict('ALREADY_PREGNANT', `Animal ${target.tag} already has an open pregnancy`);
   }
@@ -166,7 +172,7 @@ export interface BulkResult {
 /** Register many pregnancies at once. Ewes that cannot take one are reported, not failed. */
 export async function bulkPregnancy(i: z.infer<typeof bulkPregnancyInput>): Promise<BulkResult> {
   assertNotFuture(i.matingDate);
-  await assertRam(i.ramId);
+  await assertRam(i.ramId, i.matingDate);
   const c = ctx();
   if (i.herdId) await getHerdOrThrow(i.herdId);
 
@@ -196,9 +202,11 @@ export async function bulkPregnancy(i: z.infer<typeof bulkPregnancyInput>): Prom
       ? 'ANIMAL_NOT_ON_FARM'
       : a.sex !== 'female'
         ? 'ANIMAL_NOT_FEMALE'
-        : pregnant.has(a.id)
-          ? 'ALREADY_PREGNANT'
-          : null;
+        : !canBreed(a, i.matingDate)
+          ? 'ANIMAL_CANNOT_BREED'
+          : pregnant.has(a.id)
+            ? 'ALREADY_PREGNANT'
+            : null;
     if (reason) skipped.push({ animalId: a.id, tag: a.tag, reason });
     else accepted.push(a);
   }
@@ -327,9 +335,9 @@ export async function updatePregnancy(id: string, input: z.infer<typeof pregnanc
     throw badRequest('NOTHING_TO_UPDATE', 'No changes were sent');
   }
   const row = await getOpenPregnancy(id);
-  await assertRam(input.ramId);
   const matingDate = input.matingDate ?? row.matingDate;
   assertNotFuture(matingDate);
+  await assertRam(input.ramId, matingDate);
   const target = await getAnimalOrThrow(row.eweId);
   const [updated] = await tx()
     .update(b)
@@ -450,6 +458,11 @@ export async function recordLambing(i: LambingInput) {
   assertNotFuture(i.date);
   const mother = await getAnimalOrThrow(i.eweId, { lock: true });
   if (mother.sex !== 'female') throw badRequest('ANIMAL_NOT_FEMALE', `Animal ${mother.tag} is not a female`);
+  // Up to the day she left is real, a ewe can die lambing. A phone working offline can still offer her later.
+  if (!isOnFarm(mother.status) && (!mother.exitDate || i.date > mother.exitDate)) {
+    throw conflict('ANIMAL_NOT_ON_FARM', `Animal ${mother.tag} is no longer on the farm`, { animalId: mother.id, status: mother.status });
+  }
+  assertCanBreed(mother, i.date);
   if (i.herdId) await getHerdOrThrow(i.herdId);
   await assertNotJustLambed(i.eweId, i.date);
 

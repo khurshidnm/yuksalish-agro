@@ -50,7 +50,7 @@ export function ShiftDialog({
   const { t } = useTranslation('assets');
   const save = useApiMutation<Output>({
     mutationFn: (values) =>
-      log ? api.patch(`/assets/${assetId}/usage/${log.id}`, values) : api.post(`/assets/${assetId}/usage`, values),
+      log ? api.patch(`/assets/${assetId}/usage/${log.id}`, values) : api.postOnce(`/assets/${assetId}/usage`, values),
     invalidate: [`/assets/${assetId}`, '/assets', '/inventory'],
     silentError: true,
   });

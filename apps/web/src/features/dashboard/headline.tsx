@@ -1,4 +1,4 @@
-import { Beef, CalendarClock, CircleDollarSign, HandCoins, HeartPulse, type LucideIcon, PiggyBank, ReceiptText, Skull, Sprout, TriangleAlert, Users, Wheat, Wrench } from 'lucide-react';
+import { Beef, CalendarClock, CircleDollarSign, HandCoins, HeartPulse, type LucideIcon, ReceiptText, Skull, Sprout, TriangleAlert, Users, Wallet, Wheat, Wrench } from 'lucide-react';
 import type { ReactNode } from 'react';
 import type { TFunction } from 'i18next';
 import type { StatTone } from '@/components';
@@ -27,7 +27,7 @@ function financeTiles(d: FinanceData, t: TFunction, link: LinkTo): TileSpec[] {
       label: t('finance.cash'),
       value: compact(d.cash.total),
       to: link('/finance/accounts', 'finance.view'),
-      icon: PiggyBank,
+      icon: Wallet,
       tone: d.cash.total < 0 ? 'danger' : 'neutral',
     },
     {

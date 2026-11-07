@@ -3,10 +3,10 @@ import { z } from 'zod';
 import { ALERT_STATUSES, SEVERITIES, type Permission, type RoleKey, type Severity } from '@yap/shared';
 import { schema } from '../../db/client';
 import { ctx, hasPermission, tx } from '../../core/context';
-import { conflict, notFound } from '../../core/errors';
+import { conflict, forbidden, notFound } from '../../core/errors';
 import { recordEvent } from '../../core/journal';
 import { listQuery, paged, sortBy } from '../../core/query';
-import { interpolate, lookup, type Params } from '../notifications/i18n';
+import { interpolate, lookup, tr, type Params } from '../notifications/i18n';
 import { notifyRole } from '../notifications/notify.service';
 
 const { alerts } = schema;
@@ -14,6 +14,8 @@ const { alerts } = schema;
 type Alert = typeof alerts.$inferSelect;
 
 const RANK: Record<Severity, number> = { info: 0, attention: 1, urgent: 2 };
+
+export const ACKNOWLEDGE_PERMISSION: Permission = 'tasks.update';
 
 /** Who hears about a problem, by the first word of its rule key. Callers may override with `notify`. */
 const RESPONSIBLE: Record<string, RoleKey[]> = {
@@ -42,6 +44,13 @@ const RESPONSIBLE: Record<string, RoleKey[]> = {
 
 const DEFAULT_RESPONSIBLE: RoleKey[] = ['director', 'owner'];
 
+/**
+ * Urgent repeats day and night until someone acknowledges (spec 17.3), so it is kept for what can hurt
+ * animals or property now. These wait for the working day, whoever raises them and however far off they
+ * are: a bot that wakes people for a budget gets muted, and then the fire alert goes unheard.
+ */
+const NEVER_URGENT = new Set(['budget_overrun', 'document_expiring', 'batch_expiring', 'loan_payment_due', 'ration_deviation', 'ai.feed_anomaly']);
+
 function responsibleRoles(ruleKey: string): RoleKey[] {
   return RESPONSIBLE[ruleKey.split(/[._]/)[0]] ?? DEFAULT_RESPONSIBLE;
 }
@@ -62,6 +71,13 @@ export interface RaiseAlertInput {
   notify?: RoleKey[];
   /** Required to see the alert at all. Set it when the text reveals money. */
   permission?: Permission;
+  /**
+   * For a discrete event rather than a state that is evaluated again: after this much silence the next
+   * one is a new event, whatever became of the last. Anything sooner belongs to the same burst.
+   */
+  newAfterMs?: number;
+  /** Shown in the app and nowhere else, however urgent: it is about the channels themselves. */
+  inAppOnly?: boolean;
 }
 
 /** A dictionary template is usable only if the alert carries a value for every placeholder. */
@@ -103,28 +119,43 @@ function nextRepeat(count: number): Date {
   return new Date(Date.now() + minutes * 60_000);
 }
 
-async function notifyAlert(alert: Alert): Promise<void> {
+async function notifyAlert(alert: Alert, options: { roles?: RoleKey[]; escalated?: boolean; inAppOnly?: boolean } = {}): Promise<void> {
+  const body = (locale: string) => renderAlert(alert, locale).body ?? '';
   await notifyRole(
-    alert.notifyRoles as RoleKey[],
+    options.roles ?? (alert.notifyRoles as RoleKey[]),
     {
       severity: alert.severity as Severity,
       title: (locale) => renderAlert(alert, locale).title,
-      body: (locale) => renderAlert(alert, locale).body ?? '',
+      body: options.escalated ? (locale) => [body(locale), tr(locale, 'alerts', 'bot.escalated')].filter(Boolean).join('\n') : body,
       link: alert.link ?? undefined,
       alertId: alert.id,
+      escalated: options.escalated,
+      channels: options.inAppOnly ? [] : undefined,
     },
     { permission: alert.permission as Permission | undefined },
   );
 }
 
+const journalRaised = (i: RaiseAlertInput, alertId: string) =>
+  recordEvent({
+    type: 'alert.raised',
+    severity: i.severity,
+    entityType: i.entityType ?? 'alert',
+    entityId: i.entityId ?? alertId,
+    data: { ruleKey: i.ruleKey, alertId },
+    source: i.source === 'device' ? 'sensor' : i.source === 'ai' ? 'ai' : 'system',
+  });
+
 /**
  * Report a problem. While it stays unresolved, raising it again only refreshes it, so calling this
- * on every evaluation is safe. People are told once, and again only if it becomes more severe.
+ * on every evaluation is safe. People are told once, and again only if it becomes more severe, or
+ * if it is a new event (`newAfterMs`), which also starts the repeats over.
  */
-export async function raiseAlert(i: RaiseAlertInput): Promise<{ id: string; created: boolean; escalated: boolean }> {
+export async function raiseAlert(input: RaiseAlertInput): Promise<{ id: string; created: boolean; escalated: boolean }> {
+  const i = input.severity === 'urgent' && NEVER_URGENT.has(input.ruleKey) ? { ...input, severity: 'attention' as const } : input;
   const c = ctx();
   const now = new Date();
-  const urgent = i.severity === 'urgent';
+  const urgent = i.severity === 'urgent' && !i.inAppOnly;
   const notifyRoles = i.notify ?? responsibleRoles(i.ruleKey);
 
   const [created] = await tx()
@@ -147,30 +178,28 @@ export async function raiseAlert(i: RaiseAlertInput): Promise<{ id: string; crea
       permission: i.permission,
       notifyCount: 1,
       nextNotifyAt: urgent ? nextRepeat(1) : null,
+      undeliveredSince: urgent ? now : null,
     })
     .onConflictDoNothing()
     .returning();
 
   if (created) {
-    await notifyAlert(created);
-    await recordEvent({
-      type: 'alert.raised',
-      severity: i.severity,
-      entityType: i.entityType ?? 'alert',
-      entityId: i.entityId ?? created.id,
-      data: { ruleKey: i.ruleKey, alertId: created.id },
-      source: i.source === 'device' ? 'sensor' : i.source === 'ai' ? 'ai' : 'system',
-    });
+    await notifyAlert(created, { inAppOnly: i.inAppOnly });
+    await journalRaised(i, created.id);
     return { id: created.id, created: true, escalated: false };
   }
 
   const [existing] = await tx()
     .select()
     .from(alerts)
-    .where(and(eq(alerts.farmId, c.farmId), eq(alerts.dedupKey, i.dedupKey), ne(alerts.status, 'resolved')));
+    .where(and(eq(alerts.farmId, c.farmId), eq(alerts.dedupKey, i.dedupKey), ne(alerts.status, 'resolved')))
+    // Two frames at once must both see the gap the first one closes.
+    .for('update');
   if (!existing) return { id: '', created: false, escalated: false };
 
   const escalated = RANK[i.severity] > RANK[existing.severity as Severity];
+  const anew = i.newAfterMs !== undefined && now.getTime() - existing.lastSeenAt.getTime() > i.newAfterMs;
+  const tell = escalated || anew;
   const [updated] = await tx()
     .update(alerts)
     .set({
@@ -180,15 +209,30 @@ export async function raiseAlert(i: RaiseAlertInput): Promise<{ id: string; crea
       data: i.data ?? {},
       link: i.link,
       lastSeenAt: now,
-      // A worse situation needs a fresh decision, even if an earlier stage was acknowledged.
-      ...(escalated ? { status: 'open', acknowledgedAt: null, acknowledgedBy: null } : {}),
-      notifyCount: escalated ? existing.notifyCount + 1 : existing.notifyCount,
-      nextNotifyAt: urgent ? (escalated ? nextRepeat(1) : existing.nextNotifyAt) : null,
+      // A worse situation or a new event needs a fresh decision, even if an earlier one was acknowledged.
+      ...(tell ? { status: 'open', acknowledgedAt: null, acknowledgedBy: null } : {}),
+      notifyCount: anew ? 1 : escalated ? existing.notifyCount + 1 : existing.notifyCount,
+      nextNotifyAt: urgent ? (tell ? nextRepeat(1) : existing.nextNotifyAt) : null,
+      undeliveredSince: urgent ? (tell ? now : existing.undeliveredSince) : null,
     })
     .where(eq(alerts.id, existing.id))
     .returning();
-  if (escalated) await notifyAlert(updated);
+  if (tell) await notifyAlert(updated, { inAppOnly: i.inAppOnly });
+  if (anew) await journalRaised(i, existing.id);
   return { id: existing.id, created: false, escalated };
+}
+
+/** Nobody responsible can be reached, so this role hears it too, now and on every repeat. */
+export async function escalateAlert(alert: Alert, role: RoleKey): Promise<void> {
+  await tx().update(alerts).set({ notifyRoles: [...alert.notifyRoles, role] }).where(eq(alerts.id, alert.id));
+  await notifyAlert(alert, { roles: [role], escalated: true });
+  await recordEvent({
+    type: 'alert.escalated',
+    severity: 'urgent',
+    entityType: alert.entityType ?? 'alert',
+    entityId: alert.entityId ?? alert.id,
+    data: { ruleKey: alert.ruleKey, alertId: alert.id, role },
+  });
 }
 
 /** Close an alert because the problem is gone. */
@@ -276,27 +320,54 @@ export async function counts() {
   return { ...bySeverity, total: bySeverity.urgent + bySeverity.attention + bySeverity.info };
 }
 
+/** An urgent alert repeats until someone takes it, so stopping it belongs to those it was sent to, and to those who answer for the farm. */
+function mayStop(alert: Alert): boolean {
+  const role = ctx().roleKey ?? '';
+  return alert.severity !== 'urgent' || role === 'owner' || role === 'director' || alert.notifyRoles.includes(role);
+}
+
+function assertMayStop(alert: Alert): void {
+  if (!mayStop(alert)) throw forbidden('Only the people responsible, the owner or the director can stop this urgent alert', 'ALERT_NOT_YOURS');
+}
+
 async function getVisible(id: string): Promise<Alert> {
   const [alert] = await tx().select().from(alerts).where(and(eq(alerts.id, id), visible()));
   if (!alert) throw notFound('Alert');
   return alert;
 }
 
-export async function acknowledge(id: string) {
-  const alert = await getVisible(id);
-  if (alert.status !== 'open') throw conflict('ALERT_NOT_OPEN', 'This alert is not open');
-  const c = ctx();
+/** Whoever comes second, from the app or the bot, finds it taken. */
+async function take(alert: Alert): Promise<Alert | undefined> {
   const [row] = await tx()
     .update(alerts)
-    .set({ status: 'acknowledged', acknowledgedBy: c.userId, acknowledgedAt: new Date(), nextNotifyAt: null })
-    .where(eq(alerts.id, id))
+    .set({ status: 'acknowledged', acknowledgedBy: ctx().userId, acknowledgedAt: new Date(), nextNotifyAt: null })
+    .where(and(eq(alerts.id, alert.id), eq(alerts.status, 'open')))
     .returning();
-  await recordEvent({ type: 'alert.acknowledged', entityType: 'alert', entityId: id, data: { ruleKey: alert.ruleKey } });
+  if (row) await recordEvent({ type: 'alert.acknowledged', entityType: 'alert', entityId: alert.id, data: { ruleKey: alert.ruleKey } });
   return row;
+}
+
+export async function acknowledge(id: string) {
+  const alert = await getVisible(id);
+  assertMayStop(alert);
+  const row = await take(alert);
+  if (!row) throw conflict('ALERT_NOT_OPEN', 'This alert is not open');
+  return row;
+}
+
+export type ButtonOutcome = 'acknowledged' | 'taken' | 'no_right';
+
+/** The button on a Telegram message, by the rules of the route. Null when this farm shows them no such alert. */
+export async function acknowledgeByButton(id: string): Promise<ButtonOutcome | null> {
+  const [alert] = await tx().select().from(alerts).where(and(eq(alerts.id, id), visible()));
+  if (!alert) return null;
+  if (!hasPermission(ACKNOWLEDGE_PERMISSION) || !mayStop(alert)) return 'no_right';
+  return (await take(alert)) ? 'acknowledged' : 'taken';
 }
 
 export async function resolve(id: string) {
   const alert = await getVisible(id);
+  assertMayStop(alert);
   if (alert.status === 'resolved') throw conflict('ALERT_ALREADY_RESOLVED', 'This alert is already resolved');
   const [row] = await tx()
     .update(alerts)

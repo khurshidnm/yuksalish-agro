@@ -119,7 +119,7 @@ export function InsightsTab() {
   const filtered = Boolean(type || decision);
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
       <div className="flex min-w-0 flex-col gap-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
           <Select

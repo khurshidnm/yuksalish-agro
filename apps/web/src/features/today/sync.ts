@@ -30,9 +30,15 @@ export async function keepServer(record: OutboxRecord): Promise<void> {
   await outbox.discard(record.id);
 }
 
+/** The saved log this record is about, if any: a refused first record has none. */
+function savedLogId(record: OutboxRecord): string | null {
+  return record.serverId ?? (record.method === 'PATCH' ? (record.path.split('/').pop() ?? null) : null);
+}
+
 /**
- * For someone not allowed to change the saved record. Their version goes into the farm journal and
- * the zootechnician is alerted, so nothing is lost and a person who may decide does.
+ * For someone who cannot get their record in: it clashes with a saved one they may not change, or the
+ * server refused it. Their version goes into the farm journal and the zootechnician is alerted, so
+ * nothing is lost and a person who may decide does.
  */
 export async function sendToManager(record: OutboxRecord): Promise<void> {
   await api.post(
@@ -41,7 +47,7 @@ export async function sendToManager(record: OutboxRecord): Promise<void> {
       id: record.id,
       herdId: record.meta.herdId,
       date: record.meta.date,
-      serverLogId: record.serverId,
+      serverLogId: savedLogId(record),
       mine: fields(record),
     },
     { idempotencyKey: `conflict-${record.id}` },

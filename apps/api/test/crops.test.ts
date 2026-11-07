@@ -1003,6 +1003,19 @@ describe('harvest', () => {
   });
 });
 
+describe('harvest typing slips', () => {
+  it('refuses more area than the field has, or a yield no crop gives', async () => {
+    const w = await world(10);
+    const owner = await w.f.as('owner');
+    const area = await owner.post('/crops/harvests', { fieldId: w.fieldId, date: today, grossT: 50, areaDoneHa: 999 });
+    expect(area.body.error).toMatchObject({ code: 'AREA_EXCEEDS_FIELD', details: { fieldAreaHa: 10 } });
+    // 42 000 kg typed in the tonnes box.
+    const slip = await owner.post('/crops/harvests', { fieldId: w.fieldId, date: today, grossT: 42_000 });
+    expect(slip.body.error.code).toBe('YIELD_NOT_PLAUSIBLE');
+    expect((await owner.post('/crops/harvests', { fieldId: w.fieldId, date: today, grossT: 42 })).status).toBe(201);
+  });
+});
+
 describe('plan and fact (spec 7.3)', () => {
   it('compares against hand-computed control numbers, with cost from the finance engine', async () => {
     const w = await world(10);

@@ -30,17 +30,16 @@ import {
   perEmployee,
   profitPerHead,
 } from '@yap/shared/formulas/kpi';
-import { averageHead } from '@yap/shared/formulas/livestock';
 import { schema } from '../../db/client';
 import { canSeeMoney, ctx, today, tx } from '../../core/context';
 import { badRequest } from '../../core/errors';
 import { COST_MOVEMENT_TYPES } from '../../core/inventory';
 import { isoMonth, sumOf } from '../../core/query';
 import { assetCosts } from '../assets/costs.service';
-import { cropKpis } from '../crops/summary';
+import { cropKpis, lastHarvestedSeason } from '../crops/summary';
 import { feedingPlan } from '../feed/balance.service';
 import { monthsBetween } from '../finance/budget.service';
-import { budgetExecution, cashflowActual, costCenterCosts, fieldCosts, herdCost, monthToDate } from '../finance/summary';
+import { budgetExecution, cashflowActual, fieldCosts, herdCost, herdResult, monthToDate } from '../finance/summary';
 import { attendanceToday } from '../hr/summary';
 import { feedBalance } from '../inventory/summary';
 import { reproductionKpis } from '../livestock/breeding.summary';
@@ -82,10 +81,7 @@ async function financeKpis(p: Period) {
   const income = months.reduce((sum, m) => sum + m.income, 0);
   const operatingExpense = months.reduce((sum, m) => sum + m.operatingExpense, 0);
 
-  // Each herd is judged with its own income and cost, including its share of overhead.
-  const centers = (await costCenterCosts(p.fromDate, p.toDate)).filter((c) => c.type === 'herd' || c.type === 'animal');
-  const herdIncome = centers.reduce((sum, c) => sum + c.income, 0);
-  const herdExpense = centers.reduce((sum, c) => sum + c.total, 0);
+  const herds = await herdResult(p.fromDate, p.toDate);
   const { byCategory } = await herdSummary();
 
   const cashflow = await cashflowActual(p.fromDate, p.toDate);
@@ -96,7 +92,7 @@ async function financeKpis(p: Period) {
     operatingExpense: round(operatingExpense, 2),
     // Before the first sale there is no return to measure; -100 % would only look alarming.
     profitabilityPercent: income > 0 ? roundOrNull(profitabilityPercent(income, operatingExpense), 1) : null,
-    profitPerEwe: roundOrNull(profitPerHead(herdIncome, herdExpense, byCategory.ewe ?? 0), 0),
+    profitPerEwe: roundOrNull(profitPerHead(herds.income, herds.expense, byCategory.ewe ?? 0), 0),
     operatingRatio: roundOrNull(operatingRatio(operatingExpense, income), 2),
     netCashflow: cashflow.length ? round(cashflow.reduce((sum, m) => sum + m.net, 0), 2) : null,
     budgetDeviation: budget.planned > 0 ? budget.deviation : null,
@@ -115,7 +111,7 @@ async function livestockKpis(p: Period) {
     adgG: growth.adgG,
     weighedAnimals: growth.animals,
     feedConversion: roundOrNull(growth.feedConversion, 2),
-    mortalityPercent: roundOrNull(mortalityPercent(movement.dead, averageHead(movement.opening, movement.closing)), 2),
+    mortalityPercent: roundOrNull(mortalityPercent(movement.dead, movement.averageHead), 2),
     ...(canSeeMoney(FINANCE_SUMMARY_VIEW) ? { costPerKgLive: (await herdCost()).costPerKg } : {}),
   };
 }
@@ -134,9 +130,13 @@ async function seasonCostPerTon(): Promise<number | null> {
 }
 
 async function cropKpiGroup() {
-  const { yieldTHa, onTimePercent, waterM3PerTon } = await cropKpis();
+  const { yieldTHa: seasonYield, onTimePercent, waterM3PerTon } = await cropKpis();
+  // Before this season's harvest, the last one is what there is to show.
+  const last = seasonYield === null ? await lastHarvestedSeason() : null;
+  const yieldTHa = last ? (await cropKpis(last.id)).yieldTHa : seasonYield;
   return {
     yieldTHa: roundOrNull(yieldTHa, 2),
+    yieldSeason: last?.name ?? null,
     onTimePercent: roundOrNull(onTimePercent, 1),
     waterM3PerTon: roundOrNull(waterM3PerTon, 1),
     ...(canSeeMoney(FINANCE_SUMMARY_VIEW) ? { costPerTon: await seasonCostPerTon() } : {}),

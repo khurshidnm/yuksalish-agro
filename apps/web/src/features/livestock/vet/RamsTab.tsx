@@ -32,7 +32,7 @@ export function RamsTab() {
       header: t('common.ram'),
       mobile: 'title',
       cell: (row) => (
-        <Link className="font-medium text-primary hover:underline" to={`/livestock/animals/${row.ramId}`}>
+        <Link className="relative font-medium text-primary after:absolute after:inset-x-0 after:-inset-y-3 hover:underline" to={`/livestock/animals/${row.ramId}`}>
           {row.tag}
         </Link>
       ),

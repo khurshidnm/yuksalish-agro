@@ -7,9 +7,10 @@ import { Alert, Badge, Button, Card } from '@/components/ui';
 import { EmptyState, useConfirm } from '@/components';
 import { ApiError } from '@/lib/api';
 import { formatDateTime, formatQty } from '@/lib/format';
-import { canEdit, outbox, useOutbox, type OutboxRecord } from '@/lib/outbox';
+import { canEdit, outbox, useOutbox, waitsFor, type OutboxRecord } from '@/lib/outbox';
 import { errorMessage, useDetail } from '@/lib/query';
 import { FieldScreen } from './field-ui';
+import { dailyLogLink } from './logic';
 import { keepMine, keepServer, sendToManager, type ServerDailyLog } from './sync';
 
 interface DisplayLine {
@@ -19,8 +20,10 @@ interface DisplayLine {
   actualQty: number | null;
 }
 
-function toError(record: OutboxRecord): ApiError {
+function toError(record: OutboxRecord): Error {
   const e = record.error;
+  // Status 0 means no network, which a crash on this phone is not.
+  if (e?.code === 'CLIENT_ERROR') return new Error(e.message);
   return new ApiError(e?.status ?? 0, e?.code ?? 'ERROR', e?.message ?? '', e?.details);
 }
 
@@ -41,31 +44,104 @@ const RecordRow = ({ record, children }: { record: OutboxRecord; children?: Reac
 function Failed({ record }: { record: OutboxRecord }) {
   const { t } = useTranslation('today');
   const confirm = useConfirm();
-  const editTo = record.kind === 'daily_log' && canEdit(record) ? `/today/daily-log/${record.meta.herdId as string}` : null;
+  const isLog = record.kind === 'daily_log';
+  const [sending, setSending] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
 
   const discard = async () => {
-    const ok = await confirm({ title: t('sync.discardTitle'), description: t('sync.discardBody'), confirmLabel: t('sync.discard'), destructive: true });
+    const ok = await confirm({
+      title: t('sync.discardTitle'),
+      description: t(isLog ? 'sync.discardLogBody' : 'sync.discardBody'),
+      confirmLabel: t('sync.discard'),
+      destructive: true,
+    });
+    if (ok) await outbox.discard(record.id);
+  };
+
+  const toManager = async () => {
+    setSending(true);
+    setProblem(null);
+    try {
+      await sendToManager(record);
+      toast.success(t('sync.settled'));
+    } catch (error) {
+      setProblem(errorMessage(error));
+      setSending(false);
+    }
+  };
+
+  return (
+    <RecordRow record={record}>
+      <Alert tone="danger">{errorMessage(toError(record))}</Alert>
+      {problem && <Alert tone="danger">{problem}</Alert>}
+      <div className="grid grid-cols-2 gap-2">
+        <Button size="lg" className="min-h-14" onClick={() => void outbox.retry(record.id)}>
+          {t('sync.retry')}
+        </Button>
+        {isLog && canEdit(record) && (
+          <Button variant="outline" size="lg" className="min-h-14" asChild>
+            <Link to={dailyLogLink(record)}>{t('sync.edit')}</Link>
+          </Button>
+        )}
+        {isLog && (
+          <Button variant="outline" size="lg" className="col-span-2 min-h-14" loading={sending} onClick={() => void toManager()}>
+            <Send aria-hidden />
+            {t('sync.sendToManager')}
+          </Button>
+        )}
+        <Button variant="outline" size="lg" className={isLog ? 'col-span-2 min-h-14' : 'min-h-14'} onClick={() => void discard()}>
+          <Trash2 aria-hidden />
+          {t('sync.discard')}
+        </Button>
+      </div>
+    </RecordRow>
+  );
+}
+
+/** Only send again or delete: after a server error the first version may be saved, so it cannot be changed. */
+function Stuck({ record }: { record: OutboxRecord }) {
+  const { t } = useTranslation('today');
+  const confirm = useConfirm();
+  const isLog = record.kind === 'daily_log';
+
+  const discard = async () => {
+    const ok = await confirm({
+      title: t('sync.discardTitle'),
+      description: t(isLog ? 'sync.discardLogBody' : 'sync.discardBody'),
+      confirmLabel: t('sync.discard'),
+      destructive: true,
+    });
     if (ok) await outbox.discard(record.id);
   };
 
   return (
     <RecordRow record={record}>
       <Alert tone="danger">{errorMessage(toError(record))}</Alert>
+      <p className="text-base">{t('sync.stuckBody')}</p>
+      <p className="text-sm break-words text-muted-foreground">{t('sync.serverSaid', { code: record.error?.code, message: record.error?.message })}</p>
       <div className="grid grid-cols-2 gap-2">
-        {editTo ? (
-          <Button size="lg" className="min-h-14" asChild>
-            <Link to={editTo}>{t('sync.edit')}</Link>
-          </Button>
-        ) : (
-          <Button size="lg" className="min-h-14" onClick={() => void outbox.retry(record.id)}>
-            {t('sync.retry')}
-          </Button>
-        )}
+        <Button size="lg" className="min-h-14" onClick={() => void outbox.retry(record.id)}>
+          {t('sync.retry')}
+        </Button>
         <Button variant="outline" size="lg" className="min-h-14" onClick={() => void discard()}>
           <Trash2 aria-hidden />
           {t('sync.discard')}
         </Button>
       </div>
+    </RecordRow>
+  );
+}
+
+function Waiting({ record, records }: { record: OutboxRecord; records: OutboxRecord[] }) {
+  const { t } = useTranslation('today');
+  const blocker = waitsFor(record, records);
+  return (
+    <RecordRow record={record}>
+      {blocker ? (
+        <p className="text-base font-medium text-warning">{t('sync.waitsFor', { title: blocker.title })}</p>
+      ) : (
+        (record.serverErrors ?? 0) > 0 && <p className="text-base font-medium text-warning">{t('sync.serverTrouble')}</p>
+      )}
     </RecordRow>
   );
 }
@@ -97,7 +173,8 @@ function Conflict({ record }: { record: OutboxRecord }) {
   const confirm = useConfirm();
   const server = useDetail<ServerDailyLog>(record.serverId ? `/livestock/daily-logs/${record.serverId}` : null, undefined, { networkMode: 'always', retry: false });
   const [busy, setBusy] = useState<'mine' | 'server' | 'manager' | null>(null);
-  const [needsManager, setNeedsManager] = useState(false);
+  const tooLate = record.error?.code === 'EDIT_WINDOW_CLOSED';
+  const [needsManager, setNeedsManager] = useState(tooLate);
   const [problem, setProblem] = useState<string | null>(null);
 
   const body = record.body as { waterL?: number | null; notes?: string | null };
@@ -125,8 +202,8 @@ function Conflict({ record }: { record: OutboxRecord }) {
 
   return (
     <RecordRow record={record}>
-      <p className="text-base">{t('sync.conflictBody')}</p>
-      <div className="grid gap-2 sm:grid-cols-2">
+      <p className="text-base">{t(tooLate ? 'sync.windowClosedBody' : 'sync.conflictBody')}</p>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <Amounts title={t('sync.mine')} lines={mine} waterL={body.waterL} notes={body.notes} />
         {server.data ? (
           <Amounts title={t('sync.server')} lines={server.data.lines} waterL={server.data.waterL} notes={server.data.notes} />
@@ -159,6 +236,7 @@ export default function SyncPage() {
 
   const conflicts = records.filter((r) => r.status === 'conflict');
   const failed = records.filter((r) => r.status === 'failed');
+  const stuck = records.filter((r) => r.status === 'stuck');
   const waiting = records.filter((r) => r.status === 'pending');
   const online = !unreachable && navigator.onLine;
 
@@ -192,6 +270,18 @@ export default function SyncPage() {
         </section>
       )}
 
+      {stuck.length > 0 && (
+        <section className="flex flex-col gap-2">
+          <h2 className="flex items-center gap-2 text-lg font-bold">
+            <TriangleAlert className="size-5 text-danger" aria-hidden />
+            {t('sync.stuck')}
+          </h2>
+          {stuck.map((record) => (
+            <Stuck key={record.id} record={record} />
+          ))}
+        </section>
+      )}
+
       {failed.length > 0 && (
         <section className="flex flex-col gap-2">
           <h2 className="flex items-center gap-2 text-lg font-bold">
@@ -208,7 +298,7 @@ export default function SyncPage() {
         <section className="flex flex-col gap-2">
           <h2 className="text-lg font-bold">{t('sync.waiting')}</h2>
           {waiting.map((record) => (
-            <RecordRow key={record.id} record={record} />
+            <Waiting key={record.id} record={record} records={records} />
           ))}
         </section>
       )}

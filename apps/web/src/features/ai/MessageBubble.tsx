@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui';
 import { formatDate, formatNumber } from '@/lib/format';
 import { Attachments } from './Attachments';
+import { questionOf } from './proposals';
+import { ChatQuestion } from './QuestionOptions';
 import { RichText } from './RichText';
 import type { AnswerSource, ChatMessage, ToolCall, ToolStatus } from './types';
 
@@ -30,7 +32,7 @@ export function ToolActivity({ tools }: { tools: LiveTool[] }) {
   return (
     <ul className="flex flex-wrap gap-1.5" aria-label={t('chat.toolActivity')}>
       {shown.map((tool, i) => {
-        const label = t(`tools.${tool.name}`, { defaultValue: tool.name });
+        const label = t([`tools.${tool.name}`, `records.tools.${tool.name}`], { defaultValue: tool.name });
         if (tool.status === 'running') {
           return (
             <li key={i}>
@@ -58,14 +60,14 @@ export function ToolActivity({ tools }: { tools: LiveTool[] }) {
 
 function SourceLine({ source }: { source: AnswerSource }) {
   const { t } = useTranslation('ai');
-  const tables = source.tables.map((table) => t(`tables.${table}`, { defaultValue: table })).join(', ');
+  const tables = source.tables.map((table) => t([`tables.${table}`, `records.tables.${table}`], { defaultValue: table })).join(', ');
   const period =
     source.from || source.to
       ? `${source.from ? formatDate(source.from) : ''} — ${source.to ? formatDate(source.to) : ''}`
       : null;
   return (
     <li>
-      <span className="font-medium">{t(`tools.${source.tool}`, { defaultValue: source.tool })}</span>
+      <span className="font-medium">{t([`tools.${source.tool}`, `records.tools.${source.tool}`], { defaultValue: source.tool })}</span>
       {`: ${tables}`}
       {period && ` · ${period}`}
       {source.rows !== undefined && ` · ${t('chat.rows', { count: formatNumber(source.rows) })}`}
@@ -99,7 +101,16 @@ function Evidence({ message }: { message: ChatMessage }) {
   );
 }
 
-export function MessageBubble({ message }: { message: ChatMessage }) {
+export interface MessageBubbleProps {
+  message: ChatMessage;
+  /** The last message of the conversation: only its question still stands. */
+  latest?: boolean;
+  /** Sends the tapped option as the person's answer. Left out when nothing can be sent. */
+  onAnswer?: (text: string) => void;
+  busy?: boolean;
+}
+
+export function MessageBubble({ message, latest, onAnswer, busy }: MessageBubbleProps) {
   if (message.role === 'user') {
     return (
       <div className="flex justify-end">
@@ -110,11 +121,13 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
     );
   }
   const tools: ToolCall[] = message.toolCalls ?? [];
+  const question = latest ? questionOf(message.attachments) : null;
   return (
-    <article className="flex flex-col gap-3 rounded-2xl rounded-bl-sm border border-border bg-card p-4">
+    <article className="flex min-w-0 flex-col gap-3 rounded-2xl rounded-bl-sm border border-border bg-card p-3 sm:p-4">
       <ToolActivity tools={tools} />
       <RichText text={message.text} />
       {message.attachments && message.attachments.length > 0 && <Attachments attachments={message.attachments} />}
+      {question && <ChatQuestion question={question} disabled={busy} onAnswer={onAnswer} />}
       <Evidence message={message} />
     </article>
   );

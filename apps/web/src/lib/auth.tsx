@@ -1,10 +1,34 @@
 import type { Permission } from '@yap/shared';
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { api, refreshSession, setAccessToken, setAuthEvents } from './api';
+import {
+  api,
+  bindTabIdentity,
+  deliverSignOut,
+  forgetOpenSaves,
+  oweSignOut,
+  refreshSession,
+  setAccessToken,
+  setAuthEvents,
+  settleSignOut,
+} from './api';
 import { setDefaultCurrency } from './format';
 import i18n, { LANGUAGES } from './i18n';
 import { queryClient } from './query';
 import type { AuthResult, Session, TwoFactorChallenge } from './types';
+import { storageGet, storageRemove, storageSet } from './utils';
+
+/** Who is signed in on this browser: read by the public page before anything loads, and by every other tab. */
+const SIGNED_IN_KEY = 'yap.signedIn';
+
+/** Whether a session could be restored here. Blocked storage holds no mark, and then only the server can tell. */
+function maybeSignedIn(): boolean {
+  if (storageGet(SIGNED_IN_KEY) !== null) return true;
+  const probe = 'yap.storageProbe';
+  storageSet(probe, '1');
+  const blocked = storageGet(probe) === null;
+  storageRemove(probe);
+  return blocked;
+}
 
 export type AuthStatus = 'loading' | 'authenticated' | 'anonymous';
 
@@ -14,9 +38,11 @@ interface AuthContextValue {
   status: AuthStatus;
   session: Session | null;
   login(phone: string, password: string): Promise<LoginOutcome>;
-  verifyTwoFactor(challengeToken: string, code: string): Promise<void>;
+  verifyTwoFactor(challengeToken: string, code: string): Promise<Session>;
   logout(): Promise<void>;
   switchFarm(membershipId: string): Promise<void>;
+  /** Join a farm that invited this person, and land on it. */
+  acceptInvitation(id: string): Promise<void>;
   /** Reload the session from the server, e.g. after enabling two-factor. */
   reloadSession(): Promise<void>;
 }
@@ -27,11 +53,16 @@ function useProvideAuth(): AuthContextValue {
   const [status, setStatus] = useState<AuthStatus>('loading');
   const [session, setSession] = useState<Session | null>(null);
   const languageApplied = useRef(false);
+  /** This tab's person, once storage holds the mark. Blocked storage leaves it null, and then tabs cannot compare. */
+  const signedInAs = useRef<string | null>(null);
 
   const applySession = useCallback((next: Session) => {
+    bindTabIdentity({ userId: next.user.id, farmId: next.farm?.id ?? null });
     setSession(next);
     setDefaultCurrency(next.tenant?.currency);
     setStatus('authenticated');
+    storageSet(SIGNED_IN_KEY, next.user.id);
+    signedInAs.current = storageGet(SIGNED_IN_KEY) === next.user.id ? next.user.id : null;
     // A saved account language applies once, so it never overrides a switch made during the session.
     if (!languageApplied.current) {
       languageApplied.current = true;
@@ -48,7 +79,12 @@ function useProvideAuth(): AuthContextValue {
   }, []);
 
   const clear = useCallback(() => {
+    // By now the mark may be the next person's, signed in from another tab. Removing it would end theirs.
+    if (signedInAs.current && storageGet(SIGNED_IN_KEY) === signedInAs.current) storageRemove(SIGNED_IN_KEY);
+    signedInAs.current = null;
+    bindTabIdentity(null);
     setAccessToken(null);
+    forgetOpenSaves();
     setSession(null);
     setStatus('anonymous');
     queryClient.clear();
@@ -60,12 +96,43 @@ function useProvideAuth(): AuthContextValue {
         if (next) applySession(next as Session);
       },
       onSignedOut: clear,
+      // A full start, because the last person's cards live in component state as well as in the cache.
+      onSomeoneElse: () => window.location.reload(),
     });
   }, [applySession, clear]);
+
+  // Sign-out ends every tab, and a tab asleep at that moment finds out as it wakes.
+  useEffect(() => {
+    const compare = () => {
+      if (!signedInAs.current) return;
+      const now = storageGet(SIGNED_IN_KEY);
+      if (now === null) clear();
+      else if (now !== signedInAs.current) window.location.reload();
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === SIGNED_IN_KEY || event.key === null) compare();
+    };
+    const retrySignOut = () => void deliverSignOut();
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('pageshow', compare);
+    document.addEventListener('visibilitychange', compare);
+    window.addEventListener('online', retrySignOut);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('pageshow', compare);
+      document.removeEventListener('visibilitychange', compare);
+      window.removeEventListener('online', retrySignOut);
+    };
+  }, [clear]);
 
   // Restore the session from the refresh cookie on load. A success arrives through onRefreshed.
   useEffect(() => {
     let cancelled = false;
+    void deliverSignOut();
+    if (!maybeSignedIn()) {
+      setStatus('anonymous');
+      return undefined;
+    }
     void refreshSession().then(async (result) => {
       if (cancelled) return;
       if (!result) {
@@ -79,44 +146,62 @@ function useProvideAuth(): AuthContextValue {
     };
   }, [applySession]);
 
-  const login = useCallback(
-    async (phone: string, password: string): Promise<LoginOutcome> => {
-      const result = await api.post<AuthResult | TwoFactorChallenge>('/auth/login', { phone, password });
-      if ('twoFactorRequired' in result) return { status: 'two-factor', challengeToken: result.challengeToken };
+  const enter = useCallback(
+    (result: AuthResult) => {
+      settleSignOut();
       setAccessToken(result.accessToken);
       applySession(result.session);
-      return { status: 'ok' };
     },
     [applySession],
+  );
+
+  const login = useCallback(
+    async (phone: string, password: string): Promise<LoginOutcome> => {
+      // First, because a logout arriving after the new cookie would end the new session.
+      await deliverSignOut();
+      const result = await api.post<AuthResult | TwoFactorChallenge>('/auth/login', { phone, password });
+      if ('twoFactorRequired' in result) return { status: 'two-factor', challengeToken: result.challengeToken };
+      enter(result);
+      return { status: 'ok' };
+    },
+    [enter],
   );
 
   const verifyTwoFactor = useCallback(
     async (challengeToken: string, code: string) => {
       const result = await api.post<AuthResult>('/auth/2fa/verify', { challengeToken, code });
+      enter(result);
+      return result.session;
+    },
+    [enter],
+  );
+
+  /** Over here and now, signal or not. The server hears of it as soon as it can be reached. */
+  const logout = useCallback(async () => {
+    oweSignOut();
+    clear();
+    await deliverSignOut();
+  }, [clear]);
+
+  const landOnFarm = useCallback(
+    (result: AuthResult) => {
       setAccessToken(result.accessToken);
       applySession(result.session);
+      // Everything cached belongs to the previous farm, and so does an unanswered save.
+      forgetOpenSaves();
+      queryClient.clear();
     },
     [applySession],
   );
 
-  const logout = useCallback(async () => {
-    try {
-      await api.post('/auth/logout');
-    } catch {
-      // Sign out locally even when the server cannot be reached.
-    }
-    clear();
-  }, [clear]);
-
   const switchFarm = useCallback(
-    async (membershipId: string) => {
-      const result = await api.post<AuthResult>('/auth/switch-farm', { membershipId });
-      setAccessToken(result.accessToken);
-      applySession(result.session);
-      // Everything cached belongs to the previous farm.
-      queryClient.clear();
-    },
-    [applySession],
+    async (membershipId: string) => landOnFarm(await api.post<AuthResult>('/auth/switch-farm', { membershipId })),
+    [landOnFarm],
+  );
+
+  const acceptInvitation = useCallback(
+    async (id: string) => landOnFarm(await api.post<AuthResult>(`/auth/invitations/${id}/accept`)),
+    [landOnFarm],
   );
 
   const reloadSession = useCallback(async () => {
@@ -124,8 +209,8 @@ function useProvideAuth(): AuthContextValue {
   }, [applySession]);
 
   return useMemo(
-    () => ({ status, session, login, verifyTwoFactor, logout, switchFarm, reloadSession }),
-    [status, session, login, verifyTwoFactor, logout, switchFarm, reloadSession],
+    () => ({ status, session, login, verifyTwoFactor, logout, switchFarm, acceptInvitation, reloadSession }),
+    [status, session, login, verifyTwoFactor, logout, switchFarm, acceptInvitation, reloadSession],
   );
 }
 

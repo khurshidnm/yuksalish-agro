@@ -199,7 +199,8 @@ export const conflictReportInput = z.object({
   id: z.uuid(),
   herdId: z.uuid(),
   date: isoDate,
-  serverLogId: z.uuid(),
+  /** Null when the record was refused outright, such as for short stock: nothing is saved to compare it with. */
+  serverLogId: z.uuid().nullish(),
   mine: z.object({
     headCount: z.number().int().min(0).nullish(),
     waterL: z.number().min(0).nullish(),
@@ -210,8 +211,8 @@ export const conflictReportInput = z.object({
 });
 
 /**
- * A shepherd cannot overwrite a colleague's record for the day, and must not lose their own. This
- * keeps their version in the journal and asks someone who may change the record to decide.
+ * A shepherd cannot overwrite a colleague's record for the day, or get a refused one in, and must not
+ * lose their own. This keeps their version in the journal and asks someone who may change the record to decide.
  */
 export async function reportConflict(input: z.infer<typeof conflictReportInput>) {
   const { farmId } = ctx();
@@ -220,11 +221,13 @@ export async function reportConflict(input: z.infer<typeof conflictReportInput>)
     .from(herds)
     .where(and(eq(herds.id, input.herdId), eq(herds.farmId, farmId)));
   if (!herd) throw notFound('Herd');
-  const [log] = await tx()
-    .select({ id: dailyLogs.id })
-    .from(dailyLogs)
-    .where(and(eq(dailyLogs.id, input.serverLogId), eq(dailyLogs.farmId, farmId)));
-  if (!log) throw notFound('Daily log');
+  if (input.serverLogId) {
+    const [log] = await tx()
+      .select({ id: dailyLogs.id })
+      .from(dailyLogs)
+      .where(and(eq(dailyLogs.id, input.serverLogId), eq(dailyLogs.farmId, farmId)));
+    if (!log) throw notFound('Daily log');
+  }
 
   const names = await tx()
     .select({ id: items.id, name: items.name, unit: items.unit })
@@ -249,13 +252,18 @@ export async function reportConflict(input: z.infer<typeof conflictReportInput>)
     ruleKey: 'offline_conflict',
     dedupKey: `offline_conflict:${input.id}`,
     severity: 'attention',
-    title: `${herd.name}: ${input.date} kuni uchun ikki xil yozuv`,
-    body: `Oflayn kiritilgan yozuv saqlangan yozuvga mos kelmadi. Oflayn yozuv: ${summary || "ozuqa ko'rsatilmagan"}.`,
+    title: input.serverLogId ? `${herd.name}: ${input.date} kuni uchun ikki xil yozuv` : `${herd.name}: ${input.date} kungi yozuv qabul qilinmadi`,
+    body: `${input.serverLogId ? 'Oflayn kiritilgan yozuv saqlangan yozuvga mos kelmadi.' : "Oflayn kiritilgan yozuv rad etildi, uni qo'lda kiritish kerak."} Oflayn yozuv: ${summary || "ozuqa ko'rsatilmagan"}.`,
     link: '/livestock/daily-logs',
     entityType: 'herd',
     entityId: herd.id,
     notify: ['zootechnician', 'director'],
-    data: { herd: herd.name, date: input.date, summary, ...(summary ? {} : { textKey: 'offline_conflict_empty' }) },
+    data: {
+      herd: herd.name,
+      date: input.date,
+      summary: summary || (input.serverLogId ? '' : '—'),
+      ...(input.serverLogId ? (summary ? {} : { textKey: 'offline_conflict_empty' }) : { textKey: 'offline_refused' }),
+    },
   });
   return { reported: true };
 }

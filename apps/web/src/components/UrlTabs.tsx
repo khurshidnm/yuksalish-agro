@@ -4,9 +4,10 @@ import { useSearchParams } from 'react-router';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui';
 
 /** A string value kept in the query string, so filters and tabs survive reload and can be shared. */
-export function useUrlParam(name: string, defaultValue = ''): [string, (value: string) => void] {
+export function useUrlParam(name: string, defaultValue = '', options?: { keepScroll?: boolean }): [string, (value: string) => void] {
   const [params, setParams] = useSearchParams();
   const value = params.get(name) ?? defaultValue;
+  const keepScroll = options?.keepScroll ?? false;
   const set = useCallback(
     (next: string) => {
       setParams(
@@ -16,10 +17,10 @@ export function useUrlParam(name: string, defaultValue = ''): [string, (value: s
           else updated.set(name, next);
           return updated;
         },
-        { replace: true },
+        { replace: true, preventScrollReset: keepScroll },
       );
     },
-    [name, defaultValue, setParams],
+    [name, defaultValue, setParams, keepScroll],
   );
   return [value, set];
 }

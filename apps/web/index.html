@@ -3,11 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#16392a" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="robots" content="noindex" />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-    <title>Yuksalish Agro</title>
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <title>Agro Panel</title>
     <script>
       // Applied before first paint so a saved theme never flashes the wrong colours.
       (function () {
@@ -17,6 +19,76 @@
         } catch (e) {}
         var dark = theme === 'dark' || (theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
         document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      })();
+    </script>
+    <script>
+      // Says what to do when the app does not reach the screen: its code never arrives, will not run, dies
+      // on the way, or the browser is too old. An installed app has no reload button. Written for the oldest
+      // browser there is, because that one reads it too. React replaces it all as soon as it starts.
+      // It stays above the stylesheet, which on a hung link would hold back both this script and the screen.
+      (function () {
+        var words = '__BOOT_WORDS__'; // Filled in by scripts/prerender.mjs.
+        var START_WAIT_MS = 8000;
+        // Exactly the floor of the build, which docs/user-guide.*.md give in numbers: Chrome 111, Safari 16.4.
+        var old = !(window.CSS && CSS.supports && CSS.supports('color', 'color-mix(in srgb, red, red)') && window.CSSPropertyRule);
+        function reload() {
+          location.reload();
+        }
+        function text() {
+          var language = null;
+          try {
+            language = localStorage.getItem('yap.language');
+          } catch (e) {}
+          return words[language] || words.uz;
+        }
+        // The app can still arrive on a slow link. Then it needs its styles back, and must not reload by itself.
+        function whenAppTakesOver(root, card, links) {
+          new MutationObserver(function (changes, observer) {
+            if (card.parentNode === root) return;
+            observer.disconnect();
+            removeEventListener('online', reload);
+            for (var i = 0; i < links.length; i++) document.head.appendChild(links[i]);
+          }).observe(root, { childList: true });
+        }
+        function show() {
+          var root = document.getElementById('root');
+          var say = text();
+          if (!root || root.firstChild || !say) return;
+          var links = Array.prototype.slice.call(document.querySelectorAll('link[rel=stylesheet]'));
+          for (var i = 0; i < links.length; i++) links[i].parentNode.removeChild(links[i]);
+          var card = document.createElement('div');
+          card.style.cssText =
+            'position:fixed;top:0;right:0;bottom:0;left:0;overflow:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box;padding:16px;text-align:center;font:16px/1.5 system-ui,sans-serif;background:Canvas;color:CanvasText;color-scheme:' +
+            document.documentElement.dataset.theme;
+          var title = document.createElement('strong');
+          title.textContent = old ? say.oldTitle : say.title;
+          card.appendChild(title);
+          var body = document.createElement('p');
+          body.textContent = old ? say.oldBody : say.body;
+          body.style.cssText = 'margin:12px 0;max-width:32em';
+          card.appendChild(body);
+          if (!old) {
+            var button = document.createElement('button');
+            button.type = 'button';
+            button.textContent = say.reload;
+            button.style.cssText = 'min-height:48px;padding:0 24px;font:inherit;font-weight:600';
+            button.addEventListener('click', reload);
+            card.appendChild(button);
+            addEventListener('online', reload);
+          }
+          root.appendChild(card);
+          whenAppTakesOver(root, card, links);
+        }
+        setTimeout(show, START_WAIT_MS);
+        if (old) document.addEventListener('DOMContentLoaded', show);
+        // Any error at all: a script that would not load, or React giving up, which leaves #root empty.
+        addEventListener(
+          'error',
+          function () {
+            setTimeout(show, 0);
+          },
+          true,
+        );
       })();
     </script>
   </head>

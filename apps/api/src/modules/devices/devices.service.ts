@@ -1,13 +1,16 @@
-import { and, asc, desc, eq, inArray, isNotNull, lt, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, lt, ne, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { DEVICE_STATUSES, DEVICE_TYPES, SEVERITIES } from '@yap/shared';
 import { schema } from '../../db/client';
-import { ctx, tx } from '../../core/context';
+import { ctx, tx, withTenant } from '../../core/context';
 import { seal, sha256 } from '../../core/crypto';
-import { badRequest, forbidden, notFound } from '../../core/errors';
+import { AppError, badRequest, forbidden, notFound } from '../../core/errors';
 import { recordEvent } from '../../core/journal';
+import { requestPublic } from '../../core/outbound';
 import { clientId, isoDate, listQuery, paged, searchAny, sortBy } from '../../core/query';
+import { signFileToken, verifyFileToken } from '../../core/tokens';
 import { raiseAlert, resolveByDedupKey } from '../alerts/alerts.service';
+import { clock, LATE_AFTER_MS } from '../notifications/notify.service';
 import { fromDay, toDay } from '../settings/audit.service';
 
 const { apiKeys, devices, events, facilities, tenants } = schema;
@@ -16,6 +19,18 @@ type Device = typeof devices.$inferSelect;
 
 /** Minutes without a signal before a device counts as offline, unless it sets its own. */
 export const DEFAULT_OFFLINE_MINUTES = 10;
+
+/**
+ * Frames of one event come seconds apart, or once a minute from a slow reporter. Past this gap it is
+ * a new event, even if the last one was acknowledged, and someone must hear about it now.
+ */
+const EVENT_BURST_MS = 2 * 60_000;
+
+/** Someone must hear about these, so the sender's word on severity does not count. */
+const ALWAYS_URGENT = new Set(['fire', 'smoke']);
+
+const SNAPSHOT_TIMEOUT_MS = 8_000;
+const MAX_SNAPSHOT_BYTES = 10 * 1024 * 1024;
 
 export const CAMERA_ZONES = ['barn', 'feed_store', 'gate', 'pump'] as const;
 export type CameraZone = (typeof CAMERA_ZONES)[number];
@@ -69,15 +84,29 @@ export const deviceListQuery = listQuery.extend({
   status: z.enum(DEVICE_STATUSES).optional(),
 });
 
-/** Standard event format (docs/device-events.md). */
-export const deviceEvent = z.object({
+const eventKind = (type: string) => type.split('.').pop()!;
+
+const eventFields = z.object({
   deviceId: z.uuid(),
+  /** Stays the same on every retry of this event. */
+  eventId: z.string().min(1).max(128).optional(),
   type: z.string().regex(/^[a-z0-9_.-]+$/).max(64),
   occurredAt: z.iso.datetime({ offset: true }).optional(),
   severity: z.enum(SEVERITIES).default('info'),
   data: z.record(z.string(), z.unknown()).default({}),
   snapshotUrl: httpUrl.optional(),
 });
+
+/**
+ * Standard event format (docs/device-events.md). Runs before validation, because a bridge drops what
+ * is refused, and a fire must not be lost over a severity this format does not know.
+ */
+export const deviceEvent = z.preprocess((raw) => {
+  const sent = (raw as { type?: unknown } | null)?.type;
+  if (typeof sent !== 'string') return raw;
+  const type = sent.toLowerCase();
+  return { ...(raw as object), type, ...(ALWAYS_URGENT.has(eventKind(type)) ? { severity: 'urgent' } : {}) };
+}, eventFields);
 export type DeviceEvent = z.infer<typeof deviceEvent>;
 
 export const heartbeatInput = z.object({ deviceId: z.uuid() });
@@ -292,9 +321,16 @@ const eventRejection = (e: DeviceEvent, device: Device | undefined, keyId: strin
   return null;
 };
 
-async function store(device: Device, e: DeviceEvent): Promise<void> {
+/**
+ * A device sends again when it never saw the reply, so the first attempt may well have been stored.
+ * Its own id tells the two apart, or else the moment it says the event happened.
+ */
+const repeatKey = (e: DeviceEvent) => e.eventId ?? (e.occurredAt ? `${e.type}@${Date.parse(e.occurredAt)}` : undefined);
+
+/** False when this is a repeat of an event already stored, which changes nothing. */
+async function store(device: Device, e: DeviceEvent): Promise<boolean> {
   const source = device.type === 'camera' ? 'camera' : 'sensor';
-  await recordEvent({
+  const stored = await recordEvent({
     type: e.type.includes('.') ? e.type : `${source}.${e.type}`,
     severity: e.severity,
     source,
@@ -303,23 +339,34 @@ async function store(device: Device, e: DeviceEvent): Promise<void> {
     deviceId: device.id,
     occurredAt: e.occurredAt ? new Date(e.occurredAt) : undefined,
     data: { ...e.data, ...(e.snapshotUrl ? { snapshotUrl: e.snapshotUrl } : {}), deviceName: device.name },
+    dedupKey: repeatKey(e),
   });
+  if (!stored) return false;
 
   if (e.severity === 'urgent') {
-    const label = EVENT_TITLES[e.type.split('.').pop()!] ?? e.type;
+    // Sent from a buffer after an outage, it must not read as happening now.
+    const late = e.occurredAt && Date.now() - Date.parse(e.occurredAt) > LATE_AFTER_MS;
+    const label = EVENT_TITLES[eventKind(e.type)] ?? e.type;
     await raiseAlert({
       ruleKey: 'device_event',
-      // One alert per device and type while it is open: a burst of smoke frames is one problem.
-      dedupKey: `device_event:${device.id}:${e.type}`,
+      // One alert per device and kind while it is open: a burst of smoke frames is one problem, however it is spelled.
+      dedupKey: `device_event:${device.id}:${eventKind(e.type)}`,
+      newAfterMs: EVENT_BURST_MS,
       severity: 'urgent',
       title: `${device.name}: ${label}`,
       link: '/cameras',
       entityType: 'device',
       entityId: device.id,
       source: 'device',
-      data: { deviceName: device.name, eventType: e.type, ...(e.snapshotUrl ? { snapshotUrl: e.snapshotUrl } : {}) },
+      data: {
+        deviceName: device.name,
+        eventType: e.type,
+        ...(e.snapshotUrl ? { snapshotUrl: e.snapshotUrl } : {}),
+        ...(late ? { happenedAt: clock(new Date(e.occurredAt!), ctx().timezone) } : {}),
+      },
     });
   }
+  return true;
 }
 
 /**
@@ -360,29 +407,39 @@ export async function ingest(e: DeviceEvent, rawKey: string) {
   const device = known.get(e.deviceId);
   const rejection = eventRejection(e, device, await callerKeyId(rawKey));
   if (rejection) throw rejectionError(rejection);
-  await store(device!, e);
+  const stored = await store(device!, e);
   await markSeen([device!]);
-  return { accepted: true };
+  return { accepted: true, ...(stored ? {} : { duplicate: true }) };
 }
 
-/** One bad event must not lose the rest of an offline buffer, so failures are reported per event. */
-export async function ingestBatch(batch: DeviceEvent[], rawKey: string) {
-  const known = await loadDevices([...new Set(batch.map((e) => e.deviceId))]);
+/**
+ * One bad event must not lose the rest of an offline buffer, or hold it up for ever, so even a
+ * malformed one is reported on its own.
+ */
+export async function ingestBatch(batch: unknown[], rawKey: string) {
+  const parsed = batch.map((raw) => deviceEvent.safeParse(raw));
+  const known = await loadDevices([...new Set(parsed.flatMap((e) => (e.success ? [e.data.deviceId] : [])))]);
   const keyId = await callerKeyId(rawKey);
   const seen = new Map<string, Device>();
   const rejected: { index: number; code: string }[] = [];
-  for (const [index, e] of batch.entries()) {
+  let duplicates = 0;
+  for (const [index, result] of parsed.entries()) {
+    if (!result.success) {
+      rejected.push({ index, code: 'VALIDATION_ERROR' });
+      continue;
+    }
+    const e = result.data;
     const device = known.get(e.deviceId);
     const code = eventRejection(e, device, keyId);
     if (code) {
       rejected.push({ index, code });
       continue;
     }
-    await store(device!, e);
+    if (!(await store(device!, e))) duplicates += 1;
     seen.set(device!.id, device!);
   }
   await markSeen([...seen.values()]);
-  return { accepted: batch.length - rejected.length, rejected };
+  return { accepted: batch.length - rejected.length, duplicates, rejected };
 }
 
 export async function heartbeat(deviceId: string, rawKey: string) {
@@ -399,13 +456,15 @@ export async function eventFeed(q: z.infer<typeof eventFeedQuery>) {
   const where = and(
     eq(events.farmId, ctx().farmId),
     q.source ? eq(events.source, q.source) : inArray(events.source, ['camera', 'sensor']),
+    // The platform's own note that an alert was raised is not something a device reported.
+    ne(events.type, 'alert.raised'),
     q.deviceId ? eq(events.deviceId, q.deviceId) : undefined,
     q.type ? eq(events.type, q.type) : undefined,
     q.severity ? eq(events.severity, q.severity) : undefined,
     fromDay(events.occurredAt, q.from),
     toDay(events.occurredAt, q.to),
   );
-  return paged(q, events, where, (limit, offset) =>
+  const page = await paged(q, events, where, (limit, offset) =>
     tx()
       .select({
         id: events.id,
@@ -424,6 +483,46 @@ export async function eventFeed(q: z.infer<typeof eventFeedQuery>) {
       .limit(limit)
       .offset(offset),
   );
+  const data = await Promise.all(page.data.map(async (row) => ({ ...row, snapshotLink: await snapshotLink(row) })));
+  return { ...page, data };
+}
+
+/** Signed like a file link, because an <img> cannot send an Authorization header. */
+async function snapshotLink(event: { id: string; data: unknown }): Promise<string | null> {
+  if (typeof (event.data as { snapshotUrl?: unknown }).snapshotUrl !== 'string') return null;
+  const { tenantId, farmId } = ctx();
+  return `/api/v1/devices/events/${event.id}/snapshot?token=${await signFileToken(event.id, tenantId, farmId)}`;
+}
+
+/** By its bytes, not the gateway's word: the answer is served from our own origin. */
+function imageType(body: Buffer): string | null {
+  const text = (from: number, to: number) => body.toString('latin1', from, to);
+  if (text(0, 3) === '\xff\xd8\xff') return 'image/jpeg';
+  if (text(0, 4) === '\x89PNG') return 'image/png';
+  if (text(0, 4) === 'RIFF' && text(8, 12) === 'WEBP') return 'image/webp';
+  return null;
+}
+
+/**
+ * The frame a device linked to an event. Tenants' gateways are unknown to the page's CSP, and a browser
+ * on https also refuses an http image, so the frame reaches the page from this origin instead.
+ */
+export async function eventSnapshot(eventId: string, token: string): Promise<{ type: string; body: Buffer }> {
+  const claims = await verifyFileToken(token);
+  if (claims.fileId !== eventId) throw notFound('Snapshot');
+  const url = await withTenant({ userId: null, tenantId: claims.tenantId, farmId: claims.farmId }, async () => {
+    const [event] = await tx().select({ data: events.data }).from(events).where(and(eq(events.id, eventId), eq(events.farmId, claims.farmId)));
+    return (event?.data as { snapshotUrl?: unknown } | undefined)?.snapshotUrl;
+  });
+  if (typeof url !== 'string') throw notFound('Snapshot');
+
+  const unavailable = new AppError(502, 'SNAPSHOT_UNAVAILABLE', 'The camera gateway did not give this frame');
+  const answer = await requestPublic(url, { method: 'GET', signal: AbortSignal.timeout(SNAPSHOT_TIMEOUT_MS), maxBytes: MAX_SNAPSHOT_BYTES }).catch(() => {
+    throw unavailable;
+  });
+  const type = answer.status === 200 ? imageType(answer.body) : null;
+  if (!type) throw unavailable;
+  return { type, body: answer.body };
 }
 
 /** Spec 16.2: warn when a device stops reporting. Runs as a job, once per farm. */

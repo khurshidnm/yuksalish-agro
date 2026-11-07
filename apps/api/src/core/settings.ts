@@ -24,6 +24,25 @@ export interface TenantSettings {
     /** Spec 20.1: 2FA is mandatory for owner, director and accountant. */
     enforce2fa: boolean;
   };
+  storage: {
+    /** All of this workspace's files together. */
+    quotaMb: number;
+    /** What one person may upload in 24 hours. */
+    dailyUploadMb: number;
+  };
+  /** Days each kind of passing data is kept (modules/settings/retention.ts). */
+  retention: {
+    /** Messages to people, once nothing is waiting to go out. */
+    notificationDays: number;
+    /** Stored answers to repeated requests. A phone can sit offline for weeks. */
+    idempotencyDays: number;
+    /** The webhook delivery log, once a delivery has finished. */
+    webhookDeliveryDays: number;
+    /** What the assistant looked up for an answer. The words of the answer stay. */
+    aiToolDataDays: number;
+    /** Spreadsheet rows an import still holds, which can be personal data. */
+    importDays: number;
+  };
 }
 
 export const DEFAULT_SETTINGS: TenantSettings = {
@@ -32,6 +51,8 @@ export const DEFAULT_SETTINGS: TenantSettings = {
   feed: { winterDays: 120, minStockDays: 14, deviationPercent: 15 },
   livestock: { quarantineDays: 21, defaultGestationDays: 150 },
   security: { enforce2fa: true },
+  storage: { quotaMb: 20_480, dailyUploadMb: 500 },
+  retention: { notificationDays: 365, idempotencyDays: 30, webhookDeliveryDays: 90, aiToolDataDays: 90, importDays: 90 },
 };
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {

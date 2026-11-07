@@ -1,14 +1,15 @@
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { WEIGHT_METHODS, averageDailyGain, diffDays, round } from '@yap/shared';
+import { maxLiveWeightKg } from '@yap/shared/formulas/livestock';
 import { schema } from '../../db/client';
 import { ctx, today, tx } from '../../core/context';
-import { conflict, notFound } from '../../core/errors';
+import { badRequest, conflict, notFound } from '../../core/errors';
 import { recordEvent } from '../../core/journal';
 import { clientId, isoDate, listQuery, paged, sortBy } from '../../core/query';
 import { assertInFarm, assertNotFuture, assertOnFarm, getAnimalOrThrow, herdHeadCount, isOnFarm, type Animal } from './refs';
 
-const { animals, herds, weighingCampaigns: campaigns, weightRecords: weights } = schema;
+const { animals, herds, species, weighingCampaigns: campaigns, weightRecords: weights } = schema;
 
 const weightKg = z.number().positive().max(2000);
 
@@ -33,6 +34,19 @@ async function refreshCurrentWeight(animalId: string): Promise<void> {
     .update(animals)
     .set({ currentWeightKg: latest?.weightKg ?? null, lastWeighedOn: latest?.date ?? null })
     .where(eq(animals.id, animalId));
+}
+
+/**
+ * For weights a person types. One slip would become the animal's headline weight, its daily gain and
+ * part of the herd average. Imports check their rows at preview, so they do not come through here.
+ */
+async function assertPlausible(animal: Animal, weightKg: number, date: string): Promise<void> {
+  if (animal.birthDate && date < animal.birthDate) {
+    throw badRequest('WEIGHT_BEFORE_BIRTH', `Animal ${animal.tag} was not born yet on ${date}`);
+  }
+  const [kind] = await tx().select({ key: species.key }).from(species).where(eq(species.id, animal.speciesId));
+  const max = maxLiveWeightKg(kind?.key ?? '');
+  if (weightKg > max) throw badRequest('WEIGHT_NOT_PLAUSIBLE', `${weightKg} kg is not believable for this animal`, { max });
 }
 
 /** Insert a weight and update the animal. Used by the form, campaigns and createAnimal. */
@@ -70,6 +84,7 @@ export async function createWeight(input: z.infer<typeof weightInput>) {
   assertOnFarm(animal);
   const date = input.date ?? today();
   assertNotFuture(date);
+  await assertPlausible(animal, input.weightKg, date);
   const row = await addWeight({ ...input, animal, date });
   await recordEvent({
     type: 'animal.weighed',
@@ -263,6 +278,7 @@ async function applyEntry(
   const animal = await find(entry.code);
   if (!animal) throw conflict('ANIMAL_NOT_FOUND', `No animal with the code ${entry.code}`, { code: entry.code });
   assertOnFarm(animal);
+  await assertPlausible(animal, entry.weightKg, campaign.date);
 
   // Scanning the same animal twice corrects the entry instead of creating a second record.
   const [existing] = await tx()

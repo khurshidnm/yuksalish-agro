@@ -10,12 +10,12 @@ import { withPlatform, withTenant } from '../core/context';
 import { mergeSettings } from '../core/settings';
 import { addMember, provisionTenant } from '../core/tenancy';
 import { runStatistics } from '../modules/ai/analysis';
-import { seedAssets } from './assets';
+import { seedAssets, seedDepreciation } from './assets';
 import { seedCrops } from './crops';
 import { seedDevices } from './devices';
 import { seedFinance } from './finance';
 import { seedFinanceBase } from './finance-base';
-import { seedHr } from './hr';
+import { seedHr, seedPayroll } from './hr';
 import { seedInventory } from './inventory';
 import { seedLand } from './land';
 import { seedLivestock } from './livestock';
@@ -74,8 +74,8 @@ async function main() {
       district: 'Qorovulbozor tumani',
       address: 'Buxoro viloyati, Qorovulbozor tumani',
       totalAreaHa: 210,
-      lat: 39.5,
-      lng: 64.8,
+      lat: 39.743439,
+      lng: 64.794201,
     },
   });
 
@@ -123,10 +123,12 @@ async function main() {
     ['machinery', seedAssets],
     ['warehouses, feed, rations', seedInventory],
     ['livestock', seedLivestock],
+    ['payroll', seedPayroll],
     ['pregnancies and veterinary', seedVet],
     ['field operations', seedCrops],
     ['transactions and budget', seedFinance],
     ['sales', seedSales],
+    ['depreciation', seedDepreciation],
     // Devices come first: the task step ends by evaluating alert rules, including camera checks.
     ['cameras and devices', seedDevices],
     ['tasks and alerts', seedTasks],

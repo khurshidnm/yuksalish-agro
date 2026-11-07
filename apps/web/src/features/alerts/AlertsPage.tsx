@@ -3,6 +3,7 @@ import { BellOff, Check, CheckCheck, ExternalLink, Info, OctagonAlert, RefreshCw
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
+import { useOpenableLink } from '@/app/canOpen';
 import { type Column, DataTable, PageHeader, StatCard, useUrlParam } from '@/components';
 import { Badge, type BadgeVariant, Button, Select } from '@/components/ui';
 import { api } from '@/lib/api';
@@ -25,6 +26,7 @@ export default function AlertsPage() {
   const navigate = useNavigate();
   const canAct = usePermission('tasks.update');
   const canEvaluate = usePermission('dashboard.update');
+  const openable = useOpenableLink();
 
   const [status, setStatus] = useUrlParam('status', ACTIVE);
   const [severity, setSeverity] = useUrlParam('severity');
@@ -99,7 +101,8 @@ export default function AlertsPage() {
         }
       />
 
-      <div className="mb-4 grid grid-cols-3 gap-2 md:gap-4">
+      {/* Each column takes its word's width: equal thirds leave 72 px at 360, and the word for urgent needs 75. */}
+      <div className="mb-4 grid grid-cols-[auto_auto_auto] gap-2 md:grid-cols-3 md:gap-4">
         {SEVERITIES.slice()
           .reverse()
           .map((level) => (
@@ -108,6 +111,7 @@ export default function AlertsPage() {
               label={t(`stat.${level}`)}
               value={counts.data?.[level] ?? '—'}
               loading={counts.isLoading}
+              className="max-sm:p-3"
               tone={level === 'urgent' && (counts.data?.urgent ?? 0) > 0 ? 'danger' : level === 'attention' && (counts.data?.attention ?? 0) > 0 ? 'warning' : undefined}
             />
           ))}
@@ -122,7 +126,7 @@ export default function AlertsPage() {
         }}
         columns={columns}
         searchable={false}
-        rowHref={(alert) => alert.link ?? ''}
+        rowHref={(alert) => openable(alert.link)}
         filters={
           <>
             <Select
@@ -144,7 +148,7 @@ export default function AlertsPage() {
         }
         empty={{ icon: BellOff, title: t('emptyTitle'), description: t('emptyBody') }}
         rowActions={(alert) => [
-          { label: t('actions.open'), icon: ExternalLink, hidden: !alert.link, onClick: () => navigate(alert.link!) },
+          { label: t('actions.open'), icon: ExternalLink, hidden: !openable(alert.link), onClick: () => navigate(alert.link!) },
           {
             label: t('actions.acknowledge'),
             icon: Check,

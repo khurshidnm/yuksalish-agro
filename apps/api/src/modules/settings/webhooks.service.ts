@@ -4,7 +4,6 @@
  * jobs in ./jobs.ts: collect new events into deliveries, then send what is due.
  */
 import { createHmac } from 'node:crypto';
-import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
 import { and, asc, desc, eq, gt, lte, sql } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
@@ -15,6 +14,7 @@ import { ctx, tx } from '../../core/context';
 import { randomToken, seal, unseal } from '../../core/crypto';
 import { badRequest, notFound } from '../../core/errors';
 import { recordEvent } from '../../core/journal';
+import { dnsResolver, isPrivateAddress, requestPublic, type Resolver } from '../../core/outbound';
 import { listQuery, paged } from '../../core/query';
 
 const { events, webhookDeliveries, webhookSubscriptions } = schema;
@@ -53,45 +53,10 @@ export function matchesEvent(patterns: string[], type: string): boolean {
   );
 }
 
-/** "::ffff:10.0.0.1" and its hex form "::ffff:a00:1", which is how new URL() writes it. */
-function mappedIpv4(v: string): string | null {
-  const dotted = v.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
-  if (dotted) return dotted[1];
-  const hex = v.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
-  if (!hex) return null;
-  const [high, low] = [parseInt(hex[1], 16), parseInt(hex[2], 16)];
-  return [high >> 8, high & 255, low >> 8, low & 255].join('.');
-}
-
-export function isPrivateAddress(address: string): boolean {
-  const v = address.toLowerCase();
-  if (isIP(v) === 6) {
-    const mapped = mappedIpv4(v);
-    if (mapped) return isPrivateAddress(mapped);
-    return v === '::1' || v === '::' || /^f[cd]/.test(v) || /^fe[89ab]/.test(v) || v.startsWith('64:ff9b:');
-  }
-  const [a, b] = v.split('.').map(Number);
-  return (
-    a === 0 ||
-    a === 10 ||
-    a === 127 ||
-    (a === 100 && b >= 64 && b <= 127) ||
-    (a === 169 && b === 254) ||
-    (a === 172 && b >= 16 && b <= 31) ||
-    (a === 192 && b === 168) ||
-    a >= 224
-  );
-}
-
-export type Resolver = (hostname: string) => Promise<string[]>;
-
-const dnsResolver: Resolver = async (hostname) =>
-  (await lookup(hostname, { all: true })).map((r) => r.address);
-
 /**
- * A subscriber URL is tenant input, so without this check it could reach the server's own network
- * (metadata endpoints, Redis, Postgres). Checked when saving and again before each send, because
- * DNS can change after the URL was accepted.
+ * A subscriber URL is tenant input. Checked when saving, so a mistake shows up at once, and again before
+ * each send, because DNS can change after the URL was accepted. requestPublic() checks once more, for the
+ * connection itself, so an answer that changes after this check gets nowhere either.
  */
 export async function assertSafeUrl(raw: string, resolve: Resolver = dnsResolver): Promise<void> {
   const url = new URL(raw);
@@ -292,8 +257,13 @@ export function signPayload(secret: string, timestamp: number, body: string): st
   return `t=${timestamp},v1=${digest}`;
 }
 
+type Sender = (
+  url: string,
+  init: { method: 'POST'; signal: AbortSignal; headers: Record<string, string>; body: string },
+) => Promise<{ status: number }>;
+
 export interface SendOptions {
-  fetchImpl?: typeof fetch;
+  fetchImpl?: Sender;
   resolve?: Resolver;
   now?: Date;
 }
@@ -307,7 +277,7 @@ interface SendResult {
 async function send(
   delivery: typeof webhookDeliveries.$inferSelect,
   sub: { url: string; secret: string },
-  { fetchImpl = fetch, resolve }: SendOptions,
+  { fetchImpl = (url, init) => requestPublic(url, init, resolve), resolve }: SendOptions,
 ): Promise<SendResult> {
   try {
     await assertSafeUrl(sub.url, resolve);
@@ -315,8 +285,6 @@ async function send(
     const timestamp = Math.floor(Date.now() / 1000);
     const response = await fetchImpl(sub.url, {
       method: 'POST',
-      // A redirect could point at an internal address after the check above.
-      redirect: 'manual',
       signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
       headers: {
         'content-type': 'application/json',

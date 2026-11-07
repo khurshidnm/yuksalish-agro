@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 
 /** Shared by every text-like control. text-base below md stops iOS zooming on focus. */
 export const controlClasses =
-  'focus-ring block w-full min-h-11 rounded-lg border border-input bg-card px-3 py-2 text-base text-foreground placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:bg-muted disabled:opacity-70 aria-invalid:border-destructive aria-invalid:ring-1 aria-invalid:ring-destructive md:min-h-10 md:text-sm';
+  'focus-ring block w-full min-h-11 rounded-lg border border-input bg-popover px-3 py-2 text-base text-foreground placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:bg-muted disabled:opacity-70 aria-invalid:border-destructive aria-invalid:ring-1 aria-invalid:ring-destructive md:min-h-10 md:text-sm';
 
 export function Input({ className, type, ...props }: ComponentProps<'input'>) {
   return <input type={type ?? 'text'} className={cn(controlClasses, className)} {...props} />;

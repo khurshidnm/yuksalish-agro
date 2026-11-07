@@ -36,7 +36,7 @@ export const sales = pgTable(
     cancelReason: text(),
     notes: text(),
   },
-  (t) => [unique().on(t.farmId, t.number), index().on(t.farmId, t.date.desc()), index().on(t.counterpartyId)],
+  (t) => [unique().on(t.farmId, t.number), index().on(t.farmId, t.date), index().on(t.counterpartyId)],
 );
 
 export const saleLines = pgTable(
@@ -78,7 +78,7 @@ export const prices = pgTable(
     kind: text().notNull().default('sale'),
     source: text(),
   },
-  (t) => [index().on(t.itemId, t.date.desc())],
+  (t) => [index().on(t.itemId, t.date)],
 );
 
 /** Purchase flow: request → approve → pay → receive (spec 13.3). */

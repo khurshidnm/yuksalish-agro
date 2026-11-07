@@ -1,10 +1,12 @@
-import { lazy, Suspense } from 'react';
+import { Suspense } from 'react';
 import type { RouteObject } from 'react-router';
 import { PublicOnly, RequireAuth } from '@/app/guards';
+import { lazyPage } from '@/app/lazyPage';
 import { RouteErrorPage, SplashScreen } from '@/app/pages';
 
-const LoginPage = lazy(() => import('./LoginPage'));
-const TwoFactorSetupPage = lazy(() => import('./TwoFactorSetupPage'));
+const LoginPage = lazyPage(() => import('./LoginPage'));
+const TwoFactorSetupPage = lazyPage(() => import('./TwoFactorSetupPage'));
+const ChangePasswordPage = lazyPage(() => import('./ChangePasswordPage'));
 
 export const routes: RouteObject[] = [
   {
@@ -16,6 +18,17 @@ export const routes: RouteObject[] = [
           <LoginPage />
         </Suspense>
       </PublicOnly>
+    ),
+  },
+  {
+    path: 'password/change',
+    errorElement: <RouteErrorPage />,
+    element: (
+      <RequireAuth passwordChange>
+        <Suspense fallback={<SplashScreen />}>
+          <ChangePasswordPage />
+        </Suspense>
+      </RequireAuth>
     ),
   },
   {

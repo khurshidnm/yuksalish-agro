@@ -3,13 +3,17 @@
  * tool, and a tool the caller may not use is neither offered to the model nor run if requested.
  * Money tools need finance.view, so a shepherd's assistant has none at all (CLAUDE.md rule 7).
  */
+import type { FastifyBaseLogger } from 'fastify';
 import { z, type ZodType } from 'zod';
 import { ITEM_CATEGORIES, addDays, monthOf, type Permission } from '@yap/shared';
-import { today } from '../../core/context';
+import { hasPermission, today } from '../../core/context';
 import { isoDate, isoMonth } from '../../core/query';
+import { counts as alertCounts } from '../alerts/alerts.service';
 import { openAlerts } from '../alerts/summary';
 import { assetStatus } from '../assets/summary';
 import { overdueOperations } from '../crops/summary';
+import { kpis } from '../dashboard/kpis.service';
+import { outlook } from '../dashboard/outlook.service';
 import {
   budgetExecution,
   cashPosition,
@@ -20,13 +24,23 @@ import {
   monthToDate,
 } from '../finance/summary';
 import { attendanceToday } from '../hr/summary';
+import { areaBalance, getPassport } from '../farm/passport.service';
 import { feedBalance } from '../inventory/summary';
 import { herdMovement, herdSummary, reproductionKpis } from '../livestock/summary';
 import * as facts from './facts';
+import type { EventInput } from '../../core/journal';
 import type { LlmTool } from './provider';
+import { RECORD_TOOLS } from './records/tools';
+import type { DraftEnv, DraftRecord, ProposalView, Question } from './records/types';
 
 export interface ToolOutcome {
   data: unknown;
+  /** Cards and questions to show below the answer. */
+  attachments?: ToolAttachment[];
+  /** What a draft was about. */
+  record?: DraftRecord;
+  /** For the journal, which the AI role cannot write: the person's own transaction records these. */
+  events?: EventInput[];
   /** Tables the answer rests on, shown to the user as its source. */
   tables: string[];
   from?: string;
@@ -36,15 +50,30 @@ export interface ToolOutcome {
   enoughData?: boolean;
 }
 
+export type ToolAttachment =
+  | { type: 'proposal'; proposal: ProposalView }
+  | { type: 'question'; question: Question };
+
+/** What a tool may know about the conversation it runs in. */
+export interface ToolEnv {
+  draft: DraftEnv;
+}
+
 export interface AiTool {
   name: string;
   description: string;
   input: ZodType;
   /** The caller needs at least one of these. Empty means any AI user. */
   anyOf: Permission[];
+  /** Permissions it needs together, on top of anyOf. */
+  allOf?: Permission[];
   /** Returns money figures, so it also needs finance.view. */
   money: boolean;
-  run(input: never): Promise<ToolOutcome>;
+  /** Open to everyone, and adds money for those allowed to see it. */
+  moneyIfAllowed?: boolean;
+  /** Writes to the ai_* tables, so it runs in a writable AI transaction. */
+  writes?: boolean;
+  run(input: never, env?: ToolEnv): Promise<ToolOutcome>;
 }
 
 function tool<S extends ZodType>(def: {
@@ -67,14 +96,46 @@ function resolvePeriod(input: z.output<typeof period>) {
   return { from: input.from ?? addDays(today(), -30), to: input.to ?? today() };
 }
 
+/** KPIs isolate a failing group by logging it. A tool has no request log, so a failed group just stays out. */
+const quietLog = { error: () => undefined, warn: () => undefined, info: () => undefined } as unknown as FastifyBaseLogger;
+
 export const TOOLS: AiTool[] = [
   tool({
+    name: 'farm_overview',
+    description: 'The whole farm at once: land, herd, and the key indicators for finance, livestock, crops, feed, staff and machinery, plus open alerts. Use it for broad questions about how the farm is doing.',
+    input: z.object({}),
+    anyOf: ['dashboard.view'],
+    run: async () => {
+      const { groups } = await kpis({}, quietLog);
+      const { byStatus: _oneStatusEach, ...herd } = await herdSummary();
+      const data = {
+        land: hasPermission('farm.view') ? await areaBalance((await getPassport()).totalAreaHa) : null,
+        herd: hasPermission('livestock.view') ? herd : null,
+        indicators: Object.fromEntries(Object.entries(groups).map(([key, group]) => [key, group.data])),
+        openAlerts: await alertCounts(),
+      };
+      return { data, tables: ['animals', 'fields', 'transactions'], rows: 1, enoughData: herd.total > 0 };
+    },
+  }),
+  tool({
+    name: 'farm_outlook',
+    description: 'The next 12 months, projected from the records: lambing and herd size by month, whether each feed lasts until its next harvest, the expected harvest by crop and, for those allowed, cash by month and lamb income. Use it for any forecast.',
+    input: z.object({}),
+    anyOf: ['dashboard.view'],
+    run: async () => {
+      const data = await outlook();
+      return { data, tables: ['breeding_records', 'stock_batches', 'crop_plans', 'transactions'], rows: data.months.length };
+    },
+  }),
+  tool({
     name: 'herd_summary',
-    description: 'Head count of animals on the farm by category and by status (pregnant, sick, quarantine).',
+    description: 'Head count of animals on the farm by category, and how many are pregnant, sick or in quarantine.',
     input: z.object({}),
     anyOf: ['livestock.view'],
     run: async () => {
-      const data = await herdSummary();
+      // Not byStatus: an animal has one status there, so it counts fewer pregnant ewes than `pregnant`
+      // does, and two figures for one question invite the model to pick the wrong one.
+      const { byStatus: _oneStatusEach, ...data } = await herdSummary();
       return { data, tables: ['animals'], rows: data.total, enoughData: data.total > 0 };
     },
   }),
@@ -326,8 +387,8 @@ export const TOOLS: AiTool[] = [
   }),
   tool({
     name: 'cashflow_forecast',
-    description: 'Statistical cash-flow forecast by month. Months where cash goes negative matter most.',
-    input: z.object({ months: z.number().int().min(1).max(12).default(6) }),
+    description: 'Statistical cash-flow forecast by month, 12 months unless asked otherwise. Months where cash goes negative matter most.',
+    input: z.object({ months: z.number().int().min(1).max(12).default(12) }),
     money: true,
     anyOf: ['finance.view'],
     run: async (input) => {
@@ -376,12 +437,18 @@ export const TOOLS: AiTool[] = [
 
 /** The tools this caller may use. This list is both what the model sees and what can run. */
 export function toolsFor(permissions: ReadonlySet<string>): AiTool[] {
-  return TOOLS.filter(
+  return [...TOOLS, ...RECORD_TOOLS].filter(
     (t) =>
       (t.anyOf.length === 0 || t.anyOf.some((p) => permissions.has(p))) &&
+      (t.allOf ?? []).every((p) => permissions.has(p)) &&
       (!t.money || permissions.has('finance.view')),
   );
 }
+
+const MONEY_TOOLS = new Set([...TOOLS, ...RECORD_TOOLS].filter((t) => t.money).map((t) => t.name));
+
+/** Only someone allowed to see money could have run this. */
+export const isMoneyTool = (name: string) => MONEY_TOOLS.has(name);
 
 function schemaOf(input: ZodType): Record<string, unknown> {
   const { $schema: _dropped, ...schema } = z.toJSONSchema(input, { io: 'input' }) as Record<string, unknown>;

@@ -1,6 +1,6 @@
 /**
- * The pilot flock (spec 2): 500 pregnant Hisori ewes bought in late October 2026, weighed on arrival,
- * with two weeks of daily records. Pregnancies are added by seed/vet.ts.
+ * The pilot flock: 700 pregnant pedigree Hisori ewes brought from Tatarstan in October 2026, weighed
+ * on arrival, with two weeks of daily records. Pregnancies are added by seed/vet.ts.
  * Random values use a fixed seed, so every `db:reset` gives the same farm.
  */
 import { addDays, diffDays, round, todayIso } from '@yap/shared';
@@ -16,10 +16,10 @@ import type { SeedContext } from './types';
 
 const { animalIdentifiers, animals, breeds, pastureMoves, species, weighingCampaigns, weightRecords } = schema;
 
-const EWES = 500;
+const EWES = 700;
 const PURCHASE_DATE = '2026-10-20';
-/** Prices vary in pairs around this, so the flock totals exactly 2.1 billion so'm for the finance seed. */
-const AVERAGE_PRICE = 4_200_000;
+/** Prices vary in pairs around this, so the flock totals exactly 3.22 billion so'm for the finance seed. */
+const AVERAGE_PRICE = 4_600_000;
 const SICK_TAGS = new Set(['YA-0047', 'YA-0213', 'YA-0389']);
 /** Every nth ewe was weighed again at the check weighing. */
 const CONTROL_EVERY = 4;
@@ -84,8 +84,8 @@ async function seedFlock(): Promise<void> {
     spread = i % 2 === 0 ? Math.round(random() * 8) * 50_000 : -spread;
 
     const ageDays = Math.round((2 + random() * 3) * 365);
-    // Three draws lean the weights toward the middle of the 55-70 kg range, as a real flock does.
-    const arrivalKg = round(55 + (15 * (random() + random() + random())) / 3, 1);
+    // Three draws lean the weights toward the middle of the 62-80 kg range, as a real flock does.
+    const arrivalKg = round(62 + (18 * (random() + random() + random())) / 3, 1);
     const reweighed = i % CONTROL_EVERY === 0;
     const controlKg = round(arrivalKg + (0.09 + random() * 0.09) * daysSinceArrival, 1);
 
@@ -142,17 +142,15 @@ async function seedDailyLogs(): Promise<void> {
   for (let daysAgo = 14; daysAgo >= 1; daysAgo--) {
     const date = addDays(today, -daysAgo);
     const plan = await getPlan(herd.id, date);
-    // Yesterday ran about 20 % over ration, which is what the morning alert is for (spec 15.3).
-    const overfed = daysAgo === 1;
     const lines = plan.lines.map((line) => {
-      const factor = overfed ? 1.2 : 0.98 + random() * 0.04;
+      const factor = 0.98 + random() * 0.04;
       const qty = line.plannedQty * factor;
       return { itemId: line.itemId, actualQty: round(qty, qty >= 50 ? 0 : 1) };
     });
     await createDailyLog({
       herdId: herd.id,
       date,
-      waterL: Math.round(2400 + random() * 500),
+      waterL: Math.round(3400 + random() * 700),
       condition: 'normal',
       lines,
     });

@@ -9,6 +9,7 @@ import { currencyLabel } from '@/lib/format';
 import { zEnum, zOptionalDate, zOptionalNumber, zOptionalRef, zOptionalText, zRef, zText } from '@/lib/forms';
 import { enumOptions } from '@/lib/i18n';
 import { useApiMutation, useDetail } from '@/lib/query';
+import { categoryLabel } from './category';
 import { type Animal, type HerdLookup, type LookupRow, type Species, useLocalName } from './shared';
 
 const PATH = '/livestock/animals';
@@ -53,7 +54,7 @@ export function AnimalForm({ open, onOpenChange, animal, herdId }: AnimalFormPro
   const { t } = useTranslation('livestock');
   const localName = useLocalName();
   const canSeeMoney = usePermission('finance.view');
-  const { data: species = [] } = useDetail<Species[]>(open ? '/livestock/species' : null);
+  const { data: species = [], isLoading: speciesLoading } = useDetail<Species[]>(open ? '/livestock/species' : null);
   const sheep = species.find((s) => s.key === 'sheep') ?? species[0];
 
   const defaults: FormValues = animal
@@ -100,7 +101,7 @@ export function AnimalForm({ open, onOpenChange, animal, herdId }: AnimalFormPro
       // Money the user may not see stays out of the request, rather than being sent back as empty.
       const body = canSeeMoney ? common : { ...common, purchasePrice: undefined, sellerId: undefined };
       if (animal) return api.patch(`${PATH}/${animal.id}`, body);
-      return api.post(PATH, {
+      return api.postOnce(PATH, {
         ...body,
         speciesId,
         origin,
@@ -114,7 +115,8 @@ export function AnimalForm({ open, onOpenChange, animal, herdId }: AnimalFormPro
 
   return (
     <FormDialog
-      open={open}
+      // The form takes its defaults as it opens, and the default species comes from this list.
+      open={open && !speciesLoading}
       onOpenChange={onOpenChange}
       title={animal ? t('animals.edit') : t('animals.add')}
       schema={schema}
@@ -126,7 +128,8 @@ export function AnimalForm({ open, onOpenChange, animal, herdId }: AnimalFormPro
       {(form) => {
         const origin = form.watch('origin');
         const speciesId = form.watch('speciesId');
-        const breeds = species.find((s) => s.id === speciesId)?.breeds ?? [];
+        const chosen = species.find((s) => s.id === speciesId);
+        const breeds = chosen?.breeds ?? [];
         return (
           <>
             <FormGrid>
@@ -143,7 +146,7 @@ export function AnimalForm({ open, onOpenChange, animal, herdId }: AnimalFormPro
               )}
               <SelectField form={form} name="breedId" label={t('fields.breed')} options={breeds.map((b) => ({ value: b.id, label: localName(b.name) }))} />
               <SelectField form={form} name="sex" label={t('fields.sex')} required options={enumOptions('sex', SEXES)} />
-              <SelectField form={form} name="category" label={t('fields.category')} required options={enumOptions('animalCategory', ANIMAL_CATEGORIES)} />
+              <SelectField form={form} name="category" label={t('fields.category')} required options={ANIMAL_CATEGORIES.map((value) => ({ value, label: categoryLabel(value, chosen?.key) }))} />
               <ComboboxField
                 form={form}
                 name="herdId"
@@ -160,7 +163,7 @@ export function AnimalForm({ open, onOpenChange, animal, herdId }: AnimalFormPro
             {origin === 'purchased' && (
               <FormGrid>
                 <DateField form={form} name="purchaseDate" label={t('fields.purchaseDate')} required />
-                {canSeeMoney && <NumberField form={form} name="purchasePrice" label={t('fields.purchasePrice')} suffix={currencyLabel()} />}
+                {canSeeMoney && <NumberField money form={form} name="purchasePrice" label={t('fields.purchasePrice')} suffix={currencyLabel()} />}
                 {canSeeMoney && (
                   <ComboboxField
                     form={form}

@@ -9,6 +9,7 @@ import {
   CartesianGrid,
   Line,
   LineChart,
+  ReferenceArea,
   ResponsiveContainer,
   Tooltip as ChartTooltipBase,
   XAxis,
@@ -27,6 +28,9 @@ import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Skel
  * - Status colours are never series colours. Text never wears a series colour.
  * - Thin marks, recessive grid, one y axis. Two scales means two charts.
  * - Amber, teal and olive fall below 3:1 on the light surface, so the table view is always available.
+ * - Dashes mean "not happened yet". A dashed series is a projection, never a style choice.
+ * - Block bars keep their exact height: gaps are cut into the bar, the value is never rounded to a block.
+ *   They are one series in lime, under 3:1 on white, so the axis, tooltip and table carry the numbers.
  */
 
 const MAX_SERIES = 8;
@@ -36,13 +40,15 @@ export function chartColor(slot: number): string {
   return `var(--chart-${((slot - 1) % MAX_SERIES) + 1})`;
 }
 
-export type ChartKind = 'bar' | 'stacked-bar' | 'line' | 'area';
+export type ChartKind = 'bar' | 'block-bar' | 'stacked-bar' | 'line' | 'area';
 
 export interface ChartSeries {
   key: string;
   label: string;
   /** Categorical colour slot, 1 to 8. Defaults to the series position. */
   slot?: number;
+  /** A projection rather than a record. Lines and areas only. */
+  dashed?: boolean;
 }
 
 export interface ChartCardProps<T> {
@@ -58,6 +64,8 @@ export interface ChartCardProps<T> {
   formatAxis?: (value: number) => string;
   /** Value axis range. Defaults to starting at 0; use ['auto', 'auto'] for readings like pH. */
   yDomain?: [number | 'auto', number | 'auto'];
+  /** Shades a stretch of the x axis, by x value: the months a forecast goes negative. */
+  highlight?: { from: string; to: string; tone?: 'neutral' | 'danger' };
   /** Axis label for the x value, e.g. formatMonthShort. */
   formatX?: (value: string) => string;
   /** Tooltip and table label. Defaults to formatX; use it for the full form, e.g. formatMonth. */
@@ -70,6 +78,46 @@ export interface ChartCardProps<T> {
   onRetry?: () => void;
   emptyText?: ReactNode;
   className?: string;
+}
+
+/** Steps of a block bar, and the gap cut between them. */
+const BLOCKS = 8;
+const BLOCK_GAP = 3;
+
+interface BlockBarProps {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  fill?: string;
+  background?: { y?: number | null; height?: number | null };
+}
+
+/**
+ * A column of blocks over its empty slots. The filled part stops at the true value, part-way through
+ * a block if need be, so the shape stays honest; the tooltip and table give the number.
+ */
+function BlockBar({ x = 0, y = 0, width = 0, height = 0, fill, background }: BlockBarProps) {
+  const bottom = y + height;
+  const top = background?.y ?? y;
+  const full = background?.height ?? height;
+  const floor = top + full;
+  const step = full / BLOCKS;
+  const size = Math.max(step - BLOCK_GAP, 1);
+  return (
+    <g>
+      {Array.from({ length: BLOCKS }, (_, i) => {
+        const blockBottom = floor - i * step;
+        const filled = Math.min(size, Math.max(0, blockBottom - y));
+        return (
+          <g key={i}>
+            <rect x={x} y={blockBottom - size} width={width} height={size} rx={3} fill="var(--mark-track)" />
+            {filled > 0 && bottom >= blockBottom - size && <rect x={x} y={blockBottom - filled} width={width} height={filled} rx={3} fill={fill} />}
+          </g>
+        );
+      })}
+    </g>
+  );
 }
 
 interface TooltipEntry {
@@ -185,6 +233,7 @@ export function ChartCard<T>({
   formatX = (v) => v,
   formatLabel = formatX,
   yDomain,
+  highlight,
   height = 280,
   action,
   loading,
@@ -204,7 +253,7 @@ export function ChartCard<T>({
 
   const axes = (
     <>
-      <CartesianGrid vertical={false} stroke="var(--chart-grid)" strokeWidth={1} />
+      {kind !== 'block-bar' && <CartesianGrid vertical={false} stroke="var(--chart-grid)" strokeWidth={1} />}
       <XAxis
         dataKey={String(xKey)}
         tickFormatter={(v) => formatX(String(v))}
@@ -234,6 +283,17 @@ export function ChartCard<T>({
     />
   );
 
+  const period = highlight && (
+    <ReferenceArea
+      x1={highlight.from}
+      x2={highlight.to}
+      ifOverflow="extendDomain"
+      fill={highlight.tone === 'danger' ? 'var(--destructive)' : 'var(--mark)'}
+      fillOpacity={0.1}
+      strokeOpacity={0}
+    />
+  );
+
   const barCursor = { fill: 'var(--muted)', fillOpacity: 0.6 };
   const lineCursor = { stroke: 'var(--chart-baseline)', strokeWidth: 1 };
 
@@ -242,6 +302,7 @@ export function ChartCard<T>({
       return (
         <LineChart data={rows} margin={margin}>
           {axes}
+          {period}
           {tooltip(lineCursor)}
           {resolved.map((s) => (
             <Line
@@ -249,6 +310,7 @@ export function ChartCard<T>({
               dataKey={s.key}
               stroke={s.color}
               strokeWidth={2}
+              strokeDasharray={s.dashed ? '6 5' : undefined}
               strokeLinecap="round"
               strokeLinejoin="round"
               dot={endDot(lastIndex, s.color)}
@@ -265,6 +327,7 @@ export function ChartCard<T>({
       return (
         <AreaChart data={rows} margin={margin}>
           {axes}
+          {period}
           {tooltip(lineCursor)}
           {resolved.map((s) => (
             <Area
@@ -272,6 +335,7 @@ export function ChartCard<T>({
               dataKey={s.key}
               stroke={s.color}
               strokeWidth={2}
+              strokeDasharray={s.dashed ? '6 5' : undefined}
               fill={s.color}
               fillOpacity={0.1}
               dot={endDot(lastIndex, s.color)}
@@ -281,6 +345,17 @@ export function ChartCard<T>({
             />
           ))}
         </AreaChart>
+      );
+    }
+    if (kind === 'block-bar') {
+      return (
+        <BarChart data={rows} margin={margin} barCategoryGap="18%">
+          {axes}
+          {tooltip(barCursor)}
+          {resolved.map((s) => (
+            <Bar key={s.key} dataKey={s.key} fill="var(--accent)" maxBarSize={32} background={{ fill: 'transparent' }} shape={BlockBar} isAnimationActive={false} />
+          ))}
+        </BarChart>
       );
     }
     const stacked = kind === 'stacked-bar';
@@ -309,8 +384,8 @@ export function ChartCard<T>({
 
   return (
     <Card className={cn('min-w-0', className)}>
-      <CardHeader className="flex-row items-start justify-between gap-2">
-        <div className="min-w-0">
+      <CardHeader className="flex-row flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0 flex-1 basis-40">
           <CardTitle>{title}</CardTitle>
           {description && <CardDescription>{description}</CardDescription>}
         </div>
@@ -320,6 +395,7 @@ export function ChartCard<T>({
             <Button
               variant="ghost"
               size="icon-sm"
+              className="bg-muted hover:bg-secondary"
               aria-label={showTable ? t('common:chart.showChart') : t('common:chart.showTable')}
               aria-pressed={showTable}
               onClick={() => setShowTable((v) => !v)}

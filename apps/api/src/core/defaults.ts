@@ -2,6 +2,9 @@ import type { I18nName } from '../db/schema';
 
 const n = (uz: string, ru: string, en: string): I18nName => ({ uz, ru, en });
 
+/** One counterparty holds the wages owed. They are paid from the payroll run, which knows what each person gets. */
+export const PAYROLL_COUNTERPARTY = 'Xodimlar (ish haqi)';
+
 export const DEFAULT_DIVISIONS = [
   { key: 'crops', name: "Dehqonchilik" },
   { key: 'livestock', name: "Qo'ychilik" },
@@ -89,6 +92,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
   expense('investment', 'barn_construction', 'Molxona qurilishi', 'Строительство кошары', 'Barn construction'),
   expense('investment', 'machinery_purchase', 'Texnika xaridi', 'Покупка техники', 'Machinery purchase'),
   expense('investment', 'camera_system', 'Kamera tizimi', 'Система камер', 'Camera system'),
+  expense('investment', 'land_purchase', 'Yer xaridi', 'Покупка земли', 'Land purchase'),
   income('livestock_sales', 'lamb_sales', "Qo'zilar sotuvi", 'Продажа ягнят', 'Lamb sales'),
   income('livestock_sales', 'sheep_sales', "Qo'ylar sotuvi", 'Продажа овец', 'Sheep sales'),
   income('product_sales', 'meat_sales', "Go'sht sotuvi", 'Продажа мяса', 'Meat sales'),

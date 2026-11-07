@@ -52,7 +52,7 @@ function PayDialog({ loanId, instalment, onClose }: { loanId: string; instalment
   const { t } = useTranslation('finance');
   const accounts = useDetail<AccountOption[]>('/finance/accounts/lookup', undefined, { enabled: instalment !== null }).data ?? [];
   const pay = useApiMutation<z.output<typeof paySchema>>({
-    mutationFn: (values) => api.post(`${PATH}/${loanId}/instalments/${instalment?.id}/pay`, values),
+    mutationFn: (values) => api.postOnce(`${PATH}/${loanId}/instalments/${instalment?.id}/pay`, values),
     invalidate: MONEY_QUERIES,
     silentError: true,
   });
@@ -189,7 +189,7 @@ export default function LoansPage() {
   const [openId, setOpenId] = useState<string | null>(null);
 
   const save = useApiMutation<z.output<typeof loanSchema>>({
-    mutationFn: (values) => api.post(PATH, values),
+    mutationFn: (values) => api.postOnce(PATH, values),
     invalidate: MONEY_QUERIES,
     silentError: true,
   });
@@ -313,9 +313,9 @@ export default function LoansPage() {
               placeholder={t('journal.chooseCounterparty')}
             />
             <FormGrid>
-              <NumberField form={form} name="principal" label={t('loans.fields.principal')} required />
+              <NumberField money form={form} name="principal" label={t('loans.fields.principal')} required />
               <NumberField form={form} name="annualRate" label={t('loans.fields.annualRate')} required suffix="%" />
-              <NumberField form={form} name="termMonths" label={t('loans.fields.termMonths')} required />
+              <NumberField form={form} name="termMonths" label={t('loans.fields.termMonths')} required maxDigits={0} />
               <DateField form={form} name="startDate" label={t('loans.fields.startDate')} required />
               <SelectField form={form} name="method" label={t('loans.fields.method')} options={enumOptions('loanMethod', LOAN_METHODS)} />
               <SelectField

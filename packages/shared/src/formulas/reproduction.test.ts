@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  canBreed,
   adjustedWeight100,
   ancestorsWithin,
   averageOf,
@@ -46,6 +47,26 @@ describe('reproduction formulas', () => {
     expect(averageOf([10, null, 20, undefined])).toBe(15);
     expect(averageOf([null])).toBeNull();
     expect(averageOf([])).toBeNull();
+  });
+});
+
+describe('canBreed', () => {
+  const on = '2026-11-05';
+  it('refuses a newborn, whatever its category says', () => {
+    expect(canBreed({ category: 'lamb_female', birthDate: on }, on)).toBe(false);
+    expect(canBreed({ category: 'ewe', birthDate: '2026-10-01' }, on)).toBe(false);
+  });
+  it('turns on the day the animal is old enough', () => {
+    expect(canBreed({ category: 'lamb_female', birthDate: '2026-05-10' }, on)).toBe(false); // 179 days
+    expect(canBreed({ category: 'lamb_female', birthDate: '2026-05-09' }, on)).toBe(true); // 180 days
+  });
+  it('without a birth date, trusts the category', () => {
+    expect(canBreed({ category: 'ewe', birthDate: null }, on)).toBe(true);
+    expect(canBreed({ category: 'ram', birthDate: null }, on)).toBe(true);
+    expect(canBreed({ category: 'lamb_male', birthDate: null }, on)).toBe(false);
+  });
+  it('never a wether', () => {
+    expect(canBreed({ category: 'wether', birthDate: '2020-01-01' }, on)).toBe(false);
   });
 });
 

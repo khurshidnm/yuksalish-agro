@@ -261,7 +261,7 @@ export function PricesTab() {
                 options={KINDS.map((value) => ({ value, label: t(`prices.kind.${value}`) }))}
               />
             </FormGrid>
-            <NumberField form={form} name="price" label={t('prices.fields.price')} required />
+            <NumberField money form={form} name="price" label={t('prices.fields.price')} required />
             <TextField form={form} name="source" label={t('prices.fields.source')} hint={t('prices.fields.sourceHint')} />
           </>
         )}

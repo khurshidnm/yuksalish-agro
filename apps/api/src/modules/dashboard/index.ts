@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { routes } from '../../core/http';
 import { dashboard } from './dashboard.service';
 import { kpiQuery, kpis } from './kpis.service';
+import { outlook } from './outlook.service';
 
 export default async function dashboardModule(app: FastifyInstance) {
   const r = routes(app, 'dashboard');
@@ -10,6 +11,12 @@ export default async function dashboardModule(app: FastifyInstance) {
     access: 'dashboard.view',
     summary: 'The farm on one screen: the blocks this reader may see, in the order that suits their role',
     handler: (req) => dashboard(req.log),
+  });
+
+  r.get('/outlook', {
+    access: 'dashboard.view',
+    summary: 'The year ahead: herd, feed, crops and money projected from the records',
+    handler: () => outlook(),
   });
 
   r.get('/kpis', {

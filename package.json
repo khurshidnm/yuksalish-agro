@@ -1,8 +1,8 @@
 {
-  "name": "yuksalish-agro",
+  "name": "agro-panel",
   "version": "0.1.0",
   "private": true,
-  "description": "Yuksalish Agro Platform (YAP) — multi-tenant farm management SaaS",
+  "description": "Agro Panel (code name YAP) — multi-tenant farm management SaaS",
   "packageManager": "pnpm@12.16.1",
   "engines": {
     "node": ">=22"
@@ -20,6 +20,11 @@
     "db:seed": "pnpm --filter @yap/api db:seed",
     "db:reset": "pnpm --filter @yap/api db:reset",
     "db:generate": "pnpm --filter @yap/api db:generate",
-    "db:migrate": "pnpm --filter @yap/api db:migrate"
+    "db:migrate": "pnpm --filter @yap/api db:migrate",
+    "camera:up": "docker compose -f infra/camera-sim/docker-compose.yml up -d",
+    "camera:down": "docker compose -f infra/camera-sim/docker-compose.yml down",
+    "camera:setup": "node infra/camera-sim/sim.mjs setup",
+    "camera:run": "node infra/camera-sim/sim.mjs run",
+    "camera:event": "node infra/camera-sim/sim.mjs event"
   }
 }

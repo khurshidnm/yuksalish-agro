@@ -1,6 +1,7 @@
 import { Bell, BellRing, CheckCheck, Info, OctagonAlert, TriangleAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
+import { useOpenableLink } from '@/app/canOpen';
 import { EmptyState, ErrorCard, PageHeader, UrlTabs, useUrlParam } from '@/components';
 import { Button, Card, Pagination, Skeleton, Switch } from '@/components/ui';
 import { api } from '@/lib/api';
@@ -17,8 +18,9 @@ const SEVERITY_ICON = { urgent: OctagonAlert, attention: TriangleAlert, info: In
 const SEVERITY_TEXT = { urgent: 'text-danger', attention: 'text-warning', info: 'text-info' };
 
 function Inbox() {
-  const { t } = useTranslation('alerts');
+  const { t, i18n } = useTranslation('alerts');
   const navigate = useNavigate();
+  const openable = useOpenableLink();
   const [page, setPage] = useUrlParam('page', '1');
   const [unread, setUnread] = useUrlParam('unread');
 
@@ -26,6 +28,7 @@ function Inbox() {
     page: Number(page),
     pageSize: PAGE_SIZE,
     unread: unread === '1' ? true : undefined,
+    lang: i18n.language,
   });
 
   const read = useApiMutation<string>({
@@ -39,7 +42,8 @@ function Inbox() {
 
   const open = (row: NotificationRow) => {
     if (!row.readAt) read.mutate(row.id);
-    if (row.link) navigate(row.link);
+    const to = openable(row.link);
+    if (to) navigate(to);
   };
 
   const rows = data?.data ?? [];

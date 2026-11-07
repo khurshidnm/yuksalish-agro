@@ -58,7 +58,7 @@ export const counterparties = pgTable(
     phone: text(),
     address: text(),
     contactPerson: text(),
-    bankDetails: jsonb().$type<{ bankName?: string; account?: string; mfo?: string }>(),
+    bankDetails: jsonb().$type<{ bankName?: string | null; account?: string | null; mfo?: string | null }>(),
     notes: text(),
     active: boolean().notNull().default(true),
   },
@@ -117,7 +117,7 @@ export const transactions = pgTable(
     rejectedReason: text(),
   },
   (t) => [
-    index().on(t.farmId, t.date.desc()),
+    index().on(t.farmId, t.date),
     index().on(t.farmId, t.status),
     index().on(t.costCenterId, t.date),
     index().on(t.categoryId, t.date),

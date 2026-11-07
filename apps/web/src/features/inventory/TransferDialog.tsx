@@ -50,7 +50,7 @@ export function TransferDialog({ open, onOpenChange }: { open: boolean; onOpenCh
   const { t } = useTranslation('inventory');
   const mutation = useApiMutation<FormOut, DocumentResult>({
     mutationFn: ({ lines, ...values }) =>
-      api.post('/inventory/transfers', { ...values, lines: lines.map(({ itemId, qty }) => ({ itemId, qty })) }),
+      api.postOnce('/inventory/transfers', { ...values, lines: lines.map(({ itemId, qty }) => ({ itemId, qty })) }),
     invalidate: STOCK_PATHS,
     silentError: true,
     onSuccess: (result) =>

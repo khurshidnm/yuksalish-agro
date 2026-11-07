@@ -181,7 +181,7 @@ export default function FarmPassportPage() {
     return (
       <div className="flex flex-col gap-4">
         <Skeleton className="h-10 w-64" />
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <Skeleton className="h-24" />
           <Skeleton className="h-24" />
           <Skeleton className="h-24" />
@@ -236,7 +236,7 @@ export default function FarmPassportPage() {
         </Alert>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="flex flex-col gap-4">
           <BalanceCard balance={balance} />
           <WeatherCard />

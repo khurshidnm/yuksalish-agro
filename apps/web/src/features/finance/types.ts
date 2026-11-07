@@ -37,6 +37,23 @@ export interface Transaction {
   createdByName: string | null;
   approvedByName: string | null;
   createdAt: string;
+  /** Sent back with an edit or a decision, so the server knows which version the person read. */
+  updatedAt: string;
+}
+
+/** A purchase from a supplier with no payment or debt recorded. Its value is in the base currency. */
+export interface UnpaidReceipt {
+  id: string;
+  docNo: string;
+  date: string;
+  counterpartyId: string;
+  supplier: string;
+  invoiceNo: string | null;
+  value: number;
+  goods: string;
+  lines: { itemName: string; itemCategory: string; unit: string; qty: number; value: number }[];
+  /** A paid purchase request is still waiting for these goods, so they may be paid for already. */
+  paidRequest: boolean;
 }
 
 export interface Totals {
@@ -95,6 +112,7 @@ export interface Aging {
 }
 
 export interface CounterpartyDebt {
+  isPayroll: boolean;
   counterpartyId: string;
   counterpartyName: string;
   direction: 'payable' | 'receivable';
@@ -241,6 +259,8 @@ export interface Forecast {
   lowConfidence: boolean;
   assumptions: { lambsPerEwe: number; survival: number; monthsToSale: number };
   firstNegativeMonth: string | null;
+  /** The last budgeted month. After it, only loans and debts are known. */
+  plannedThrough: string | null;
   rows: ForecastMonth[];
 }
 

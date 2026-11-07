@@ -1,6 +1,9 @@
+import { MAX_UPLOAD_BYTES } from '@yap/shared';
 import type { ListMeta } from './types';
+import { storageGet, storageRemove, storageSet } from './utils';
 
 const BASE = '/api/v1';
+const SIGN_OUT_OWED_KEY = 'yap.signOutOwed';
 
 export type QueryParams = Record<string, unknown>;
 
@@ -40,10 +43,30 @@ interface AuthEvents {
   onRefreshed?: (session: unknown) => void;
   /** Refresh failed: the user must sign in again. */
   onSignedOut?: () => void;
+  /** The cookie now belongs to someone else, or to another farm. This tab must start over. */
+  onSomeoneElse?: () => void;
+}
+
+/** Whose screens this tab shows. */
+export interface TabIdentity {
+  userId: string;
+  farmId: string | null;
+}
+
+/** A save nobody has answered yet: its key, and the body that may already be in the books. */
+interface OpenSave {
+  key: string;
+  body: string;
 }
 
 let accessToken: string | null = null;
 let events: AuthEvents = {};
+const openSaves = new Map<string, OpenSave>();
+let tabIdentity: TabIdentity | null = null;
+/** Counts sessions ended here, so a refresh that left before the end cannot bring the session back. */
+let sessionsEnded = 0;
+let signOutPending = false;
+let signingOut: Promise<void> | null = null;
 let refreshInFlight: Promise<RefreshResult | null> | null = null;
 
 export function setAccessToken(token: string | null): void {
@@ -52,6 +75,46 @@ export function setAccessToken(token: string | null): void {
 
 export function setAuthEvents(next: AuthEvents): void {
   events = next;
+}
+
+export function bindTabIdentity(next: TabIdentity | null): void {
+  if (!next) sessionsEnded += 1;
+  tabIdentity = next;
+}
+
+/** A person signed out and the server has not heard it. Storage carries this past a restart and to other tabs. */
+export const signOutOwed = (): boolean => signOutPending || storageGet(SIGN_OUT_OWED_KEY) !== null;
+
+export function oweSignOut(): void {
+  signOutPending = true;
+  storageSet(SIGN_OUT_OWED_KEY, '1');
+}
+
+/** The server heard it, or a new sign-in replaced the cookie. */
+export function settleSignOut(): void {
+  signOutPending = false;
+  storageRemove(SIGN_OUT_OWED_KEY);
+}
+
+/** Only /auth/logout ends the refresh cookie, which is HttpOnly. Safe to call at any time. */
+export function deliverSignOut(): Promise<void> {
+  if (!signOutOwed()) return Promise.resolve();
+  signingOut ??= fetch(`${BASE}/auth/logout`, { method: 'POST', credentials: 'include' })
+    .then(
+      (res) => {
+        if (res.ok) settleSignOut();
+      },
+      () => undefined,
+    )
+    .finally(() => {
+      signingOut = null;
+    });
+  return signingOut;
+}
+
+/** A key belongs to one person on one farm, so a change of either leaves open saves behind. */
+export function forgetOpenSaves(): void {
+  openSaves.clear();
 }
 
 export function buildQuery(params?: QueryParams): string {
@@ -74,32 +137,49 @@ export interface RefreshResult {
   session: unknown;
 }
 
+/**
+ * Null is the server refusing. Anything else that goes wrong throws, because no answer says nothing
+ * about the session: the reply may be lost on the way, with the cookie still good.
+ */
 async function callRefresh(): Promise<RefreshResult | null> {
-  try {
-    const res = await fetch(`${BASE}/auth/refresh`, { method: 'POST', credentials: 'include' });
-    if (!res.ok) return null;
-    const body = (await res.json()) as { data?: Partial<RefreshResult> };
-    return body.data?.accessToken ? { accessToken: body.data.accessToken, session: body.data.session } : null;
-  } catch {
-    return null;
-  }
+  const res = await fetch(`${BASE}/auth/refresh`, { method: 'POST', credentials: 'include' });
+  if (res.status === 401) return null;
+  if (!res.ok) throw new Error(`Refresh answered ${res.status}`);
+  const body = (await res.json()) as { data?: Partial<RefreshResult> };
+  return body.data?.accessToken ? { accessToken: body.data.accessToken, session: body.data.session } : null;
+}
+
+function isSomeoneElse(session: unknown): boolean {
+  const next = session as { user?: { id?: string }; farm?: { id?: string } | null } | null | undefined;
+  if (!tabIdentity || !next?.user?.id) return false;
+  return next.user.id !== tabIdentity.userId || (next.farm?.id ?? null) !== tabIdentity.farmId;
 }
 
 /**
  * Exchange the refresh cookie for a new access token. Refresh tokens rotate, and replaying a used one
  * looks like theft to the server. So there is one flight per tab (StrictMode, parallel 401s) and a Web
  * Lock across tabs: the second tab runs after the first and sends the already-rotated cookie.
+ *
+ * Every tab shares that cookie, so what comes back may be the next person's. Their token never enters
+ * this tab: whatever it still holds, a card or a queued record, would go out under their name.
  */
-export function refreshSession(): Promise<RefreshResult | null> {
+function attemptRefresh(): Promise<RefreshResult | null> {
+  // Startup, a 401 and the chat all come through here, and none may undo a sign-out.
+  if (signOutOwed()) return Promise.resolve(null);
   refreshInFlight ??= (async () => {
+    const ended = sessionsEnded;
     try {
       const result = navigator.locks
         ? await navigator.locks.request('yap.auth.refresh', callRefresh)
         : await callRefresh();
-      if (result) {
-        accessToken = result.accessToken;
-        events.onRefreshed?.(result.session);
+      if (!result || ended !== sessionsEnded || signOutOwed()) return null;
+      if (isSomeoneElse(result.session)) {
+        accessToken = null;
+        events.onSomeoneElse?.();
+        return null;
       }
+      accessToken = result.accessToken;
+      events.onRefreshed?.(result.session);
       return result;
     } finally {
       refreshInFlight = null;
@@ -107,6 +187,10 @@ export function refreshSession(): Promise<RefreshResult | null> {
   })();
   return refreshInFlight;
 }
+
+export const refreshSession = (): Promise<RefreshResult | null> => attemptRefresh().catch(() => null);
+
+const fileTooLarge = () => new ApiError(413, 'FILE_TOO_LARGE', 'This file is too large', { maxMb: MAX_UPLOAD_BYTES / 1024 / 1024 });
 
 async function toApiError(res: Response): Promise<ApiError> {
   try {
@@ -117,7 +201,18 @@ async function toApiError(res: Response): Promise<ApiError> {
   } catch {
     // Not JSON: fall through to a generic error.
   }
+  // A proxy refuses a body over its limit with a page of its own, before the API sees it.
+  if (res.status === 413) return fileTooLarge();
   return new ApiError(res.status, 'HTTP_ERROR', res.statusText || `HTTP ${res.status}`);
+}
+
+/** The 401s that are about the session. Any other is about what was typed: sent again, it would count as a second guess. */
+const SESSION_FAILURES = new Set(['UNAUTHORIZED', 'INVALID_TOKEN', 'ACCOUNT_BLOCKED']);
+
+async function isSessionFailure(res: Response): Promise<boolean> {
+  if (res.status !== 401) return false;
+  const body = (await res.clone().json().catch(() => null)) as { error?: { code?: string } } | null;
+  return SESSION_FAILURES.has(body?.error?.code ?? '');
 }
 
 async function send(path: string, init: RequestInit, opts: RequestOptions): Promise<Response> {
@@ -140,14 +235,15 @@ async function send(path: string, init: RequestInit, opts: RequestOptions): Prom
     throw new ApiError(0, 'NETWORK_ERROR', 'Network error');
   }
 
-  if (res.status === 401 && !isAuthCall) {
-    if (await refreshSession()) {
-      try {
-        res = await attempt();
-      } catch {
-        throw new ApiError(0, 'NETWORK_ERROR', 'Network error');
-      }
-    } else {
+  if (!isAuthCall && (await isSessionFailure(res))) {
+    let refreshed: RefreshResult | null;
+    try {
+      refreshed = await attemptRefresh();
+      if (refreshed) res = await attempt();
+    } catch {
+      throw new ApiError(0, 'NETWORK_ERROR', 'Network error');
+    }
+    if (!refreshed) {
       accessToken = null;
       events.onSignedOut?.();
     }
@@ -155,14 +251,21 @@ async function send(path: string, init: RequestInit, opts: RequestOptions): Prom
   return res;
 }
 
-async function request<T>(path: string, init: RequestInit, opts: RequestOptions = {}): Promise<T> {
-  const res = await send(path, init, opts);
-  if (!res.ok) throw await toApiError(res);
+async function unwrap<T>(res: Response): Promise<T> {
   if (res.status === 204) return undefined as T;
   const text = await res.text();
   if (!text) return undefined as T;
   return (JSON.parse(text) as { data: T }).data;
 }
+
+async function request<T>(path: string, init: RequestInit, opts: RequestOptions = {}): Promise<T> {
+  const res = await send(path, init, opts);
+  if (!res.ok) throw await toApiError(res);
+  return unwrap<T>(res);
+}
+
+/** crypto.randomUUID exists only on HTTPS and localhost, and a farm server on the LAN may have neither. */
+const newRequestKey = () => globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 function jsonInit(method: string, body: unknown): RequestInit {
   if (body === undefined) return { method };
@@ -194,6 +297,25 @@ export const api = {
     return request<T>(path, jsonInit('POST', body), opts);
   },
 
+  /**
+   * POST for money and stock, which must happen once however many presses it takes. A retry, a lost
+   * answer, or Cancel and the same entry typed again all carry one key until a press is answered, so
+   * routes() replays the record instead of booking a second. A replay answers for the first body,
+   * so a press that says something else is told it was not saved.
+   */
+  async postOnce<T>(path: string, body?: unknown): Promise<T> {
+    const sent = JSON.stringify(body ?? null);
+    const save = openSaves.get(path) ?? { key: newRequestKey(), body: sent };
+    openSaves.set(path, save);
+    const res = await send(path, jsonInit('POST', body), { idempotencyKey: save.key });
+    if (!res.ok) throw await toApiError(res);
+    openSaves.delete(path);
+    if (res.headers.has('idempotent-replay') && save.body !== sent) {
+      throw new ApiError(409, 'SAVED_EARLIER', 'An earlier press was saved with other figures, and this one was not');
+    }
+    return unwrap<T>(res);
+  },
+
   patch<T>(path: string, body?: unknown, opts?: RequestOptions): Promise<T> {
     return request<T>(path, jsonInit('PATCH', body), opts);
   },
@@ -207,14 +329,16 @@ export const api = {
   },
 
   /** Multipart upload to POST /files; returns the stored file. */
-  upload(file: File | Blob, name?: string, opts?: RequestOptions): Promise<UploadedFile> {
+  async upload(file: File | Blob, name?: string, opts?: RequestOptions): Promise<UploadedFile> {
+    if (file.size > MAX_UPLOAD_BYTES) throw fileTooLarge();
     const form = new FormData();
     form.append('file', file, name ?? (file instanceof File ? file.name : 'file'));
     return request<UploadedFile>('/files', { method: 'POST', body: form }, opts);
   },
 
   /** Multipart POST to any endpoint, e.g. spreadsheet import. Returns the unwrapped `data`. */
-  postFile<T>(path: string, file: File | Blob, fields?: Record<string, string>, opts?: RequestOptions): Promise<T> {
+  async postFile<T>(path: string, file: File | Blob, fields?: Record<string, string>, opts?: RequestOptions): Promise<T> {
+    if (file.size > MAX_UPLOAD_BYTES) throw fileTooLarge();
     const form = new FormData();
     for (const [k, v] of Object.entries(fields ?? {})) form.append(k, v);
     form.append('file', file, file instanceof File ? file.name : 'file');

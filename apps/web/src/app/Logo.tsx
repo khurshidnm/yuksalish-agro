@@ -1,15 +1,19 @@
 import { cn } from '@/lib/utils';
 
-/** A wheat ear, drawn with theme tokens so it sits on the sidebar and on light surfaces alike. */
+/**
+ * The Agro Panel mark: a panel of four tiles, one of them grown into a leaf. Both colours are tokens that stay
+ * the same in light and dark. public/favicon.svg and the PNG icons draw the same shapes with fixed colours.
+ */
 export function LogoMark({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 32 32" aria-hidden className={cn('size-9 shrink-0', className)}>
-      <rect width="32" height="32" rx="7" className="fill-sidebar-active" />
-      <path d="M16 25V11" className="stroke-sidebar-active-foreground" strokeWidth="2.2" strokeLinecap="round" />
-      <path
-        d="M16 15c-4-.2-6.2-2.4-6.6-6.4 4 .3 6.3 2.4 6.6 6.4zM16 15c4-.2 6.2-2.4 6.6-6.4-4 .3-6.3 2.4-6.6 6.4zM16 21c-4-.2-6.2-2.4-6.6-6.4 4 .3 6.3 2.4 6.6 6.4zM16 21c4-.2 6.2-2.4 6.6-6.4-4 .3-6.3 2.4-6.6 6.4z"
-        className="fill-sidebar-active-foreground"
-      />
+    <svg viewBox="0 0 64 64" aria-hidden className={cn('size-9 shrink-0', className)}>
+      <rect width="64" height="64" rx="15" className="fill-accent-foreground" />
+      <g className="fill-accent">
+        <rect x="11.5" y="11.5" width="18" height="18" rx="4" opacity=".42" />
+        <rect x="11.5" y="34.5" width="18" height="18" rx="4" opacity=".42" />
+        <rect x="34.5" y="34.5" width="18" height="18" rx="4" opacity=".42" />
+        <path d="M53.5 10.5A20 20 0 0 0 33.5 30.5 20 20 0 0 0 53.5 10.5Z" />
+      </g>
     </svg>
   );
 }

@@ -2,6 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { latinToCyrillic, mapStrings } from './translit';
 
 describe('latinToCyrillic', () => {
+  it('writes the product name the same way in every script', () => {
+    expect(latinToCyrillic('Agro Panel zaxira kodlari')).toBe('Agro Panel захира кодлари');
+    expect(mapStrings({ app: { name: 'Agro Panel' } }, latinToCyrillic).app.name).toBe('Agro Panel');
+  });
+
   it.each([
     ["Bo'g'oz sovliqlar", 'Бўғоз совлиқлар'],
     ['ferma', 'ферма'],
@@ -32,12 +37,44 @@ describe('latinToCyrillic', () => {
 
   it('applies overrides', () => {
     expect(latinToCyrillic('Telegram')).toBe('Телеграм');
+    expect(latinToCyrillic('Chrome 111 yoki Safari 16.4')).toBe('Chrome 111 ёки Safari 16.4');
     expect(latinToCyrillic('Sentabr')).toBe('Сентябрь');
     expect(latinToCyrillic('iyun')).toBe('июнь');
   });
 
   it('leaves digits and punctuation alone', () => {
     expect(latinToCyrillic('500 bosh, 70 ga.')).toBe('500 бош, 70 га.');
+  });
+});
+
+describe('real words a person would notice', () => {
+  it.each([
+    ['internetsiz', 'интернетсиз'],
+    ['Muddatsiz', 'Муддатсиз'],
+    ['harakatsizlik', 'ҳаракатсизлик'],
+    ['kalitsiz', 'калитсиз'],
+    ['yetsin', 'етсин'],
+    ['ratsion', 'рацион'],
+    ['operatsiya', 'операция'],
+    ['litsenziya', 'лицензия'],
+    ['meditsina', 'медицина'],
+    ['protsent', 'процент'],
+    ['Vaksina', 'Вакцина'],
+    ['vaksinatsiya', 'вакцинация'],
+    ['Kompyuterda', 'Компьютерда'],
+    ['Obyektlar', 'Объектлар'],
+    ["PDF'ga", "PDF'га"],
+    ['STIR', 'СТИР'],
+    ['Webhook', 'Webhook'],
+    ['pH', 'pH'],
+  ])('%s', (latin, cyrillic) => {
+    expect(latinToCyrillic(latin)).toBe(cyrillic);
+  });
+
+  it('leaves paths and file types alone, but not a unit after a slash', () => {
+    expect(latinToCyrillic('Hujjat: /api/docs')).toBe('Ҳужжат: /api/docs');
+    expect(latinToCyrillic('Excel (.xlsx) yoki CSV')).toBe('Excel (.xlsx) ёки CSV');
+    expect(latinToCyrillic("so'm/kg")).toBe('сўм/кг');
   });
 });
 

@@ -1,12 +1,14 @@
+import { deflateRawSync } from 'node:zlib';
 import ExcelJS from 'exceljs';
 import { and, eq, sql } from 'drizzle-orm';
 import pg from 'pg';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { RoleKey } from '@yap/shared';
 import { addDays, expectedLambingDate, todayIso } from '@yap/shared';
 import { tx } from '../src/core/context';
 import { signAccessToken } from '../src/core/tokens';
 import { schema } from '../src/db/client';
+import { readSpreadsheet, runLimited } from '../src/modules/import/file';
 import { createFixture, type Fixture } from './helpers';
 
 const { accounts, breedingRecords, animals, budgets, cropPlans, employees, fields, herds, items, seasons, stockBatches, transactions } = schema;
@@ -444,6 +446,30 @@ describe('messy input', () => {
     expect(rows[0].birthDate).toBe(addDays(today, -Math.round(36 * 30.44)));
   });
 
+  it('takes an age with no purchase date as born here, and says so before anything is saved', async () => {
+    const f = await createFixture();
+    const file = await sheetOf([
+      ANIMAL_HEADER,
+      ['B-1', 'Hisori', "Urg'ochi", '3 yosh'],
+      ['B-2', 'Hisori', 'Erkak', 2],
+      ['B-3', 'Hisori', "Urg'ochi", '6 oy'],
+      ['B-4', 'Hisori', "Urg'ochi", '15.03.2023'],
+      ['B-5', 'Hisori', "Urg'ochi", '3 yosh', null, null, '2026-10-20'],
+    ]);
+    const preview = await upload(f, 'owner', 'animals', file);
+    expect(preview.data.summary).toMatchObject({ new: 5, error: 0 });
+    const assumed = preview.data.warnings.find((w: any) => w.column === 'birth');
+    expect(assumed).toMatchObject({ count: 3, rows: [2, 3, 4] });
+    expect(assumed.message).toContain("fermada tug'ilgan");
+
+    await confirm(f, 'owner', preview.data.id);
+    const rows = await f.run(() => tx().select().from(animals).orderBy(animals.tag));
+    expect(rows.map((r) => r.origin)).toEqual(['born', 'born', 'born', 'born', 'purchased']);
+    expect(rows.map((r) => r.birthDateEstimated)).toEqual([true, true, true, false, true]);
+    expect(rows.map((r) => r.category)).toEqual(['ewe', 'ram', 'lamb_female', 'ewe', 'ewe']);
+    expect(rows[1].birthDate).toBe(addDays(today, -Math.round(24 * 30.44)));
+  });
+
   it('matches crop names in Latin, Cyrillic, Russian, and without apostrophes', async () => {
     const f = await createFixture();
     const file = await sheetOf([
@@ -516,7 +542,7 @@ describe('messy input', () => {
       ['C-6', 'Hisori', "Urg'ochi", '15.03.2023', null, '2099-01-01', '2026-10-20'],
       ['C-7', 'Hisori', "Urg'ochi", 'qari', null, null, '2026-10-20'],
       [null, 'Hisori', "Urg'ochi", '15.03.2023', null, null, '2026-10-20'],
-      ['C-9', 'Hisori', "Urg'ochi", '3 yosh'],
+      ['C-9', 'Hisori', "Urg'ochi"],
     ]);
     const preview = await upload(f, 'owner', 'animals', file);
     expect(preview.status).toBe(200);
@@ -534,7 +560,7 @@ describe('messy input', () => {
     expect(reason(7).message).toContain('kelajakdagi');
     expect(reason(8).column).toBe('birth');
     expect(reason(9)).toMatchObject({ column: 'tag', message: "Birka raqami to'ldirilmagan" });
-    expect(reason(10).message).toContain('Sotib olish sanasi yoki aniq');
+    expect(reason(10).message).toBe("Tug'ilgan sana, yosh yoki sotib olish sanasi kerak");
     expect(preview.data.errors.length).toBeGreaterThan(0);
   });
 
@@ -1196,5 +1222,309 @@ describe('fieldNumberOf', () => {
     expect(fieldNumberOf('Dala-4')).toBe('4');
     expect(fieldNumberOf('Y-1')).toBe('Y-1');
     expect(fieldNumberOf('Dalacha')).toBe('Dalacha');
+  });
+});
+
+/** A zip written by hand, so that it can say whatever it likes about itself. */
+function zipOf(parts: { name: string; data: Buffer; declared?: number; copies?: number }[]): Buffer {
+  const files: Buffer[] = [];
+  const directory: Buffer[] = [];
+  let at = 0;
+  let entries = 0;
+  for (const { name, data, declared, copies = 1 } of parts) {
+    const packed = deflateRawSync(data);
+    const path = Buffer.from(name);
+    const file = Buffer.alloc(30);
+    file.writeUInt32LE(0x04034b50, 0);
+    file.writeUInt16LE(8, 8);
+    file.writeUInt32LE(packed.length, 18);
+    file.writeUInt32LE(declared ?? data.length, 22);
+    file.writeUInt16LE(path.length, 26);
+    for (let copy = 0; copy < copies; copy++) {
+      const entryPath = Buffer.from(copy ? `${name}.${copy}` : name);
+      const entry = Buffer.alloc(46);
+      entry.writeUInt32LE(0x02014b50, 0);
+      entry.writeUInt16LE(8, 10);
+      entry.writeUInt32LE(packed.length, 20);
+      entry.writeUInt32LE(declared ?? data.length, 24);
+      entry.writeUInt16LE(entryPath.length, 28);
+      entry.writeUInt32LE(at, 42);
+      directory.push(entry, entryPath);
+      entries += 1;
+    }
+    files.push(file, path, packed);
+    at += file.length + path.length + packed.length;
+  }
+  const allEntries = Buffer.concat(directory);
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0);
+  end.writeUInt16LE(entries, 8);
+  end.writeUInt16LE(entries, 10);
+  end.writeUInt32LE(allEntries.length, 12);
+  end.writeUInt32LE(at, 16);
+  return Buffer.concat([...files, allEntries, end]);
+}
+
+const MAIN_XML = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+const WORKBOOK_PARTS = [
+  {
+    name: 'xl/workbook.xml',
+    data: Buffer.from(
+      `<workbook xmlns="${MAIN_XML}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Sheet1" sheetId="1" r:id="rId1"/></sheets></workbook>`,
+    ),
+  },
+  {
+    name: 'xl/_rels/workbook.xml.rels',
+    data: Buffer.from(
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>',
+    ),
+  },
+];
+
+const sheetXml = (rows: string) => Buffer.from(`<worksheet xmlns="${MAIN_XML}"><sheetData>${rows}</sheetData></worksheet>`);
+const bookOf = (sheet: Buffer, ...others: { name: string; data: Buffer; declared?: number; copies?: number }[]) =>
+  zipOf([...WORKBOOK_PARTS, { name: 'xl/worksheets/sheet1.xml', data: sheet }, ...others]);
+
+const MB = 1024 * 1024;
+const columnName = (index: number) => (index < 26 ? '' : String.fromCharCode(64 + Math.floor(index / 26))) + String.fromCharCode(65 + (index % 26));
+const log = { warn: vi.fn(), error: vi.fn() } as unknown as Parameters<typeof readSpreadsheet>[1];
+
+describe('a file cannot hurt the API', () => {
+  let f: Fixture;
+  beforeAll(async () => {
+    f = await createFixture();
+  });
+
+  it('reads a file of nothing but newlines, the upload that used to end the process', async () => {
+    const res = await upload(f, 'zootechnician', 'animals', Buffer.alloc(Math.floor(14.9 * MB), 0x0a), 'data.csv');
+    expect(res.status).toBe(400);
+    expect(res.error.code).toBe('WRONG_TEMPLATE');
+  });
+
+  it('counts the rows of a full-size CSV without keeping them', async () => {
+    const rows = 'Z-1;Xaridor\n'.repeat(Math.floor((14.5 * MB) / 12));
+    const res = await upload(f, 'owner', 'counterparties', Buffer.from(`Nomi;Toifa\n${rows}`), 'data.csv');
+    expect(res.status).toBe(400);
+    expect(res.error.code).toBe('TOO_MANY_ROWS');
+    expect(res.error.details).toEqual({ max: 2000, found: rows.length / 12 });
+  });
+
+  it('counts what really comes out of a zip, not what it declares', async () => {
+    const started = Date.now();
+    const bomb = sheetXml('<row r="1"><c r="A1"><v>1</v></c></row>'.repeat(4_000_000));
+    const sent = bookOf(Buffer.from('<x/>'), { name: 'xl/sharedStrings.xml', data: bomb, declared: 1000 });
+    expect(sent.length).toBeLessThan(MB);
+    const res = await upload(f, 'owner', 'animals', sent);
+    expect(res.error.code).toBe('FILE_TOO_COMPLEX');
+    expect(Date.now() - started).toBeLessThan(10_000);
+  });
+
+  it('counts one packed part again each time the directory names it', async () => {
+    const part = { name: 'xl/worksheets/sheet2.xml', data: Buffer.alloc(8 * MB, 0x20), copies: 5 };
+    const res = await upload(f, 'owner', 'animals', bookOf(sheetXml(''), part));
+    expect(res.error.code).toBe('FILE_TOO_COMPLEX');
+  });
+
+  it('never unpacks pictures, so a bomb among them changes nothing', async () => {
+    const rows = [['Birka raqami', 'Jinsi', 'Sotib olish sanasi'], ['M-1', "Urg'ochi", '2026-10-20']];
+    const xml = rows
+      .map((cells, r) => `<row r="${r + 1}">${cells.map((text, c) => `<c r="${columnName(c)}${r + 1}" t="inlineStr"><is><t>${text}</t></is></c>`).join('')}</row>`)
+      .join('');
+    const picture = { name: 'xl/media/image1.png', data: Buffer.alloc(512 * MB) };
+    const res = await upload(f, 'owner', 'animals', bookOf(sheetXml(xml), picture));
+    expect(res.status).toBe(200);
+    expect(res.data.summary.new).toBe(1);
+  });
+
+  it('refuses a workbook that fits every size limit but needs too much memory, and goes on answering', async () => {
+    const row = (r: number) => `<row r="${r}">${Array.from({ length: 26 }, (_, c) => `<c r="${columnName(c)}${r}"><v>1</v></c>`).join('')}</row>`;
+    const xml = sheetXml(Array.from({ length: 62_000 }, (_, r) => row(r + 1)).join(''));
+    expect(xml.length).toBeGreaterThan(30 * MB);
+    const file = bookOf(xml);
+    expect(file.length).toBeLessThan(15 * MB);
+
+    let last = Date.now();
+    let longestPause = 0;
+    const clock = setInterval(() => {
+      longestPause = Math.max(longestPause, Date.now() - last);
+      last = Date.now();
+    }, 10);
+    const res = await upload(f, 'zootechnician', 'animals', file);
+    clearInterval(clock);
+
+    expect(res.status).toBe(400);
+    expect(res.error.code).toBe('FILE_TOO_COMPLEX');
+    expect(longestPause).toBeLessThan(1000);
+  });
+
+  it('expands no entities: the billion laughs is refused, not unpacked', async () => {
+    const doctype = `<!DOCTYPE lolz [<!ENTITY a "aaaaaaaaaa">${Array.from({ length: 12 }, (_, i) => `<!ENTITY ${'bcdefghijklm'[i]} "${`&${'abcdefghijkl'[i]};`.repeat(10)}">`).join('')}]>`;
+    const xml = Buffer.from(`${doctype}<worksheet xmlns="${MAIN_XML}"><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>&m;</t></is></c></row></sheetData></worksheet>`);
+    const res = await upload(f, 'owner', 'animals', bookOf(xml));
+    expect(res.status).toBe(400);
+    expect(res.error.code).toBe('NOT_A_SPREADSHEET');
+  });
+
+  it.each([
+    ['broken XML', () => bookOf(Buffer.from('<worksheet><sheetData><row'))],
+    ['a part that does not inflate', () => {
+      const file = bookOf(sheetXml('<row r="1"/>'));
+      const start = file.indexOf('xl/worksheets/sheet1.xml') + 24;
+      file.fill(0xff, start, start + 8);
+      return file;
+    }],
+    ['a directory that points past the end', () => {
+      const file = bookOf(sheetXml(''));
+      file.writeUInt32LE(0xfffffff0, file.length - 6);
+      return file;
+    }],
+    ['a zip with no workbook in it', () => zipOf([{ name: 'hello.txt', data: Buffer.from('salom') }])],
+    ['an encrypted-looking method', () => {
+      const file = bookOf(sheetXml(''));
+      const entry = file.indexOf(Buffer.from([0x50, 0x4b, 0x01, 0x02]));
+      file.writeUInt16LE(99, entry + 10);
+      return file;
+    }],
+  ])('refuses %s', async (_name, build) => {
+    const res = await upload(f, 'owner', 'animals', build());
+    expect(res.status).toBe(400);
+    expect(['NOT_A_SPREADSHEET', 'WRONG_TEMPLATE']).toContain(res.error.code);
+  });
+
+  it('refuses a cell longer than Excel itself allows, naming its row', async () => {
+    const long = 'x'.repeat(40_000);
+    const csv = await upload(f, 'owner', 'counterparties', Buffer.from(`Nomi;Toifa\nAli;Xaridor\n${long};Xaridor\n`), 'data.csv');
+    expect(csv.error).toMatchObject({ code: 'CELL_TOO_LONG', details: { row: 3, max: 32_767 } });
+    const xlsx = await upload(f, 'owner', 'counterparties', await sheetOf([['Nomi', 'Toifa'], [long, 'Xaridor']]));
+    expect(xlsx.error).toMatchObject({ code: 'CELL_TOO_LONG', details: { row: 2 } });
+    const quoted = await upload(f, 'owner', 'counterparties', Buffer.from(`Nomi;Toifa\n"${long}`), 'data.csv');
+    expect(quoted.error.code).toBe('CELL_TOO_LONG');
+  });
+
+  it('counts a shared string each time a cell repeats it', async () => {
+    const strings = { name: 'xl/sharedStrings.xml', data: Buffer.from(`<sst xmlns="${MAIN_XML}"><si><t>${'x'.repeat(32_000)}</t></si></sst>`) };
+    const row = (r: number) => `<row r="${r}">${Array.from({ length: 100 }, (_, c) => `<c r="${columnName(c)}${r}" t="s"><v>0</v></c>`).join('')}</row>`;
+    const xml = sheetXml(Array.from({ length: 2000 }, (_, r) => row(r + 1)).join(''));
+    const res = await upload(f, 'owner', 'animals', bookOf(xml, strings));
+    expect(res.error.code).toBe('FILE_TOO_COMPLEX');
+  });
+
+  it('refuses a workbook of too many sheets', async () => {
+    const workbook = new ExcelJS.Workbook();
+    for (let i = 0; i < 21; i++) workbook.addWorksheet(`Sheet${i}`).addRow(['Birka raqami', 'Jinsi']);
+    expect((await upload(f, 'owner', 'animals', await asBuffer(workbook))).error.code).toBe('FILE_TOO_COMPLEX');
+  });
+
+  it('does not stop over cells built to make its patterns crawl', async () => {
+    const started = Date.now();
+    const brackets = Array.from({ length: 100 }, () => '('.repeat(32_000)).join(';');
+    const headers = await upload(f, 'owner', 'animals', Buffer.from(`${brackets}\nBirka raqami\n`), 'data.csv');
+    expect(headers.error.code).toBe('WRONG_TEMPLATE');
+
+    const digits = Array.from({ length: 200 }, (_, i) => `Beda ${i};${'1'.repeat(32_000)}x;kg;2026-10-15;2000`).join('\n');
+    const cells = await upload(f, 'owner', 'feed', Buffer.from(`Ozuqa turi;Miqdori;O'lchov birligi;Kirim sanasi;Narxi (1 birlik uchun)\n${digits}`), 'data.csv');
+    expect(cells.status).toBe(200);
+    expect(cells.data.summary.error).toBe(200);
+    expect(Date.now() - started).toBeLessThan(15_000);
+  });
+
+  it('treats a NUL anywhere as not being text, since Postgres could not store it', async () => {
+    const padding = 'a;b\n'.repeat(2000);
+    const res = await upload(f, 'owner', 'counterparties', Buffer.from(`Nomi;Toifa\n${padding}Ali\0;Xaridor\n`), 'data.csv');
+    expect(res.error.code).toBe('NOT_A_SPREADSHEET');
+  });
+
+  it('reads text that merely starts with the letters of a zip', async () => {
+    const res = await upload(f, 'owner', 'counterparties', Buffer.from('PK;Nomi;Toifa\n1;Ali;Xaridor\n'), 'data.csv');
+    expect(res.status).toBe(200);
+    expect(res.data.summary.new).toBe(1);
+  });
+
+  it('keeps Cyrillic whole however long the sheet is', async () => {
+    const rows = Array.from({ length: 2000 }, (_, i) => [`Ўзбекистон Гиссарская ${i}`, 'Xaridor']);
+    const res = await upload(f, 'owner', 'counterparties', await sheetOf([['Nomi', 'Toifa'], ...rows]));
+    expect(res.data.summary.new).toBe(2000);
+    const all = await rowsOf(f, 'owner', res.data.id, 'new');
+    expect(all[199].values.name).toBe('Ўзбекистон Гиссарская 199');
+  });
+
+  it('keeps a merged cell for every row it covers', async () => {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Sheet1');
+    sheet.addRows([['Nomi', 'Toifa'], ['Ali', 'Xaridor'], ['Vali', null], ['Soli', null]]);
+    sheet.mergeCells('B2:B4');
+    const res = await upload(f, 'owner', 'counterparties', await asBuffer(workbook));
+    expect(res.data.summary).toMatchObject({ new: 3, error: 0 });
+  });
+
+  it('reads a workbook with a picture, a table, a comment and a link', async () => {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Sheet1');
+    sheet.addTable({
+      name: 'Partners',
+      ref: 'A1',
+      columns: [{ name: 'Nomi' }, { name: 'Toifa' }],
+      rows: [['Ali', 'Xaridor'], ['Vali', 'Xaridor']],
+    });
+    sheet.getCell('A2').note = 'Eski mijoz';
+    sheet.getCell('A3').value = { text: 'Vali', hyperlink: 'https://example.com' };
+    sheet.addImage(workbook.addImage({ buffer: PNG as unknown as ExcelJS.Buffer, extension: 'png' }), 'D1:E2');
+    const res = await upload(f, 'owner', 'counterparties', await asBuffer(workbook));
+    expect(res.status).toBe(200);
+    expect(res.data.summary.new).toBe(2);
+  });
+
+  it('stores a file name it can use, whatever the client sends', async () => {
+    const file = await sheetOf([['Nomi', 'Toifa'], ['Ali', 'Xaridor']]);
+    const res = await upload(f, 'owner', 'counterparties', file, `\u0007${'a'.repeat(300)}.xlsx`);
+    expect(res.status).toBe(200);
+    expect(res.data.fileName).toBe('a'.repeat(255));
+  });
+});
+
+describe('the reader process', () => {
+  const limits = { timeoutMs: 5000, maxOutputBytes: 1000 };
+
+  it('gets none of the API\'s environment', async () => {
+    const { stdout } = await runLimited(['-e', 'process.stdout.write(Object.keys(process.env).join())'], Buffer.alloc(0), limits);
+    expect(stdout.toString()).not.toMatch(/JWT_SECRET|DATABASE_URL|NODE_OPTIONS/);
+  });
+
+  it('is killed when it runs too long', async () => {
+    const result = await runLimited(['-e', 'setInterval(() => {}, 1000)'], Buffer.alloc(0), { ...limits, timeoutMs: 300 });
+    expect(result.signal).toBe('SIGKILL');
+  });
+
+  it('is killed when it answers too much', async () => {
+    const result = await runLimited(['-e', 'for (;;) process.stdout.write("x".repeat(65536))'], Buffer.alloc(0), limits);
+    expect(result.signal).toBe('SIGKILL');
+  });
+
+  it('leaves the API alone when it stops before reading its input', async () => {
+    const result = await runLimited(['-e', 'process.exit(3)'], Buffer.alloc(15 * MB), limits);
+    expect(result.exitCode).toBe(3);
+  });
+
+  it('leaves the API alone when it runs out of memory', async () => {
+    const hog = 'const all = []; for (;;) all.push(new Array(1e5).fill({}))';
+    const result = await runLimited(['--max-old-space-size=16', '-e', hog], Buffer.alloc(0), { ...limits, timeoutMs: 20_000 });
+    expect(result.exitCode).not.toBe(0);
+  });
+
+  it('answers "try again" when it cannot start, and the next file still gets its turn', async () => {
+    const node = process.execPath;
+    process.execPath = '/nowhere/node';
+    const refused = await readSpreadsheet(Buffer.from('Nomi\nAli\n'), log).catch((err) => err);
+    process.execPath = node;
+    expect(refused).toMatchObject({ status: 503, code: 'READER_UNAVAILABLE' });
+    await expect(readSpreadsheet(Buffer.from('Nomi\nAli\n'), log)).resolves.toHaveLength(1);
+  });
+
+  it('reads one file at a time, keeps a short queue, and turns the rest away', async () => {
+    const file = Buffer.from('Nomi\nAli\n');
+    const results = await Promise.allSettled(Array.from({ length: 6 }, () => readSpreadsheet(file, log)));
+    expect(results.map((r) => r.status)).toEqual(['fulfilled', 'fulfilled', 'fulfilled', 'fulfilled', 'rejected', 'rejected']);
+    expect((results[5] as PromiseRejectedResult).reason).toMatchObject({ status: 429, code: 'READER_BUSY' });
+    await expect(readSpreadsheet(file, log)).resolves.toHaveLength(1);
   });
 });

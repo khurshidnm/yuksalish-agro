@@ -50,7 +50,7 @@ function StatusLine({ label, value, total }: { label: string; value: number; tot
         <span className="text-sm text-muted-foreground">{label}</span>
         <span className="font-semibold tabular-nums">{t('crops.ofTotal', { value: formatNumber(value, 0), total: formatNumber(total, 0) })}</span>
       </div>
-      <Meter value={total > 0 ? (value / total) * 100 : 0} label={label} />
+      <Meter value={total > 0 ? (value / total) * 100 : 0} label={label} ticks />
     </div>
   );
 }
@@ -62,7 +62,7 @@ export function CropsBlock({ data, link }: { data: CropsData; link: LinkTo }) {
   const operations = link('/crops/operations', 'crops.view');
 
   return (
-    <div className="grid gap-3 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
       <Card className="lg:col-span-3">
         <CardHeader className="flex-row items-center justify-between gap-2">
           <CardTitle>{t('crops.weatherTitle')}</CardTitle>

@@ -41,6 +41,13 @@ export default async function notificationsModule(app: FastifyInstance) {
     handler: (req) => service.setPreference(req.body.eventType, req.body.channels),
   });
 
+  r.put('/language', {
+    access: 'authenticated',
+    summary: 'The language of messages sent outside the app, usually the one chosen on screen',
+    body: service.languageInput,
+    handler: (req) => service.setLanguage(req.body.language),
+  });
+
   r.get('/telegram', {
     access: 'authenticated',
     summary: 'Whether the bot is configured and this user is linked',

@@ -72,7 +72,7 @@ export function QuarantineTab() {
       header: t('common.animal'),
       mobile: 'title',
       cell: (row) => (
-        <Link className="font-medium text-primary hover:underline" to={`/livestock/animals/${row.animalId}`}>
+        <Link className="relative font-medium text-primary after:absolute after:inset-x-0 after:-inset-y-3 hover:underline" to={`/livestock/animals/${row.animalId}`}>
           {row.tag}
         </Link>
       ),
@@ -173,7 +173,7 @@ export function QuarantineTab() {
             </FormField>
             <FormGrid>
               <DateField form={form} name="startDate" label={t('quarantine.start')} max={todayIso()} />
-              <NumberField form={form} name="days" label={t('quarantine.days')} hint={t('quarantine.daysHint')} suffix={t('common.days')} />
+              <NumberField form={form} name="days" label={t('quarantine.days')} hint={t('quarantine.daysHint')} suffix={t('common.days')} maxDigits={0} />
             </FormGrid>
             <TextField form={form} name="reason" label={t('quarantine.reason')} />
             <TextareaField form={form} name="notes" label={t('common.notes')} />

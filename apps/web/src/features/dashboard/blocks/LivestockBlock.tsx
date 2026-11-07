@@ -18,7 +18,7 @@ export function LivestockBlock({ data, link }: { data: LivestockData; link: Link
   const categories = Object.entries(data.byCategory).sort(([, a], [, b]) => b - a);
 
   return (
-    <div className="grid gap-3 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
       <div className="flex min-w-0 flex-col gap-3 lg:col-span-2">
         {lambing.overdue > 0 && (
           <Alert tone="warning">{t('livestock.lambingOverdue', { value: formatNumber(lambing.overdue, 0) })}</Alert>
@@ -33,7 +33,7 @@ export function LivestockBlock({ data, link }: { data: LivestockData; link: Link
                 })
               : undefined
           }
-          kind="bar"
+          kind="block-bar"
           data={lambing.weeks}
           xKey="week"
           series={[{ key: 'expected', label: t('livestock.ewes') }]}

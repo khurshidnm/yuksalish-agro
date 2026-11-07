@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from './api';
 import {
   backoffMs,
@@ -7,6 +7,7 @@ import {
   classifyFailure,
   createOutbox,
   uuidv7,
+  waitsFor,
   type ConflictReport,
   type NewRecord,
   type Outbox,
@@ -49,11 +50,13 @@ function fakeServer() {
   const uploads: string[] = [];
   const uploadFailures: Error[] = [];
   let report: ConflictReport = { applied: false, serverId: null };
+  const health = { up: true };
   return {
     script,
     calls,
     uploads,
     uploadFailures,
+    health,
     setReport: (r: ConflictReport) => (report = r),
     transport: {
       send: async (record: OutboxRecord, body: Record<string, unknown>) => {
@@ -69,6 +72,7 @@ function fakeServer() {
         return `file-of-${photo.id}`;
       },
       inspectConflict: async () => report,
+      serverIsUp: async () => health.up,
     },
   };
 }
@@ -329,6 +333,16 @@ describe('conflicts', () => {
     expect([...r.store.records.values()][0].status).toBe('conflict');
   });
 
+  it('a correction that arrives after its day closed goes to a person, with the saved record', async () => {
+    const tooLate = new ApiError(403, 'EDIT_WINDOW_CLOSED', 'Too late', { id: 'server-log' });
+    const { outbox, server, store } = await rig();
+    server.script.push(tooLate);
+    server.setReport({ applied: false, serverId: 'server-log' });
+    const record = await outbox.enqueue(log('Correction', { method: 'PATCH', path: '/livestock/daily-logs/server-log' }));
+    await outbox.flush();
+    expect(store.records.get(record.id)).toMatchObject({ status: 'conflict', serverId: 'server-log', error: { code: 'EDIT_WINDOW_CLOSED' } });
+  });
+
   it('settling a conflict removes the record and counts it as sent', async () => {
     const r = await rig();
     const [a] = await queueWhileOffline(r, log('A'));
@@ -402,7 +416,156 @@ describe('rejected records', () => {
   });
 
   it('an unexpected client error is retried, not dropped', () => {
-    expect(classifyFailure({ kind: 'daily_log' }, new TypeError('boom'))).toBe('transient');
+    expect(classifyFailure({ kind: 'daily_log' }, new TypeError('boom'))).toBe('server');
+    // A step left at sign-in holds the record back, and must not fail it.
+    for (const code of ['PASSWORD_CHANGE_REQUIRED', 'TWO_FACTOR_ENROLLMENT_REQUIRED']) {
+      expect(classifyFailure({ kind: 'daily_log' }, new ApiError(403, code, 'x'))).toBe('auth');
+    }
+  });
+});
+
+describe('a record the server keeps failing on', () => {
+  const crash = () => new ApiError(500, 'INTERNAL_ERROR', 'Something went wrong');
+  const animal = (tag: string, title = tag): NewRecord => ({ kind: 'weight', path: '/livestock/weights', body: { title }, title, meta: { tag } });
+
+  /** One forced delivery per failure, as if each backoff had passed. */
+  async function refuse(r: Rig, times: number, failure: () => Error = crash): Promise<void> {
+    for (let i = 0; i < times; i++) {
+      r.server.script.unshift(failure());
+      await r.outbox.flush({ force: true });
+    }
+  }
+
+  it('holds the queue through the tries, then shows as stuck with what the server said, and the rest go', async () => {
+    const r = await rig();
+    const [bad, next] = await queueWhileOffline(r, animal('A'), animal('B'));
+    await refuse(r, 4);
+    expect(r.store.records.get(bad.id)).toMatchObject({ status: 'pending', serverErrors: 4 });
+    expect(r.server.calls.every((c) => c.id === bad.id)).toBe(true);
+
+    await refuse(r, 1);
+    expect(r.store.records.get(bad.id)).toMatchObject({ status: 'stuck', error: { code: 'INTERNAL_ERROR', status: 500, message: 'Something went wrong' } });
+    expect(r.server.calls.map((c) => c.id).at(-1)).toBe(next.id);
+    expect(r.store.records.has(next.id)).toBe(false);
+  });
+
+  it('is not sent again by itself, and cannot be changed, because the first version may be saved', async () => {
+    const r = await rig();
+    const [bad] = await queueWhileOffline(r, animal('A'));
+    await refuse(r, 5);
+    const calls = r.server.calls.length;
+    r.clock.value += 3_600_000;
+    await r.outbox.flush({ force: true });
+    expect(r.server.calls.length).toBe(calls);
+    expect(canEdit(r.store.records.get(bad.id) as OutboxRecord)).toBe(false);
+    await expect(r.outbox.revise(bad.id, { title: 'New' })).rejects.toThrow();
+  });
+
+  it('a server down for everyone gets no record blamed, however long it lasts', async () => {
+    const r = await rig();
+    const [first, second] = await queueWhileOffline(r, animal('A'), animal('B'));
+    r.server.health.up = false;
+    await refuse(r, 20, () => new ApiError(502, 'HTTP_ERROR', 'Bad gateway'));
+    expect(r.store.records.get(first.id)?.status).toBe('pending');
+    expect(r.store.records.get(second.id)).toMatchObject({ status: 'pending', attempts: 0 });
+
+    r.server.health.up = true;
+    await r.outbox.flush({ force: true });
+    expect(r.store.records.size).toBe(0);
+  });
+
+  it('lost connections do not count, so a long day offline does not use up the tries', async () => {
+    const r = await rig();
+    const [bad] = await queueWhileOffline(r, animal('A'));
+    await refuse(r, 30, () => OFFLINE);
+    await refuse(r, 1);
+    expect(r.store.records.get(bad.id)).toMatchObject({ status: 'pending', serverErrors: 1 });
+  });
+
+  it('a record saved by an older version, with no count yet, starts from zero', async () => {
+    const r = await rig();
+    const [bad] = await queueWhileOffline(r, animal('A'));
+    const stored = r.store.records.get(bad.id) as OutboxRecord;
+    delete stored.serverErrors;
+    await refuse(r, 1);
+    expect(r.store.records.get(bad.id)?.serverErrors).toBe(1);
+  });
+
+  it('a crash on this phone counts the same way, so it cannot block the queue either', async () => {
+    const r = await rig();
+    const [bad, next] = await queueWhileOffline(r, animal('A'), animal('B'));
+    await refuse(r, 5, () => new TypeError('boom'));
+    expect(r.store.records.get(bad.id)).toMatchObject({ status: 'stuck', error: { code: 'CLIENT_ERROR', message: 'boom' } });
+    expect(r.store.records.has(next.id)).toBe(false);
+  });
+
+  it('records about the same thing wait, and say what for, while the others go out', async () => {
+    const r = await rig();
+    const [bad, sameDay, animalRecord, otherDay] = await queueWhileOffline(
+      r,
+      log('Log', { meta: { herdId: 'h', date: '2026-11-05' } }),
+      log('Same log corrected', { meta: { herdId: 'h', date: '2026-11-05' } }),
+      animal('B'),
+      log('Next day', { meta: { herdId: 'h', date: '2026-11-06' } }),
+    );
+    await refuse(r, 5);
+    expect(r.store.records.get(bad.id)?.status).toBe('stuck');
+    expect(r.store.records.get(sameDay.id)?.status).toBe('pending');
+    expect([...r.store.records.keys()].sort()).toEqual([bad.id, sameDay.id].sort());
+    expect(r.server.calls.map((c) => c.id)).toEqual(expect.arrayContaining([animalRecord.id, otherDay.id]));
+
+    const records = [...r.store.records.values()];
+    expect(waitsFor(records.find((x) => x.id === sameDay.id) as OutboxRecord, records)?.id).toBe(bad.id);
+    expect(waitsFor(records.find((x) => x.id === bad.id) as OutboxRecord, records)).toBeUndefined();
+  });
+
+  it('a record newer than the stuck one is the only kind that waits', async () => {
+    const r = await rig();
+    const [first, second] = await queueWhileOffline(r, animal('A', 'first'), animal('A', 'second'));
+    await refuse(r, 5);
+    r.store.records.set(first.id, { ...(r.store.records.get(first.id) as OutboxRecord), createdAt: 9_000_000 });
+    const records = [...r.store.records.values()];
+    expect(waitsFor(records.find((x) => x.id === second.id) as OutboxRecord, records)).toBeUndefined();
+  });
+
+  it('deleting the stuck record lets the ones behind it go', async () => {
+    const r = await rig();
+    const [bad, behind] = await queueWhileOffline(r, animal('A'), animal('A', 'after'));
+    await refuse(r, 5);
+    expect(r.store.records.get(behind.id)?.status).toBe('pending');
+    await r.outbox.discard(bad.id);
+    await r.settle();
+    expect(r.store.records.size).toBe(0);
+  });
+
+  it('a retry that works delivers it, with the same id and key, and then the ones behind it', async () => {
+    const r = await rig();
+    const [bad, behind] = await queueWhileOffline(r, animal('A'), animal('A', 'after'));
+    await refuse(r, 5);
+    await r.outbox.retry(bad.id);
+    expect(r.store.records.size).toBe(0);
+    expect(r.server.calls.slice(-2).map((c) => c.id)).toEqual([bad.id, behind.id]);
+    expect(new Set(r.server.calls.filter((c) => c.id === bad.id).map((c) => c.key)).size).toBe(1);
+  });
+
+  it('a retry that fails goes straight back, so the queue does not wait through the tries again', async () => {
+    const r = await rig();
+    const [bad, other] = await queueWhileOffline(r, animal('A'), animal('B'));
+    await refuse(r, 5);
+    expect(r.store.records.has(other.id)).toBe(false);
+    const [later] = await queueWhileOffline(r, animal('C'));
+    r.server.script.unshift(crash());
+    await r.outbox.retry(bad.id);
+    expect(r.store.records.get(bad.id)?.status).toBe('stuck');
+    expect(r.store.records.has(later.id)).toBe(false);
+  });
+
+  it('retrying everything includes stuck records', async () => {
+    const r = await rig();
+    const [bad] = await queueWhileOffline(r, animal('A'));
+    await refuse(r, 5);
+    await r.outbox.retry();
+    expect(r.store.records.size).toBe(0);
   });
 });
 
@@ -520,5 +683,99 @@ describe('uuidv7', () => {
     expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
     expect(uuidv7(1_800_000_000_001) > id).toBe(true);
     expect(id.startsWith((1_800_000_000_000).toString(16).padStart(12, '0').slice(0, 8))).toBe(true);
+  });
+});
+
+describe('one phone, two people', () => {
+  const A = { userId: 'A', farmId: 'F' };
+  const B = { userId: 'B', farmId: 'F' };
+
+  function phoneWithRecords(photos: OutboxPhoto[] = []) {
+    const store = memoryStore();
+    const record = (id: string, createdAt: number): OutboxRecord => ({
+      id, kind: 'daily_log', method: 'POST', path: '/x', body: {}, idempotencyKey: id, photos, photoField: 'photoFileIds', title: id, meta: {},
+      status: 'pending', attempts: 0, nextAttemptAt: 0, error: null, serverId: null, createdAt, userId: 'A', farmId: 'F',
+    });
+    store.records.set('one', record('one', 1));
+    store.records.set('two', record('two', 2));
+    /** api.ts sends whichever token is signed in at that moment. */
+    const phone = { signedIn: 'A' };
+    const sent: [string, string][] = [];
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    return { store, phone, sent, held, release: () => release() };
+  }
+
+  async function signOutAndIn(outbox: Outbox, phone: { signedIn: string }) {
+    await outbox.setOwner(null);
+    phone.signedIn = 'B';
+    void outbox.setOwner(B);
+  }
+
+  it('the next record of a running delivery waits for its own person', async () => {
+    const { store, phone, sent, held, release } = phoneWithRecords();
+    const transport = {
+      send: async (record: OutboxRecord) => {
+        sent.push([record.id, phone.signedIn]);
+        if (record.id === 'one') await held;
+      },
+      upload: async () => 'file',
+      inspectConflict: async () => ({ applied: false, serverId: null }),
+          serverIsUp: async () => true,
+    };
+    const outbox = createOutbox({ store, transport, setTimer: () => () => undefined });
+    const delivering = outbox.setOwner(A);
+    await vi.waitFor(() => expect(sent).toHaveLength(1));
+
+    await signOutAndIn(outbox, phone);
+    release();
+    await delivering;
+    expect(sent).toEqual([['one', 'A']]);
+    expect(store.records.has('two'), 'it waits on the phone, as the file header promises').toBe(true);
+  });
+
+  it('a record whose photo outlasted its person is not sent by the next one', async () => {
+    const { store, phone, sent, held, release } = phoneWithRecords([{ id: 'p', name: 'p.jpg', type: 'image/jpeg' }]);
+    store.photos.set('p', new Blob(['x']));
+    let uploading = false;
+    const transport = {
+      send: async (record: OutboxRecord) => void sent.push([record.id, phone.signedIn]),
+      upload: async () => {
+        uploading = true;
+        await held;
+        return 'file';
+      },
+      inspectConflict: async () => ({ applied: false, serverId: null }),
+          serverIsUp: async () => true,
+    };
+    const outbox = createOutbox({ store, transport, setTimer: () => () => undefined });
+    const delivering = outbox.setOwner(A);
+    await vi.waitFor(() => expect(uploading).toBe(true));
+
+    await signOutAndIn(outbox, phone);
+    release();
+    await delivering;
+    expect(sent).toEqual([]);
+    expect(store.records.get('one')?.photos[0].fileId, 'the upload is kept, so it is not repeated').toBe('file');
+  });
+
+  it('the records go out when their person signs in again', async () => {
+    const { store, phone, sent } = phoneWithRecords();
+    const transport = {
+      send: async (record: OutboxRecord) => void sent.push([record.id, phone.signedIn]),
+      upload: async () => 'file',
+      inspectConflict: async () => ({ applied: false, serverId: null }),
+          serverIsUp: async () => true,
+    };
+    const outbox = createOutbox({ store, transport, setTimer: () => () => undefined });
+    phone.signedIn = 'B';
+    await outbox.setOwner(B);
+    expect(sent).toEqual([]);
+    expect(outbox.getState().records).toEqual([]);
+    expect(outbox.getState().others).toBe(2);
+    await outbox.setOwner(null);
+    phone.signedIn = 'A';
+    await outbox.setOwner(A);
+    expect(sent).toEqual([['one', 'A'], ['two', 'A']]);
   });
 });

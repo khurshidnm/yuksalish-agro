@@ -13,8 +13,9 @@ import { recordEvent } from '../../core/journal';
 import { hidePii } from '../../core/privacy';
 import { listQuery, paged, type Page } from '../../core/query';
 import { RowCheck, makeEnv, type ApplyResult, type Checked, type Column, type RawRow, type RowMessage, type RowStatus, type Template } from './check';
-import { locateHeader, readSpreadsheet, type ColumnNames, type Sheet } from './file';
+import { locateHeader, type ColumnNames } from './file';
 import { LANG_CODES, tr, type LanguageCode } from './i18n';
+import { MAX_ROWS, type Sheet } from './reader';
 import { TEMPLATES, templateOf } from './templates';
 import { EXAMPLE_MARK, buildErrorWorkbook, buildTemplate, exampleValue } from './workbook';
 import { cellText, matchKey, type Cell } from './values';
@@ -22,12 +23,6 @@ import { cellText, matchKey, type Cell } from './values';
 const { importJobs, tenants, users } = schema;
 
 type Job = typeof importJobs.$inferSelect;
-
-/**
- * Larger files are split. Confirming costs about 9 ms a row, and one transaction holds its locks
- * for as long as it runs, so this keeps a confirm near 20 s, well inside a proxy's 60 s timeout.
- */
-export const MAX_ROWS = 2000;
 
 /** Modules that cannot be switched off, as in core/http.ts. */
 const ALWAYS_ON = new Set(['dashboard', 'users', 'settings', 'audit', 'tasks']);
@@ -55,12 +50,13 @@ const isEnabled = (template: Template, modules: string[]) =>
   template.modules.every((m) => ALWAYS_ON.has(m) || modules.includes(m));
 
 export async function assertTemplate(template: Template): Promise<void> {
-  for (const group of template.requires) {
-    if (!group.some((permission) => hasPermission(permission))) throw forbidden(undefined, 'FORBIDDEN', { required: group });
-  }
+  // A module switched off grants no permission in it, so that is the reason to give first.
   const modules = await enabledModules();
   const off = template.modules.find((m) => !ALWAYS_ON.has(m) && !modules.includes(m));
   if (off) throw forbidden('This module is not enabled for your workspace', 'MODULE_DISABLED', { module: off });
+  for (const group of template.requires) {
+    if (!group.some((permission) => hasPermission(permission))) throw forbidden(undefined, 'FORBIDDEN', { required: group });
+  }
 }
 
 /** A person without finance.view gets a template with no price columns at all (rule 7). */
@@ -137,10 +133,16 @@ export function extractRows(sheets: Sheet[], template: Template, lang: LanguageC
     throw badRequest('MISSING_COLUMNS', `Missing columns: ${columns}`, { columns });
   }
 
+  const { sheet } = located;
+  if (sheet.found > sheet.rows.length) {
+    const found = sheet.found - sheet.rows.findIndex((row) => row.number === located.headerRow) - 1;
+    throw badRequest('TOO_MANY_ROWS', `A file can hold up to ${MAX_ROWS} rows`, { max: MAX_ROWS, found });
+  }
+
   const present = [...located.columns.keys()];
   const used = new Set(located.columns.values());
   const rows: RawRow[] = [];
-  for (const row of located.sheet.rows) {
+  for (const row of sheet.rows) {
     if (row.number <= located.headerRow) continue;
     const values: Record<string, Cell> = {};
     for (const [key, index] of located.columns) values[key] = row.cells[index] ?? null;
@@ -254,11 +256,10 @@ export async function templateFile(key: string, lang: LanguageCode) {
 
 // ─── Jobs ──────────────────────────────────────────────────────────────────
 
-export async function preview(key: string, file: { body: Buffer; name: string }, lang: LanguageCode) {
+export async function preview(key: string, file: { sheets: Sheet[]; name: string }, lang: LanguageCode) {
   const template = templateOf(key);
   await assertTemplate(template);
-  const sheets = await readSpreadsheet(file.body, file.name);
-  const rows = extractRows(sheets, template, lang);
+  const rows = extractRows(file.sheets, template, lang);
   const { checked } = await checkRows(template, rows, lang);
 
   const c = ctx();
@@ -282,7 +283,7 @@ export async function preview(key: string, file: { body: Buffer; name: string },
       farmId: c.farmId,
       createdBy: c.userId,
       template: key,
-      fileName: file.name.slice(0, 255),
+      fileName: file.name,
       lang,
       totalRows: rows.length,
       summary: countsOf(checked),

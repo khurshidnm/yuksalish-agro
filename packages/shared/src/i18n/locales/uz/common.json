@@ -1,5 +1,5 @@
 {
-  "app": { "name": "Yuksalish Agro", "tagline": "Ferma boshqaruv platformasi" },
+  "app": { "name": "Agro Panel", "tagline": "Ferma boshqaruv platformasi" },
   "actions": {
     "save": "Saqlash", "cancel": "Bekor qilish", "delete": "O'chirish", "edit": "Tahrirlash", "add": "Qo'shish",
     "create": "Yaratish", "close": "Yopish", "back": "Orqaga", "search": "Qidirish", "filter": "Filtr",
@@ -26,7 +26,8 @@
     "required": "Bu maydonni to'ldiring", "invalid": "Qiymat noto'g'ri", "format": "Format noto'g'ri",
     "min": "Kamida {{min}} bo'lishi kerak", "max": "Ko'pi bilan {{max}} bo'lishi kerak",
     "greaterThan": "{{min}} dan katta bo'lishi kerak",
-    "minLength": "Kamida {{min}} ta belgi kiriting", "maxLength": "Ko'pi bilan {{max}} ta belgi kiriting"
+    "minLength": "Kamida {{min}} ta belgi kiriting", "maxLength": "Ko'pi bilan {{max}} ta belgi kiriting",
+    "unreadableNumber": "Bu sonni o'qib bo'lmadi. 1500000 yoki 1 500 000 kabi yozing."
   },
   "errors": {
     "title": "Ma'lumotni yuklab bo'lmadi", "generic": "Xatolik yuz berdi. Qayta urinib ko'ring.",
@@ -36,6 +37,7 @@
     "VALIDATION_ERROR": "Belgilangan maydonlarni tekshiring.",
     "INVALID_INPUT": "Kiritilgan qiymatlarning ayrimlari noto'g'ri.",
     "ALREADY_EXISTS": "Bunday yozuv allaqachon mavjud.",
+    "FORM_EXPIRED": "Bu shakl eskirib qoldi. Sahifani yangilab, qaytadan yuboring.",
     "IN_USE": "Bu yozuv ishlatilmoqda, uni o'chirib bo'lmaydi.",
     "INVALID_REFERENCE": "Bog'langan yozuv topilmadi.",
     "NOTHING_TO_UPDATE": "O'zgartirish yuborilmadi.",
@@ -47,6 +49,12 @@
     "NO_ACTIVE_FARM": "Faol ferma tanlanmagan.",
     "FILE_REQUIRED": "Fayl tanlanmagan.",
     "FILE_TYPE_NOT_ALLOWED": "Bu turdagi faylni yuklab bo'lmaydi.",
+    "INVALID_UPLOAD": "Yuklash buzilgan. Qayta yuboring.",
+    "FILE_TOO_LARGE": "Fayl juda katta. Eng ko'pi bilan {{maxMb}} MB yuklash mumkin. Faylni kichraytiring yoki qismlarga bo'ling.",
+    "UPLOADS_BUSY": "Server hozir ko'p fayl qabul qilmoqda. Birozdan keyin qayta urinib ko'ring.",
+    "STORAGE_QUOTA_REACHED": "Fermaning fayl xotirasi to'ldi: {{usedMb}} MB, chegara {{quotaMb}} MB. Ishlatilmayotgan fayllarni o'chiring yoki rahbardan chegarani oshirishni so'rang.",
+    "DAILY_UPLOAD_LIMIT_REACHED": "Kunlik yuklash chegarasiga yetdingiz: 24 soatda {{limitMb}} MB. Ertaga qayta urinib ko'ring yoki rahbarga murojaat qiling.",
+    "STORAGE_FULL": "Serverda joy qolmadi, fayl saqlanmadi. Administratorga xabar bering.",
     "FILE_NOT_FOUND": "Fayl topilmadi.",
     "INSUFFICIENT_STOCK": "Omborda yetarli qoldiq yo'q.",
     "BATCH_ALREADY_USED": "Bu partiya ishlatilgan, uni bekor qilib bo'lmaydi.",
@@ -63,7 +71,9 @@
     "NOT_PENDING": "Bu operatsiya tasdiqlash kutmayapti.",
     "SAME_MAKER_CHECKER": "Operatsiyani kiritgan xodim uni tasdiqlay olmaydi.",
     "FX_RATE_REQUIRED": "Shu sana uchun valyuta kursi kiritilmagan.",
-    "INVALID_PAYMENT_METHOD": "To'lov usuli noto'g'ri."
+    "INVALID_PAYMENT_METHOD": "To'lov usuli noto'g'ri.",
+    "IDEMPOTENCY_KEY_REUSED": "Bu so'rov boshqa amal uchun ishlatilgan.",
+    "SAVED_EARLIER": "Avvalgi bosish boshqa raqamlar bilan hisobga tushgan, bu esa saqlanmadi. Avval ro'yxatni tekshiring. Buni ham kiritish uchun yana Saqlash tugmasini bosing."
   },
   "pages": {
     "notFoundTitle": "Sahifa topilmadi", "notFoundBody": "Bunday sahifa yo'q yoki u ko'chirilgan.",
@@ -73,12 +83,26 @@
     "backHome": "Bosh sahifaga", "reload": "Qayta yuklash",
     "offlineTitle": "Bu sahifa internetsiz ochilmaydi", "offlineBody": "Internet qaytgach ochiladi. Kunlik ishlarni \"Bugun\" sahifasida davom ettirishingiz mumkin.", "offlineAction": "Bugun sahifasiga"
   },
+  "update": {
+    "ready": "Yangi versiya tayyor",
+    "apply": "Yangilash",
+    "pageTitle": "Sahifa ochilmadi",
+    "pageBody": "Aloqa zaif yoki ilovaning yangi versiyasi hali yuklanmoqda. Birozdan so'ng qayta urinib ko'ring.",
+    "partFailed": "Sahifaning bir qismi yuklanmadi. Aloqa yaxshilangach sahifani qayta yuklang."
+  },
+  "boot": {
+    "title": "Ilova ochilmayapti",
+    "body": "Aloqa zaif bo'lishi mumkin. Biroz kuting yoki qayta yuklang. Saqlangan yozuvlaringiz o'chmaydi.",
+    "reload": "Qayta yuklash",
+    "oldTitle": "Brauzer juda eski",
+    "oldBody": "Ilova bu brauzerda ishlamaydi. Chrome 111 yoki Safari 16.4 va undan yangisi kerak. Telefondagi brauzerni yangilang."
+  },
   "stub": { "title": "Bu bo'lim tayyorlanmoqda", "body": "Tez orada shu yerda ishlash mumkin bo'ladi." },
   "theme": { "toggle": "Mavzuni almashtirish", "light": "Yorug'", "dark": "Qorong'i", "system": "Tizim bo'yicha" },
   "language": { "label": "Til" },
   "toast": { "saved": "Saqlandi", "created": "Yaratildi", "updated": "Yangilandi", "deleted": "O'chirildi" },
   "chart": { "showTable": "Jadval ko'rinishi", "showChart": "Grafik ko'rinishi", "noData": "Grafik uchun ma'lumot yo'q", "period": "Davr" },
-  "number": {"thousand": "{{value}} ming", "million": "{{value}} mln", "billion": "{{value}} mlrd", "trillion": "{{value}} trln"},
+  "number": {"thousand": "{{value}} ming", "million": "{{value}} mln", "billion": "{{value}} mlrd", "trillion": "{{value}} trln", "readAs": "{{value}} deb o'qildi", "readAsNot": "{{value}} deb o'qildi, {{other}} emas"},
   "date": {
     "months": ["Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun", "Iyul", "Avgust", "Sentabr", "Oktabr", "Noyabr", "Dekabr"],
     "monthsOf": ["yanvar", "fevral", "mart", "aprel", "may", "iyun", "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr"],

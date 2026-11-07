@@ -1,10 +1,11 @@
-import { and, asc, eq, inArray, isNull, ne, or } from 'drizzle-orm';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 import { z } from 'zod';
-import { diffDays, round } from '@yap/shared';
+import { CURRENCIES, diffDays, round } from '@yap/shared';
 import { schema } from '../../db/client';
 import { ctx, today, tx } from '../../core/context';
+import { PAYROLL_COUNTERPARTY } from '../../core/defaults';
 import { conflict, notFound } from '../../core/errors';
-import { postTransaction } from '../../core/ledger';
+import { amountInBase, lockDebt, postTransaction, tradeSettlement, type DebtDirection, type RecordSource } from '../../core/ledger';
 import { clientId, isoDate } from '../../core/query';
 
 const { accounts, counterparties, transactions: t } = schema;
@@ -15,6 +16,9 @@ export const settleInput = z.object({
   /** payable: we pay a supplier. receivable: a buyer pays us. */
   direction: z.enum(['payable', 'receivable']),
   amount: z.number().positive().max(1e14),
+  /** Defaults to the account's own currency. */
+  currency: z.enum(CURRENCIES).optional(),
+  fxRate: z.number().positive().nullish(),
   date: isoDate,
   accountId: z.uuid(),
   description: z.string().trim().max(500).nullish(),
@@ -22,7 +26,7 @@ export const settleInput = z.object({
 });
 export type SettleInput = z.infer<typeof settleInput>;
 
-export type Direction = 'payable' | 'receivable';
+export type Direction = DebtDirection;
 
 const AGING_BUCKETS = ['notDue', 'd1_30', 'd31_60', 'd61_90', 'd90Plus'] as const;
 type Aging = Record<(typeof AGING_BUCKETS)[number], number>;
@@ -80,10 +84,6 @@ export function applyFifo(docs: DebtDoc[], paid: number, asOf: string): OpenDocu
   return open;
 }
 
-/** Loans are tracked in their own schedule, so their money never appears as a trade debt. */
-const notLoan = or(isNull(t.sourceType), ne(t.sourceType, 'loan'));
-const notInstalment = or(isNull(t.sourceType), ne(t.sourceType, 'loan_instalment'));
-
 async function loadDebtRows() {
   const farm = ctx().farmId;
   const docs = await tx()
@@ -114,8 +114,7 @@ async function loadDebtRows() {
         eq(t.farmId, farm),
         inArray(t.status, ['approved', 'pending']),
         inArray(t.type, ['debt_payment', 'debt_receipt']),
-        notLoan,
-        notInstalment,
+        tradeSettlement,
       ),
     );
   return { docs, settlements };
@@ -124,6 +123,8 @@ async function loadDebtRows() {
 export interface CounterpartyDebt {
   counterpartyId: string;
   counterpartyName: string;
+  /** Wages owed. Paid from the payroll run: paying them here too would pay them twice. */
+  isPayroll: boolean;
   direction: Direction;
   total: number;
   paid: number;
@@ -175,6 +176,7 @@ export async function listDebts(direction?: Direction): Promise<CounterpartyDebt
     result.push({
       counterpartyId: group.counterpartyId,
       counterpartyName: nameOf.get(group.counterpartyId) ?? '',
+      isPayroll: nameOf.get(group.counterpartyId) === PAYROLL_COUNTERPARTY,
       direction: group.direction,
       total: round(group.docs.reduce((sum, d) => sum + d.amountBase, 0), 2),
       paid,
@@ -189,24 +191,34 @@ export async function listDebts(direction?: Direction): Promise<CounterpartyDebt
   return result.sort((a, b) => b.outstanding - a.outstanding);
 }
 
-/** Record a payment against a debt. It cannot exceed what is still owed. */
-export async function settle(input: SettleInput) {
+/**
+ * Record a payment against a debt. It cannot exceed what is still owed. Debts are kept in the base
+ * currency, so a foreign payment counts at what it comes to there. The difference to the rate a
+ * foreign debt was booked at is not posted: the spec has no rule for it yet, so it shows as debt
+ * left open, or as AMOUNT_EXCEEDS_DEBT.
+ */
+export async function settle(input: SettleInput, source?: RecordSource) {
   const [counterparty] = await tx()
-    .select({ id: counterparties.id })
+    .select({ id: counterparties.id, name: counterparties.name })
     .from(counterparties)
     .where(and(eq(counterparties.id, input.counterpartyId), eq(counterparties.farmId, ctx().farmId)));
   if (!counterparty) throw notFound('Counterparty');
+  if (counterparty.name === PAYROLL_COUNTERPARTY) {
+    throw conflict('WAGES_PAID_FROM_PAYROLL', 'Wages are paid from the payroll run, not from the debts page');
+  }
   const [account] = await tx()
-    .select({ id: accounts.id, type: accounts.type })
+    .select({ id: accounts.id, type: accounts.type, currency: accounts.currency })
     .from(accounts)
     .where(and(eq(accounts.id, input.accountId), eq(accounts.farmId, ctx().farmId)));
   if (!account) throw notFound('Account');
 
+  await lockDebt(input.counterpartyId, input.direction);
   const debts = await listDebts(input.direction);
   const debt = debts.find((d) => d.counterpartyId === input.counterpartyId);
   // Pending settlements already spoken for this debt, so two entries cannot pay it twice.
   const open = round((debt?.outstanding ?? 0) - (debt?.pendingSettlement ?? 0), 2);
-  if (input.amount > open) {
+  const currency = input.currency ?? account.currency;
+  if ((await amountInBase(input.amount, currency, input.date, input.fxRate)) > open) {
     throw conflict('AMOUNT_EXCEEDS_DEBT', `Only ${open} is outstanding`, { outstanding: open });
   }
 
@@ -215,10 +227,14 @@ export async function settle(input: SettleInput) {
     date: input.date,
     type: input.direction === 'payable' ? 'debt_payment' : 'debt_receipt',
     amount: input.amount,
+    currency,
+    fxRate: input.fxRate,
     paymentMethod: account.type as 'cash' | 'bank' | 'card',
     accountId: input.accountId,
     counterpartyId: input.counterpartyId,
     description: input.description,
     fileId: input.fileId,
+    sourceType: source?.type,
+    sourceId: source?.id,
   });
 }

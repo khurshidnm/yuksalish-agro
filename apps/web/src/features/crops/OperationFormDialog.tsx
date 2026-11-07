@@ -33,7 +33,6 @@ import {
   employeeOptions,
   fieldOptions,
   itemOptions,
-  newIdempotencyKey,
   warehouseOptions,
 } from './options';
 import type { Operation } from './types';
@@ -348,14 +347,12 @@ interface OperationFormDialogProps {
 
 export function OperationFormDialog({ open, onOpenChange, type, mode = 'create', operation, fieldId }: OperationFormDialogProps) {
   const { t } = useTranslation('crops');
-  // A new key per opening: the same tap retried is one record, a new form is another.
-  const key = useMemo(() => newIdempotencyKey(), [open]);
 
   const save = useApiMutation<ReturnType<typeof toPayload>>({
     mutationFn: (body) => {
       if (mode === 'edit') return api.patch(`${OPERATIONS}/${operation!.id}`, body);
-      if (mode === 'complete') return api.post(`${OPERATIONS}/${operation!.id}/complete`, body, { idempotencyKey: key });
-      return api.post(OPERATIONS, body, { idempotencyKey: key });
+      if (mode === 'complete') return api.postOnce(`${OPERATIONS}/${operation!.id}/complete`, body);
+      return api.postOnce(OPERATIONS, body);
     },
     invalidate: AFFECTED_BY_WORK,
     silentError: true,

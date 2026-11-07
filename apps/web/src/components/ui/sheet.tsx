@@ -19,13 +19,14 @@ const SIDES = {
 export interface SheetContentProps extends ComponentProps<typeof RDialog.Content> {
   side?: keyof typeof SIDES;
   hideClose?: boolean;
+  overlayClassName?: string;
 }
 
-export function SheetContent({ side = 'right', hideClose, className, children, ...props }: SheetContentProps) {
+export function SheetContent({ side = 'right', hideClose, overlayClassName, className, children, ...props }: SheetContentProps) {
   const { t } = useTranslation();
   return (
     <RDialog.Portal>
-      <RDialog.Overlay className="data-[state=closed]:animate-fade-out data-[state=open]:animate-fade-in fixed inset-0 z-50 bg-black/50" />
+      <RDialog.Overlay className={cn('data-[state=closed]:animate-fade-out data-[state=open]:animate-fade-in fixed inset-0 z-50 bg-black/50', overlayClassName)} />
       <RDialog.Content
         className={cn('fixed z-50 flex flex-col border-border bg-card text-card-foreground shadow-pop outline-none', SIDES[side], className)}
         {...props}

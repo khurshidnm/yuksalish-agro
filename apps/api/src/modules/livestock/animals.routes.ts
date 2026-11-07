@@ -5,6 +5,7 @@ import { idParam } from '../../core/query';
 import * as animals from './animals.service';
 import { registerExits } from './exits.routes';
 import { animalsUnderWithdrawal } from './health.service';
+import * as passport from './passport.service';
 import { registerPasture } from './pasture.routes';
 import { registerShearing } from './shearing.routes';
 import * as summary from './summary';
@@ -44,6 +45,20 @@ export function registerAnimals(app: FastifyInstance) {
       const [withdrawal] = await animalsUnderWithdrawal([card.id]);
       return { ...card, withdrawalUntil: withdrawal?.withdrawalUntil ?? null };
     },
+  });
+
+  r.get('/animals/:id/breeding', {
+    access: 'livestock.view',
+    summary: 'Passport: matings with their rams, lambings, and the figures from them',
+    params: idParam,
+    handler: (req) => passport.animalBreeding(req.params.id),
+  });
+
+  r.get('/animals/:id/health', {
+    access: 'health.view',
+    summary: 'Passport: veterinary history, with the whole-herd records this animal was really there for',
+    params: idParam,
+    handler: (req) => passport.animalHealth(req.params.id),
   });
 
   r.post('/animals', {

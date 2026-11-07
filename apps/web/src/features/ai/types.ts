@@ -1,3 +1,5 @@
+import type { I18nName } from '@/features/finance/types';
+
 export interface AiStatus {
   assistant: { configured: boolean; provider: string; model: string | null };
   statistics: { enabled: boolean };
@@ -21,9 +23,108 @@ export interface AnswerSource {
   rows?: number;
 }
 
+export type ProposalKind = 'expense' | 'stock_purchase' | 'income' | 'debt_payment' | 'transfer';
+export type ProposalStatus = 'pending' | 'confirmed' | 'rejected' | 'expired' | 'failed' | 'undone';
+export type PaymentMethod = 'cash' | 'bank' | 'card' | 'debt';
+
+export interface Ref {
+  id: string;
+  name: string;
+}
+
+/** Stored proposals older than the translations carry only `name`. */
+export interface CategoryRef extends Ref {
+  translations?: I18nName;
+}
+
+/** Money and who it moved between are null when the card is masked. */
+export interface ProposalFields {
+  amount: number | null;
+  currency: string;
+  fxRate: number | null;
+  amountBase: number | null;
+  date: string;
+  category: CategoryRef | null;
+  target: { costCenterId: string; type: string; name: string; defaulted: boolean } | null;
+  account: Ref | null;
+  /** Where a transfer goes. */
+  toAccount: Ref | null;
+  paymentMethod: PaymentMethod | null;
+  counterparty: Ref | null;
+  item: (Ref & { unit: string }) | null;
+  warehouse: Ref | null;
+  qty: number | null;
+  unitPrice: number | null;
+  costTreatment: string | null;
+  /** A debt payment: payable means we pay them, receivable means they pay us. */
+  direction: 'payable' | 'receivable' | null;
+  description: string | null;
+}
+
+export interface ProposalWarning {
+  code: string;
+  params: Record<string, unknown>;
+}
+
+export interface ProposalResult {
+  type: 'transaction' | 'stock_receipt';
+  /** A transaction id for both types. */
+  id: string;
+  status: string;
+}
+
+/** A record the assistant prepared. Nothing reaches the books until its owner confirms it. */
+export interface ProposalView {
+  id: string;
+  kind: ProposalKind;
+  status: ProposalStatus;
+  channel: 'web' | 'telegram';
+  createdAt: string;
+  expiresAt: string;
+  undoUntil: string | null;
+  sourceText: string;
+  /** Names what this card shows. Confirm sends it back, so it books the card the person read. */
+  stamp: string;
+  /** This person may no longer see the money, so the card shows none and cannot be acted on. */
+  masked: boolean;
+  fields: ProposalFields;
+  warnings: ProposalWarning[];
+  /** Words confirming this will teach the assistant. */
+  learning: { phrase: string; name: string }[];
+  /** A warning needs an explicit yes, not just Confirm. */
+  needsAcknowledgement: boolean;
+  /** A correction waits for an answer, so the card cannot be confirmed as it stands. */
+  needsAnswer: boolean;
+  willNeedApproval: boolean;
+  result: ProposalResult | null;
+}
+
+export interface QuestionOption {
+  id: string;
+  label: string;
+}
+
+/** The API also sends `hint`, written for the model. It is left out here so it cannot be shown. */
+export interface Question {
+  field: string;
+  /** Stable, so the wording lives in the dictionary. */
+  code: string;
+  options: QuestionOption[];
+}
+
+/** A phrase the assistant learned for this farm: "solyarka" is a certain item. */
+export interface LearnedPhrase {
+  id: string;
+  phrase: string;
+  targetType: string;
+  targetId: string;
+}
+
 export type Attachment =
   | { type: 'table'; title: string; columns: string[]; rows: Record<string, unknown>[]; total: number }
-  | { type: 'chart'; chart: 'bar' | 'line'; title: string; xKey: string; yKeys: string[]; rows: Record<string, unknown>[] };
+  | { type: 'chart'; chart: 'bar' | 'line'; title: string; xKey: string; yKeys: string[]; rows: Record<string, unknown>[] }
+  | { type: 'proposal'; proposal: ProposalView }
+  | { type: 'question'; question: Question };
 
 export interface AnswerConfidence {
   value: number;

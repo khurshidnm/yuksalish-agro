@@ -20,6 +20,7 @@
     "notInstalled": "Kamera hali o'rnatilmagan.",
     "failedTitle": "Oqimni ochib bo'lmadi",
     "failedHint": "Manzil ishlamayapti yoki brauzer bu formatni o'ynata olmaydi.",
+    "insecureHint": "Bu manzil http orqali ishlaydi. Xavfsiz ilova uni ichiga ololmaydi: oqimni alohida oching yoki shlyuzga https manzil bering.",
     "emptyTitle": "Kameralar yo'q",
     "emptyBody": "«Qurilmalar» bo'limida kamera qo'shing.",
     "gatewayTitle": "Jonli ko'rish hali ulanmagan",
@@ -105,6 +106,7 @@
   "errors": {
     "INVALID_STREAM_URL": "Manzil noto'g'ri. ONVIF manzilini login va parolsiz kiriting.",
     "DEVICE_KEY_MISMATCH": "Bu qurilma boshqa kalitga bog'langan.",
-    "INVALID_EVENT_TIME": "Hodisa vaqti kelajakda bo'lishi mumkin emas."
+    "INVALID_EVENT_TIME": "Hodisa vaqti kelajakda bo'lishi mumkin emas.",
+    "SNAPSHOT_UNAVAILABLE": "Kamera shlyuzi bu kadrni bermadi."
   }
 }

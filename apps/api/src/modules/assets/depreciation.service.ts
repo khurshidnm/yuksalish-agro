@@ -1,14 +1,14 @@
-import { and, eq, max, sql } from 'drizzle-orm';
-import { addDays, monthOf, monthRange, round, straightLineMonthly, unitsOfProductionDepreciation } from '@yap/shared';
+import { and, eq, sql } from 'drizzle-orm';
+import { addDays, monthOf, monthRange, round, straightLineMonthly, todayIso, unitsOfProductionDepreciation } from '@yap/shared';
 import { schema } from '../../db/client';
 import { ctx, today, tx } from '../../core/context';
 import { badRequest } from '../../core/errors';
 import { recordEvent } from '../../core/journal';
 import { postTransaction } from '../../core/ledger';
 import { sumOf } from '../../core/query';
-import { assetCostCenter, getAssetRow } from './assets.service';
+import { assetCostCenter, getAssetRow, isInOpening } from './assets.service';
 
-const { assets, assetUsageLogs, depreciationEntries: t, financeCategories } = schema;
+const { assets, assetUsageLogs, depreciationEntries: t, farms, financeCategories } = schema;
 
 type Asset = typeof assets.$inferSelect;
 
@@ -26,18 +26,28 @@ function nextMonth(month: string): string {
   return monthOf(addDays(monthRange(month).to, 1));
 }
 
+/** Every month from `first` to `last`, both included, oldest first. */
+export function monthsFrom(first: string, last: string): string[] {
+  const months: string[] = [];
+  for (let m = first; m <= last; m = nextMonth(m)) months.push(m);
+  return months;
+}
+
+const onTheBooks = () => and(eq(assets.farmId, ctx().farmId), sql`${assets.status} <> 'written_off'`);
+
 /** Depreciation for one month, never exceeding what is left to depreciate. */
 async function amountFor(asset: Asset, month: string): Promise<number> {
   const price = asset.purchasePrice ?? 0;
   const purchaseMonth = asset.purchaseDate ? monthOf(asset.purchaseDate) : null;
   // Depreciation starts the month after the machine enters service.
   if (asset.rented || price <= 0 || !purchaseMonth || month <= purchaseMonth) return 0;
+  if (isInOpening(asset, month)) return 0;
 
   const [{ posted }] = await tx()
     .select({ posted: sumOf(t.amount) })
     .from(t)
     .where(eq(t.assetId, asset.id));
-  const remaining = Math.max(0, price - asset.salvageValue - posted);
+  const remaining = Math.max(0, price - asset.salvageValue - asset.openingDepreciation - posted);
 
   if (asset.depreciationMethod === 'units') {
     if (!asset.totalUnits) return 0;
@@ -74,10 +84,9 @@ export async function runDepreciation(month: string): Promise<{ month: string; p
     .where(and(eq(financeCategories.tenantId, c.tenantId), eq(financeCategories.key, 'depreciation')));
   if (!category) throw badRequest('CATEGORY_NOT_FOUND', 'Finance category depreciation does not exist');
 
-  const rows = await tx()
-    .select()
-    .from(assets)
-    .where(and(eq(assets.farmId, c.farmId), sql`${assets.status} <> 'written_off'`));
+  // Locked, because each amount is capped by what is already posted: two months at once would
+  // both see the same amount left and go past it.
+  const rows = await tx().select().from(assets).where(onTheBooks()).orderBy(assets.id).for('update');
 
   let posted = 0;
   let total = 0;
@@ -115,21 +124,45 @@ export async function runDepreciation(month: string): Promise<{ month: string; p
   return { month, posted, total: round(total, 2) };
 }
 
+/** Oldest first: each month is capped by what the one before it left. */
+export async function postMonths(months: string[]) {
+  const runs = [];
+  for (const month of months) runs.push(await runDepreciation(month));
+  const posted = runs.filter((run) => run.posted > 0);
+  return {
+    months: posted,
+    posted: posted.reduce((sum, run) => sum + run.posted, 0),
+    total: round(posted.reduce((sum, run) => sum + run.total, 0), 2),
+  };
+}
+
+async function farmStartMonth(): Promise<string> {
+  const c = ctx();
+  const [farm] = await tx().select({ createdAt: farms.createdAt }).from(farms).where(eq(farms.id, c.farmId));
+  return monthOf(todayIso(c.timezone, farm.createdAt));
+}
+
 /**
- * Months to post now: last month, plus any gap since the last posted month, so a server that
- * was down on the 1st catches up. A farm with no entries yet starts from last month rather
- * than back-posting years into a ledger that did not exist then.
+ * Months to post now: every ended month in which some machine still has an amount due, so a machine
+ * added after a month ran gets that month, and a run that failed or a server that was down catches
+ * up. The ledger starts at the month the farm was created, or at the first month posted if that is
+ * earlier, and nothing reaches back past it. The opening figure holds its own months (amountFor).
  */
 export async function monthsToRun(): Promise<string[]> {
-  const last = previousMonth(monthOf(today()));
-  const [{ latest }] = await tx()
-    .select({ latest: max(t.month) })
-    .from(t)
-    .where(eq(t.farmId, ctx().farmId));
-  if (!latest) return [last];
-  const months: string[] = [];
-  for (let m = nextMonth(latest); m <= last; m = nextMonth(m)) months.push(m);
-  return months;
+  const entries = await tx().select({ assetId: t.assetId, month: t.month }).from(t).where(eq(t.farmId, ctx().farmId));
+  const posted = new Set(entries.map((entry) => `${entry.assetId} ${entry.month}`));
+  const start = entries.reduce((first, entry) => (entry.month < first ? entry.month : first), await farmStartMonth());
+  const machines = await tx().select().from(assets).where(onTheBooks());
+
+  const due: string[] = [];
+  for (const month of monthsFrom(start, previousMonth(monthOf(today())))) {
+    for (const machine of machines) {
+      if (posted.has(`${machine.id} ${month}`) || (await amountFor(machine, month)) <= 0) continue;
+      due.push(month);
+      break;
+    }
+  }
+  return due;
 }
 
 export async function listDepreciation(assetId: string) {

@@ -8,6 +8,7 @@ import { Alert, Badge, Label, Select, Sheet, SheetContent, SheetDescription, She
 import { formatMoney, formatMonth, formatMonthShort } from '@/lib/format';
 import { useDetail } from '@/lib/query';
 import { FINANCE_PATHS, budgetYear } from './lib';
+import { shortfallPeriod } from './shortfall';
 import type { ActualMonth, Forecast, ForecastMonth, ForecastParts } from './types';
 
 const PATH = FINANCE_PATHS.cashflow;
@@ -41,8 +42,11 @@ function ForecastTab() {
 
   const data = forecast.data;
   const rows = data?.rows ?? [];
-  const lowest = useMemo(() => rows.reduce<ForecastMonth | null>((low, row) => (!low || row.closing < low.closing ? row : low), null), [rows]);
-  const negative = rows.filter((row) => row.negative);
+  const shortfall = shortfallPeriod(rows);
+  // Past the budget only loans and debts are known, so those months say nothing about a real shortage.
+  const planned = useMemo(() => rows.filter((row) => !data?.plannedThrough || row.month <= data.plannedThrough), [rows, data?.plannedThrough]);
+  const lowest = useMemo(() => planned.reduce<ForecastMonth | null>((low, row) => (!low || row.closing < low.closing ? row : low), null), [planned]);
+  const negative = planned.filter((row) => row.negative);
 
   const columns: Column<ForecastMonth>[] = [
     { key: 'month', header: t('cashflow.month'), mobile: 'title', cell: (row) => formatMonth(row.month) },
@@ -55,7 +59,7 @@ function ForecastTab() {
       align: 'right',
       cell: (row) =>
         row.negative ? (
-          <span className="inline-flex items-center gap-1.5 font-medium text-danger">
+          <span className="inline-flex flex-wrap items-center justify-end gap-1.5 font-medium text-danger">
             <OctagonAlert className="size-4" aria-hidden />
             <MoneyText value={row.closing} />
             <Badge variant="danger">{t('cashflow.shortfall')}</Badge>
@@ -94,6 +98,9 @@ function ForecastTab() {
           {t('cashflow.gapBody', { n: negative.length, amount: formatMoney(lowest?.closing ? -lowest.closing : 0) })}
         </Alert>
       )}
+      {data?.plannedThrough && planned.length < rows.length && (
+        <Alert tone="warning">{t('cashflow.beyondPlan', { month: formatMonth(data.plannedThrough) })}</Alert>
+      )}
       {data?.lowConfidence ? (
         <Alert tone="warning" title={t('cashflow.lowConfidenceTitle')}>
           {t('cashflow.lowConfidenceBody')}
@@ -118,7 +125,8 @@ function ForecastTab() {
         kind="area"
         data={rows}
         xKey="month"
-        series={[{ key: 'closing', label: t('cashflow.closing'), slot: 1 }]}
+        series={[{ key: 'closing', label: t('cashflow.closing'), slot: 1, dashed: true }]}
+        highlight={shortfall && { ...shortfall, tone: 'danger' }}
         formatValue={(value) => formatMoney(value)}
         formatX={(month) => formatMonthShort(month)}
         formatLabel={formatMonth}

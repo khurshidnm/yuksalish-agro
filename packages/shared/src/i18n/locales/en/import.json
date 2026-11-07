@@ -184,7 +184,7 @@
         },
         "birth": {
           "label": "Birth date or age",
-          "hint": "A date (15.03.2023) or an age (3, 3 years, 18 months). With an age, the date is marked as estimated."
+          "hint": "A date (15.03.2023) or an age (3, 3 years, 18 months). With an age, the date is marked as estimated. Without a purchase date, the animal is recorded as born on the farm."
         },
         "weightKg": {
           "label": "Weight (kg)",
@@ -392,7 +392,7 @@
       }
     },
     "budget": {
-      "title": "Budget 2026/27",
+      "title": "Budget",
       "sheet": "Budget",
       "file": "budget-template",
       "description": "The plan by month and category.",
@@ -443,7 +443,8 @@
     "tagOnOtherAnimal": "This tag belongs to animal {{tag}}",
     "invalidBirth": "{{column}} must be a date or an age. Example: 15.03.2023 or 3 years",
     "priceNeedsDate": "There is a price but no purchase date",
-    "originUnknown": "A purchase date or an exact birth date is needed",
+    "originUnknown": "A birth date, an age or a purchase date is needed",
+    "assumedBornHere": "No purchase date: the animal is recorded as born on the farm, with an estimated birth date",
     "maleCannotBePregnant": "A pregnancy date is given for a male",
     "matingBeforeBirth": "The pregnancy date is before the birth date",
     "lambingDatePassed": "The expected lambing date has already passed: check the year",
@@ -572,8 +573,10 @@
     "OLD_EXCEL_FORMAT": "This is the old .xls format. Save it as .xlsx in Excel and upload it again.",
     "EMPTY_FILE": "The file is empty.",
     "FILE_TOO_COMPLEX": "This file is too large to read. Remove any sheets you do not need.",
+    "READER_BUSY": "Other files are being read right now. Try again in a moment.",
+    "READER_UNAVAILABLE": "Files can't be read right now. Try again.",
     "FILE_REQUIRED": "No file was chosen.",
-    "FST_REQ_FILE_TOO_LARGE": "The file must not exceed 15 MB.",
+    "CELL_TOO_LONG": "Row {{row}} has a cell longer than {{max}} characters. Shorten it.",
     "WRONG_TEMPLATE": "The headers in this file do not match the \"{{expected}}\" template. Download it and fill that in.",
     "LOOKS_LIKE_OTHER_TEMPLATE": "This file looks like the \"{{detected}}\" template, but you chose \"{{expected}}\".",
     "MISSING_COLUMNS": "The file is missing these columns: {{columns}}.",

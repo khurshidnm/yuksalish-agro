@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="uz" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#ffffff" />
+    <script>
+      // Someone with a session came for the app, not the sales page. Runs before anything is painted.
+      try {
+        if (localStorage.getItem('yap.signedIn')) location.replace('/app' + location.search);
+      } catch (e) {}
+    </script>
+    <!--landing-head-->
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+  </head>
+  <body>
+    <div id="root"><!--landing-body--></div>
+    <script type="module" src="/src/features/landing/client.tsx"></script>
+  </body>
+</html>

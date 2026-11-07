@@ -1,14 +1,16 @@
 import { and, eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
-import { v7 as uuidv7 } from 'uuid';
 import { z } from 'zod';
 import { schema } from '../../db/client';
 import { ctx, tx, withTenant } from '../../core/context';
 import { badRequest, notFound } from '../../core/errors';
 import { routes } from '../../core/http';
-import { idParam } from '../../core/query';
-import { storage } from '../../core/storage';
-import { signFileToken, verifyFileToken } from '../../core/tokens';
+import { idParam, listQuery } from '../../core/query';
+import { openUpload, storage, uploadRateLimit, withUploadMemory } from '../../core/storage';
+import { verifyFileToken } from '../../core/tokens';
+import * as service from './files.service';
+
+export { signedFileUrl } from './files.service';
 
 const { files } = schema;
 
@@ -44,50 +46,56 @@ function signatureMatches(mime: string, body: Buffer): boolean {
   }
 }
 
-async function fileUrl(id: string): Promise<string> {
-  const c = ctx();
-  return `/api/v1/files/${id}/content?token=${await signFileToken(id, c.tenantId, c.farmId)}`;
-}
-
-/** Fresh signed URL for a stored file, for modules returning file links. */
-export const signedFileUrl = fileUrl;
-
 export default async function filesModule(app: FastifyInstance) {
   const r = routes(app, 'files');
 
   r.post('/', {
-    access: 'authenticated',
+    access: 'member',
     summary: 'Upload a photo or document (multipart, field name "file")',
-    handler: async (req) => {
-      const part = await req.file();
-      if (!part) throw badRequest('FILE_REQUIRED', 'No file was sent');
-      const ext = ALLOWED_TYPES[part.mimetype];
-      if (!ext) throw badRequest('FILE_TYPE_NOT_ALLOWED', 'This file type is not allowed');
-      const body = await part.toBuffer();
-      if (!signatureMatches(part.mimetype, body)) {
-        throw badRequest('FILE_TYPE_NOT_ALLOWED', 'The file content does not match its type');
-      }
+    config: uploadRateLimit,
+    handler: (req) =>
+      withUploadMemory(req, async () => {
+        const upload = await openUpload(req);
+        const extension = ALLOWED_TYPES[upload.mimeType];
+        if (!extension) throw badRequest('FILE_TYPE_NOT_ALLOWED', 'This file type is not allowed');
+        const body = await upload.read();
+        if (!signatureMatches(upload.mimeType, body)) {
+          throw badRequest('FILE_TYPE_NOT_ALLOWED', 'The file content does not match its type');
+        }
+        return service.storeFile({ ...upload, extension }, body).catch((err) => {
+          // Not awaited: this request's transaction is about to roll back, and the note has to outlive it.
+          if (service.isLimitError(err)) {
+            withTenant(req.identity, () => service.noteLimitReached(err.code)).catch((failure) =>
+              req.log.error({ err: failure }, 'could not note a storage limit'),
+            );
+          }
+          throw err;
+        });
+      }),
+  });
 
-      const c = ctx();
-      const id = uuidv7();
-      const storageKey = `${c.tenantId}/${id}.${ext}`;
-      await storage.put(storageKey, body, part.mimetype);
-      await tx().insert(files).values({
-        id,
-        tenantId: c.tenantId,
-        farmId: c.farmId,
-        createdBy: c.userId,
-        storageKey,
-        name: part.filename.slice(0, 255),
-        mimeType: part.mimetype,
-        sizeBytes: body.length,
-      });
-      return { id, name: part.filename, mimeType: part.mimetype, url: await fileUrl(id) };
-    },
+  r.get('/usage', {
+    access: 'member',
+    summary: "The workspace's storage and the caller's uploads in the last 24 hours, against their limits",
+    handler: () => service.storageUsage(),
+  });
+
+  r.get('/unused', {
+    access: 'member',
+    summary: 'Files nothing points at: the caller\'s own, or all of them with settings.update',
+    query: listQuery.pick({ page: true, pageSize: true }),
+    handler: (req) => service.listUnused(req.query),
+  });
+
+  r.delete('/:id', {
+    access: 'member',
+    summary: 'Delete a file nothing points at: the caller\'s own, or any with settings.update',
+    params: idParam,
+    handler: (req) => service.deleteFile(req.params.id),
   });
 
   r.get('/:id', {
-    access: 'authenticated',
+    access: 'member',
     summary: 'File metadata with a fresh signed URL',
     params: idParam,
     handler: async (req) => {
@@ -96,7 +104,7 @@ export default async function filesModule(app: FastifyInstance) {
         .from(files)
         .where(and(eq(files.id, req.params.id), eq(files.farmId, ctx().farmId)));
       if (!file) throw notFound('File');
-      return { ...file, url: await fileUrl(file.id) };
+      return { ...file, url: await service.signedFileUrl(file.id) };
     },
   });
 
@@ -113,7 +121,7 @@ export default async function filesModule(app: FastifyInstance) {
         return row;
       });
       if (!file) throw notFound('File');
-      const body = await storage.get(file.storageKey).catch((err) => {
+      const body = await storage.stream(file.storageKey).catch((err) => {
         // The row outlived its bytes. Anything else, such as storage being down, stays a real error.
         if (err?.code === 'ENOENT' || err?.name === 'NoSuchKey') throw notFound('File');
         throw err;
@@ -124,6 +132,7 @@ export default async function filesModule(app: FastifyInstance) {
         .header('content-type', file.mimeType)
         .header('content-disposition', `${disposition}; filename*=UTF-8''${name}`)
         .header('x-content-type-options', 'nosniff')
+        .header('content-length', file.sizeBytes)
         .send(body);
       return reply;
     },

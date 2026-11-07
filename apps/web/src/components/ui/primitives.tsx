@@ -11,7 +11,7 @@ export function Checkbox({ className, ...props }: ComponentProps<typeof RCheckbo
   return (
     <RCheckbox.Root
       className={cn(
-        'focus-ring relative flex size-6 shrink-0 items-center justify-center rounded border border-input bg-card after:absolute after:-inset-2.5 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary data-[state=indeterminate]:text-primary-foreground disabled:opacity-50 md:size-5',
+        'focus-ring relative flex size-6 shrink-0 items-center justify-center rounded border border-input bg-popover after:absolute after:-inset-2.5 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary data-[state=indeterminate]:text-primary-foreground disabled:opacity-50 md:size-5',
         className,
       )}
       {...props}
@@ -32,7 +32,7 @@ export function Switch({ className, ...props }: ComponentProps<typeof RSwitch.Ro
       )}
       {...props}
     >
-      <RSwitch.Thumb className="block size-5 translate-x-1 rounded-full bg-card shadow-card ring-1 ring-input transition-transform data-[state=checked]:translate-x-6 data-[state=checked]:ring-transparent" />
+      <RSwitch.Thumb className="block size-5 translate-x-1 rounded-full bg-popover ring-1 ring-input transition-transform data-[state=checked]:translate-x-6 data-[state=checked]:ring-transparent" />
     </RSwitch.Root>
   );
 }

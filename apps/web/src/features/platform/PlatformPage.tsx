@@ -49,7 +49,8 @@ interface Stats {
 interface CreatedTenant {
   tenant: Tenant;
   oneTimePassword: string | null;
-  existingUser: boolean;
+  /** The owner already has an account, so they are asked instead of being given a password. */
+  invited: boolean;
 }
 
 function ModulePicker({ value, onChange }: { value: string[]; onChange: (next: string[]) => void }) {
@@ -338,7 +339,7 @@ function PlansTab() {
               <TextField form={form} name="name" label={t('plans.name')} required autoFocus />
               <TextField form={form} name="key" label={t('plans.key')} hint={t('plans.keyHint')} required />
             </FormGrid>
-            <NumberField form={form} name="priceMonthly" label={t('plans.price')} />
+            <NumberField money form={form} name="priceMonthly" label={t('plans.price')} />
             <FormField form={form} name="modules" label={t('plans.modules')}>
               {(field) => <ModulePicker value={(field.value as string[]) ?? []} onChange={field.onChange} />}
             </FormField>

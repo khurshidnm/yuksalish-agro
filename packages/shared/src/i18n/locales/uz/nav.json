@@ -9,7 +9,8 @@
     "people": "Xodimlar",
     "machinery": "Texnika va kameralar",
     "analytics": "Hisobot va tahlil",
-    "admin": "Boshqaruv"
+    "admin": "Boshqaruv",
+    "platform": "Platforma"
   },
   "item": {
     "dashboard": "Boshqaruv paneli",
@@ -31,7 +32,7 @@
     "breeding": "Bo'g'ozlik va qo'zilash",
     "health": "Veterinariya",
     "dailyLogs": "Kunlik qaydlar",
-    "exits": "Chiqib ketish",
+    "exits": "Hayvon chiqimi",
     "stock": "Qoldiqlar",
     "items": "Nomenklatura",
     "warehouses": "Omborlar",
@@ -62,7 +63,9 @@
     "users": "Foydalanuvchilar",
     "apiKeys": "API kalitlari",
     "audit": "Audit jurnali",
-    "platform": "Platforma"
+    "platform": "Platforma",
+    "leads": "Arizalar",
+    "platformUsers": "Barcha foydalanuvchilar"
   },
   "shell": {
     "menu": "Menyu",
@@ -80,7 +83,7 @@
     "dashboard": "Panel",
     "today": "Bugun",
     "tasks": "Vazifalar",
-    "alerts": "Signallar",
+    "alerts": "Ogohlant.",
     "notifications": "Xabarlar",
     "fields": "Dalalar",
     "operations": "Tadbirlar",

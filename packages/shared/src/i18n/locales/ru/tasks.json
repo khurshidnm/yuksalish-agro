@@ -180,7 +180,7 @@
       "contract": "Заканчивается договор: {{number}}, {{counterparty}}",
       "document": "Истекает срок документа: {{name}}",
       "maintenance": "Техобслуживание: {{name}}",
-      "state_report": "Сдать отчёт: {{name}}, {{authority}}",
+      "state_report": "Сдать отчёт: {{name}}",
       "staff_contract": "Договор заканчивается: {{name}}",
       "staff_medical": "Медосмотр: {{name}}"
     },

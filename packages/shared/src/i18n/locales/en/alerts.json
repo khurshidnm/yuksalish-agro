@@ -52,6 +52,10 @@
       "title": "Overdue field operations: {{count}}",
       "body": "Oldest: {{date}}."
     },
+    "disk_low": {
+      "title": "The server's disk is nearly full",
+      "body": "{{freeGb}} GB free. Below {{stopsAtGb}} GB new files are refused, and a full disk stops the whole system. Delete files nothing uses, or ask your administrator to add space."
+    },
     "document_expiring": {
       "title": "Document expiring: {{title}}",
       "body": "Valid until {{date}}."
@@ -63,6 +67,10 @@
     "batch_expiring": {
       "title": "{{item}}: batch expiring",
       "body": "Expires {{date}}. Remaining: {{qty}} {{unit}}."
+    },
+    "receipt_unpaid": {
+      "title": "{{docNo}}: goods received, no payment or debt recorded",
+      "body": "{{supplier}}: {{goods}}. Record the payment or the debt in Finance."
     },
     "approvals_pending": {
       "title": "Payments awaiting approval: {{count}}",
@@ -110,12 +118,33 @@
       "title": "{{herd}}: two different records for {{date}}",
       "body": "A record entered offline did not match the saved one. It lists no feed."
     },
+    "offline_refused": {
+      "title": "{{herd}}: the record for {{date}} was not accepted",
+      "body": "A record entered offline was refused and has to be entered by hand. Offline record: {{summary}}."
+    },
     "asset_fuel_deviation": {
       "title": "Fuel use {{percent}}% over the norm: {{name}}",
       "body": "{{date}}: used {{fuelL}} l, norm {{normL}} l."
     },
     "device_event": {
-      "title": "{{deviceName}}: {{eventType}}"
+      "title": "{{deviceName}}: {{eventType}}",
+      "body": "It happened at {{happenedAt}}. The message reached the server late."
+    },
+    "urgent_unreachable_not_configured": {
+      "title": "Urgent alerts do not leave the app",
+      "body": "The Telegram bot is not set up, so a fire alert shows only here. Contact your administrator."
+    },
+    "urgent_unreachable_channel_down": {
+      "title": "Telegram cannot be reached",
+      "body": "The bot cannot connect to Telegram, so a fire alert would show only here. Contact your administrator."
+    },
+    "urgent_unreachable_not_linked": {
+      "title": "Fire alerts have nobody to go to",
+      "body": "Neither the owner nor a director gets urgent messages in Telegram: it is not linked, or it is turned off. Fix this on the Notifications page."
+    },
+    "urgent_unreachable_undelivered": {
+      "title": "An urgent alert has reached nobody",
+      "body": "Sending through Telegram is failing. Check the alerts here and phone the people responsible."
     },
     "device_offline": {
       "title": "{{deviceName}} is offline",
@@ -133,17 +162,109 @@
     "tasks": "Open tasks: {{count}}"
   },
   "bot": {
-    "linked": "Your account is linked. {{status}} shows today's status, {{alerts}} shows open alerts.",
+    "linked": "Your account is linked. {{status}} shows today's status, {{alerts}} shows open alerts, {{help}} shows everything I can do.",
     "linkFailed": "That code is wrong or has expired. Get a new one on the Notifications page.",
     "notLinked": "This chat is not linked to an account. Get a code on the Notifications page.",
-    "help": "Commands: {{status}} today's status, {{alerts}} open alerts.",
+    "help": "Just write to me: ask how the farm is doing, or tell me about money and I will prepare a record for you to confirm. Voice notes and photos of receipts work too.\n\n{{status}} today's status\n{{alerts}} open alerts\n{{pending}} records waiting for you\n{{new}} start a new conversation\n{{farm}} choose the farm\n{{help}} this help",
     "noAlerts": "No open alerts.",
-    "noFarm": "Your account is not attached to a farm."
+    "noFarm": "Your account is not attached to a farm.",
+    "blocked": "Your access is blocked. Please contact your administrator.",
+    "groupOnly": "I only work in a private chat. Please write to me directly.",
+    "enroll2fa": "Your role requires two-factor protection. Turn it on in the web app, then come back.",
+    "noAssistant": "The assistant is not open to your role. {{status}} and {{alerts}} still work.",
+    "newConversation": "New conversation started.",
+    "apology": "Sorry, something went wrong on my side. Please try again in a moment.",
+    "rateLimited": "That is too many messages. Please wait about {{minutes}} min and try again.",
+    "tooLong": "That message is too long. Please keep it under {{limit}} characters.",
+    "fileTooLarge": "That file is too large. The limit is {{limit}} MB.",
+    "voiceTooLong": "That voice note is too long. Please keep it under {{limit}} minutes.",
+    "unsupported": "I can read text, voice notes, photos and PDF files.",
+    "heard": "I heard:",
+    "nothingHeard": "I could not make anything out. Please say it again or type it.",
+    "documentPrompt": "Read this document.",
+    "noPending": "Nothing is waiting for you.",
+    "pendingCount": "Waiting for you: {{count}}",
+    "changePrompt": "What should I change?",
+    "recorded": "Recorded.",
+    "waitingApproval": "Recorded. It now waits for a second person's approval.",
+    "cancelled": "Cancelled.",
+    "expired": "This draft has expired.",
+    "failed": "This could not be recorded.",
+    "undone": "Undone.",
+    "stale": "This button is out of date.",
+    "cardChanged": "This card has changed. Please check it and confirm again.",
+    "moneyHidden": "This record holds money details your role cannot see.",
+    "noRightToAcknowledge": "Only the people responsible, the owner or the director can acknowledge this alert.",
+    "buttons": {
+      "acknowledge": "Acknowledge",
+      "confirm": "Confirm",
+      "change": "Change",
+      "cancel": "Cancel",
+      "undo": "Undo",
+      "yesRecord": "Yes, record it",
+      "moveYes": "Yes, move it to {{next}}",
+      "moveNo": "No, keep {{current}}"
+    },
+    "commands": {
+      "status": "Today's status",
+      "alerts": "Open alerts",
+      "pending": "Records waiting for you",
+      "new": "New conversation",
+      "help": "Help",
+      "farm": "Choose the farm"
+    },
+    "acknowledgeAsk": "This record has something to check, shown above. Record it anyway?",
+    "needsAnswer": "This card is waiting for your answer. Please answer the question first.",
+    "cardStale": "Something on this card changed or closed, so it was not recorded. Change it or cancel it.",
+    "chooseFarm": "You work on several farms. Choose which one this chat works for, then send your message again.",
+    "oneFarm": "You work on one farm: {{farm}}.",
+    "currentFarm": "This chat now works for: {{farm}}. You can choose another below.",
+    "farmChosen": "This chat now works for: {{farm}}.",
+    "otherFarm": "This card belongs to another farm. Switch to it with {{farm}} and press again.",
+    "notInBooks": "This record is not in the books: it was refused or voided.",
+    "pendingMore": "{{count}} more are waiting. Deal with these first, or open them in the web app.",
+    "moveAsk": "This chat belongs to {{current}}, and the code is for {{next}}. Move this chat to {{next}}? {{current}} would stop getting messages and confirming here.",
+    "moved": "This chat now belongs to {{next}}. {{current}} is no longer linked here.",
+    "moveKept": "Nothing changed.",
+    "movedAway": "Your account was linked to another Telegram chat, so this chat no longer works for it. If this was not you, unlink the new chat on the Notifications page and change your password.",
+    "unlinked": "This chat was unlinked from your account.",
+    "editIgnored": "I do not read edited messages. To correct a record, press Change on its card or write a new message.",
+    "helpBasic": "{{status}} today's status\n{{alerts}} open alerts\n{{farm}} choose the farm\n{{help}} this help",
+    "linkNotice": {
+      "title": "Telegram linked",
+      "body": "{{name}} can now act on your account through Telegram. If this was not you, unlink it on the Notifications page and change your password."
+    },
+    "checkThis": "Please check this record.",
+    "sendAsPhoto": "I cannot read this type of file. Please send it as a photo.",
+    "unlinkedBlocked": "Your account was blocked, so this chat was unlinked. Alerts will no longer come here. Please contact your administrator.",
+    "unlinkNotice": {
+      "title": "Telegram unlinked",
+      "body": "This account no longer gets alerts in Telegram and cannot confirm from there. Link it again on the Notifications page."
+    },
+    "twoFactorNotice": {
+      "title": "Two-factor sign-in changed",
+      "body": "Two-factor sign-in on your account was reset, replaced, or a recovery code was used. If this was not you, contact your administrator at once."
+    },
+    "inviteNotice": {
+      "title": "Invitation to a farm",
+      "body": "\"{{workspace}}\" invited you to join. Sign in to the app to accept or decline."
+    },
+    "passwordNotice": {
+      "title": "Password changed",
+      "body": "The password of your account was changed, and other devices were signed out. This Telegram chat stays linked. If this was not you, contact your administrator at once."
+    },
+    "waitForAnswer": "I am still answering your last message. Wait for the answer, check the card, then confirm.",
+    "farmAfterTurn": "I will answer what you already wrote first, then switch the farm.",
+    "escalated": "Sent to you because it could not reach the people responsible.",
+    "sentLate": "Delivered late. Original time: {{time}}."
   },
   "errors": {
     "ALERT_NOT_OPEN": "This alert has already been handled",
     "ALERT_ALREADY_RESOLVED": "This alert is already closed",
-    "TELEGRAM_NOT_CONFIGURED": "The Telegram bot is not set up yet. Contact your administrator."
+    "ALERT_NOT_YOURS": "Only the people responsible, the owner or the director can stop this urgent alert",
+    "TELEGRAM_NOT_CONFIGURED": "The Telegram bot is not set up yet. Contact your administrator.",
+    "AI_AUDIO_NOT_SUPPORTED": "The current AI provider cannot read voice notes. Please type your message.",
+    "AI_TRANSCRIPTION_FAILED": "The voice note could not be read. Please say it again or type it."
   },
   "title": "Alerts",
   "description": "Problems found by rules and AI, in one list, by severity.",
@@ -186,12 +307,40 @@
     "channelsTitle": "What goes where",
     "channelsBody": "Messages inside the platform are always on. You choose the rest.",
     "notConfigured": "Not set up",
+    "urgentOffTitle": "Turn off urgent alerts in Telegram?",
+    "urgentOffBody": "Telegram is the only channel outside the platform right now. Turn it off and you will hear about a fire or a sick animal only when you open the app.",
+    "urgentOffConfirm": "Turn off",
+    "urgentOff": "Urgent alerts do not reach you in Telegram, so you would hear about a fire only in the app. Tick Telegram to turn them back on.",
     "event": {
       "alert_urgent": "Urgent alerts",
       "alert_attention": "Alerts needing attention",
       "alert_info": "Information only",
       "task_assigned": "Tasks assigned to me",
-      "daily_summary": "Daily summary"
+      "daily_summary": "Daily summary",
+      "assistant_recap": "Assistant evening recap"
+    }
+  },
+  "testAlert": {
+    "title": "Test alert",
+    "body": "Shows who an urgent alert reaches. Each member of staff gets one message labelled as a test, and no real alert is raised.",
+    "send": "Send a test",
+    "confirmTitle": "Send the test message?",
+    "confirmBody": "It goes to all the staff of this farm.",
+    "confirmAction": "Send",
+    "inApp": "In the app: {{count}}",
+    "inAppBody": "The message is in each person's notifications.",
+    "reached": "Reached through Telegram: {{count}}",
+    "unreachable": "Not reached through Telegram: {{count}}",
+    "nobody": "This farm has no staff to send it to.",
+    "reason": {
+      "not_linked": "Telegram not linked, or the bot is blocked",
+      "turned_off": "Turned Telegram off for urgent messages",
+      "failed": "Telegram did not answer, it will be tried again",
+      "not_configured": "The Telegram bot is not set up"
+    },
+    "message": {
+      "title": "TEST: this is not a real alert",
+      "body": "Nothing has happened on the farm. This message checks that urgent alerts reach you. There is nothing to do."
     }
   },
   "telegram": {

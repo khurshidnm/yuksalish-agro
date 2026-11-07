@@ -2,6 +2,7 @@ import { addDays, todayIso } from '@yap/shared';
 import { eq, sql } from 'drizzle-orm';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { tx } from '../src/core/context';
+import { generalCostCenterId } from '../src/core/costCenters';
 import { postTransaction } from '../src/core/ledger';
 import { schema } from '../src/db/client';
 import { jobs } from '../src/modules/farm/jobs';
@@ -225,12 +226,55 @@ describe('fields', () => {
     expect(cc).toMatchObject({ type: 'field', refId: field.id, name: '№C1 Kichik', active: true });
   });
 
-  it('gives other contours no cost center until they become arable', async () => {
+  it.each(['pasture', 'reserve'])('gives %s land a cost center that the expense form offers', async (landUse) => {
     const owner = await f.as('owner');
-    const { data: pasture } = await owner.post('/farm/fields', { number: 'C2', areaHa: 3, landUse: 'pasture' });
-    expect(pasture.costCenterId).toBeNull();
-    const converted = await owner.patch(`/farm/fields/${pasture.id}`, { landUse: 'arable' });
+    const { data: land } = await owner.post('/farm/fields', { number: `L-${landUse}`, name: 'Janubiy', areaHa: 3, landUse });
+    expect(land.costCenterId).toBeTruthy();
+    const offered = await owner.get('/finance/cost-centers/lookup', { type: 'field', search: `L-${landUse}` });
+    expect(offered.data).toEqual([{ id: land.costCenterId, name: `№L-${landUse} Janubiy`, type: 'field', refId: land.id }]);
+  });
+
+  it('gives a yard or a road no cost center until it becomes land that has one', async () => {
+    const owner = await f.as('owner');
+    const { data: yard } = await owner.post('/farm/fields', { number: 'C2', areaHa: 3, landUse: 'yard' });
+    expect(yard.costCenterId).toBeNull();
+    const { data: road } = await owner.post('/farm/fields', { number: 'C3', areaHa: 1, landUse: 'infrastructure' });
+    expect(road.costCenterId).toBeNull();
+    const converted = await owner.patch(`/farm/fields/${yard.id}`, { landUse: 'pasture' });
     expect(converted.data.costCenterId).toBeTruthy();
+  });
+
+  it('keeps the cost center of a pasture in step when it is renamed or archived', async () => {
+    const owner = await f.as('owner');
+    const { data: pasture } = await owner.post('/farm/fields', { number: 'C4', name: 'Eski', areaHa: 3, landUse: 'pasture' });
+    await owner.patch(`/farm/fields/${pasture.id}`, { name: 'Yangi' });
+    const center = () => f.run(() => tx().select().from(schema.costCenters).where(eq(schema.costCenters.id, pasture.costCenterId)));
+    expect((await center())[0]).toMatchObject({ name: '№C4 Yangi', active: true });
+    expect((await owner.delete(`/farm/fields/${pasture.id}`)).status).toBe(200);
+    expect((await center())[0].active).toBe(false);
+  });
+
+  it('charges a fence to the pasture, while overhead by area stays on arable land', async () => {
+    const g = await createFixture({ settings: { finance: { overheadBase: 'area' } } });
+    const owner = await g.as('owner');
+    const { data: arable } = await owner.post('/farm/fields', { number: 'A1', areaHa: 30 });
+    const { data: pasture } = await owner.post('/farm/fields', { number: 'Y1', areaHa: 70, landUse: 'pasture' });
+    const [till, general, repair] = await g.run(async () => {
+      const [account] = await tx().insert(schema.accounts).values({ tenantId: g.tenantId, farmId: g.farmId, name: 'Kassa', type: 'cash', openingBalance: 5_000_000 }).returning();
+      const [category] = await tx().select().from(schema.financeCategories).where(sql`tenant_id = ${g.tenantId} and key = 'repair'`);
+      return [account.id, await generalCostCenterId(), category.id];
+    });
+    const spend = (amount: number, costCenterId: string) =>
+      owner.post('/finance/transactions', { date: todayIso(), type: 'expense', amount, categoryId: repair, costCenterId, paymentMethod: 'cash', accountId: till });
+    expect((await spend(400_000, pasture.costCenterId)).status).toBe(201);
+    expect((await spend(1_000_000, general)).status).toBe(201);
+
+    const costs = (await owner.get('/finance/costs/centers')).data;
+    const of = (id: string) => costs.find((row: any) => row.costCenterId === id);
+    // The pasture holds 70 of 100 ha, but overhead by area is shared over arable land only: all of it on A1.
+    expect(of(pasture.costCenterId)).toMatchObject({ direct: 400_000, overhead: 0, total: 400_000 });
+    expect(of(arable.costCenterId)).toMatchObject({ direct: 0, overhead: 1_000_000, total: 1_000_000 });
+    expect(of(general).total).toBe(0);
   });
 
   it('refuses a duplicate number with a clear code', async () => {
@@ -1000,7 +1044,7 @@ describe('weather', () => {
 });
 
 describe('pilot seed', () => {
-  it('lays out 210 ha: 70 arable, no overlaps, measured area matching the plan', async () => {
+  it('lays out 210 ha: 90 arable, no overlaps, measured area matching the plan', async () => {
     const f = await createFixture();
     const owner = await f.as('owner');
     vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -1023,9 +1067,8 @@ describe('pilot seed', () => {
     await owner.patch('/farm/passport', { totalAreaHa: 210 });
     const { data } = await owner.get('/farm/passport');
     const byUse = Object.fromEntries(data.areaBalance.byLandUse.map((r: any) => [r.landUse, r.areaHa]));
-    expect(byUse.arable).toBe(70);
+    expect(byUse.arable).toBe(90);
     expect(data.areaBalance).toMatchObject({ assignedHa: 210, unassignedHa: 0, overAssigned: false });
-    expect(data.passport.notes).toContain('Ochiq savol');
 
     const geometry = await f.run(async () => {
       const measured = await tx().execute(
@@ -1036,7 +1079,7 @@ describe('pilot seed', () => {
         where ST_Intersects(a.geom, b.geom) and ST_Area(ST_Intersection(a.geom, b.geom)) > 0`);
       return { measured: measured.rows, overlaps: overlaps.rows };
     });
-    expect(geometry.measured).toHaveLength(9);
+    expect(geometry.measured).toHaveLength(10);
     for (const row of geometry.measured as { area_ha: string; measured: number; valid: boolean }[]) {
       expect(row.valid).toBe(true);
       expect(Math.abs(Number(row.area_ha) - Number(row.measured))).toBeLessThan(0.001);
@@ -1050,7 +1093,7 @@ describe('pilot seed', () => {
 
     const expiring = await owner.get('/farm/documents', { expiry: 'expiring' });
     expect(expiring.body.data.map((d: any) => d.title)).toEqual(['Suvdan foydalanish ruxsatnomasi']);
-    expect((await owner.get('/farm/documents', { expiry: 'expired' })).body.meta.total).toBe(1);
+    expect((await owner.get('/farm/documents', { expiry: 'expired' })).body.meta.total).toBe(0);
 
     const card = (await owner.get('/farm/fields/lookup', { search: '1' })).data[0];
     expect((await owner.get(`/farm/fields/${card.id}`)).data.soilAnalyses).toHaveLength(2);

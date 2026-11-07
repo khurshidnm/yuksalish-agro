@@ -13,7 +13,7 @@ import {
 import { averageHead, itemUnitToKg } from '@yap/shared/formulas/livestock';
 import { schema } from '../../db/client';
 import { ctx, today, tx } from '../../core/context';
-import { onFarm } from './refs';
+import { carryingPregnancy, onFarm } from './refs';
 
 // Breeding figures have one owner, so the dashboard and the Breeding page cannot disagree.
 export { lambingCalendar, reproductionKpis } from './breeding.summary';
@@ -29,6 +29,13 @@ export async function herdSummary() {
     .where(and(eq(animals.farmId, ctx().farmId), onFarm()))
     .groupBy(animals.category, animals.status);
 
+  // An animal has one status, so a pregnant ewe that falls ill stops being 'pregnant' there. She is
+  // still carrying: the open pregnancies are the count, the same one the breeding page shows.
+  const [carrying] = await tx()
+    .select({ head: count })
+    .from(animals)
+    .where(and(eq(animals.farmId, ctx().farmId), onFarm(), carryingPregnancy));
+
   const byCategory: Record<string, number> = {};
   const byStatus: Record<string, number> = {};
   let total = 0;
@@ -41,7 +48,7 @@ export async function herdSummary() {
     total,
     byCategory,
     byStatus,
-    pregnant: byStatus.pregnant ?? 0,
+    pregnant: carrying.head,
     sick: byStatus.sick ?? 0,
     quarantine: byStatus.quarantine ?? 0,
   };
@@ -86,7 +93,8 @@ export async function herdMovement(from: string, to: string) {
     dead: left('dead'),
     lost: left('lost'),
   };
-  return { ...figures, closing: herdCount(figures) };
+  const closing = herdCount(figures);
+  return { ...figures, closing, averageHead: averageHead(figures.opening, closing, figures.purchased) };
 }
 
 export async function mortality(days: number) {
@@ -95,7 +103,7 @@ export async function mortality(days: number) {
   const movement = await herdMovement(from, to);
   return {
     dead: movement.dead,
-    percent: mortalityPercent(movement.dead, averageHead(movement.opening, movement.closing)),
+    percent: mortalityPercent(movement.dead, movement.averageHead),
   };
 }
 

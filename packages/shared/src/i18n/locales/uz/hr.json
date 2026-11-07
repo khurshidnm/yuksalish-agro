@@ -24,12 +24,17 @@
     "deleteBody": "{{name}} ro'yxatdan o'chiriladi. Yozuvlari bor xodimni o'chirib bo'lmaydi: uning o'rniga \"Ishdan bo'shatish\"ni tanlang.",
     "terminate": "Ishdan bo'shatish",
     "terminated": "Xodim ishdan bo'shatildi, hisobi bloklandi",
+    "terminatedNoLogin": "Xodim ishdan bo'shatildi. Unga kirish hisobi bog'lanmagan edi, hech narsa bloklanmadi.",
     "terminateTitle": "{{name}}ni ishdan bo'shatish",
     "terminateBody": "Tizimga kirishi darhol to'xtaydi. Kiritgan barcha ma'lumotlari saqlanib qoladi.",
+    "terminateBodyNoLogin": "Bu xodimga kirish hisobi bog'lanmagan. Agar hisobi bo'lsa, uni quyidan tanlang, shunda u ham to'xtaydi.",
+    "terminateLogin": "Bloklanadigan kirish hisobi",
+    "terminateLoginNone": "Bu odamning hisobi yo'q",
     "reinstate": "Ishga qaytarish",
     "reinstated": "Xodim ishga qaytarildi",
     "reinstateTitle": "Xodimni ishga qaytarasizmi?",
     "reinstateBody": "{{name}}ning hisobi qayta ochiladi.",
+    "reinstateBodyNoLogin": "{{name}} xodimlar ro'yxatiga qaytadi.",
     "pieceHint": "Ishbay stavkalar oylikka qo'shib hisoblanadi. Kerak bo'lmasa bo'sh qoldiring.",
     "fields": {
       "fullName": "F.I.Sh.",
@@ -262,6 +267,8 @@
     "ALREADY_APPROVED": "Bu hisob-kitob allaqachon tasdiqlangan",
     "ALREADY_PAID": "Bu ish haqi allaqachon to'langan",
     "PAYROLL_EMPTY": "Bu hisob-kitobda xodimlar yo'q",
+    "PAYROLL_ADVANCES_WAITING": "Shu oy uchun avans hali tasdiqlanishini kutmoqda. Avval uni tasdiqlang yoki rad eting",
+    "PAYROLL_ADVANCES_CHANGED": "Ish haqi hisoblangandan keyin avans berilgan. Avval qayta hisoblang",
     "SAME_MAKER_CHECKER": "Tayyorlagan xodim o'zi tasdiqlay olmaydi"
   }
 }

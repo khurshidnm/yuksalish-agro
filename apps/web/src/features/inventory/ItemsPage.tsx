@@ -87,7 +87,7 @@ function Fields({ form, canSeeMoney }: { form: UseFormReturn<FormIn, unknown, Fo
       </FormGrid>
       {isFeed && (
         <FormGrid>
-          <NumberField form={form} name="minDays" label={t('items.fields.minDays')} hint={t('items.fields.minDaysHint')} />
+          <NumberField form={form} name="minDays" label={t('items.fields.minDays')} hint={t('items.fields.minDaysHint')} maxDigits={0} />
           <NumberField form={form} name="dryMatterPct" label={t('items.fields.dryMatterPct')} suffix="%" />
           {unit !== 'kg' && unit !== 't' && <NumberField form={form} name="kgPerUnit" label={t('items.fields.kgPerUnit')} hint={t('items.fields.kgPerUnitHint')} suffix="kg" />}
           <SelectField
@@ -102,7 +102,7 @@ function Fields({ form, canSeeMoney }: { form: UseFormReturn<FormIn, unknown, Fo
       {(isDrug || hasTransferPrice) && (
         <FormGrid>
           {isDrug && <NumberField form={form} name="withdrawalDays" label={t('items.fields.withdrawalDays')} hint={t('items.fields.withdrawalDaysHint')} maxDigits={0} />}
-          {hasTransferPrice && <NumberField form={form} name="transferPrice" label={t('items.fields.transferPrice')} hint={t('items.fields.transferPriceHint')} />}
+          {hasTransferPrice && <NumberField money form={form} name="transferPrice" label={t('items.fields.transferPrice')} hint={t('items.fields.transferPriceHint')} />}
         </FormGrid>
       )}
       <FormGrid>

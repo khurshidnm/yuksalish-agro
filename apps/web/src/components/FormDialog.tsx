@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import type { z } from 'zod';
 import { ApiError } from '@/lib/api';
+import i18n from '@/lib/i18n';
 import { errorMessage } from '@/lib/query';
 import { Alert, Button, Dialog, DialogBody, DialogContent, type DialogContentProps, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui';
 
@@ -19,10 +20,22 @@ export interface FormDialogProps<S extends z.ZodType<FieldValues, FieldValues>> 
   /** Receives validated, transformed values. A thrown ApiError is displayed in the form. */
   onSubmit: (values: z.output<S>) => Promise<unknown> | unknown;
   submitLabel?: ReactNode;
+  /** When the usual word would read like the action itself. */
+  cancelLabel?: ReactNode;
   /** i18n key or text for the success toast. */
   successMessage?: string;
   size?: DialogContentProps['size'];
   children: (form: UseFormReturn<z.input<S>, unknown, z.output<S>>) => ReactNode;
+}
+
+/** The API's validation text is zod's English; its limits let us say the same thing in the person's language. */
+function localizedIssue(error: ApiError, field: string): string | null {
+  const issues = (error.details as { fieldIssues?: Record<string, { code: string; min?: number; max?: number; inclusive?: boolean }> } | null)?.fieldIssues;
+  const issue = issues?.[field];
+  if (issue?.code === 'too_big') return i18n.t('common:validation.max', { max: issue.max });
+  if (issue?.code === 'too_small') return i18n.t(issue.inclusive === false ? 'common:validation.greaterThan' : 'common:validation.min', { min: issue.min });
+  if (issue?.code === 'invalid_type') return i18n.t('common:validation.invalid');
+  return null;
 }
 
 /**
@@ -38,6 +51,7 @@ export function FormDialog<S extends z.ZodType<FieldValues, FieldValues>>({
   defaultValues,
   onSubmit,
   submitLabel,
+  cancelLabel,
   successMessage,
   size,
   children,
@@ -69,7 +83,7 @@ export function FormDialog<S extends z.ZodType<FieldValues, FieldValues>>({
       if (error instanceof ApiError) {
         for (const [field, message] of Object.entries(error.fieldErrors)) {
           // `_` is the API's key for an error on the whole form: the banner covers it.
-          if (field !== '_') form.setError(field as Path<z.input<S>>, { type: 'server', message });
+          if (field !== '_') form.setError(field as Path<z.input<S>>, { type: 'server', message: localizedIssue(error, field) ?? message });
         }
       }
       setServerError(errorMessage(error));
@@ -90,7 +104,7 @@ export function FormDialog<S extends z.ZodType<FieldValues, FieldValues>>({
           </DialogBody>
           <DialogFooter>
             <Button variant="outline" onClick={() => onOpenChange(false)}>
-              {t('common:actions.cancel')}
+              {cancelLabel ?? t('common:actions.cancel')}
             </Button>
             <Button type="submit" loading={form.formState.isSubmitting}>
               {submitLabel ?? t('common:actions.save')}

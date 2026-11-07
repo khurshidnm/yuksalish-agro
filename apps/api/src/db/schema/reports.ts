@@ -41,5 +41,5 @@ export const importJobs = pgTable(
      */
     rows: jsonb().$type<Record<string, unknown>[]>().notNull().default([]),
   },
-  (t) => [index().on(t.farmId, t.createdAt.desc())],
+  (t) => [index().on(t.farmId, t.createdAt)],
 );

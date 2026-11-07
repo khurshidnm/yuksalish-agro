@@ -1,9 +1,10 @@
+import { eq } from 'drizzle-orm';
 import { addDays, todayIso, type RoleKey } from '@yap/shared';
 import { hoursBetween } from '@yap/shared/formulas/payroll';
 import { schema } from '../db/client';
 import { ctx, tx } from '../core/context';
 import { approveRun, createAdvance, createKpiRule, createRun } from '../modules/hr/payroll.service';
-import { findAccount } from './lookup';
+import { findAccount, findEmployee, findHerd } from './lookup';
 import { SEED } from './names';
 import type { SeedContext } from './types';
 
@@ -160,14 +161,23 @@ export async function seedHr(s: SeedContext): Promise<void> {
     });
   }, 'accountant');
 
-  // October is approved and posted, and left unpaid so that wages show as a payable to settle.
-  // No field or herd work is logged yet at this step, so the labour cost lands on the general
-  // cost center. The piece-rate mechanic joined in November, so he has no line that would show
-  // zero pay for October before the field operations are seeded.
+}
+
+/**
+ * After the livestock step, because a shepherd's wage reaches the herd through the employee's herd.
+ * October is approved and posted, and left unpaid so that wages show as a payable to settle. No field
+ * work is logged yet at this step, so the other wages land on the general cost center. The piece-rate
+ * mechanic joined in November, so he has no line that would show zero pay for October.
+ */
+export async function seedPayroll(s: SeedContext): Promise<void> {
+  await s.run(async () => {
+    const herd = await findHerd(SEED.herd.pregnant);
+    await tx().update(schema.employees).set({ herdId: herd.id }).where(eq(schema.employees.position, P.shepherd));
+  });
   const run = await s.run(() => createRun({ month: '2026-10' }), 'accountant');
   await s.run(() => approveRun(run.id), 'director');
 
-  const shepherd = people.find((p) => p.position === P.shepherd)!;
+  const shepherd = await s.run(() => findEmployee(P.shepherd));
   await s.run(async () => {
     const cash = await findAccount(SEED.account.cash);
     await createAdvance({

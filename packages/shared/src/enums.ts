@@ -68,7 +68,7 @@ export const TIMESHEET_STATUSES = e(['present', 'absent', 'sick', 'vacation', 'd
 export const PAYROLL_STATUSES = e(['draft', 'pending', 'approved', 'paid']);
 
 // Assets
-export const ASSET_TYPES = e(['tractor', 'combine', 'seeder', 'plough', 'pump', 'generator', 'scale', 'camera', 'vehicle', 'other']);
+export const ASSET_TYPES = e(['tractor', 'combine', 'excavator', 'seeder', 'plough', 'pump', 'generator', 'scale', 'camera', 'vehicle', 'other']);
 export const ASSET_STATUSES = e(['working', 'idle', 'repair', 'written_off']);
 export const DEPRECIATION_METHODS = e(['straight_line', 'units']);
 export const MAINTENANCE_TYPES = e(['planned', 'repair']);
@@ -89,6 +89,8 @@ export const DEVICE_TYPES = e(['camera', 'sensor', 'rfid_reader', 'scale', 'gps_
 export const DEVICE_STATUSES = e(['planned', 'online', 'offline']);
 export const AI_DECISIONS = e(['pending', 'accepted', 'rejected']);
 export const DOCUMENT_TYPES = e(['land', 'construction', 'permit', 'contract', 'invoice', 'vet_certificate', 'act', 'other']);
+export const LEAD_STATUSES = e(['new', 'contacted', 'qualified', 'won', 'lost']);
+export const LEAD_FARM_TYPES = e(['livestock', 'crops', 'mixed', 'other']);
 
 export type Severity = (typeof SEVERITIES)[number];
 export type TransactionType = (typeof TRANSACTION_TYPES)[number];

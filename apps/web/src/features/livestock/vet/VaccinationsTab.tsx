@@ -53,7 +53,7 @@ interface HerdPreset {
 function HerdVaccinationDialog({ preset, onClose }: { preset: HerdPreset | null; onClose: () => void }) {
   const { t } = useTranslation('vet');
   const vaccinate = useApiMutation<z.output<typeof herdSchema>>({
-    mutationFn: (values) => api.post(`${HEALTH_PATH}/vaccinations/herd`, values),
+    mutationFn: (values) => api.postOnce(`${HEALTH_PATH}/vaccinations/herd`, values),
     invalidate: [HEALTH_PATH, ANIMALS_PATH, '/inventory'],
     silentError: true,
   });
@@ -91,7 +91,7 @@ function HerdVaccinationDialog({ preset, onClose }: { preset: HerdPreset | null;
             <ComboboxField form={form} name="itemId" label={t('vaccinations.vaccine')} loadOptions={drugOptions} hint={t('vaccinations.vaccineHint')} selectedLabel={preset?.planName} />
             <ComboboxField form={form} name="warehouseId" label={t('journal.warehouse')} loadOptions={warehouseOptions()} hint={t('journal.warehouseHint')} />
             <NumberField form={form} name="dosePerHead" label={t('vaccinations.dosePerHead')} />
-            <NumberField form={form} name="headCount" label={t('journal.headCount')} hint={t('journal.headCountHint')} />
+            <NumberField form={form} name="headCount" label={t('journal.headCount')} hint={t('journal.headCountHint')} maxDigits={0} />
           </FormGrid>
           <NumberField form={form} name="qtyUsed" label={t('journal.qtyUsed')} hint={t('vaccinations.qtyHint')} />
           <TextareaField form={form} name="notes" label={t('common.notes')} />
@@ -133,8 +133,8 @@ function PlanDialog({ open, plan, onClose }: { open: boolean; plan: VaccinationP
           <ComboboxField form={form} name="itemId" label={t('vaccinations.vaccine')} loadOptions={drugOptions} selectedLabel={plan?.itemName} hint={t('plans.itemHint')} />
           <SelectField form={form} name="category" label={t('plans.category')} options={enumOptions('animalCategory', ANIMAL_CATEGORIES)} placeholder={t('plans.anyCategory')} />
           <FormGrid>
-            <NumberField form={form} name="ageDays" label={t('plans.ageDays')} hint={t('plans.ageHint')} suffix={t('common.days')} />
-            <NumberField form={form} name="intervalDays" label={t('plans.intervalDays')} hint={t('plans.intervalHint')} suffix={t('common.days')} />
+            <NumberField form={form} name="ageDays" label={t('plans.ageDays')} hint={t('plans.ageHint')} suffix={t('common.days')} maxDigits={0} />
+            <NumberField form={form} name="intervalDays" label={t('plans.intervalDays')} hint={t('plans.intervalHint')} suffix={t('common.days')} maxDigits={0} />
           </FormGrid>
           <SwitchField form={form} name="mandatory" label={t('plans.mandatory')} />
           <TextareaField form={form} name="notes" label={t('common.notes')} />

@@ -6,7 +6,9 @@ import { useSession } from '@/lib/auth';
 import { formatDateLong, intlLocale } from '@/lib/format';
 import { useDetail } from '@/lib/query';
 import { KpiPanel } from './KpiPanel';
+import { OutlookPanel } from './OutlookPanel';
 import { Overview, OverviewSkeleton } from './Overview';
+import { SetupChecklist } from './SetupChecklist';
 import type { DashboardData } from './types';
 
 /** Figures come straight from the journal, so a minute old is fresh enough (spec 14). */
@@ -48,10 +50,12 @@ export default function DashboardPage() {
           </Button>
         }
       />
+      <SetupChecklist />
       <UrlTabs
         tabs={[
           { value: 'overview', label: t('tabs.overview'), content: overview },
           { value: 'kpi', label: t('tabs.kpi'), content: <KpiPanel /> },
+          { value: 'outlook', label: t('tabs.outlook'), content: <OutlookPanel /> },
         ]}
       />
     </>

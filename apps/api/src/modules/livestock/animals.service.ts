@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, getTableColumns, inArray, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, getTableColumns, inArray, isNull, ne, or, sql, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { z } from 'zod';
 import {
@@ -8,22 +8,26 @@ import {
   ANIMAL_STATUSES,
   IDENTIFIER_TYPES,
   SEXES,
+  addDays,
   averageDailyGain,
   diffDays,
 } from '@yap/shared';
 import { animalBookValue } from '@yap/shared/formulas/livestock';
+import { MIN_BREEDING_AGE_DAYS } from '@yap/shared/formulas/reproduction';
 import { schema } from '../../db/client';
 import { canSeeMoney, ctx, today, tx } from '../../core/context';
 import { badRequest, conflict, notFound } from '../../core/errors';
 import { recordEvent } from '../../core/journal';
 import { hideMoney } from '../../core/privacy';
 import { clientId, isoDate, listQuery, paged, searchAny, sortBy } from '../../core/query';
+import { resolveByDedupKey } from '../alerts/alerts.service';
 import { signedFileUrl } from '../files';
 import {
   accumulatedCostPerHead,
   assertInFarm,
   assertInTenant,
   assertNotFuture,
+  carryingPregnancy,
   getAnimalOrThrow,
   isOnFarm,
   onFarm,
@@ -41,6 +45,7 @@ const {
   breeds,
   counterparties,
   facilities,
+  healthRecords,
   herdTransfers,
   herds,
   species,
@@ -245,6 +250,20 @@ export async function updateAnimal(id: string, input: z.infer<typeof animalUpdat
 
   if (Object.keys(values).length === 0) throw badRequest('NOTHING_TO_UPDATE', 'No changes were sent');
   const [row] = await tx().update(t).set(values).where(eq(t.id, id)).returning();
+  // A passport reads herd history from transfers, so a move on this form must leave one too.
+  if (input.herdId !== undefined && input.herdId !== current.herdId) {
+    const c = ctx();
+    await tx().insert(herdTransfers).values({
+      tenantId: c.tenantId,
+      farmId: c.farmId,
+      createdBy: c.userId,
+      animalId: id,
+      fromHerdId: current.herdId,
+      toHerdId: input.herdId,
+      date: today(),
+    });
+    await recordEvent({ type: 'animal.transferred', entityType: 'animal', entityId: id, data: { count: 1 } });
+  }
   return visible(row);
 }
 
@@ -295,6 +314,8 @@ export function visible<T extends { purchasePrice: number | null; sellerId: stri
 const identifierValues = sql`(select string_agg(i.value, ' ') from animal_identifiers i where i.animal_id = ${t.id})`;
 
 function scopeFilter(q: z.infer<typeof animalListQuery>): SQL | undefined {
+  // The same head the summary counts, so a number and the list it opens agree.
+  if (q.status === 'pregnant') return and(onFarm(), carryingPregnancy);
   if (q.status) return eq(t.status, q.status);
   if (q.scope === 'on_farm') return onFarm();
   if (q.scope === 'archived') return inArray(t.status, ['sold', 'slaughtered', 'dead', 'lost']);
@@ -345,7 +366,10 @@ export async function lookupAnimals(q: {
   sex?: (typeof SEXES)[number];
   category?: (typeof ANIMAL_CATEGORIES)[number];
   herdId?: string;
+  forBreeding?: boolean;
 }) {
+  // The list a mating form offers: canBreed() as of today.
+  const oldEnough = sql`coalesce(${t.birthDate} <= ${addDays(today(), -MIN_BREEDING_AGE_DAYS)}, ${t.category} not in ('lamb_male', 'lamb_female'))`;
   const rows = await tx()
     .select({ id: t.id, tag: t.tag, category: t.category, sex: t.sex, herdId: t.herdId })
     .from(t)
@@ -356,6 +380,7 @@ export async function lookupAnimals(q: {
         q.sex ? eq(t.sex, q.sex) : undefined,
         q.category ? eq(t.category, q.category) : undefined,
         q.herdId ? eq(t.herdId, q.herdId) : undefined,
+        q.forBreeding ? and(ne(t.category, 'wether'), oldEnough) : undefined,
         searchAny(q.search, [t.tag, identifierValues]),
       ),
     )
@@ -495,6 +520,8 @@ export async function getAnimalCard(id: string) {
   };
 }
 
+export const sickDedupKey = (animalId: string) => `sick_report:${animalId}`;
+
 /**
  * Take an animal off the farm. Every exit passes through here, whichever module started it,
  * so head counts stay right. The row stays: the registry is the animal's history.
@@ -514,6 +541,16 @@ export async function markExited(
     .update(breedingRecords)
     .set({ status: 'failed', notes: sql`coalesce(${breedingRecords.notes} || ' ', '') || ${`(${status} ${date})`}` })
     .where(and(eq(breedingRecords.eweId, animalId), eq(breedingRecords.status, 'pregnant')));
+  // Nobody treats an animal that has left. Closed with no result, which undoing the exit relies on.
+  await tx()
+    .update(healthRecords)
+    .set({ reportStatus: 'resolved', endedOn: date })
+    .where(and(eq(healthRecords.animalId, animalId), eq(healthRecords.reportStatus, 'open')));
+  await tx()
+    .update(healthRecords)
+    .set({ endedOn: date })
+    .where(and(eq(healthRecords.animalId, animalId), eq(healthRecords.type, 'quarantine'), isNull(healthRecords.endedOn)));
+  await resolveByDedupKey(sickDedupKey(animalId));
 }
 
 export const lookupQuery = z.object({
@@ -521,6 +558,7 @@ export const lookupQuery = z.object({
   sex: z.enum(SEXES).optional(),
   category: z.enum(ANIMAL_CATEGORIES).optional(),
   herdId: z.uuid().optional(),
+  forBreeding: z.stringbool().optional(),
 });
 
 export async function listSpecies() {

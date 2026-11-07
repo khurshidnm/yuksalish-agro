@@ -1,8 +1,8 @@
-# Yuksalish Agro Platform (YAP)
+# Agro Panel (code name YAP)
 
 Multi-tenant farm management: land, crops, livestock, feed and stock, finance, staff, machinery, sales,
 reports, alerts and an AI assistant. The pilot tenant is the Yuksalish Agro farm in Qorovulbozor
-(210 ha, 500 Hisori ewes). Requirements are in
+(210 ha of which 90 ha arable, 700 Hisori ewes). Requirements are in
 `Yuksalish Agro — Ferma boshqaruv platformasi. Texnik topshiriq.md`.
 
 This repository is the web application: a React front end, a Node API and PostgreSQL. Field staff use the
@@ -51,9 +51,10 @@ The password for every demo user is `Yuksalish2026!`.
 | Auditor | +998900000011 | Auditor Demo |
 | Platform admin | +998900000000 | Platform Admin |
 
-Sign-in is limited to 10 attempts a minute per address. The demo data has 2FA enforcement switched off so
-that these logins work without an authenticator app. New tenants have it on, as the specification requires
-for owners, directors and accountants.
+Sign-in is limited to 10 attempts a minute per address, and 10 failures for one phone from one address lock it
+for 15 minutes. The demo data has 2FA enforcement switched off so that these logins work without an authenticator
+app. New tenants have it on, as the specification requires for owners, directors and accountants. The platform
+admin must always enrol, so the demo admin asks for an authenticator at first sign-in.
 
 ## Project layout
 
@@ -71,7 +72,7 @@ apps/web/             React front end
   src/features/       one folder per module
   public/             service worker and manifest for offline use
 packages/shared/      formulas, permissions, enums, dates, translations
-infra/                Postgres image, nginx config, backup and restore scripts
+infra/                Postgres image, nginx config, the scripts that run a server
 docs/                 architecture, data model, API, deployment, user guides
 ```
 
@@ -89,7 +90,7 @@ why stock and money only change through the kernel.
 | `pnpm db:up` / `pnpm db:down` | Start or stop Postgres and Redis |
 | `pnpm db:reset` | Rebuild and reseed the development database |
 | `pnpm db:generate` | Create a migration after a schema change |
-| `pnpm db:migrate` | Apply committed migrations, as production does |
+| `pnpm db:migrate` | Apply committed migrations, as production does. A database built with `db:setup` has no history: see [Deployment](docs/deployment.md#a-database-built-with-pnpm-dbsetup) |
 | `pnpm --filter @yap/api exec tsx src/db/erd.ts` | Regenerate `docs/erd.md` |
 
 API tests create a uniquely named database for each run and drop it afterwards, so they need Postgres up but
@@ -97,14 +98,40 @@ never touch your development data.
 
 After changing `apps/api/src/db/schema`, run `pnpm db:generate` and commit the new file in `apps/api/drizzle`.
 
+To try cameras without hardware, see [infra/camera-sim](infra/camera-sim/README.md).
+
+## Running a server
+
+[Deployment](docs/deployment.md) is the runbook, written for an owner who is not a system administrator. It starts with
+a short path for a first deploy to show people. These scripts run on the server, as root, from the repository:
+
+| Script | Purpose |
+| --- | --- |
+| `infra/server-setup.sh` | Prepares a fresh Ubuntu 24.04, once: Docker, firewall, updates, backups, watchdog. Safe to run again. |
+| `infra/init-env.sh` | Writes `.env.production` with fresh secrets. `--resize` redoes only the memory settings. |
+| `infra/preflight.sh` | Checks the server and the settings, and changes nothing. It asks Telegram whether it accepts the bot token. |
+| `infra/deploy.sh` | Goes live or updates: preflight, backup, build, start, smoke check, and back again if that fails. `--rollback` goes back later. |
+| `infra/status.sh` | One look at everything, including the deep health check, the backups, the saved key and a real question to Telegram. |
+| `infra/backup.sh`, `infra/backup-cron.sh`, `infra/backup-prune.sh` | Encrypted backups, what cron runs, and how long they stay. `backup-cron.sh check` restores the newest one for real. |
+| `infra/restore.sh` | Puts a backup back, or checks one without touching anything live. |
+| `infra/backup-key.sh` | Proves the owner's saved copy of the backup key without printing it (`check`), shows its fingerprint (`show`), and puts it back on a new server (`restore`). |
+| `infra/watchdog.sh` | Cron runs it every minute. Three failed `/api/health` checks restart a frozen API, three restarts at most. |
+
+The platform admin who lost a password or authenticator is reset on the server, with `src/db/reset-admin.ts`:
+[the command](docs/deployment.md#someone-cannot-sign-in).
+
+Nothing on the farm can report a fire yet. The platform raises an urgent alert for a `fire` or `smoke` event, but
+[no detector is connected](docs/deployment.md#no-fire-detection-yet).
+
 ## Environment variables
 
-Development values are in `.env.example`. Production values are in `infra/env.production.example`.
+Development values are in `.env.example`. Production values are in `infra/env.production.example`, and the runbook
+explains [each one](docs/deployment.md#settings).
 
 | Variable | Purpose |
 | --- | --- |
 | `DATABASE_URL` | API connection. Must be the `yap_app` role, which row-level security applies to. |
-| `DATABASE_OWNER_URL` | Owner role, for schema changes and seeding only. |
+| `DATABASE_OWNER_URL` | Owner role, for schema changes and seeding only. Must be a superuser or have BYPASSRLS. |
 | `AI_DATABASE_URL` | Read-only `yap_ai` role. Set it in production: the default uses the development password. |
 | `REDIS_URL` | Background job queue. |
 | `API_PORT` | API port. |
@@ -115,28 +142,45 @@ Development values are in `.env.example`. Production values are in `infra/env.pr
 | `STORAGE_DRIVER`, `STORAGE_DIR` | `local` keeps uploads on disk; `s3` uses the settings below. |
 | `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` | Any S3-compatible store. |
 | `TELEGRAM_BOT_TOKEN` | Optional. Without it, messages go to the API log. |
-| `ANTHROPIC_API_KEY` | Optional. Without it, the assistant says it is not configured; statistical insights still run. |
-| `AI_MODEL`, `AI_EFFORT`, `AI_CHAT_PER_MINUTE`, `AI_CHAT_PER_DAY` | Optional AI tuning. |
+| `LEADS_TELEGRAM_CHAT_ID` | Optional. Telegram chat told about each new enquiry from the website. Needs the bot token. |
+| `GEMINI_API_KEY` | Optional, enables the AI assistant. Must come from a billing-enabled Google project: on the free tier Google may use prompts to improve its products. Prove it works with `pnpm --filter @yap/api ai:check`. |
+| `GEMINI_PAID_TIER` | Set to `true` once the key is on a paid project. Production refuses Gemini without it. |
+| `ANTHROPIC_API_KEY` | Optional alternative to Gemini. With neither key, the assistant says it is not configured; statistical insights still run. |
+| `AI_PROVIDER` | `gemini` or `claude`. Only needed when both keys are set; Gemini is the default. |
+| `AI_MODEL`, `AI_THINKING_BUDGET`, `AI_EFFORT`, `AI_CHAT_PER_MINUTE`, `AI_CHAT_PER_DAY` | Optional AI tuning. `AI_THINKING_BUDGET` is Gemini only, `AI_EFFORT` Claude only. |
 | `JOBS_ENABLED` | Set to `false` to run the API without background jobs. |
 | `PLATFORM_ADMIN_PHONE`, `PLATFORM_ADMIN_PASSWORD` | Read by the migrate step: create the first platform admin. |
+| `SEED_PASSWORD` | Password for the demo users. Set it for any seed on a server others can reach: see [Deployment](docs/deployment.md#demo-data-on-a-server). |
+| `HEARTBEAT_URL` | Optional. The API pings it every minute while the deep health check passes, so an outside service notices a dead server. |
+| `BACKUP_HEARTBEAT_URL` | Server scripts only. Pinged once a day when a real restore of the newest backup passes. It needs its own address. |
+| `BACKUP_ALERT_CHAT_ID` | Server scripts only. Telegram chat told when a backup fails or the watchdog restarts the API. Needs the bot token. |
+| `BACKUP_OFFSITE` | Server scripts only. Where backups go: `user@host:path`, a mounted `/path`, or `pull`. |
+| `BACKUP_DIR`, `BACKUP_PASSPHRASE_FILE`, `BACKUP_SSH_KEY`, `BACKUP_SSH_PORT`, `BACKUP_RESERVE_MB` | Server scripts only. Backup details, with defaults that suit. |
+| `RETENTION_KEEP_LAST`, `RETENTION_DAILY`, `RETENTION_WEEKLY`, `RETENTION_MONTHLY`, `RETENTION_FILE_SETS`, `FILES_FULL_EVERY_DAYS` | Server scripts only. How long backups stay, and how often a full archive of the files starts. |
 
 ## Not built yet
 
 - Mobile app. Offline work is done through the web app instead.
 - Live camera video. Cameras can be registered and can send events, but there is no stream gateway.
-- Camera AI, IoT sensors beyond the events API, GPS trackers, and voice input.
+- Camera AI, IoT sensors beyond the events API, and GPS trackers. So no fire or smoke detector is connected.
+- Speaking to the assistant in the web app. Voice notes work in Telegram.
 - Real connections to Keeping, Didox, banks and state systems. Keeping is a CSV export whose account
   mapping is an assumption and has not been checked against Keeping.
 - Push, SMS and email notifications. Those channels are stubs reported as not configured.
 - Camera barcode scanning. Tags and barcodes are typed.
 - OAuth 2.0. Users have JWT sessions and machines have API keys.
-- AI herd growth forecast and market price monitoring. Claude is the only LLM provider implemented.
-- Forced password change for one-time passwords, payslip PDFs, and Excel for the full tenant export, which
-  is JSON and CSV. The main lists do export to Excel.
+- Market price monitoring.
+- Payslip PDFs, and Excel for the full tenant export, which is JSON and CSV. The main lists do export to Excel.
 
 ## Not yet tested for real
 
-- Telegram has only run against a mocked API. The AI assistant has only run against a mocked model.
+- The server kit: most of it ran on a stand-in server on 2026-11-05. The Telegram check, the watchdog and the backup
+  key command have only run with a stand-in for Docker and Telegram: see `apps/api/test/server-kit.test.ts`.
+- Telegram: a real bot delivered a daily summary and an urgent alert on 2026-11-04 (see
+  [the acceptance record](docs/acceptance.md)). Scheduled delivery has not yet run unattended, and the
+  assistant in the bot, with its cards, voice notes and receipts, has only run against a mocked API.
+- The AI assistant's automated tests use a scripted model. `ai:check` and `ai:eval` use the real one, and no
+  score from them is recorded here.
 - Offline mode has run in headless Chromium, not on a real phone, and not on Safari or iOS.
 
 ## Documentation
@@ -144,7 +188,9 @@ Development values are in `.env.example`. Production values are in `infra/env.pr
 - [Architecture](docs/architecture.md)
 - [Data model](docs/erd.md)
 - [API](docs/api.md), with the interactive reference at `/api/docs`
+- [Conversational assistant](docs/assistant.md)
 - [Deployment](docs/deployment.md)
+- [Acceptance record](docs/acceptance.md)
 - [Cross-module contracts](docs/contracts.md)
 - [Device events](docs/device-events.md)
 - User guides: [o'zbekcha](docs/user-guide.uz.md), [русский](docs/user-guide.ru.md)

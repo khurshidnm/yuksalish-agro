@@ -3,7 +3,7 @@
  * caller may see, so no format can leak a column the engine withheld.
  */
 import ExcelJS from 'exceljs';
-import { todayIso } from '@yap/shared';
+import { PRODUCT_NAME, todayIso } from '@yap/shared';
 import type { Content, TableCell, TDocumentDefinitions } from 'pdfmake/interfaces';
 import { formatIsoDate, formatIsoMonth, formatNumber, formatPeriod, t } from './i18n';
 import { printable, renderPdf } from './pdf';
@@ -121,7 +121,7 @@ function columnWidth(column: ResultColumn, rows: Row[], lang: Lang): number {
 export async function toXlsx(result: ReportResult): Promise<Buffer> {
   const { lang, columns, rows, totals } = result;
   const book = new ExcelJS.Workbook();
-  book.creator = 'Yuksalish Agro Platform';
+  book.creator = PRODUCT_NAME;
   book.created = new Date(result.generatedAt);
   const sheet = book.addWorksheet(sheetName(result.title));
 

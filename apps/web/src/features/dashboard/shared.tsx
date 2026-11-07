@@ -53,11 +53,11 @@ export function Section({ title, to, children }: { title: string; to?: string; c
   return (
     <section className="min-w-0">
       <div className="mb-2 flex min-h-11 items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+        <h2 className="text-lg font-semibold tracking-tight text-heading">{title}</h2>
         {to && (
           <Link
             to={to}
-            className="focus-ring -mr-2 inline-flex min-h-11 items-center gap-0.5 rounded px-2 text-sm text-muted-foreground hover:text-foreground"
+            className="focus-ring inline-flex min-h-11 items-center gap-0.5 rounded-lg bg-muted px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground md:min-h-9"
           >
             {t('details')}
             <ChevronRight className="size-4" aria-hidden />
@@ -110,14 +110,15 @@ export function FigureRow({ label, value, hint, to }: FigureRowProps) {
     </>
   );
   const row = 'flex min-h-11 items-center justify-between gap-3 py-1.5';
+  const divider = 'border-b border-dashed border-border last:border-0';
   if (to) {
     return (
-      <li>
-        <Link to={to} className={cn(row, 'focus-ring -mx-2 rounded px-2 hover:bg-muted')}>
+      <li className={divider}>
+        <Link to={to} className={cn(row, 'focus-ring -mx-2 rounded-lg px-2 hover:bg-muted')}>
           {body}
         </Link>
       </li>
     );
   }
-  return <li className={row}>{body}</li>;
+  return <li className={cn(row, divider)}>{body}</li>;
 }

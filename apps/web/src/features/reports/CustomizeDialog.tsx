@@ -47,7 +47,7 @@ function Body({ report, columns, groupBy, onApply, onSave, onOpenChange }: Omit<
               {t('builder.selectAll')}
             </Label>
           </div>
-          <ul className="grid max-h-64 gap-1 overflow-y-auto rounded-lg border border-border p-2 sm:grid-cols-2">
+          <ul className="grid grid-cols-1 max-h-64 gap-1 overflow-y-auto rounded-lg border border-border p-2 sm:grid-cols-2">
             {report.columns.map((column) => (
               <li key={column.key}>
                 <Label className="flex min-h-11 cursor-pointer items-center gap-3 font-normal">

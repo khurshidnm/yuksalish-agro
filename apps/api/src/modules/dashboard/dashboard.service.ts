@@ -18,7 +18,7 @@ import {
 } from '@yap/shared';
 import { averageDailyConsumption } from '@yap/shared/formulas/feed';
 import { schema } from '../../db/client';
-import { ctx, today, tx } from '../../core/context';
+import { ctx, hasPermission, today, tx } from '../../core/context';
 import { counts as alertCounts } from '../alerts/alerts.service';
 import { openAlerts } from '../alerts/summary';
 import { assetStatus, fuelUsage } from '../assets/summary';
@@ -59,7 +59,8 @@ async function loadFinance() {
   const totals = ({ planned, actual, deviation, percent }: typeof budgetMonth) => ({ planned, actual, deviation, percent });
   return {
     month: income,
-    cash,
+    // finance.summary is aggregated figures: the total, not the accounts behind it (rule 7).
+    cash: hasPermission('finance.view') ? cash : { total: cash.total, accounts: [] },
     debts,
     budget: {
       month: totals(budgetMonth),

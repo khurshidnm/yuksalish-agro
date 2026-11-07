@@ -130,7 +130,7 @@ export function KpiPanel() {
       </div>
 
       {query.isPending && (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3" aria-busy>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3" aria-busy>
           {Array.from({ length: 6 }, (_, i) => (
             <Skeleton key={i} className="h-56" />
           ))}
@@ -139,7 +139,7 @@ export function KpiPanel() {
       {query.isError && !query.data && <ErrorCard error={query.error} onRetry={() => query.refetch()} />}
 
       {query.data && (
-        <div className="grid items-start gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-3">
           {GROUPS.map(({ key, rows }) => {
             const group = query.data.groups[key];
             if (!group) return null;
@@ -164,7 +164,7 @@ export function KpiPanel() {
                             <FigureRow
                               key={row.key}
                               label={t(`kpi.labels.${row.key}`)}
-                              hint={missing ? missingHint : row.key === 'stockDays' ? group.data.limitingItem : undefined}
+                              hint={missing ? missingHint : row.key === 'stockDays' ? group.data.limitingItem : row.key === 'yieldTHa' ? (group.data.yieldSeason ?? undefined) : undefined}
                               value={missing ? '—' : format(row.format, Number(value))}
                               to={link(row.source[0], row.source[1])}
                             />

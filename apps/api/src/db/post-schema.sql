@@ -34,12 +34,13 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   old_row jsonb := CASE WHEN TG_OP <> 'INSERT' THEN to_jsonb(OLD) END;
   new_row jsonb := CASE WHEN TG_OP <> 'DELETE' THEN to_jsonb(NEW) END;
+  -- Machines keep these current, some of them every minute, and nobody edits them.
+  not_a_change text[] := ARRAY['updated_at', 'last_used_at', 'last_seen_at', 'cursor'];
 BEGIN
   IF COALESCE(current_setting('app.skip_audit', true), '') = 'on' THEN
     RETURN COALESCE(NEW, OLD);
   END IF;
-  -- An UPDATE that only touched updated_at is not a change.
-  IF TG_OP = 'UPDATE' AND (old_row - 'updated_at') = (new_row - 'updated_at') THEN
+  IF TG_OP = 'UPDATE' AND (old_row - not_a_change) = (new_row - not_a_change) THEN
     RETURN NEW;
   END IF;
   INSERT INTO audit_logs (tenant_id, user_id, entity, entity_id, action, before, after, ip, device)
@@ -62,13 +63,13 @@ DO $$
 DECLARE
   t record;
   -- Identity tables must be readable before a tenant is known (login, API key lookup).
-  identity_tables text[] := ARRAY['roles', 'farms', 'memberships', 'api_keys'];
+  identity_tables text[] := ARRAY['roles', 'farms', 'memberships', 'api_keys', 'invitations'];
   -- High volume or derived; change history adds noise, not accountability.
   no_audit text[] := ARRAY['audit_logs', 'events', 'idempotency_keys', 'notifications',
                            'notification_prefs', 'ai_messages', 'weather_daily', 'import_jobs',
-                           'webhook_deliveries'];
+                           'webhook_deliveries', 'job_runs'];
   -- Secrets the AI role must never read.
-  no_ai_read text[] := ARRAY['api_keys', 'idempotency_keys', 'audit_logs', 'telegram_link_codes'];
+  no_ai_read text[] := ARRAY['api_keys', 'idempotency_keys', 'audit_logs', 'telegram_link_codes', 'invitations'];
   policy_expr text;
 BEGIN
   FOR t IN
@@ -111,8 +112,12 @@ GRANT SELECT ON tenants TO yap_ai;
 
 -- Global identity tables have no tenant_id and no RLS.
 GRANT SELECT, INSERT, UPDATE ON users TO yap_app;
-GRANT SELECT, INSERT, UPDATE, DELETE ON refresh_tokens, telegram_link_codes TO yap_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON refresh_tokens, telegram_link_codes, recovery_codes, sign_in_failures TO yap_app;
+-- Append-only: an API that is broken into cannot erase what a platform admin did.
+GRANT SELECT, INSERT ON platform_audit TO yap_app;
 GRANT SELECT ON plans TO yap_app, yap_ai;
+-- Not to yap_ai: the assistant has no business reading a prospect's phone number.
+GRANT SELECT, INSERT, UPDATE, DELETE ON leads TO yap_app;
 GRANT INSERT, UPDATE ON plans TO yap_app;
 -- AI may resolve names, but never sees credentials.
 GRANT SELECT (id, full_name, locale, status) ON users TO yap_ai;
@@ -124,6 +129,7 @@ REVOKE INSERT, UPDATE, DELETE ON audit_logs FROM yap_app;
 -- The only tables AI writes to (spec 4.1 p.8, 15.2).
 GRANT INSERT, UPDATE ON ai_insights TO yap_ai;
 GRANT SELECT, INSERT ON ai_messages, ai_conversations TO yap_ai;
+GRANT SELECT, INSERT, UPDATE ON ai_proposals TO yap_ai;
 
 -- ─── Cross-tenant references ───────────────────────────────────────────────
 -- Foreign key checks run as the table owner and ignore RLS, so a plain FK accepts another

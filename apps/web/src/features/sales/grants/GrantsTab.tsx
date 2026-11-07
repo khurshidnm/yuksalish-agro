@@ -57,7 +57,7 @@ function GrantsSection() {
   const statusOptions = GRANT_STATUSES.map((value) => ({ value, label: t(`grants.status.${value}`) }));
 
   const save = useApiMutation<z.output<typeof grantSchema>>({
-    mutationFn: (values) => (editing ? api.patch(`${GRANTS}/${editing.id}`, values) : api.post(GRANTS, values)),
+    mutationFn: (values) => (editing ? api.patch(`${GRANTS}/${editing.id}`, values) : api.postOnce(GRANTS, values)),
     invalidate: [GRANTS],
     silentError: true,
   });
@@ -164,7 +164,7 @@ function GrantsSection() {
                 required
                 options={GRANT_KINDS.map((value) => ({ value, label: t(`grants.kind.${value}`) }))}
               />
-              <NumberField form={form} name="amount" label={t('grants.fields.amount')} />
+              <NumberField money form={form} name="amount" label={t('grants.fields.amount')} />
               <SelectField form={form} name="status" label={t('grants.fields.status')} required options={statusOptions} />
               <DateField form={form} name="submittedOn" label={t('grants.fields.submittedOn')} />
               <DateField form={form} name="decisionOn" label={t('grants.fields.decisionOn')} />

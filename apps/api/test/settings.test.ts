@@ -1,13 +1,16 @@
 import { createHmac, randomBytes } from 'node:crypto';
+import bcrypt from 'bcryptjs';
 import { eq, sql } from 'drizzle-orm';
+import { generate } from 'otplib';
 import { v7 as uuidv7 } from 'uuid';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import { DEFAULT_ROLE_PERMISSIONS } from '@yap/shared';
+import { DEFAULT_ROLE_PERMISSIONS, ROLE_KEYS } from '@yap/shared';
 import { db, schema } from '../src/db/client';
 import { tx, withPlatform } from '../src/core/context';
 import { unseal, sha256 } from '../src/core/crypto';
 import { generalCostCenterId } from '../src/core/costCenters';
 import { postTransaction } from '../src/core/ledger';
+import { isPrivateAddress } from '../src/core/outbound';
 import { addMember } from '../src/core/tenancy';
 import { signAccessToken } from '../src/core/tokens';
 import {
@@ -15,7 +18,6 @@ import {
   assertSafeUrl,
   collectEvents,
   deliverDue,
-  isPrivateAddress,
   matchesEvent,
 } from '../src/modules/settings/webhooks.service';
 import { createFixture, getApp, type Fixture } from './helpers';
@@ -62,6 +64,26 @@ async function loginWith(p: string, password: string) {
   const app = await getApp();
   const res = await app.inject({ method: 'POST', url: '/api/v1/auth/login', payload: { phone: p, password } });
   return { status: res.statusCode, body: res.json() };
+}
+
+/** Signs in with an issued password and chooses a new one, as the person would. */
+async function firstSignIn(p: string, oneTimePassword: string) {
+  const login = await loginWith(p, oneTimePassword);
+  const changed = await request(login.body.data.accessToken, 'POST', '/auth/change-password', {
+    currentPassword: oneTimePassword,
+    newPassword: 'tuyaqush-Xolmon-44',
+  });
+  expect(changed.status).toBe(200);
+  return changed.data.accessToken as string;
+}
+
+/** Someone with an account on another farm, who has signed in there. */
+async function personElsewhere(name = 'Bor Xodim') {
+  const home = await createFixture();
+  const p = phone();
+  const { userId } = await addMember({ tenantId: home.tenantId, farmId: home.farmId, roleId: home.roleIds.agronomist, phone: p, fullName: name, password: 'Password123!' });
+  const login = await loginWith(p, 'Password123!');
+  return { home, phone: p, userId, token: login.body.data.accessToken as string, session: login.body.data.session };
 }
 
 describe('profile and policy', () => {
@@ -161,7 +183,7 @@ describe('users', () => {
     const p = phone();
     const res = await owner.post('/settings/users', { phone: p, fullName: 'Yangi Xodim', roleId: f.roleIds.shepherd });
     expect(res.status).toBe(201);
-    expect(res.data.existingUser).toBe(false);
+    expect(res.data.invitation).toBeNull();
     expect(res.data.oneTimePassword).toMatch(/^[\w-]{12}$/);
     expect(res.data.member.roleKey).toBe('shepherd');
 
@@ -175,23 +197,137 @@ describe('users', () => {
     expect(JSON.stringify(list.body)).not.toContain('passwordHash');
   });
 
-  it('an existing person is added without touching their password', async () => {
+  it('someone with an account is only invited, and the farm sees nothing about them', async () => {
     const f = await createFixture();
-    const g = await createFixture();
-    const existing = phone();
-    await addMember({ tenantId: g.tenantId, farmId: g.farmId, roleId: g.roleIds.agronomist, phone: existing, fullName: 'Bor Xodim', password: 'Password123!' });
-
     const owner = await f.as('owner');
-    const res = await owner.post('/settings/users', { phone: existing, fullName: 'Ignored Name', roleId: f.roleIds.shepherd });
+    const person = await personElsewhere('Haqiqiy Ism');
+    await db.update(schema.users).set({ email: 'haqiqiy@example.com', totpEnabled: false }).where(eq(schema.users.id, person.userId));
+
+    const res = await owner.post('/settings/users', { phone: person.phone, fullName: 'Yozilgan Ism', roleId: f.roleIds.shepherd });
     expect(res.status).toBe(201);
-    expect(res.data.existingUser).toBe(true);
+    expect(res.data.member).toBeNull();
+    expect(res.data.oneTimePassword).toBeNull();
+    expect(res.data.invitation).toMatchObject({ phone: person.phone, fullName: 'Yozilgan Ism', roleKey: 'shepherd' });
+
+    // Nothing that describes the account, here or in any list the farm can read.
+    const seen = JSON.stringify([res.body, (await owner.get('/settings/invitations')).body, (await owner.get('/settings/users', { pageSize: 200 })).body]);
+    for (const secret of ['Haqiqiy Ism', 'haqiqiy@example.com', 'lastLoginAt":"', person.userId]) expect(seen).not.toContain(secret);
+    expect((await owner.get('/settings/users', { search: person.phone })).body.meta.total).toBe(0);
+
+    // Their password is theirs and they are on no new farm.
+    const login = await loginWith(person.phone, 'Password123!');
+    expect(login.body.data.session.memberships).toHaveLength(1);
+    expect(login.body.data.session.invitations).toEqual([
+      expect.objectContaining({ tenantName: expect.stringContaining('Test'), roleKey: 'shepherd' }),
+    ]);
+    const twice = await owner.post('/settings/users', { phone: person.phone, fullName: 'Yana', roleId: f.roleIds.shepherd });
+    expect(twice.body.error.code).toBe('ALREADY_INVITED');
+  });
+
+  it('accepting, signed in, is what joins the farm and shares the details', async () => {
+    const f = await createFixture();
+    const owner = await f.as('owner');
+    const person = await personElsewhere('Haqiqiy Ism');
+    const invited = await owner.post('/settings/users', { phone: person.phone, fullName: 'Yozilgan Ism', roleId: f.roleIds.shepherd });
+    const { id } = invited.data.invitation;
+
+    const app = await getApp();
+    expect((await app.inject({ method: 'POST', url: `/api/v1/auth/invitations/${id}/accept` })).statusCode).toBe(401);
+    const stranger = await personElsewhere();
+    expect((await request(stranger.token, 'POST', `/auth/invitations/${id}/accept`, {})).status).toBe(404);
+
+    const accepted = await request(person.token, 'POST', `/auth/invitations/${id}/accept`, {});
+    expect(accepted.status).toBe(200);
+    expect(accepted.data.session.farm.id).toBe(f.farmId);
+    expect(accepted.data.session.memberships).toHaveLength(2);
+    expect(accepted.data.session.invitations).toEqual([]);
+    expect((await request(accepted.data.accessToken, 'GET', '/hr/employees/lookup')).status).toBe(200);
+
+    const list = await owner.get('/settings/users', { search: 'Haqiqiy' });
+    expect(list.body.meta.total).toBe(1);
+    expect((await owner.get('/settings/invitations')).data).toEqual([]);
+    expect((await request(person.token, 'POST', `/auth/invitations/${id}/accept`, {})).status).toBe(404);
+
+    const journal = await f.run(() => tx().select().from(schema.events).where(sql`type in ('user.invited', 'user.joined')`));
+    expect(journal.map((e) => e.type).sort()).toEqual(['user.invited', 'user.joined']);
+  });
+
+  it('someone with no farm at all accepts and gets a token that works', async () => {
+    const f = await createFixture();
+    const owner = await f.as('owner');
+    const p = phone();
+    await db.insert(schema.users).values({ phone: p, fullName: 'Ishsiz', passwordHash: await bcrypt.hash('Password123!', 4) });
+    const invited = await owner.post('/settings/users', { phone: p, fullName: 'Yozilgan', roleId: f.roleIds.shepherd });
+
+    const { accessToken, session } = (await loginWith(p, 'Password123!')).body.data;
+    expect(session.tenant).toBeNull();
+    const accepted = await request(accessToken, 'POST', `/auth/invitations/${invited.data.invitation.id}/accept`, {});
+    expect(accepted.data.session.tenant.id).toBe(f.tenantId);
+    expect((await request(accepted.data.accessToken, 'GET', '/hr/employees/lookup')).status).toBe(200);
+  });
+
+  it('declining and cancelling end an invitation, and an old one stops by itself', async () => {
+    const f = await createFixture();
+    const owner = await f.as('owner');
+    const person = await personElsewhere();
+    const body = { phone: person.phone, fullName: 'Yozilgan', roleId: f.roleIds.shepherd };
+
+    const first = await owner.post('/settings/users', body);
+    const declined = await request(person.token, 'POST', `/auth/invitations/${first.data.invitation.id}/decline`, {});
+    expect(declined.status).toBe(200);
+    expect(declined.data.invitations).toEqual([]);
+    expect(declined.data.memberships).toHaveLength(1);
+    expect((await owner.get('/settings/invitations')).data).toEqual([]);
+
+    const second = await owner.post('/settings/users', body);
+    expect((await owner.delete(`/settings/invitations/${second.data.invitation.id}`)).status).toBe(200);
+    expect((await request(person.token, 'POST', `/auth/invitations/${second.data.invitation.id}/accept`, {})).status).toBe(404);
+
+    const third = await owner.post('/settings/users', body);
+    await withPlatform((trx) => trx.update(schema.invitations).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(schema.invitations.id, third.data.invitation.id)));
+    expect((await request(person.token, 'POST', `/auth/invitations/${third.data.invitation.id}/accept`, {})).status).toBe(404);
+    expect((await owner.get('/settings/invitations')).data).toEqual([]);
+    expect((await owner.post('/settings/users', body)).status).toBe(201);
+  });
+
+  it('an invitation from another tenant cannot be seen or cancelled', async () => {
+    const f = await createFixture();
+    const other = await createFixture();
+    const person = await personElsewhere();
+    const invited = await (await f.as('owner')).post('/settings/users', { phone: person.phone, fullName: 'Yozilgan', roleId: f.roleIds.shepherd });
+    const foreign = await other.as('owner');
+    expect((await foreign.get('/settings/invitations')).data).toEqual([]);
+    expect((await foreign.delete(`/settings/invitations/${invited.data.invitation.id}`)).status).toBe(404);
+  });
+
+  it('adding the phone of someone already in this workspace needs no invitation', async () => {
+    const f = await createFixture();
+    const owner = await f.as('owner');
+    const secondFarmId = await withPlatform(async (trx) => {
+      const [farm] = await trx.insert(schema.farms).values({ tenantId: f.tenantId, name: 'Ikkinchi ferma' }).returning();
+      return farm.id;
+    });
+    const p = phone();
+    await addMember({ tenantId: f.tenantId, farmId: secondFarmId, roleId: f.roleIds.shepherd, phone: p, fullName: 'Bor Xodim', password: 'Password123!' });
+
+    const res = await owner.post('/settings/users', { phone: p, fullName: 'Ignored Name', roleId: f.roleIds.shepherd });
+    expect(res.status).toBe(201);
     expect(res.data.oneTimePassword).toBeNull();
     expect(res.data.member.fullName).toBe('Bor Xodim');
-    expect((await loginWith(existing, 'Password123!')).status).toBe(200);
+    expect((await loginWith(p, 'Password123!')).status).toBe(200);
 
-    const duplicate = await owner.post('/settings/users', { phone: existing, fullName: 'X Y', roleId: f.roleIds.shepherd });
+    const duplicate = await owner.post('/settings/users', { phone: p, fullName: 'X Y', roleId: f.roleIds.shepherd });
     expect(duplicate.status).toBe(409);
     expect(duplicate.body.error.code).toBe('ALREADY_MEMBER');
+  });
+
+  it('an owner can give every built-in role, investor included', async () => {
+    const f = await createFixture();
+    const owner = await f.as('owner');
+    for (const role of ROLE_KEYS) {
+      const res = await owner.post('/settings/users', { phone: phone(), fullName: 'Ab Cd', roleId: f.roleIds[role] });
+      expect([role, res.status]).toEqual([role, 201]);
+    }
   });
 
   it('refuses an invalid phone and a role from another tenant', async () => {
@@ -253,8 +389,7 @@ describe('users', () => {
     const owner = await f.as('owner');
     const p = phone();
     const added = await owner.post('/settings/users', { phone: p, fullName: 'Ketgan Xodim', roleId: f.roleIds.accountant });
-    const login = await loginWith(p, added.data.oneTimePassword);
-    const token = login.body.data.accessToken;
+    const token = await firstSignIn(p, added.data.oneTimePassword);
     const created = await request(token, 'POST', '/finance/counterparties', { name: 'Yozuv', type: 'buyer' });
     expect(created.status).toBe(201);
 
@@ -318,6 +453,104 @@ describe('users', () => {
     const refused = await owner.post(`/settings/users/${added.data.member.id}/reset-password`);
     expect(refused.status).toBe(409);
     expect(refused.body.error.code).toBe('USER_HAS_OTHER_WORKSPACES');
+  });
+
+  it('a farm cannot take over a platform admin who joined it', async () => {
+    const f = await createFixture();
+    const owner = await f.as('owner');
+    const p = phone();
+    const [admin] = await db
+      .insert(schema.users)
+      .values({ phone: p, fullName: 'Platform Admin', passwordHash: await bcrypt.hash('Password123!', 4), isPlatformAdmin: true })
+      .returning();
+
+    // Even after they accept, which is the only way they can end up on a farm at all.
+    const invited = await owner.post('/settings/users', { phone: p, fullName: 'Yozilgan', roleId: f.roleIds.shepherd });
+    expect(invited.data.member).toBeNull();
+    const { accessToken } = (await loginWith(p, 'Password123!')).body.data;
+    await request(accessToken, 'POST', `/auth/invitations/${invited.data.invitation.id}/accept`, {});
+
+    const [member] = (await owner.get('/settings/users', { search: 'Platform Admin' })).data;
+    for (const action of ['reset-password', 'reset-2fa']) {
+      const refused = await owner.post(`/settings/users/${member.id}/${action}`);
+      expect(refused.status).toBe(409);
+      expect(refused.body.error.code).toBe('USER_HAS_OTHER_WORKSPACES');
+    }
+    expect((await loginWith(p, 'Password123!')).status).toBe(200);
+    expect((await db.select().from(schema.users).where(eq(schema.users.id, admin.id)))[0].mustChangePassword).toBe(false);
+  });
+
+  it('a person who also works elsewhere keeps their account: only this farm is touched', async () => {
+    const f = await createFixture();
+    const owner = await f.as('owner');
+    const person = await personElsewhere();
+    const refresh = async (cookie: string) => {
+      const app = await getApp();
+      return app.inject({ method: 'POST', url: '/api/v1/auth/refresh', headers: { cookie: `yap_rt=${cookie}` } });
+    };
+    const app = await getApp();
+    const login = await app.inject({ method: 'POST', url: '/api/v1/auth/login', payload: { phone: person.phone, password: 'Password123!' } });
+    const homeCookie = login.cookies.find((c) => c.name === 'yap_rt')!.value;
+
+    const invited = await owner.post('/settings/users', { phone: person.phone, fullName: 'Yozilgan', roleId: f.roleIds.shepherd });
+    const accepted = await request(person.token, 'POST', `/auth/invitations/${invited.data.invitation.id}/accept`, {});
+    const [member] = (await owner.get('/settings/users', { search: person.phone })).data;
+
+    for (const action of ['reset-password', 'reset-2fa']) {
+      expect((await owner.post(`/settings/users/${member.id}/${action}`)).body.error.code).toBe('USER_HAS_OTHER_WORKSPACES');
+    }
+
+    expect((await owner.post(`/settings/users/${member.id}/block`)).status).toBe(200);
+    expect((await request(accepted.data.accessToken, 'GET', '/hr/employees/lookup')).status).toBe(401);
+    const stillHome = await refresh(homeCookie);
+    expect(stillHome.statusCode).toBe(200);
+    expect(stillHome.json().data.session.tenant.id).toBe(person.home.tenantId);
+  });
+
+  it('a password and 2FA reach the whole account, so rank on another of the farms counts', async () => {
+    const f = await createFixture();
+    const secondFarmId = await withPlatform(async (trx) => {
+      const [farm] = await trx.insert(schema.farms).values({ tenantId: f.tenantId, name: 'Ikkinchi ferma' }).returning();
+      return farm.id;
+    });
+    const manager = await memberWith(f, ['users.view', 'users.update', ...DEFAULT_ROLE_PERMISSIONS.shepherd]);
+    const p = phone();
+    const here = await addMember({ tenantId: f.tenantId, farmId: f.farmId, roleId: f.roleIds.shepherd, phone: p, fullName: 'Ikki Fermada', password: 'Password123!' });
+    await addMember({ tenantId: f.tenantId, farmId: secondFarmId, roleId: f.roleIds.owner, phone: p, fullName: 'Ikki Fermada', password: 'Password123!' });
+    for (const action of ['reset-password', 'reset-2fa']) {
+      const refused = await manager.post(`/settings/users/${here.membershipId}/${action}`);
+      expect(refused.body.error.code).toBe('CANNOT_MANAGE_HIGHER_ROLE');
+    }
+  });
+
+  it('an owner resets a staff member\'s lost 2FA, and they enrol again', async () => {
+    const f = await createFixture({ settings: { security: { enforce2fa: true } } });
+    const manager = await memberWith(f, DEFAULT_ROLE_PERMISSIONS.owner);
+    await db.update(schema.users).set({ totpEnabled: true }).where(eq(schema.users.id, manager.userId));
+    const p = phone();
+    const { userId, membershipId } = await addMember({ tenantId: f.tenantId, farmId: f.farmId, roleId: f.roleIds.accountant, phone: p, fullName: 'Hisobchi', password: 'Password123!' });
+    await db.update(schema.users).set({ totpEnabled: true, totpSecret: 'sealed', totpLastStep: 5 }).where(eq(schema.users.id, userId));
+    await db.insert(schema.recoveryCodes).values({ userId, codeHash: 'x' + randomBytes(4).toString('hex') });
+    await db.insert(schema.refreshTokens).values({ userId, tokenHash: randomBytes(8).toString('hex'), familyId: uuidv7(), expiresAt: new Date(Date.now() + 86_400_000) });
+
+    const res = await manager.post(`/settings/users/${membershipId}/reset-2fa`);
+    expect(res.status).toBe(200);
+
+    const [user] = await db.select().from(schema.users).where(eq(schema.users.id, userId));
+    expect(user).toMatchObject({ totpEnabled: false, totpSecret: null, totpLastStep: null });
+    expect(await db.select().from(schema.recoveryCodes).where(eq(schema.recoveryCodes.userId, userId))).toEqual([]);
+    expect((await db.select().from(schema.refreshTokens).where(eq(schema.refreshTokens.userId, userId))).every((r) => r.revokedAt)).toBe(true);
+    const events = await f.run(() => tx().select().from(schema.events).where(sql`type = 'user.two_factor_reset'`));
+    expect(events).toHaveLength(1);
+    expect(events[0].createdBy).toBe(manager.userId);
+
+    const login = await loginWith(p, 'Password123!');
+    expect(login.body.data.accessToken).toBeTruthy();
+    expect(login.body.data.session.mustEnroll2fa).toBe(true);
+
+    expect((await manager.post(`/settings/users/${manager.membershipId}/reset-2fa`)).body.error.code).toBe('CANNOT_RESET_SELF');
+    const shepherd = await f.as('shepherd');
+    expect((await shepherd.post(`/settings/users/${membershipId}/reset-2fa`)).status).toBe(403);
   });
 
   it('lookup returns names for staff, and nothing for an outside investor', async () => {
@@ -481,6 +714,30 @@ describe('api keys', () => {
 
     expect((await owner.delete(`/settings/api-keys/${created.data.id}`)).data.revokedAt).toBeTruthy();
     expect((await owner.delete(`/settings/api-keys/${created.data.id}`)).status).toBe(404);
+  });
+
+  it('a key given an end date stops by itself, and one without keeps working', async () => {
+    const f = await createFixture();
+    const owner = await f.as('owner');
+    const send = async (key: string) => {
+      const app = await getApp();
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/devices/heartbeat',
+        headers: { 'content-type': 'application/json', 'x-api-key': key },
+        payload: JSON.stringify({ deviceId: uuidv7() }),
+      });
+      return res.json().error?.code;
+    };
+    const lasting = await owner.post('/settings/api-keys', { name: 'Doimiy', scopes: ['events:write'] });
+    const dated = await owner.post('/settings/api-keys', { name: 'Vaqtinchalik', scopes: ['events:write'], expiresInDays: 90 });
+    expect(lasting.data.expiresAt).toBeNull();
+    expect(new Date(dated.data.expiresAt).getTime()).toBeGreaterThan(Date.now() + 89 * 86_400_000);
+    expect(await send(dated.data.key)).not.toBe('INVALID_API_KEY');
+
+    await f.run(() => tx().update(schema.apiKeys).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(schema.apiKeys.id, dated.data.id)));
+    expect(await send(dated.data.key)).toBe('INVALID_API_KEY');
+    expect(await send(lasting.data.key)).not.toBe('INVALID_API_KEY');
   });
 
   it('rejects unknown scopes and foreign keys', async () => {
@@ -715,7 +972,6 @@ describe('webhooks', () => {
 
     const [url, init] = (fetchImpl as any).mock.calls[0];
     expect(url).toBe(URL_OK);
-    expect(init.redirect).toBe('manual');
     const body = init.body as string;
     expect(JSON.parse(body).data).toEqual({ number: 'new' });
 
@@ -933,10 +1189,11 @@ describe('platform administration', () => {
     const p = phone();
     const [user] = await db
       .insert(schema.users)
-      .values({ phone: p, fullName: 'Platform Admin', passwordHash: 'x', isPlatformAdmin: true })
+      .values({ phone: p, fullName: 'Platform Admin', passwordHash: 'x', isPlatformAdmin: true, totpEnabled: true })
       .returning();
     const token = await signAccessToken({ userId: user.id, membershipId: null, tenantId: null, farmId: null });
     return {
+      id: user.id,
       get: (url: string) => request(token, 'GET', url),
       post: (url: string, body: unknown = {}) => request(token, 'POST', url, body),
       patch: (url: string, body: unknown) => request(token, 'PATCH', url, body),
@@ -980,7 +1237,7 @@ describe('platform administration', () => {
     expect(created.status).toBe(201);
     expect(created.data.tenant.modules).toEqual(['livestock', 'feed']);
     expect(created.data.tenant.planName).toBe('Boshlang\'ich');
-    expect(created.data.existingUser).toBe(false);
+    expect(created.data.invited).toBe(false);
 
     const login = await loginWith(p, created.data.oneTimePassword);
     expect(login.status).toBe(200);
@@ -988,25 +1245,102 @@ describe('platform administration', () => {
     expect(session.role.key).toBe('owner');
     expect(session.tenant.name).toBe('Yangi Ferma');
 
+    // The owner's password was issued to them, so they choose their own before anything else.
+    expect(session.mustChangePassword).toBe(true);
+    expect((await request(accessToken, 'GET', '/settings/profile')).body.error.code).toBe('PASSWORD_CHANGE_REQUIRED');
+    const token = await firstSignIn(p, created.data.oneTimePassword);
+
     // Security policy defaults stay on for a real tenant, so the owner must enrol.
-    expect(session.mustEnroll2fa).toBe(true);
-    const gated = await request(accessToken, 'GET', '/settings/profile');
+    expect((await loginWith(p, 'tuyaqush-Xolmon-44')).body.data.session.mustEnroll2fa).toBe(true);
+    const gated = await request(token, 'GET', '/settings/profile');
     expect(gated.body.error.code).toBe('TWO_FACTOR_ENROLLMENT_REQUIRED');
   });
 
-  it('an existing person becomes owner without a new password', async () => {
+  it('an existing person is invited to own a new tenant, and owns it once they accept', async () => {
     const pa = await admin();
-    const f = await createFixture();
-    const p = phone();
-    await addMember({ tenantId: f.tenantId, farmId: f.farmId, roleId: f.roleIds.shepherd, phone: p, fullName: 'Bor Odam', password: 'Password123!' });
+    const person = await personElsewhere('Bor Odam');
     const created = await pa.post('/platform/tenants', {
       tenant: { name: 'Ikkinchi Tenant' },
       farm: { name: 'Ferma' },
-      owner: { phone: p, fullName: 'Bor Odam' },
+      owner: { phone: person.phone, fullName: 'Yozilgan Ism' },
     });
-    expect(created.data.existingUser).toBe(true);
+    expect(created.data.invited).toBe(true);
     expect(created.data.oneTimePassword).toBeNull();
-    expect((await loginWith(p, 'Password123!')).status).toBe(200);
+    expect(created.data.tenant.memberCount).toBe(0);
+
+    const { session } = (await loginWith(person.phone, 'Password123!')).body.data;
+    expect(session.memberships).toHaveLength(1);
+    const [invitation] = session.invitations;
+    expect(invitation).toMatchObject({ tenantName: 'Ikkinchi Tenant', roleKey: 'owner' });
+
+    const accepted = await request(person.token, 'POST', `/auth/invitations/${invitation.id}/accept`, {});
+    expect(accepted.data.session.role.key).toBe('owner');
+    expect((await pa.get(`/platform/tenants/${created.data.tenant.id}`)).data.memberCount).toBe(1);
+    expect((await loginWith(person.phone, 'Password123!')).status).toBe(200);
+  });
+
+  it('a platform admin must enrol 2FA before any platform route, and cannot turn it off', async () => {
+    const p = phone();
+    const [user] = await db
+      .insert(schema.users)
+      .values({ phone: p, fullName: 'Yangi Admin', passwordHash: await bcrypt.hash('Password123!', 4), isPlatformAdmin: true })
+      .returning();
+    const { accessToken, session } = (await loginWith(p, 'Password123!')).body.data;
+    expect(session.mustEnroll2fa).toBe(true);
+    for (const url of ['/platform/stats', '/platform/users', '/leads']) {
+      const refused = await request(accessToken, 'GET', url);
+      expect([url, refused.status, refused.body.error?.code]).toEqual([url, 403, 'TWO_FACTOR_ENROLLMENT_REQUIRED']);
+    }
+
+    const { secret } = (await request(accessToken, 'POST', '/auth/2fa/setup', {})).data;
+    const enabled = await request(accessToken, 'POST', '/auth/2fa/enable', { code: await generate({ secret }) });
+    expect(enabled.data.session.mustEnroll2fa).toBe(false);
+    expect((await request(accessToken, 'GET', '/platform/stats')).status).toBe(200);
+
+    const off = await request(accessToken, 'POST', '/auth/2fa/disable', { code: enabled.data.recoveryCodes[0] });
+    expect(off.body.error.code).toBe('TWO_FACTOR_REQUIRED_BY_POLICY');
+    expect((await db.select().from(schema.users).where(eq(schema.users.id, user.id)))[0].totpEnabled).toBe(true);
+  });
+
+  it('resets an owner who lost everything, journals it on their farm, and keeps a lasting record', async () => {
+    const pa = await admin();
+    const f = await createFixture();
+    const owner = await f.as('owner');
+    await db.update(schema.users).set({ totpEnabled: true, totpSecret: 'sealed' }).where(eq(schema.users.id, owner.userId));
+    await db.insert(schema.recoveryCodes).values({ userId: owner.userId, codeHash: 'y' + randomBytes(4).toString('hex') });
+
+    expect((await pa.post(`/platform/users/${owner.userId}/reset-2fa`)).status).toBe(200);
+    expect((await pa.post(`/platform/users/${uuidv7()}/reset-2fa`)).status).toBe(404);
+    expect((await pa.post(`/platform/users/${pa.id}/reset-2fa`)).body.error.code).toBe('CANNOT_RESET_SELF');
+    expect((await owner.post(`/platform/users/${owner.userId}/reset-2fa`)).status).toBe(403);
+
+    const [user] = await db.select().from(schema.users).where(eq(schema.users.id, owner.userId));
+    expect(user).toMatchObject({ totpEnabled: false, totpSecret: null });
+    expect(await db.select().from(schema.recoveryCodes).where(eq(schema.recoveryCodes.userId, owner.userId))).toEqual([]);
+
+    const events = await f.run(() => tx().select().from(schema.events).where(sql`type = 'user.two_factor_reset'`));
+    expect(events.map((e) => e.data)).toEqual([{ by: 'platform' }]);
+    const trail = await db.select().from(schema.platformAudit).where(eq(schema.platformAudit.targetId, owner.userId));
+    expect(trail).toHaveLength(1);
+    expect(trail[0]).toMatchObject({ adminId: pa.id, action: 'POST /api/v1/platform/users/:id/reset-2fa' });
+
+    // The record outlives anything the API can do to it.
+    await expect(db.delete(schema.platformAudit).where(eq(schema.platformAudit.targetId, owner.userId))).rejects.toThrow();
+    await expect(db.update(schema.platformAudit).set({ action: 'x' }).where(eq(schema.platformAudit.targetId, owner.userId))).rejects.toThrow();
+  });
+
+  it('every platform change leaves a record, and reading leaves none', async () => {
+    const pa = await admin();
+    const f = await createFixture();
+    await pa.get(`/platform/tenants/${f.tenantId}`);
+    expect(await db.select().from(schema.platformAudit).where(eq(schema.platformAudit.targetId, f.tenantId))).toEqual([]);
+    await pa.post(`/platform/tenants/${f.tenantId}/suspend`);
+    await pa.post(`/platform/tenants/${f.tenantId}/reactivate`);
+    const trail = await db.select().from(schema.platformAudit).where(eq(schema.platformAudit.targetId, f.tenantId));
+    expect(trail.map((row) => row.action).sort()).toEqual([
+      'POST /api/v1/platform/tenants/:id/reactivate',
+      'POST /api/v1/platform/tenants/:id/suspend',
+    ]);
   });
 
   it('refuses an unknown plan and an invalid module', async () => {

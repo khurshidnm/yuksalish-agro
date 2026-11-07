@@ -82,7 +82,10 @@ export async function provisionTenant(input: ProvisionInput): Promise<Provisione
   return { tenantId, farmId, roleIds };
 }
 
-/** Create a login and attach it to a farm with a role. Reuses an existing user by phone. */
+/**
+ * Create a login and attach it to a farm with a role. Attaching an existing user by phone skips their
+ * consent, so outside the seed and tests that person gets an invitation instead (settings/users.service).
+ */
 export async function addMember(i: {
   tenantId: string;
   farmId: string;
@@ -90,6 +93,7 @@ export async function addMember(i: {
   phone: string;
   fullName: string;
   password: string;
+  mustChangePassword?: boolean;
   email?: string;
   locale?: string;
 }): Promise<{ userId: string; membershipId: string }> {
@@ -101,7 +105,14 @@ export async function addMember(i: {
       (
         await trx
           .insert(users)
-          .values({ phone: i.phone, fullName: i.fullName, email: i.email, locale: i.locale ?? 'uz', passwordHash })
+          .values({
+            phone: i.phone,
+            fullName: i.fullName,
+            email: i.email,
+            locale: i.locale ?? 'uz',
+            passwordHash,
+            mustChangePassword: i.mustChangePassword ?? false,
+          })
           .returning({ id: users.id })
       )[0].id;
     const [membership] = await trx

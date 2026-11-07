@@ -13,8 +13,11 @@ import { badRequest, conflict, notFound } from '../../core/errors';
 import { listQuery } from '../../core/query';
 import { addMember, provisionTenant } from '../../core/tenancy';
 import { normalizePhone } from '../auth/auth.service';
+import { inviteNotice, notifyAccount } from '../notifications/notifications.service';
 
-const { farms, memberships, plans, tenants, users } = schema;
+const { farms, invitations, memberships, plans, tenants, users } = schema;
+
+const OWNER_INVITATION_DAYS = 30;
 
 const moduleList = z.array(z.enum(MODULES));
 
@@ -111,7 +114,10 @@ async function assertPlanExists(trx: Tx, planId: string) {
   return plan;
 }
 
-/** Create a tenant and its first owner. A new owner's one-time password is shown once. */
+/**
+ * Create a tenant and its first owner. A new owner's one-time password is shown once. Someone who
+ * already has an account decides for themselves, so the tenant has no owner until they accept.
+ */
 export async function createTenant(input: z.infer<typeof tenantInput>) {
   const phone = normalizePhone(input.owner.phone);
   if (!/^\+\d{9,15}$/.test(phone)) throw badRequest('INVALID_PHONE', 'This phone number is not valid');
@@ -130,6 +136,22 @@ export async function createTenant(input: z.infer<typeof tenantInput>) {
     await withPlatform((trx) => trx.update(tenants).set({ planId: plan.id }).where(eq(tenants.id, provisioned.tenantId)));
   }
 
+  const tenantRow = await getTenant(provisioned.tenantId);
+  if (existing) {
+    await withPlatform((trx) =>
+      trx.insert(invitations).values({
+        tenantId: provisioned.tenantId,
+        farmId: provisioned.farmId,
+        roleId: provisioned.roleIds.owner,
+        phone,
+        fullName: input.owner.fullName,
+        expiresAt: new Date(Date.now() + OWNER_INVITATION_DAYS * 86_400_000),
+      }),
+    );
+    await notifyAccount(existing.id, inviteNotice(tenantRow.name));
+    return { tenant: tenantRow, oneTimePassword: null, invited: true };
+  }
+
   const password = randomToken(9);
   await addMember({
     tenantId: provisioned.tenantId,
@@ -139,13 +161,9 @@ export async function createTenant(input: z.infer<typeof tenantInput>) {
     fullName: input.owner.fullName,
     email: input.owner.email,
     password,
+    mustChangePassword: true,
   });
-  return {
-    tenant: await getTenant(provisioned.tenantId),
-    // An existing person keeps their own password; `password` above was not stored for them.
-    oneTimePassword: existing ? null : password,
-    existingUser: !!existing,
-  };
+  return { tenant: await getTenant(provisioned.tenantId), oneTimePassword: password, invited: false };
 }
 
 export async function updateTenant(id: string, input: z.infer<typeof tenantUpdate>) {

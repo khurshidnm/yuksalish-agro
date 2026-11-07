@@ -5,13 +5,14 @@ import { useTranslation } from 'react-i18next';
 import { ErrorCard, MoneyText, PageHeader, StatCard, UrlTabs } from '@/components';
 import { Alert, Badge, Button, Card, CardContent, Skeleton } from '@/components/ui';
 import { useCan, usePermission } from '@/lib/auth';
-import { formatDate, formatNumber } from '@/lib/format';
+import { formatDate, formatMoney, formatNumber } from '@/lib/format';
 import { useDetail } from '@/lib/query';
 import { AssetCostsTab } from './AssetCostsTab';
 import { AssetFormDialog } from './AssetFormDialog';
 import { AssetMaintenanceTab } from './AssetMaintenanceTab';
 import { AssetUsageTab, ShiftDialog } from './AssetUsageTab';
 import { STATUS_VARIANT } from './AssetsPage';
+import { depreciationGaps } from './depreciationGaps';
 import type { AssetCard } from './types';
 
 function Fact({ label, children }: { label: string; children: React.ReactNode }) {
@@ -27,8 +28,16 @@ function Overview({ asset }: { asset: AssetCard }) {
   const { t } = useTranslation('assets');
   const seesMoney = usePermission('finance.view');
   const due = asset.maintenanceDue;
+  const gaps = depreciationGaps(asset);
   return (
     <div className="space-y-4">
+      {gaps.length > 0 && (
+        <Alert tone="warning">
+          {gaps.map((gap) => (
+            <p key={gap}>{t(`depreciation.gap.${gap}`)}</p>
+          ))}
+        </Alert>
+      )}
       {due?.overdue && (
         <Alert tone="warning" title={t('serviceDueTitle')}>
           {[due.nextDueDate ? formatDate(due.nextDueDate) : null, due.nextDueMotoHours === null ? null : `${formatNumber(due.nextDueMotoHours)} ${t('unit.hours')}`]
@@ -53,7 +62,17 @@ function Overview({ asset }: { asset: AssetCard }) {
             <>
               <Fact label={t('fields.purchasePrice')}>
                 <MoneyText value={asset.purchasePrice} />
+                {asset.purchaseCurrency && asset.purchaseAmount !== null && (
+                  <span className="block text-xs font-normal text-muted-foreground">
+                    {t('overview.original', { amount: formatMoney(asset.purchaseAmount, { currency: asset.purchaseCurrency }), rate: formatNumber(asset.purchaseFxRate, 2) })}
+                  </span>
+                )}
               </Fact>
+              {!!asset.openingDepreciation && (
+                <Fact label={t('overview.opening', { date: formatDate(asset.openingDepreciationDate) })}>
+                  <MoneyText value={asset.openingDepreciation} />
+                </Fact>
+              )}
               <Fact label={t('overview.accumulated')}>
                 <MoneyText value={asset.accumulatedDepreciation} />
               </Fact>

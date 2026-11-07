@@ -1,0 +1,53 @@
+# HTTPS for the whole app. Caddy gets the certificate for DOMAIN from Let's Encrypt and renews it by
+# itself, and sends plain HTTP to HTTPS. Used through docker-compose.tls.yml; see docs/deployment.md.
+{
+	# Empty on a real server. A test on a laptop sets it to `local_certs` to use Caddy's own CA, and
+	# `acme_ca <url>` points at a test CA. Environment values are placed here before the file is parsed.
+	{$CADDY_GLOBAL}
+
+	# When a proxied request fails, for example during a deploy, Caddy logs the whole request. Its address
+	# and referrer can hold a searched name or phone, or the token of a file link, so only the reason stays.
+	log default {
+		format filter {
+			wrap json
+			fields {
+				request delete
+			}
+		}
+	}
+
+	servers {
+		# HTTP/3 would need UDP 443, and the firewall opens TCP only.
+		protocols h1 h2
+		timeouts {
+			# Only the headers are limited. A limit on the body or on writing would also end a slow
+			# photo upload over 4G, or an answer from the assistant that is still streaming.
+			read_header 30s
+			idle 5m
+		}
+	}
+}
+
+{$DOMAIN} {
+	# No `log` directive on purpose: an access log here would hold full addresses. The web container logs
+	# each request without its query string.
+	# nginx sends this on what it serves, and this line adds Caddy's own answers, such as a 502 during a
+	# deploy. `>` replaces nginx's copy, so a browser never gets it twice. Keep the two values the same.
+	header >Strict-Transport-Security "max-age=31536000"
+
+	reverse_proxy web:8080 {
+		# The assistant's answer is a stream: pass each piece on as it arrives, without buffering.
+		flush_interval -1
+		# Stops the upstream's version from being announced.
+		header_down -Server
+
+		transport http {
+			dial_timeout 5s
+			# One model call can take 3 attempts of 120 s with nothing sent meanwhile, and nginx gives
+			# /api/v1/ai/ 600 s. This proxy must never be the first to give up. See infra/nginx.conf.
+			response_header_timeout 660s
+			read_timeout 660s
+			write_timeout 660s
+		}
+	}
+}

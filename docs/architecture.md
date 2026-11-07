@@ -15,7 +15,7 @@ flowchart TB
   files[("Local disk or S3")]
   telegram["Telegram"]
   weather["Open-Meteo"]
-  llm["Claude API"]
+  llm["Gemini or Claude API"]
 
   phone --> proxy
   desktop --> proxy

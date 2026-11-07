@@ -27,6 +27,7 @@
     }
   },
   "journal": {
+    "original": "{{amount}}, kurs {{rate}}",
     "title": "Operatsiyalar",
     "description": "Har bir kirim va chiqim sanasi, summasi, hisobi va xarajat markazi bilan.",
     "tab": "Jurnal",
@@ -43,8 +44,8 @@
     "allStatuses": "Barcha holatlar",
     "totalIncome": "Daromad",
     "totalExpense": "Xarajat",
-    "totalNet": "Natija",
-    "totalsHint": "Faqat tasdiqlangan operatsiyalar.",
+    "totalNet": "Pul natijasi (aktivlar bilan)",
+    "totalsHint": "Faqat tasdiqlangan operatsiyalar. Hayvon, texnika va ombor xaridlari ham kiradi, shuning uchun bu sof natija emas.",
     "emptyTitle": "Operatsiyalar topilmadi",
     "emptyBody": "Birinchi xarajat yoki daromadni kiriting, yoki filtrlarni o'zgartiring.",
     "deleteTitle": "Operatsiyani o'chirasizmi?",
@@ -92,7 +93,7 @@
     "tab": "Tasdiqlash",
     "approve": "Tasdiqlash",
     "reject": "Rad etish",
-    "void": "Bekor qilish",
+    "void": "Operatsiyani bekor qilish",
     "rejectTitle": "Operatsiyani rad etish",
     "voidTitle": "Tasdiqlangan operatsiyani bekor qilish",
     "reason": "Sababi",
@@ -102,7 +103,8 @@
     "emptyTitle": "Tasdiqlash kutayotgan operatsiya yo'q",
     "emptyBody": "Belgilangan summadan katta xarajatlar shu yerga tushadi.",
     "enteredBy": "Kiritgan: {{name}}",
-    "ownEntry": "Buni o'zingiz kiritgansiz, shuning uchun boshqa xodim tasdiqlashi kerak."
+    "ownEntry": "Buni o'zingiz kiritgansiz, shuning uchun boshqa xodim tasdiqlashi kerak.",
+    "ownVoid": "Buni o'zingiz kiritgansiz, shuning uchun boshqa xodim bekor qilishi kerak."
   },
   "accounts": {
     "title": "Kassa va bank",
@@ -177,12 +179,37 @@
     "pay": "To'lash",
     "receive": "To'lovni qabul qilish",
     "settleHint": "{{name}}: to'lanishi mumkin bo'lgan qoldiq {{amount}}.",
+    "amountInAccountCurrency": "Summani hisob valyutasida ({{currency}}) kiriting. U saqlangan kurs bo'yicha hisoblanadi.",
     "pendingSettlement": "{{amount}} miqdoridagi to'lov tasdiqlash kutmoqda.",
     "empty": {
       "payable": "Biz hech kimdan qarz emasmiz",
       "receivable": "Bizga qarzdorlar yo'q"
     },
     "emptyBody": "Qarzga kiritilgan xarid va sotuvlar shu yerda ko'rinadi."
+  },
+  "unpaidReceipts": {
+    "tab": "To'lanmagan kirimlar",
+    "hint": "Yetkazib beruvchidan tovar kelgan, lekin uning to'lovi yoki qarzi hali yozilmagan.",
+    "document": "Kirim",
+    "documentOn": "{{docNo}}, {{date}}",
+    "documentInvoice": "{{docNo}}, {{date}}, hisob-faktura {{invoiceNo}}",
+    "goods": "Tovarlar",
+    "goodsLine": "{{item}}: {{qty}}",
+    "value": "Qiymati",
+    "recordAs": "Qanday yozish",
+    "asPayment": "To'langan",
+    "asDebt": "Qarzga",
+    "title": {
+      "payment": "To'lovni qayd etish",
+      "debt": "Qarzni qayd etish"
+    },
+    "recordHint": "{{docNo}}, {{supplier}}: {{amount}}",
+    "paidRequest": "To'langan xarid so'rovi hali shu tovarni kutmoqda, shuning uchun bu yerda pul yozilmaydi: u ikki marta hisoblanadi. Agar bu o'sha yuk bo'lsa, kirimni bekor qiling va tovarni so'rov orqali qabul qiling. Boshqa yuk bo'lsa, avval so'rovni qabul qiling.",
+    "categoryHint": "Ba'zi tovarlarning o'z moddasi yo'q. Bu modda butun kirimga qo'llanadi.",
+    "saved": "Qayd etildi: {{docNo}}",
+    "pendingApproval": "Rahbar tasdig'ini kutmoqda",
+    "empty": "Barcha kirimlarning to'lovi yoki qarzi yozilgan",
+    "emptyBody": "To'lovi yoki qarzi yozilmagan xarid shu yerda ko'rinadi."
   },
   "budget": {
     "title": "Byudjet",
@@ -300,6 +327,7 @@
     "gapTitle": "{{month}} oyidan pul yetishmaydi",
     "gapBody": "Pul yetishmaydigan oylar soni: {{n}}. Eng katta kamomad: {{amount}}. Xarajatni kechiktirish, sotuvni tezlashtirish yoki qisqa muddatli moliyalashtirishni oldindan ko'rib chiqing.",
     "methodNote": "Bu statistik prognoz, va'da emas. Asosi: byudjet, {{months}} oylik tarix, kredit grafigi va qarz muddatlari.",
+    "beyondPlan": "Byudjet {{month}} gacha kiritilgan. Undan keyingi oylarda faqat kredit va qarz to'lovlari ko'rinadi, shuning uchun ular prognoz emas.",
     "lowConfidenceTitle": "Ma'lumot yetarli emas",
     "lowConfidenceBody": "Byudjet kiritilmagan va tarix uch oydan kam, shuning uchun prognoz faqat kredit va qarz muddatlariga tayanadi. Byudjetni kiriting.",
     "balanceChart": "Oy oxiridagi qoldiq",
@@ -368,6 +396,10 @@
     }
   },
   "errors": {
+    "WAGES_PAID_FROM_PAYROLL": "Ish haqi Xodimlar bo'limidagi oylik hisob-kitobdan to'lanadi, bu yerdan emas.",
+    "TRANSACTION_CHANGED": "Bu yozuv siz ochganingizdan keyin o'zgartirildi. Hozir unda {{amount}} {{currency}}. Hech narsa saqlanmadi: qayta o'qib, keyin qaror qiling.",
+    "ACCOUNT_CLOSED": "Bu hisob yopilgan. Boshqa hisobni tanlang.",
+    "ACCOUNT_CURRENCY_MISMATCH": "Bu hisob boshqa valyutada yuritiladi.",
     "ACCOUNT_NOT_EMPTY": "Hisobda {{balance}} qoldiq bor. Avval pulni boshqa hisobga o'tkazing.",
     "ACCOUNT_REQUIRED": "Kassa yoki bank hisobini tanlang.",
     "ACCOUNTS_REQUIRED": "O'tkazma uchun ikkala hisobni tanlang.",
@@ -375,10 +407,12 @@
     "AMOUNT_EXCEEDS_DEBT": "Summa qarzdan ko'p. To'lash mumkin bo'lgan qoldiq: {{outstanding}}.",
     "CATEGORY_KIND_MISMATCH": "Bu modda operatsiya turiga mos emas.",
     "CATEGORY_REQUIRED": "Moddani tanlang.",
+    "COST_CENTER_CLOSED": "Bu xarajat markazi yopilgan. Boshqasini tanlang.",
     "COST_CENTER_REQUIRED": "Xarajat markazini tanlang.",
     "COUNTERPARTY_REQUIRED": "Qarz uchun kontragentni tanlang.",
-    "CURRENCY_MISMATCH": "Bu hisob boshqa valyutada yuritiladi.",
+    "DEBT_ALREADY_SETTLED": "Bu qarz bo'yicha to'lov qilingan. Avval to'lovni bekor qiling.",
     "EARLIER_INSTALMENT_UNPAID": "Avval oldingi to'lovni amalga oshiring.",
+    "FX_RATE_OUT_OF_RANGE": "Bu kurs saqlangan {{stored}} kursidan juda uzoq. Uni tekshiring yoki saqlangan kursni tuzating.",
     "FX_RATE_REQUIRED": "Bu sana uchun valyuta kursi yo'q. Kursni kiriting.",
     "INVALID_AMOUNT": "Summa noldan katta bo'lishi kerak.",
     "INVALID_PAYMENT_METHOD": "To'lov usuli bu operatsiyaga mos emas.",
@@ -386,10 +420,14 @@
     "LOAN_HAS_PAYMENTS": "To'lovlari yoki puli o'tgan kreditni o'chirib bo'lmaydi.",
     "NOT_APPROVED": "Faqat tasdiqlangan operatsiyani bekor qilish mumkin.",
     "NOT_PENDING": "Bu operatsiya tasdiqlash kutmayapti.",
+    "RECEIPT_HAS_MONEY": "Bu kirim uchun to'lov yoki qarz allaqachon qayd etilgan.",
+    "RECEIPT_PAID_BY_REQUEST": "To'langan xarid so'rovi shu tovarni kutmoqda, shuning uchun pul yozilmadi: u ikki marta hisoblanardi. Agar bu o'sha yuk bo'lsa, {{docNo}} kirimini bekor qiling va tovarni so'rov orqali qabul qiling. Boshqa yuk bo'lsa, avval so'rovni qabul qiling.",
     "SAME_ACCOUNT": "Ikkala hisob har xil bo'lishi kerak.",
     "SAME_MAKER_CHECKER": "Operatsiyani kiritgan xodim uni o'zi tasdiqlay olmaydi.",
     "SETTLEMENT_NOT_EDITABLE": "Qarz to'lovini tahrirlab bo'lmaydi: o'chirib, qayta kiriting.",
     "TRANSACTION_APPROVED": "Tasdiqlangan operatsiyani o'zgartirib bo'lmaydi. Uni bekor qiling.",
-    "TRANSACTION_HAS_SOURCE": "Bu yozuv boshqa moduldan kelgan. Uni o'sha yerda o'zgartiring."
+    "TRANSACTION_HAS_SOURCE": "Bu yozuv boshqa moduldan kelgan. Uni o'sha yerda o'zgartiring.",
+    "TRANSACTION_REJECTED": "Rad etilgan yoki bekor qilingan operatsiya jurnalda qoladi. Yangisini kiriting.",
+    "ACCOUNT_CURRENCY_LOCKED": "Bu hisobda pul harakati bor, valyutasini o'zgartirib bo'lmaydi."
   }
 }

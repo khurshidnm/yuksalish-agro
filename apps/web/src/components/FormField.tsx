@@ -128,10 +128,20 @@ export function NumberField<F extends FieldValues, N extends FieldPath<F>>({
   required,
   className,
   ...input
-}: FieldBaseProps<F, N> & Pick<NumberInputProps, 'suffix' | 'maxDigits' | 'allowNegative' | 'placeholder' | 'disabled'>) {
+}: FieldBaseProps<F, N> & Pick<NumberInputProps, 'suffix' | 'maxDigits' | 'allowNegative' | 'money' | 'placeholder' | 'disabled'>) {
   return (
     <FormField form={form} name={name} label={label} hint={hint} required={required} className={className}>
-      {(field) => <NumberInput {...input} {...field} disabled={input.disabled ?? field.disabled} value={field.value ?? null} onChange={field.onChange} />}
+      {(field) => (
+        <NumberInput
+          {...input}
+          {...field}
+          disabled={input.disabled ?? field.disabled}
+          value={field.value ?? null}
+          onChange={field.onChange}
+          // NaN, and not null: an optional field would take null for empty and quietly save nothing.
+          onUnreadable={() => field.onChange(Number.NaN)}
+        />
+      )}
     </FormField>
   );
 }

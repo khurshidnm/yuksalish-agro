@@ -1,5 +1,5 @@
 import { ANIMAL_EXIT_TYPES } from '@yap/shared';
-import { DoorOpen, Plus, Undo2 } from 'lucide-react';
+import { CircleMinus, Plus, Undo2 } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
@@ -124,12 +124,18 @@ export default function ExitsPage() {
             icon: Undo2,
             hidden: !canUndo || !!row.transactionId,
             onClick: async () => {
-              const ok = await confirm({ title: t('exits.undoTitle'), description: t('exits.undoBody', { tag: row.tag }), destructive: true });
+              const ok = await confirm({
+                title: t('exits.undoTitle'),
+                description: t('exits.undoBody', { tag: row.tag }),
+                destructive: true,
+                confirmLabel: t('exits.undo'),
+                cancelLabel: t('common:actions.close'),
+              });
               if (ok) undo.mutate(row.id);
             },
           },
         ]}
-        empty={{ icon: DoorOpen, title: t('exits.emptyTitle'), description: t('exits.emptyBody') }}
+        empty={{ icon: CircleMinus, title: t('exits.emptyTitle'), description: t('exits.emptyBody') }}
       />
       <ExitForm open={adding} onOpenChange={setAdding} />
     </>

@@ -64,12 +64,12 @@ export function SickTab() {
         <EmptyState icon={HeartPulse} title={status === 'open' ? t('sick.emptyTitle') : t('sick.emptyResolvedTitle')} description={status === 'open' ? t('sick.emptyBody') : undefined} />
       )}
 
-      <ul className="grid gap-3 lg:grid-cols-2">
+      <ul className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         {rows.map((report) => (
           <li key={report.id}>
             <Card className="space-y-2 p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <Link className="text-lg font-semibold text-primary hover:underline" to={`/livestock/animals/${report.animalId}`}>
+                <Link className="inline-flex min-h-11 items-center text-lg font-semibold text-primary hover:underline" to={`/livestock/animals/${report.animalId}`}>
                   {report.tag}
                 </Link>
                 <Badge variant={report.reportStatus === 'open' ? 'danger' : 'success'}>{t(`enums:animalStatus.${report.animalStatus}`)}</Badge>
@@ -113,12 +113,12 @@ export function SickTab() {
         <section className="space-y-2">
           <h2 className="font-semibold">{t('sick.unreportedTitle')}</h2>
           <p className="text-sm text-muted-foreground">{t('sick.unreportedHint')}</p>
-          <ul className="grid gap-3 lg:grid-cols-2">
+          <ul className="grid grid-cols-1 gap-3 lg:grid-cols-2">
             {unreported.map((animal) => (
               <li key={animal.id}>
                 <Card className="space-y-2 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <Link className="text-lg font-semibold text-primary hover:underline" to={`/livestock/animals/${animal.id}`}>
+                    <Link className="inline-flex min-h-11 items-center text-lg font-semibold text-primary hover:underline" to={`/livestock/animals/${animal.id}`}>
                       {animal.tag}
                     </Link>
                     <Badge variant="danger">{t(`enums:animalStatus.${animal.status}`)}</Badge>

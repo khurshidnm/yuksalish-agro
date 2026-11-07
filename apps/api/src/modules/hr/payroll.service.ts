@@ -9,7 +9,7 @@
  * Posting payments as debt settlements keeps labour cost from being counted twice. Amounts withheld
  * as deductions stay in the payable until they are paid on, as withheld amounts should.
  */
-import { and, asc, count, desc, eq, getTableColumns, gt, gte, inArray, lte, notInArray, or } from 'drizzle-orm';
+import { and, asc, count, desc, eq, getTableColumns, gt, gte, inArray, lte, notInArray, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { z } from 'zod';
 import { addDays, diffDays, monthOf, monthRange, round, PII_VIEW } from '@yap/shared';
@@ -29,6 +29,7 @@ import {
 } from '@yap/shared/formulas/payroll';
 import { schema } from '../../db/client';
 import { ctx, hasPermission, today, tx } from '../../core/context';
+import { PAYROLL_COUNTERPARTY } from '../../core/defaults';
 import { generalCostCenterId } from '../../core/costCenters';
 import { badRequest, conflict, forbidden, notFound } from '../../core/errors';
 import { recordEvent } from '../../core/journal';
@@ -61,7 +62,6 @@ type Line = typeof lines.$inferSelect;
 type LineValues = Pick<Line, 'daysWorked' | 'base' | 'piecework' | 'bonus' | 'advance' | 'deductions' | 'net' | 'allocation' | 'basis'>;
 
 /** Everyone's wages sit on one counterparty, so unpaid wages show up among payables. */
-const PAYROLL_COUNTERPARTY = 'Xodimlar (ish haqi)';
 
 const runLink = (id: string) => `/hr/payroll?run=${id}`;
 
@@ -525,7 +525,9 @@ async function salaryCategoryId(): Promise<string> {
   return category.id;
 }
 
+/** Takes turns, because two first postings would each create one and split the debt between them. */
 async function payrollCounterpartyId(): Promise<string> {
+  await tx().execute(sql`select pg_advisory_xact_lock(hashtext(${`payroll-counterparty:${ctx().farmId}`}))`);
   const [existing] = await tx()
     .select({ id: counterparties.id })
     .from(counterparties)
@@ -581,6 +583,33 @@ async function postLabourCost(run: Run, rows: Line[]): Promise<void> {
   }
 }
 
+/**
+ * Paying an advance and approving that month's payroll take turns, also before the month has a run,
+ * so the approval sees every advance paid before it and no advance comes after it.
+ */
+async function lockPayrollMonth(month: string): Promise<void> {
+  await tx().execute(sql`select pg_advisory_xact_lock(hashtext(${`payroll:${ctx().farmId}:${month}`}))`);
+}
+
+/**
+ * A run's advances were read when it was worked out, and approving fixes what each person is paid.
+ * An advance paid since would not come off, and one still waiting would be paid on top when approved.
+ * A figure typed into a line is that person's decision, so it stays.
+ */
+async function assertAdvancesCounted(run: Run, rows: Line[]): Promise<void> {
+  const [waiting] = await tx()
+    .select({ id: advances.id })
+    .from(advances)
+    .innerJoin(transactions, eq(transactions.id, advances.transactionId))
+    .where(and(eq(advances.farmId, run.farmId), eq(advances.month, run.month), eq(transactions.status, 'pending')))
+    .limit(1);
+  if (waiting) throw conflict('PAYROLL_ADVANCES_WAITING', 'An advance for this month is waiting for approval');
+
+  const paid = await advancesByEmployee(run.month);
+  const changed = rows.some((row) => !row.overrides.includes('advance') && (paid.get(row.employeeId) ?? 0) !== row.advance);
+  if (changed) throw conflict('PAYROLL_ADVANCES_CHANGED', 'An advance was paid after this payroll was worked out. Recalculate it');
+}
+
 /** Maker-checker: the person who last changed the figures cannot approve them (spec 5.1). */
 export async function approveRun(id: string) {
   const c = ctx();
@@ -591,8 +620,10 @@ export async function approveRun(id: string) {
   if (c.settings.finance.makerChecker && run.preparedBy === c.userId) {
     throw forbidden('The person who prepared the payroll cannot approve it', 'SAME_MAKER_CHECKER');
   }
+  await lockPayrollMonth(run.month);
   const rows = await loadLines(id);
   if (rows.length === 0) throw conflict('PAYROLL_EMPTY', 'This payroll has no lines');
+  await assertAdvancesCounted(run, rows);
 
   await postLabourCost(run, rows);
   await tx()
@@ -650,8 +681,8 @@ export async function payRun(id: string, input: z.infer<typeof payInput>) {
 
 // ─── Advances ───────────────────────────────────────────────────────────────
 
-export function listAdvances(q: z.infer<typeof advanceQuery>) {
-  return tx()
+export async function listAdvances(q: z.infer<typeof advanceQuery>) {
+  const rows = await tx()
     .select({
       ...getTableColumns(advances),
       fullName: employees.fullName,
@@ -671,6 +702,8 @@ export function listAdvances(q: z.infer<typeof advanceQuery>) {
     )
     .orderBy(desc(advances.date))
     .limit(500);
+  // A name beside an amount is personal data (rule 8).
+  return hasPermission(PII_VIEW) ? rows : rows.map((row) => ({ ...row, fullName: null }));
 }
 
 /** The ledger applies the usual approval rule, so a large advance waits for a second person. */
@@ -680,6 +713,9 @@ export async function createAdvance(input: z.infer<typeof advanceInput>) {
   const account = await getAccount(input.accountId);
   const month = input.month ?? monthOf(input.date);
 
+  // Waits for an approval running now, then sees how it ended. No row lock on the run as well:
+  // approval takes that one first, so the two would deadlock.
+  await lockPayrollMonth(month);
   const [closed] = await tx()
     .select({ id: runs.id })
     .from(runs)

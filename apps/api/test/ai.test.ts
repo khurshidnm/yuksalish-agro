@@ -485,8 +485,8 @@ describe('expenses', () => {
     const [insight] = await insightsOf(f, 'expense_spike');
     expect(insight.containsMoney).toBe(true);
     expect(insight.title).toContain(monthText(monthOf(monthsBack(1))));
-    expect(insight.body).toContain('2 000 000 UZS');
-    expect(insight.body).toContain('1 000 000 UZS');
+    expect(insight.body).toContain("2 000 000 so'm");
+    expect(insight.body).toContain("1 000 000 so'm");
     expect(insight.body).toContain('+100%');
     expect(insight.sources).toMatchObject({ months: 4, baselineMonths: 3 });
   });
@@ -613,7 +613,7 @@ describe('season profit, feed advice and crop suggestion', () => {
     // Wheat 50 t × 3 mln + barley 40 t × 2.5 mln = 250 mln; cost 30 + 20 = 50 mln.
     expect(insight.containsMoney).toBe(true);
     expect(insight.data).toMatchObject({ revenue: 250_000_000, cost: 50_000_000, profit: 200_000_000, profitabilityPercent: 400 });
-    expect(insight.title).toContain('200 000 000 UZS');
+    expect(insight.title).toContain("200 000 000 so'm");
     expect(insight.confidence).toBeCloseTo(0.7, 5);
     // Everything was covered, so the text does not report "0 plans lack data".
     expect((insight.data as any).textKey).toBe('season_profit_complete');
@@ -674,7 +674,7 @@ describe('season profit, feed advice and crop suggestion', () => {
     expect(insight.containsMoney).toBe(true);
     // 197.73 a head a day × 100 head.
     expect(insight.data).toMatchObject({ savingPerHeadDay: 197.73, savingPerDay: 19_772.73 });
-    expect(insight.body).toContain('19 773 UZS');
+    expect(insight.body).toContain("19 773 so'm");
     expect(insight.decision).toBe('pending');
   });
 
@@ -805,8 +805,9 @@ describe('tools by permission', () => {
   });
 
   it('a money tool needs finance.view even if something else matches', () => {
-    expect(toolsFor(new Set(['inventory.view'])).map((t) => t.name)).toEqual(['stock_levels']);
-    expect(toolsFor(new Set())).toEqual(TOOLS.filter((t) => t.anyOf.length === 0));
+    const open = ['find_records', 'farm_status'];
+    expect(toolsFor(new Set(['inventory.view'])).map((t) => t.name)).toEqual(['stock_levels', ...open]);
+    expect(toolsFor(new Set()).map((t) => t.name)).toEqual(open);
   });
 
   it('every tool is read-only: none writes through the AI role', async () => {
@@ -1006,7 +1007,7 @@ describe('assistant', () => {
   it('roles without AI access cannot use the assistant', async () => {
     const f = await createFixture();
     setProvider(new ScriptedProvider([]));
-    for (const role of ['shepherd', 'investor', 'accountant'] as RoleKey[]) {
+    for (const role of ['shepherd', 'investor', 'storekeeper'] as RoleKey[]) {
       const client = await f.as(role);
       expect((await client.post('/ai/chat', { message: 'x' })).status).toBe(403);
     }
@@ -1139,6 +1140,35 @@ describe('assistant', () => {
         { tag: 'Q-0002', expectedDate: date },
       ],
     });
+  });
+
+  it('gives the model one pregnant count, the same one the dashboard shows', async () => {
+    const herd = TOOLS.find((candidate) => candidate.name === 'herd_summary')!;
+    const f = await createFixture();
+    const result = await f.run(() => herd.run({} as never, {} as never));
+    expect(result.data).toHaveProperty('pregnant');
+    expect(result.data).not.toHaveProperty('byStatus');
+  });
+
+  it('a table always says what its numbers are, in the person\'s language', async () => {
+    const f = await createFixture();
+    await f.run(async () => {
+      const [salary] = await tx().select().from(schema.financeCategories).where(sql`key = 'salary' and tenant_id = ${ctx().tenantId}`);
+      await tx().insert(schema.budgets).values({ ...base(f), month: monthOf(todayIso()), categoryId: salary.id, amount: 100 });
+    });
+    const owner = await f.as('owner');
+    setProvider(
+      new ScriptedProvider([
+        callTool('budget_execution'),
+        // The model asks for an internal code and the numbers.
+        callTool('present_result', { resultId: 'r1', kind: 'table', title: 'Byudjet', rowsKey: 'rows', columns: ['key', 'actual', 'planned'] }, 'p'),
+        reply('Mana.'),
+      ]),
+    );
+    const { data } = await owner.post('/ai/chat', { message: 'Budget this month?', language: 'en' });
+    const [table] = data.message.attachments;
+    expect(table.columns).toEqual(['name', 'actual', 'planned']);
+    expect(table.rows[0].name).toBe('Salaries');
   });
 
   it('limits each person per minute, counted from stored questions', async () => {
@@ -1275,7 +1305,7 @@ describe('executive summary', () => {
 
   it('turns figures into good, bad and to-do without any model', () => {
     const { bad, good, todo } = templateSections(figures(), 'uz');
-    expect(good).toEqual([aiText('uz', 'summary.good.noDeaths', { head: 500 }), expect.stringContaining('90 000 000 UZS')]);
+    expect(good).toEqual([aiText('uz', 'summary.good.noDeaths', { head: 500 }), expect.stringContaining("90 000 000 so'm")]);
     expect(bad).toEqual(
       expect.arrayContaining([
         expect.stringContaining('Kepak zaxirasi faqat 10 kunga'),
@@ -1646,7 +1676,7 @@ describe('data readiness', () => {
   it('needs ai.view', async () => {
     const f = await createFixture();
     expect((await (await f.as('shepherd')).get('/ai/coverage')).status).toBe(403);
-    expect((await (await f.as('accountant')).post('/ai/insights/run')).status).toBe(403);
+    expect((await (await f.as('storekeeper')).post('/ai/insights/run')).status).toBe(403);
   });
 });
 

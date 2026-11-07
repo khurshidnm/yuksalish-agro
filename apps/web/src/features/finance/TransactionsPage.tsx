@@ -2,6 +2,7 @@ import { TRANSACTION_STATUSES, TRANSACTION_TYPES } from '@yap/shared';
 import { Ban, Check, Download, FileCheck2, Paperclip, Pencil, Plus, ReceiptText, Trash2, X } from 'lucide-react';
 import { type ComponentProps, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { z } from 'zod';
 import {
   type Column,
@@ -33,11 +34,11 @@ import {
 } from '@/components/ui';
 import { api } from '@/lib/api';
 import { usePermission, useSession } from '@/lib/auth';
-import { formatDate, formatMoney } from '@/lib/format';
+import { formatDate, formatMoney, formatNumber } from '@/lib/format';
 import { zText } from '@/lib/forms';
 import { enumOptions } from '@/lib/i18n';
 import { useApiMutation, useDetail, useList } from '@/lib/query';
-import { FINANCE_PATHS, MONEY_QUERIES, useCenterName, useLocalName } from './lib';
+import { FINANCE_PATHS, MONEY_QUERIES, canDeleteEntry, canEditEntry, canVoidEntry, useCenterName, useLocalName } from './lib';
 import { TransactionFormDialog } from './TransactionForm';
 import type { Totals, Transaction } from './types';
 
@@ -63,7 +64,17 @@ function signedAmount(row: Transaction): number {
 }
 
 function AmountCell({ row }: { row: Transaction }) {
-  return row.type === 'transfer' ? <MoneyText value={row.amountBase} /> : <MoneyText value={signedAmount(row)} signed />;
+  const { t } = useTranslation('finance');
+  const amount = row.type === 'transfer' ? <MoneyText value={row.amountBase} /> : <MoneyText value={signedAmount(row)} signed />;
+  if (row.amount === row.amountBase) return amount;
+  return (
+    <span className="inline-flex flex-col items-end">
+      {amount}
+      <span className="text-xs text-muted-foreground">
+        {t('journal.original', { amount: formatMoney(row.amount, { currency: row.currency }), rate: formatNumber(row.fxRate, 2) })}
+      </span>
+    </span>
+  );
 }
 
 function useTitle() {
@@ -94,7 +105,7 @@ function ReasonDialog({
 }) {
   const { t } = useTranslation('finance');
   const act = useApiMutation<string>({
-    mutationFn: (reason) => api.post(`${PATH}/${row?.id}/${mode}`, { reason }),
+    mutationFn: (reason) => api.post(`${PATH}/${row?.id}/${mode}`, mode === 'reject' ? { reason, baseUpdatedAt: row?.updatedAt } : { reason }),
     invalidate: MONEY_QUERIES,
     silentError: true,
   });
@@ -108,6 +119,7 @@ function ReasonDialog({
       defaultValues={{ reason: '' }}
       onSubmit={(values) => act.mutateAsync(values.reason)}
       submitLabel={t(`approval.${mode}`)}
+      cancelLabel={t('common:actions.close')}
       successMessage={`finance:approval.${mode}Done`}
     >
       {(form) => <TextareaField form={form} name="reason" label={t('approval.reason')} required />}
@@ -121,11 +133,11 @@ function ApprovalQueue() {
   const title = useTitle();
   const session = useSession();
   const canApprove = usePermission('finance.approve');
-  const [rejecting, setRejecting] = useState<Transaction | null>(null);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
   const { data, isLoading, error, refetch } = useList<Transaction>(PATH, { status: 'pending', pageSize: 100, sort: 'date' });
 
-  const approve = useApiMutation<string>({
-    mutationFn: (id) => api.post(`${PATH}/${id}/approve`),
+  const approve = useApiMutation<Transaction>({
+    mutationFn: (row) => api.post(`${PATH}/${row.id}/approve`, { baseUpdatedAt: row.updatedAt }),
     invalidate: MONEY_QUERIES,
     successMessage: 'finance:approval.approveDone',
   });
@@ -167,11 +179,11 @@ function ApprovalQueue() {
               </p>
               {canApprove && (
                 <div className="flex flex-col gap-2 sm:flex-row md:w-64">
-                  <Button className="flex-1" disabled={own} loading={approve.isPending && approve.variables === row.id} onClick={() => approve.mutate(row.id)}>
+                  <Button className="flex-1" disabled={own} loading={approve.isPending && approve.variables.id === row.id} onClick={() => approve.mutate(row)}>
                     <Check aria-hidden />
                     {t('approval.approve')}
                   </Button>
-                  <Button className="flex-1" variant="outline" disabled={own} onClick={() => setRejecting(row)}>
+                  <Button className="flex-1" variant="outline" disabled={own} onClick={() => setRejectingId(row.id)}>
                     <X aria-hidden />
                     {t('approval.reject')}
                   </Button>
@@ -182,7 +194,8 @@ function ApprovalQueue() {
           </Card>
         );
       })}
-      <ReasonDialog row={rejecting} mode="reject" onClose={() => setRejecting(null)} />
+      {/* Read from the list, so a refusal that refreshed the entry shows its new figures here too. */}
+      <ReasonDialog row={rows.find((row) => row.id === rejectingId) ?? null} mode="reject" onClose={() => setRejectingId(null)} />
     </div>
   );
 }
@@ -194,16 +207,20 @@ function Journal({ onEdit }: { onEdit: (row: Transaction) => void }) {
   const canUpdate = usePermission('finance.update');
   const canDelete = usePermission('finance.delete');
   const canApprove = usePermission('finance.approve');
+  const session = useSession();
+  const twoPeople = (session.settings.finance as { makerChecker?: boolean } | undefined)?.makerChecker !== false;
   const confirm = useConfirm();
 
   const [from, setFrom] = useUrlParam('from');
   const [to, setTo] = useUrlParam('to');
   const [type, setType] = useUrlParam('type');
   const [status, setStatus] = useUrlParam('status');
+  // DataTable owns this box and keeps it in the URL. The totals read it from there.
+  const [search] = useUrlParam('q');
   const [voiding, setVoiding] = useState<Transaction | null>(null);
 
   const params = { from: from || undefined, to: to || undefined, type: type || undefined, status: status || undefined };
-  const totals = useDetail<Totals>(`${PATH}/totals`, params);
+  const totals = useDetail<Totals>(`${PATH}/totals`, { ...params, search: search || undefined });
 
   const remove = useApiMutation<string>({
     mutationFn: (id) => api.delete(`${PATH}/${id}`),
@@ -231,10 +248,20 @@ function Journal({ onEdit }: { onEdit: (row: Transaction) => void }) {
     { key: 'account', header: t('journal.fields.account'), cell: (row) => row.accountName ?? t(`enums:paymentMethod.${row.paymentMethod}`) },
     { key: 'counterparty', header: t('journal.fields.counterparty'), mobile: 'hidden', cell: (row) => row.counterpartyName ?? '—' },
     { key: 'costCenter', header: t('journal.fields.costCenter'), mobile: 'hidden', cell: (row) => centerName(row.costCenterName, row.costCenterType) },
-    { key: 'status', header: t('journal.fields.status'), sortable: true, cell: (row) => <StatusBadge status={row.status} /> },
+    {
+      key: 'status',
+      header: t('journal.fields.status'),
+      sortable: true,
+      cell: (row) => (
+        <span className="inline-flex max-w-56 flex-col items-start gap-0.5 max-md:items-end">
+          <StatusBadge status={row.status} />
+          {row.rejectedReason && (
+            <span className="text-xs break-words text-muted-foreground">{[row.approvedByName, row.rejectedReason].filter(Boolean).join(': ')}</span>
+          )}
+        </span>
+      ),
+    },
   ];
-
-  const editable = (row: Transaction) => row.status !== 'approved' && !row.sourceType;
 
   return (
     <div className="flex flex-col gap-4">
@@ -285,14 +312,14 @@ function Journal({ onEdit }: { onEdit: (row: Transaction) => void }) {
           {
             label: t('common:actions.edit'),
             icon: Pencil,
-            hidden: !canUpdate || !editable(row) || row.type === 'debt_payment' || row.type === 'debt_receipt',
+            hidden: !canUpdate || !canEditEntry(row),
             onClick: () => onEdit(row),
           },
           {
             label: t('common:actions.delete'),
             icon: Trash2,
             destructive: true,
-            hidden: !canDelete || !editable(row),
+            hidden: !canDelete || !canDeleteEntry(row),
             onClick: async () => {
               const ok = await confirm({ title: t('journal.deleteTitle'), description: t('journal.deleteBody'), destructive: true });
               if (ok) remove.mutate(row.id);
@@ -302,12 +329,13 @@ function Journal({ onEdit }: { onEdit: (row: Transaction) => void }) {
             label: t('approval.void'),
             icon: Ban,
             destructive: true,
-            hidden: !canApprove || row.status !== 'approved' || Boolean(row.sourceType),
-            onClick: () => setVoiding(row),
+            hidden: !canApprove || !canVoidEntry(row),
+            onClick: () => (twoPeople && row.createdBy === session.user.id ? toast.info(t('approval.ownVoid')) : setVoiding(row)),
           },
         ]}
       />
-      <div className="flex justify-end">
+      {/* On the left on phones: the assistant button floats in the right corner. */}
+      <div className="flex justify-start sm:justify-end">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline">

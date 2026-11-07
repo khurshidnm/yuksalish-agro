@@ -1,4 +1,5 @@
-import { bigint, boolean, index, integer, jsonb, pgTable, text, uuid } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { bigint, boolean, index, integer, jsonb, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { day, pk, ts, type I18nName } from './_helpers';
 import { tenantColumns, tenantOnlyColumns } from './_tenant';
 import { farms, tenants, users } from './platform';
@@ -60,13 +61,19 @@ export const events = pgTable(
     data: jsonb().$type<Record<string, unknown>>().notNull().default({}),
     photoFileId: uuid(),
     deviceId: uuid(),
+    /** Set on what a device reports: a retry of the same event carries the same key and is stored once. */
+    dedupKey: text(),
     createdBy: uuid().references(() => users.id),
     createdAt: ts().notNull().defaultNow(),
   },
   (t) => [
-    index().on(t.farmId, t.occurredAt.desc()),
-    index().on(t.farmId, t.type, t.occurredAt.desc()),
+    index().on(t.farmId, t.occurredAt),
+    index().on(t.farmId, t.type, t.occurredAt),
     index().on(t.entityType, t.entityId),
+    // A filter that finds little has to walk the whole journal to say so. Both stay small.
+    index('events_device_feed_index').on(t.farmId, t.occurredAt).where(sql`source in ('camera', 'sensor')`),
+    index('events_notable_index').on(t.farmId, t.severity, t.occurredAt).where(sql`severity <> 'info'`),
+    uniqueIndex('events_device_dedup_idx').on(t.deviceId, t.dedupKey).where(sql`dedup_key is not null`),
   ],
 );
 
@@ -86,7 +93,7 @@ export const auditLogs = pgTable(
     device: text(),
     at: ts().notNull().defaultNow(),
   },
-  (t) => [index().on(t.tenantId, t.at.desc()), index().on(t.tenantId, t.entity, t.entityId)],
+  (t) => [index().on(t.tenantId, t.at), index().on(t.tenantId, t.entity, t.entityId)],
 );
 
 // ─── Reference data (ma'lumotnomalar), copied per tenant on provisioning ────

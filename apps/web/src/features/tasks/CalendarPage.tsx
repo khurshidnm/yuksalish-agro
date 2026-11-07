@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { z } from 'zod';
+import { useOpenableLink } from '@/app/canOpen';
 import { ComboboxField, DateField, EmptyState, ErrorCard, FormDialog, FormGrid, PageHeader, SelectField, TextField, TextareaField, useConfirm, useUrlParam } from '@/components';
 import { Badge, type BadgeVariant, Button, Card, CardContent, Combobox, Select, Skeleton, Tabs, TabsList, TabsTrigger } from '@/components/ui';
 import { api } from '@/lib/api';
@@ -71,6 +72,7 @@ function ItemRow({ item, onEdit }: { item: CalendarItem; onEdit: (item: Calendar
   const { t } = useTranslation('tasks');
   const canEdit = usePermission('tasks.update');
   const editable = item.editableId !== null && canEdit;
+  const to = useOpenableLink()(item.link);
 
   const body = (
     <>
@@ -94,8 +96,8 @@ function ItemRow({ item, onEdit }: { item: CalendarItem; onEdit: (item: Calendar
       </button>
     );
   }
-  return item.link ? (
-    <Link to={item.link} className={row}>
+  return to ? (
+    <Link to={to} className={row}>
       {body}
     </Link>
   ) : (
@@ -203,7 +205,7 @@ function WeekView({ anchor, items, onPick, onEdit }: MonthProps & { onEdit: (ite
   const today = todayIso();
   return (
     // Seven columns beside the sidebar leave no room to read, so days flow into wider cards.
-    <div className="grid items-start gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {weekDays(anchor).map((date, index) => (
         <Card key={date} className={cn('min-w-0', date === today && 'border-primary')}>
           <CardContent className="p-2 md:p-2">

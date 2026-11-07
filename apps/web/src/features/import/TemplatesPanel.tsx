@@ -60,7 +60,7 @@ export function TemplatesPanel({ catalog, onUploaded }: { catalog: ImportCatalog
         <p className="mt-2">{t('page.howTo.order')}</p>
       </Alert>
       <p className="text-sm text-muted-foreground">{t('page.maxRows', { max: catalog.maxRows })}</p>
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {catalog.templates.map((template) => (
           <TemplateCard key={template.key} template={template} onUploaded={onUploaded} />
         ))}

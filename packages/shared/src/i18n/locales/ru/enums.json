@@ -6,6 +6,12 @@
   "cropPlanStatus": { "planned": "Запланировано", "sown": "Посеяно", "growing": "Вегетация", "harvested": "Убрано", "cancelled": "Отменено" },
   "sex": { "female": "Самка", "male": "Самец" },
   "animalCategory": { "ewe": "Овцематка", "ram": "Баран", "lamb_male": "Ягнёнок (баранчик)", "lamb_female": "Ягнёнок (ярочка)", "wether": "Валух", "fattening": "На откорме" },
+  "animalCategoryBySpecies": {
+    "goat": { "ewe": "Коза", "ram": "Козёл", "lamb_male": "Козлёнок (самец)", "lamb_female": "Козлёнок (самка)", "wether": "Кастрат", "fattening": "На откорме" },
+    "cattle": { "ewe": "Корова", "ram": "Бык", "lamb_male": "Телёнок (бычок)", "lamb_female": "Телёнок (тёлочка)", "wether": "Вол", "fattening": "На откорме" },
+    "horse": { "ewe": "Кобыла", "ram": "Жеребец", "lamb_male": "Жеребёнок (самец)", "lamb_female": "Жеребёнок (самка)", "wether": "Мерин", "fattening": "На откорме" },
+    "poultry": { "ewe": "Курица", "ram": "Петух", "lamb_male": "Цыплёнок (петушок)", "lamb_female": "Цыплёнок (курочка)", "wether": "Каплун", "fattening": "На откорме" }
+  },
   "animalStatus": { "active": "Активное", "pregnant": "Суягная", "sick": "Больное", "quarantine": "Карантин", "sold": "Продано", "slaughtered": "Забито", "dead": "Пало", "lost": "Потеряно" },
   "animalOrigin": { "born": "Рождено", "purchased": "Куплено" },
   "identifierType": { "ear_tag": "Ушная бирка", "rfid": "RFID", "qr": "QR-код" },
@@ -40,7 +46,7 @@
   "employeeStatus": { "active": "Работает", "on_leave": "В отпуске", "terminated": "Уволен" },
   "timesheetStatus": { "present": "На работе", "absent": "Отсутствует", "sick": "Болеет", "vacation": "Отпуск", "day_off": "Выходной" },
   "payrollStatus": { "draft": "Черновик", "pending": "Ожидает подтверждения", "approved": "Подтверждено", "paid": "Выплачено" },
-  "assetType": { "tractor": "Трактор", "combine": "Комбайн", "seeder": "Сеялка", "plough": "Плуг", "pump": "Насос", "generator": "Генератор", "scale": "Весы", "camera": "Камера", "vehicle": "Транспорт", "other": "Другое" },
+  "assetType": { "tractor": "Трактор", "combine": "Комбайн", "excavator": "Экскаватор", "seeder": "Сеялка", "plough": "Плуг", "pump": "Насос", "generator": "Генератор", "scale": "Весы", "camera": "Камера", "vehicle": "Транспорт", "other": "Другое" },
   "assetStatus": { "working": "В работе", "idle": "Простаивает", "repair": "В ремонте", "written_off": "Списано" },
   "depreciationMethod": { "straight_line": "Линейный", "units": "По объёму работ" },
   "maintenanceType": { "planned": "Плановое обслуживание", "repair": "Ремонт" },
@@ -59,5 +65,7 @@
   "documentType": { "land": "Документ на землю", "construction": "Строительный документ", "permit": "Разрешение", "contract": "Договор", "invoice": "Счёт-фактура", "vet_certificate": "Ветеринарное свидетельство", "act": "Акт", "other": "Другое" },
   "role": { "owner": "Владелец", "director": "Директор", "accountant": "Бухгалтер", "agronomist": "Агроном", "zootechnician": "Зоотехник", "veterinarian": "Ветеринар", "storekeeper": "Кладовщик", "mechanic": "Бригадир / механизатор", "shepherd": "Чабан", "investor": "Инвестор", "auditor": "Аудитор" },
   "module": { "dashboard": "Панель управления", "farm": "Ферма и земля", "crops": "Растениеводство", "livestock": "Животноводство", "health": "Ветеринария", "inventory": "Склад", "feed": "Корма", "finance": "Финансы", "payroll": "Зарплата", "hr": "Сотрудники", "assets": "Техника", "sales": "Продажи", "reports": "Отчёты", "ai": "ИИ-анализ", "cameras": "Камеры", "tasks": "Задачи", "users": "Пользователи", "settings": "Настройки", "audit": "Аудит" },
-  "action": { "view": "Просмотр", "create": "Создание", "update": "Редактирование", "approve": "Подтверждение", "delete": "Удаление" }
+  "action": { "view": "Просмотр", "create": "Создание", "update": "Редактирование", "approve": "Подтверждение", "delete": "Удаление" },
+  "leadStatus": { "new": "Новая", "contacted": "Связались", "qualified": "Заинтересован", "won": "Стал клиентом", "lost": "Отказ" },
+  "leadFarmType": { "livestock": "Животноводство", "crops": "Растениеводство", "mixed": "Смешанное", "other": "Другое" }
 }

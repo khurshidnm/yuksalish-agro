@@ -15,13 +15,21 @@ export const assets = pgTable(
     type: text().notNull(),
     inventoryNo: text(),
     purchaseDate: day(),
+    /** Always in the base currency: depreciation, book value and reports read this. */
     purchasePrice: money(),
+    /** Set only when the price was paid in another currency: the figure on the contract, and its rate. */
+    purchaseAmount: money(),
+    purchaseCurrency: text(),
+    purchaseFxRate: dec(18, 6),
     status: text().notNull().default('working'),
     usefulLifeMonths: dec(6, 0),
     salvageValue: money().notNull().default(0),
     depreciationMethod: text().notNull().default('straight_line'),
     /** Total lifetime units for units-of-production depreciation. */
     totalUnits: dec(14, 2),
+    /** Worn before the farm came onto this system: every month ended by its date is in this figure. */
+    openingDepreciation: money().notNull().default(0),
+    openingDepreciationDate: day(),
     motoHours: dec(12, 2).notNull().default(0),
     fuelNormLPerHour: dec(8, 2),
     fuelNormLPerHa: dec(8, 2),
@@ -60,7 +68,7 @@ export const assetUsageLogs = pgTable(
     billedTransactionId: uuid().references(() => transactions.id),
     notes: text(),
   },
-  (t) => [index().on(t.assetId, t.date.desc()), index().on(t.operationId), index().on(t.fieldId)],
+  (t) => [index().on(t.assetId, t.date), index().on(t.operationId), index().on(t.fieldId)],
 );
 
 export const maintenanceRecords = pgTable(
@@ -78,7 +86,7 @@ export const maintenanceRecords = pgTable(
     downtimeHours: dec(8, 2),
     transactionId: uuid().references(() => transactions.id),
   },
-  (t) => [index().on(t.assetId, t.date.desc()), index().on(t.farmId, t.nextDueDate)],
+  (t) => [index().on(t.assetId, t.date), index().on(t.farmId, t.nextDueDate)],
 );
 
 export const depreciationEntries = pgTable(

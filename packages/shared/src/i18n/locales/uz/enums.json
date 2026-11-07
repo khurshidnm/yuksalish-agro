@@ -6,6 +6,12 @@
   "cropPlanStatus": { "planned": "Rejalashtirilgan", "sown": "Ekilgan", "growing": "O'sishda", "harvested": "Yig'ilgan", "cancelled": "Bekor qilingan" },
   "sex": { "female": "Urg'ochi", "male": "Erkak" },
   "animalCategory": { "ewe": "Sovliq", "ram": "Qo'chqor", "lamb_male": "Qo'zi (erkak)", "lamb_female": "Qo'zi (urg'ochi)", "wether": "Bichilgan", "fattening": "Boquvdagi" },
+  "animalCategoryBySpecies": {
+    "goat": { "ewe": "Ona echki", "ram": "Taka", "lamb_male": "Uloq (erkak)", "lamb_female": "Uloq (urg'ochi)", "wether": "Bichilgan", "fattening": "Boquvdagi" },
+    "cattle": { "ewe": "Sigir", "ram": "Buqa", "lamb_male": "Buzoq (erkak)", "lamb_female": "Buzoq (urg'ochi)", "wether": "Ho'kiz", "fattening": "Boquvdagi" },
+    "horse": { "ewe": "Biya", "ram": "Ayg'ir", "lamb_male": "Toy (erkak)", "lamb_female": "Toy (urg'ochi)", "wether": "Axta", "fattening": "Boquvdagi" },
+    "poultry": { "ewe": "Tovuq", "ram": "Xo'roz", "lamb_male": "Jo'ja (erkak)", "lamb_female": "Jo'ja (urg'ochi)", "wether": "Bichilgan", "fattening": "Boquvdagi" }
+  },
   "animalStatus": { "active": "Faol", "pregnant": "Bo'g'oz", "sick": "Kasal", "quarantine": "Karantin", "sold": "Sotilgan", "slaughtered": "So'yilgan", "dead": "Nobud bo'lgan", "lost": "Yo'qolgan" },
   "animalOrigin": { "born": "Tug'ilgan", "purchased": "Sotib olingan" },
   "identifierType": { "ear_tag": "Quloq birkasi", "rfid": "RFID", "qr": "QR-kod" },
@@ -40,7 +46,7 @@
   "employeeStatus": { "active": "Ishlamoqda", "on_leave": "Ta'tilda", "terminated": "Ishdan ketgan" },
   "timesheetStatus": { "present": "Ishda", "absent": "Kelmagan", "sick": "Kasal", "vacation": "Ta'til", "day_off": "Dam olish" },
   "payrollStatus": { "draft": "Qoralama", "pending": "Tasdiqlash kutilmoqda", "approved": "Tasdiqlangan", "paid": "To'langan" },
-  "assetType": { "tractor": "Traktor", "combine": "Kombayn", "seeder": "Seyalka", "plough": "Plug", "pump": "Nasos", "generator": "Generator", "scale": "Tarozi", "camera": "Kamera", "vehicle": "Transport", "other": "Boshqa" },
+  "assetType": { "tractor": "Traktor", "combine": "Kombayn", "excavator": "Ekskavator", "seeder": "Seyalka", "plough": "Plug", "pump": "Nasos", "generator": "Generator", "scale": "Tarozi", "camera": "Kamera", "vehicle": "Transport", "other": "Boshqa" },
   "assetStatus": { "working": "Ishlamoqda", "idle": "Bo'sh turibdi", "repair": "Ta'mirda", "written_off": "Hisobdan chiqarilgan" },
   "depreciationMethod": { "straight_line": "Chiziqli", "units": "Ish hajmi bo'yicha" },
   "maintenanceType": { "planned": "Rejali xizmat", "repair": "Ta'mirlash" },
@@ -59,5 +65,7 @@
   "documentType": { "land": "Yer hujjati", "construction": "Qurilish hujjati", "permit": "Ruxsatnoma", "contract": "Shartnoma", "invoice": "Hisob-faktura", "vet_certificate": "Veterinariya guvohnomasi", "act": "Akt", "other": "Boshqa" },
   "role": { "owner": "Egasi", "director": "Direktor", "accountant": "Buxgalter", "agronomist": "Agronom", "zootechnician": "Zootexnik", "veterinarian": "Veterinar", "storekeeper": "Omborchi", "mechanic": "Brigadir / mexanizator", "shepherd": "Cho'pon", "investor": "Investor", "auditor": "Auditor" },
   "module": { "dashboard": "Boshqaruv paneli", "farm": "Ferma va yer", "crops": "O'simlikchilik", "livestock": "Chorvachilik", "health": "Veterinariya", "inventory": "Ombor", "feed": "Ozuqa", "finance": "Moliya", "payroll": "Ish haqi", "hr": "Xodimlar", "assets": "Texnika", "sales": "Sotuv", "reports": "Hisobotlar", "ai": "AI-tahlil", "cameras": "Kameralar", "tasks": "Vazifalar", "users": "Foydalanuvchilar", "settings": "Sozlamalar", "audit": "Audit" },
-  "action": { "view": "Ko'rish", "create": "Yaratish", "update": "Tahrirlash", "approve": "Tasdiqlash", "delete": "O'chirish" }
+  "action": { "view": "Ko'rish", "create": "Yaratish", "update": "Tahrirlash", "approve": "Tasdiqlash", "delete": "O'chirish" },
+  "leadStatus": { "new": "Yangi", "contacted": "Bog'lanildi", "qualified": "Qiziqmoqda", "won": "Mijoz bo'ldi", "lost": "Rad etildi" },
+  "leadFarmType": { "livestock": "Chorvachilik", "crops": "O'simlikchilik", "mixed": "Aralash", "other": "Boshqa" }
 }

@@ -1,0 +1,10 @@
+[
+  "src/features/auth/LoginPage.tsx",
+  "src/features/today/TodayPage.tsx",
+  "src/features/today/DailyLogPage.tsx",
+  "src/features/today/ReportSickPage.tsx",
+  "src/features/today/DeathPage.tsx",
+  "src/features/today/WeightPage.tsx",
+  "src/features/today/LambingPage.tsx",
+  "src/features/today/SyncPage.tsx"
+]

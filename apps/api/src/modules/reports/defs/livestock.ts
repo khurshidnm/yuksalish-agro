@@ -10,7 +10,6 @@ import {
   mortalityPercent,
   round,
 } from '@yap/shared';
-import { averageHead } from '@yap/shared/formulas/livestock';
 import { schema } from '../../../db/client';
 import { canSeeMoney, ctx, today, tx } from '../../../core/context';
 import { monthsBetween } from '../../finance/budget.service';
@@ -233,7 +232,7 @@ export const livestockReports: ReportDefinition[] = [
         )
         .orderBy(desc(animalExits.date));
       const movement = await herdMovement(from, to);
-      const percent = mortalityPercent(movement.dead, averageHead(movement.opening, movement.closing));
+      const percent = mortalityPercent(movement.dead, movement.averageHead);
       const notes: ReportNote[] =
         percent === null ? [] : [{ key: 'mortality_percent', params: { percent: round(percent, 2), dead: movement.dead } }];
       return { rows, notes };

@@ -31,7 +31,7 @@ interface HerdLookup extends Named {
   headCount: number;
 }
 
-export const animalOptions = (params?: { sex?: string; category?: string }) =>
+export const animalOptions = (params?: { sex?: string; category?: string; forBreeding?: string }) =>
   apiOptions<AnimalLookup>(
     `${ANIMALS_PATH}/lookup`,
     (a) => ({ value: a.id, label: a.tag, hint: i18n.t(`enums:animalCategory.${a.category}`) }),
@@ -57,9 +57,4 @@ export async function drugOptions(search: string): Promise<ComboboxOption[]> {
     ['vet_drug', 'vaccine'].map((category) => api.list<ItemLookup>('/inventory/items/lookup', { category, search })),
   );
   return [...drugs.data, ...vaccines.data].map(toItem);
-}
-
-/** Pairs a client key with one submit, so a double tap or a retry on bad signal records once. */
-export function newRequestKey(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }

@@ -6,6 +6,12 @@
   "cropPlanStatus": { "planned": "Planned", "sown": "Sown", "growing": "Growing", "harvested": "Harvested", "cancelled": "Cancelled" },
   "sex": { "female": "Female", "male": "Male" },
   "animalCategory": { "ewe": "Ewe", "ram": "Ram", "lamb_male": "Ram lamb", "lamb_female": "Ewe lamb", "wether": "Wether", "fattening": "Fattening" },
+  "animalCategoryBySpecies": {
+    "goat": { "ewe": "Doe", "ram": "Buck", "lamb_male": "Kid (male)", "lamb_female": "Kid (female)", "wether": "Wether", "fattening": "Fattening" },
+    "cattle": { "ewe": "Cow", "ram": "Bull", "lamb_male": "Calf (male)", "lamb_female": "Calf (female)", "wether": "Steer", "fattening": "Fattening" },
+    "horse": { "ewe": "Mare", "ram": "Stallion", "lamb_male": "Foal (male)", "lamb_female": "Foal (female)", "wether": "Gelding", "fattening": "Fattening" },
+    "poultry": { "ewe": "Hen", "ram": "Rooster", "lamb_male": "Chick (male)", "lamb_female": "Chick (female)", "wether": "Capon", "fattening": "Fattening" }
+  },
   "animalStatus": { "active": "Active", "pregnant": "Pregnant", "sick": "Sick", "quarantine": "Quarantine", "sold": "Sold", "slaughtered": "Slaughtered", "dead": "Dead", "lost": "Lost" },
   "animalOrigin": { "born": "Born on farm", "purchased": "Purchased" },
   "identifierType": { "ear_tag": "Ear tag", "rfid": "RFID", "qr": "QR code" },
@@ -40,7 +46,7 @@
   "employeeStatus": { "active": "Working", "on_leave": "On leave", "terminated": "Left" },
   "timesheetStatus": { "present": "Present", "absent": "Absent", "sick": "Sick", "vacation": "Vacation", "day_off": "Day off" },
   "payrollStatus": { "draft": "Draft", "pending": "Awaiting approval", "approved": "Approved", "paid": "Paid" },
-  "assetType": { "tractor": "Tractor", "combine": "Combine", "seeder": "Seeder", "plough": "Plough", "pump": "Pump", "generator": "Generator", "scale": "Scale", "camera": "Camera", "vehicle": "Vehicle", "other": "Other" },
+  "assetType": { "tractor": "Tractor", "combine": "Combine", "excavator": "Excavator", "seeder": "Seeder", "plough": "Plough", "pump": "Pump", "generator": "Generator", "scale": "Scale", "camera": "Camera", "vehicle": "Vehicle", "other": "Other" },
   "assetStatus": { "working": "Working", "idle": "Idle", "repair": "In repair", "written_off": "Written off" },
   "depreciationMethod": { "straight_line": "Straight line", "units": "By work volume" },
   "maintenanceType": { "planned": "Scheduled service", "repair": "Repair" },
@@ -59,5 +65,7 @@
   "documentType": { "land": "Land document", "construction": "Construction document", "permit": "Permit", "contract": "Contract", "invoice": "Invoice", "vet_certificate": "Veterinary certificate", "act": "Act", "other": "Other" },
   "role": { "owner": "Owner", "director": "Director", "accountant": "Accountant", "agronomist": "Agronomist", "zootechnician": "Zootechnician", "veterinarian": "Veterinarian", "storekeeper": "Storekeeper", "mechanic": "Foreman / machine operator", "shepherd": "Shepherd", "investor": "Investor", "auditor": "Auditor" },
   "module": { "dashboard": "Dashboard", "farm": "Farm and land", "crops": "Crops", "livestock": "Livestock", "health": "Veterinary", "inventory": "Warehouse", "feed": "Feed", "finance": "Finance", "payroll": "Payroll", "hr": "People", "assets": "Machinery", "sales": "Sales", "reports": "Reports", "ai": "AI analysis", "cameras": "Cameras", "tasks": "Tasks", "users": "Users", "settings": "Settings", "audit": "Audit" },
-  "action": { "view": "View", "create": "Create", "update": "Edit", "approve": "Approve", "delete": "Delete" }
+  "action": { "view": "View", "create": "Create", "update": "Edit", "approve": "Approve", "delete": "Delete" },
+  "leadStatus": { "new": "New", "contacted": "Contacted", "qualified": "Interested", "won": "Became a customer", "lost": "Lost" },
+  "leadFarmType": { "livestock": "Livestock", "crops": "Crops", "mixed": "Mixed", "other": "Other" }
 }

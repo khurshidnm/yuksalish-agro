@@ -20,6 +20,7 @@
     "notInstalled": "This camera is not installed yet.",
     "failedTitle": "Could not open the stream",
     "failedHint": "The address is not working, or this browser cannot play the format.",
+    "insecureHint": "This address uses http, which a secure app cannot embed. Open the stream separately, or give the gateway an https address.",
     "emptyTitle": "No cameras",
     "emptyBody": "Add a camera under Devices.",
     "gatewayTitle": "Live view is not connected yet",
@@ -105,6 +106,7 @@
   "errors": {
     "INVALID_STREAM_URL": "This address is not valid. Enter the ONVIF address without a user name or password.",
     "DEVICE_KEY_MISMATCH": "This device is bound to a different key.",
-    "INVALID_EVENT_TIME": "The event time cannot be in the future."
+    "INVALID_EVENT_TIME": "The event time cannot be in the future.",
+    "SNAPSHOT_UNAVAILABLE": "The camera gateway did not give this frame."
   }
 }

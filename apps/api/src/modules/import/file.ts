@@ -1,181 +1,120 @@
 /**
- * Turning an uploaded file into rows of cells. Excel and CSV both end up as the same shape, so
- * everything after this point does not care where the data came from.
+ * From an uploaded file to the table inside it. reader.ts does the reading, in a process of its own;
+ * this side starts it, within limits, and finds the header in what comes back.
  */
-import ExcelJS from 'exceljs';
-import { badRequest } from '../../core/errors';
+import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import type { FastifyBaseLogger } from 'fastify';
+import { AppError, badRequest } from '../../core/errors';
+import { HEADER_SCAN_ROWS, READ_STDIN, type ReaderAnswer, type Sheet } from './reader';
 import { cellText, matchKey, type Cell } from './values';
 
-export interface Sheet {
-  name: string;
-  /** Sparse by column index, 0-based. `number` is the row number the person sees in Excel. */
-  rows: { number: number; cells: Cell[] }[];
+/**
+ * Sized for the smallest server, where the API's container has 1 GB: the process then peaks near 460 MB
+ * beside an API of about 300 MB. A real file needs far less: 2000 rows peak at 140 MB, 30 000 rows at 330 MB.
+ */
+const READER_HEAP_MB = 256;
+/** A file that takes the whole heap ends in about 5 s on a laptop. A proxy gives up at 120 s, queue included. */
+const READ_TIMEOUT_MS = 20_000;
+/** The reader keeps 8 million characters at most, and JSON can spend a few bytes on each. */
+const MAX_ANSWER_BYTES = 64 * 1024 * 1024;
+const MAX_WAITING_READS = 3;
+
+const READER_ARGS = [
+  '--experimental-strip-types',
+  '--no-warnings',
+  `--max-old-space-size=${READER_HEAP_MB}`,
+  fileURLToPath(new URL('./reader.ts', import.meta.url)),
+  READ_STDIN,
+];
+
+export interface Finished {
+  stdout: Buffer;
+  exitCode: number | null;
+  /** Set when the process was killed or crashed. */
+  signal: NodeJS.Signals | null;
 }
-
-/** Rows scanned to find the header. People put a title above the table. */
-export const HEADER_SCAN_ROWS = 15;
-/** Sheets of our own template that never hold data. */
-export const LISTS_SHEET = 'Lists';
-
-const MAX_UNCOMPRESSED_BYTES = 200 * 1024 * 1024;
-
-const startsWith = (body: Buffer, ...bytes: number[]) => bytes.every((b, i) => body[i] === b);
 
 /**
- * A small .xlsx can unpack to gigabytes. The zip directory declares the unpacked sizes, so check
- * them before handing the file to a parser that holds everything in memory.
+ * Run node on `args` with `input` on stdin, killing it past the limits. Only a process that cannot
+ * start rejects: whatever one that started does, the answer is how it ended.
  */
-function assertReasonableZip(body: Buffer): void {
-  const END_OF_DIRECTORY = 0x06054b50;
-  const ENTRY = 0x02014b50;
-  const searchFrom = Math.max(0, body.length - 66_000);
-  let end = -1;
-  for (let i = body.length - 22; i >= searchFrom; i--) {
-    if (body.readUInt32LE(i) === END_OF_DIRECTORY) {
-      end = i;
-      break;
-    }
-  }
-  if (end < 0) throw badRequest('NOT_A_SPREADSHEET', 'This file is not an Excel workbook');
-
-  const entries = body.readUInt16LE(end + 10);
-  let offset = body.readUInt32LE(end + 16);
-  let total = 0;
-  for (let i = 0; i < entries; i++) {
-    if (offset + 46 > body.length || body.readUInt32LE(offset) !== ENTRY) {
-      throw badRequest('NOT_A_SPREADSHEET', 'This file is not an Excel workbook');
-    }
-    total += body.readUInt32LE(offset + 24);
-    if (total > MAX_UNCOMPRESSED_BYTES) throw badRequest('FILE_TOO_COMPLEX', 'This workbook is too large to read');
-    offset += 46 + body.readUInt16LE(offset + 28) + body.readUInt16LE(offset + 30) + body.readUInt16LE(offset + 32);
-  }
-}
-
-function toIsoDate(date: Date): string | null {
-  return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
-}
-
-/** ExcelJS gives a different shape per cell kind; a formula is read by its stored result, never run. */
-function readCell(value: ExcelJS.CellValue): Cell {
-  if (value === null || value === undefined) return null;
-  if (typeof value === 'number') return value;
-  if (typeof value === 'string') return value.trim() || null;
-  if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE';
-  if (value instanceof Date) return toIsoDate(value);
-  if (typeof value === 'object') {
-    if ('error' in value) return null;
-    if ('richText' in value) return value.richText.map((part) => part.text).join('').trim() || null;
-    if ('text' in value) return String(value.text).trim() || null;
-    if ('result' in value) return readCell(value.result as ExcelJS.CellValue);
-  }
-  return null;
-}
-
-async function readWorkbook(body: Buffer): Promise<Sheet[]> {
-  assertReasonableZip(body);
-  const workbook = new ExcelJS.Workbook();
-  try {
-    await workbook.xlsx.load(body as unknown as ArrayBuffer);
-  } catch {
-    throw badRequest('NOT_A_SPREADSHEET', 'This file is not an Excel workbook');
-  }
-
-  const sheets: Sheet[] = [];
-  for (const sheet of workbook.worksheets) {
-    if (sheet.name === LISTS_SHEET) continue;
-    const rows: Sheet['rows'] = [];
-    sheet.eachRow({ includeEmpty: false }, (row, number) => {
-      const cells: Cell[] = [];
-      row.eachCell({ includeEmpty: false }, (cell, column) => {
-        cells[column - 1] = readCell(cell.value);
-      });
-      if (cells.some((c) => c !== null && c !== undefined)) rows.push({ number, cells });
+export function runLimited(args: string[], input: Buffer, limits: { timeoutMs: number; maxOutputBytes: number }): Promise<Finished> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, args, {
+      // None of the API's secrets, and not its NODE_OPTIONS, which would set the API's heap.
+      env: {},
+      stdio: ['pipe', 'pipe', 'ignore'],
+      timeout: limits.timeoutMs,
+      killSignal: 'SIGKILL',
     });
-    sheets.push({ name: sheet.name, rows });
-  }
-  return sheets;
+    child.on('error', reject);
+
+    const chunks: Buffer[] = [];
+    let size = 0;
+    // Out of file handles, there are no streams and only the 'error' above.
+    child.stdout?.on('data', (chunk: Buffer) => {
+      size += chunk.length;
+      if (size > limits.maxOutputBytes) child.kill('SIGKILL');
+      else chunks.push(chunk);
+    });
+    // A stream error nobody hears would end the API. 'close' says how the process ended anyway.
+    child.stdout?.on('error', () => {});
+    child.stdin?.on('error', () => {});
+
+    child.on('close', (exitCode, signal) => resolve({ stdout: Buffer.concat(chunks), exitCode, signal }));
+    child.stdin?.end(input);
+  });
 }
 
-function decodeText(body: Buffer): string {
-  try {
-    return new TextDecoder('utf-8', { fatal: true }).decode(body).replace(/^﻿/, '');
-  } catch {
-    // Excel on a Russian Windows saves "CSV" in cp1251.
-    return new TextDecoder('windows-1251').decode(body);
-  }
-}
+let reading = false;
+const waiting: (() => void)[] = [];
 
-function detectDelimiter(text: string): string {
-  const firstLines = text.split(/\r?\n/, 5).join('\n');
-  const candidates = [';', ',', '\t'];
-  const counts = candidates.map((c) => firstLines.split(c).length);
-  return candidates[counts.indexOf(Math.max(...counts))];
-}
-
-/** RFC 4180 with an auto-detected delimiter. Quoted cells may contain delimiters and newlines. */
-export function parseCsv(text: string): Cell[][] {
-  const delimiter = detectDelimiter(text);
-  const rows: Cell[][] = [];
-  let row: Cell[] = [];
-  let cell = '';
-  let quoted = false;
-
-  const pushCell = () => {
-    // Our own CSV export prefixes risky cells with an apostrophe; a real cell never starts so.
-    const clean = cell.trim().replace(/^'(?=[=+\-@])/, '');
-    row.push(clean === '' ? null : clean);
-    cell = '';
-  };
-  const pushRow = () => {
-    pushCell();
-    rows.push(row);
-    row = [];
-  };
-
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    if (quoted) {
-      if (ch === '"' && text[i + 1] === '"') {
-        cell += '"';
-        i += 1;
-      } else if (ch === '"') {
-        quoted = false;
-      } else {
-        cell += ch;
-      }
-    } else if (ch === '"' && cell === '') {
-      quoted = true;
-    } else if (ch === delimiter) {
-      pushCell();
-    } else if (ch === '\n') {
-      pushRow();
-    } else if (ch !== '\r') {
-      cell += ch;
+/** Files are read one at a time, because of the memory above. Returns what hands the turn on. */
+async function readerTurn(): Promise<() => void> {
+  if (reading) {
+    if (waiting.length >= MAX_WAITING_READS) {
+      throw new AppError(429, 'READER_BUSY', 'Other files are being read, please try again in a moment');
     }
+    await new Promise<void>((resolve) => waiting.push(resolve));
   }
-  if (cell !== '' || row.length > 0) pushRow();
-  return rows;
+  reading = true;
+  return () => {
+    const next = waiting.shift();
+    if (next) next();
+    else reading = false;
+  };
 }
 
-function readCsv(body: Buffer, name: string): Sheet[] {
-  const rows = parseCsv(decodeText(body))
-    .map((cells, index) => ({ number: index + 1, cells }))
-    .filter((row) => row.cells.some((c) => c !== null));
-  return [{ name, rows }];
+function parseAnswer(finished: Finished): ReaderAnswer | null {
+  if (finished.exitCode !== 0) return null;
+  try {
+    return JSON.parse(finished.stdout.toString('utf8')) as ReaderAnswer;
+  } catch {
+    return null;
+  }
 }
 
-const looksBinary = (body: Buffer) => body.subarray(0, 4096).includes(0);
-
-/** Read any accepted file. The declared type is client input, so the bytes decide. */
-export async function readSpreadsheet(body: Buffer, fileName: string): Promise<Sheet[]> {
-  if (body.length === 0) throw badRequest('EMPTY_FILE', 'The file is empty');
-  if (startsWith(body, 0x50, 0x4b)) return readWorkbook(body);
-  // The old binary .xls format: tell the person exactly what to do.
-  if (startsWith(body, 0xd0, 0xcf, 0x11, 0xe0)) {
-    throw badRequest('OLD_EXCEL_FORMAT', 'Save this file as .xlsx and upload it again');
+/** Read any accepted file, or refuse it. Nothing a file does here reaches this process. */
+export async function readSpreadsheet(body: Buffer, log: FastifyBaseLogger): Promise<Sheet[]> {
+  const handOn = await readerTurn();
+  let finished: Finished;
+  try {
+    finished = await runLimited(READER_ARGS, body, { timeoutMs: READ_TIMEOUT_MS, maxOutputBytes: MAX_ANSWER_BYTES });
+  } catch (err) {
+    log.error({ err }, 'the spreadsheet reader did not start');
+    throw new AppError(503, 'READER_UNAVAILABLE', 'Files cannot be read right now, please try again');
+  } finally {
+    handOn();
   }
-  if (looksBinary(body)) throw badRequest('NOT_A_SPREADSHEET', 'This file is not an Excel or CSV file');
-  return readCsv(body, fileName);
+
+  const answer = parseAnswer(finished);
+  if (!answer) {
+    log.warn({ exitCode: finished.exitCode, signal: finished.signal, bytes: body.length }, 'the spreadsheet reader was stopped');
+    throw badRequest('FILE_TOO_COMPLEX', 'This workbook is too large to read');
+  }
+  if ('refused' in answer) throw badRequest(answer.refused.code, answer.refused.message, answer.refused.details);
+  return answer.sheets;
 }
 
 export interface ColumnNames {
@@ -184,13 +123,16 @@ export interface ColumnNames {
   names: string[];
 }
 
+/** Longer text is not a header, and the patterns below are too slow for what a hostile cell can hold. */
+const MAX_HEADER_CHARS = 200;
+
 /** A header cell without the marks our template adds: "Maydoni (ga) *" reads as "Maydoni (ga)". */
 function headerKey(cell: Cell | undefined): string {
   return matchKey(cellText(cell).replace(/\*/g, ''));
 }
 
-/** Column index by key in one row. A column may also match by its name without the bracket note. */
-export function matchHeader(cells: Cell[], columns: ColumnNames[]): Map<string, number> {
+/** Column key by every form of its names. A column may also match by its name without the bracket note. */
+function columnsByName(columns: ColumnNames[]): Map<string, string> {
   const names = new Map<string, string>();
   for (const column of columns) {
     for (const name of column.names) {
@@ -200,9 +142,15 @@ export function matchHeader(cells: Cell[], columns: ColumnNames[]): Map<string, 
       if (short) names.set(short, column.key);
     }
   }
+  return names;
+}
+
+/** Column index by key in one row. */
+function matchHeader(cells: Cell[], names: Map<string, string>): Map<string, number> {
   const found = new Map<string, number>();
   cells.forEach((cell, index) => {
     const full = cellText(cell);
+    if (full.length > MAX_HEADER_CHARS) return;
     const column = names.get(headerKey(cell)) ?? names.get(matchKey(full.replace(/\*/g, '').replace(/\(.*?\)/g, '')));
     if (column && !found.has(column)) found.set(column, index);
   });
@@ -217,10 +165,11 @@ export interface Located {
 
 /** The sheet and row with the most recognised headers. */
 export function locateHeader(sheets: Sheet[], columns: ColumnNames[]): Located | null {
+  const names = columnsByName(columns);
   let best: Located | null = null;
   for (const sheet of sheets) {
     for (const row of sheet.rows.slice(0, HEADER_SCAN_ROWS)) {
-      const found = matchHeader(row.cells, columns);
+      const found = matchHeader(row.cells, names);
       if (found.size > (best?.columns.size ?? 0)) best = { sheet, headerRow: row.number, columns: found };
     }
   }

@@ -180,7 +180,7 @@
       "contract": "Shartnoma tugaydi: {{number}}, {{counterparty}}",
       "document": "Hujjat muddati tugaydi: {{name}}",
       "maintenance": "Texnik xizmat: {{name}}",
-      "state_report": "Hisobot topshirish: {{name}}, {{authority}}",
+      "state_report": "Hisobot topshirish: {{name}}",
       "staff_contract": "Shartnoma tugaydi: {{name}}",
       "staff_medical": "Tibbiy ko'rik: {{name}}"
     },

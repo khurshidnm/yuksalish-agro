@@ -682,16 +682,13 @@ describe('demo seed', () => {
     const mine = (await shepherd.get('/tasks')).body.data;
     expect(mine.map((t: any) => t.title)).toContain('Ertalabki ozuqa berish');
 
-    expect((await director.get('/tasks', { overdue: true })).body.meta.total).toBe(1);
+    expect((await director.get('/tasks', { overdue: true })).body.meta.total).toBe(0);
     const vaccination = (await director.get('/tasks', { search: 'Enterotoksemiya' })).body.data[0];
     expect(vaccination.requiresRecord).toBe('health_record');
     expect((await director.post(`/tasks/${vaccination.id}/complete`, {})).body.error.code).toBe('RECORD_REQUIRED');
 
     const events = (await director.get('/tasks/calendar', { from: today, to: addDays(today, 30), kinds: 'manual' })).data;
     expect(events).toHaveLength(4);
-
-    const alerts = (await director.get('/alerts', { active: true })).body.data;
-    expect(alerts.map((a: any) => a.ruleKey)).toContain('tasks_overdue');
 
     const summary = (await director.get('/notifications')).body.data.find((n: any) => n.eventType === 'daily_summary');
     expect(summary.title).toContain('Kunlik xulosa');

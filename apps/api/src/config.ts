@@ -23,9 +23,20 @@ const schema = z.object({
   S3_ACCESS_KEY: z.string().optional(),
   S3_SECRET_KEY: z.string().optional(),
   TELEGRAM_BOT_TOKEN: z.string().optional(),
+  /** Telegram chat that hears about each new enquiry from the website. */
+  LEADS_TELEGRAM_CHAT_ID: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
+  GEMINI_API_KEY: z.string().optional(),
+  /** "true" states the key is on a billing-enabled project. See modules/ai/provider/index.ts. */
+  GEMINI_PAID_TIER: z.string().optional(),
+  /** "gemini" or "claude". Unset, it follows whichever key is present, Gemini first. */
+  AI_PROVIDER: z.string().optional(),
   /** Set to "false" to run the API without background jobs. */
   JOBS_ENABLED: z.string().default('true'),
+  /** Pinged once a minute while the deep health check passes, so an outside service notices when it stops. */
+  HEARTBEAT_URL: z.string().optional(),
+  /** "true" serves /api/docs in production too. Anyone can read it there, signed in or not. */
+  API_DOCS: z.string().optional(),
 });
 
 const parsed = schema.parse(process.env);

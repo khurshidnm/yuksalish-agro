@@ -13,6 +13,7 @@ import finance from './finance';
 import hr from './hr';
 import importModule from './import';
 import inventory from './inventory';
+import leads from './leads';
 import livestock from './livestock';
 import notifications from './notifications';
 import platform from './platform';
@@ -44,5 +45,6 @@ export const MODULE_PLUGINS: Record<string, (app: FastifyInstance) => Promise<vo
   import: importModule,
   settings,
   platform,
+  leads,
   today,
 };

@@ -3,6 +3,7 @@
  * what is bad, what to do. The figures are always the same; the LLM, when configured, only
  * words them. Without it, or when it fails, a deterministic template does.
  */
+import { safeError } from '../../core/errors';
 import { and, count, eq, gte, lte } from 'drizzle-orm';
 import { z } from 'zod';
 import { addDays, monthOf, monthRange, round } from '@yap/shared';
@@ -204,7 +205,7 @@ async function llmSections(
     const text = response.content.flatMap((b) => (b.type === 'text' ? [b.text] : [])).join('');
     return sectionsSchema.parse(JSON.parse(text));
   } catch (error) {
-    console.error('[ai] summary wording failed, using the template', error);
+    console.error('[ai] summary wording failed, using the template', safeError(error));
     return null;
   }
 }
@@ -296,10 +297,12 @@ export async function saveSummary(
   return { id: stored.id, title, body, created: stored.inserted, notified };
 }
 
-/** The scheduled run: gather, word, store, send. */
-export async function sendExecutiveSummary(kind: SummaryKind) {
-  const language = await asAi(tenantLanguage);
-  const figures = await gatherFigures(kind);
+/**
+ * The scheduled run: gather, word, store, send. The model can take minutes, so `step` lets a caller
+ * outside a transaction open one around each database step, and hold none while it answers.
+ */
+export async function sendExecutiveSummary(kind: SummaryKind, step: <T>(fn: () => Promise<T>) => Promise<T> = (fn) => fn()) {
+  const { language, figures } = await step(async () => ({ language: await asAi(tenantLanguage), figures: await gatherFigures(kind) }));
   const written = await writeSummary(figures, language);
-  return saveSummary(figures, written, language, { notify: true });
+  return step(() => saveSummary(figures, written, language, { notify: true }));
 }

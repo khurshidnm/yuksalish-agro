@@ -336,6 +336,7 @@
   "errors": {
     "ALREADY_PREGNANT": "This ewe is already recorded as pregnant",
     "ANIMAL_NOT_FEMALE": "This animal is not a female",
+    "ANIMAL_CANNOT_BREED": "This animal is too young to breed, or castrated",
     "ANIMAL_NOT_ON_FARM": "This animal is no longer on the farm",
     "RAM_NOT_MALE": "The chosen animal is not a male",
     "PREGNANCY_NOT_OPEN": "This pregnancy is already closed",

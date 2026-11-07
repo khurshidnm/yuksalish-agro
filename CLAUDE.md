@@ -1,10 +1,11 @@
-# Yuksalish Agro Platform (YAP) — engineering guide
+# Agro Panel (code name YAP) — engineering guide
 
-Multi-tenant farm-management SaaS. Pilot tenant: Yuksalish Agro (210 ha, 500 Hisori ewes, Qorovulbozor).
+Multi-tenant farm-management SaaS, named Agro Panel (agropanel.uz). Pilot tenant: Yuksalish Agro (210 ha of which 90 ha arable, 700 Hisori ewes from Tatarstan, Qorovulbozor).
 The source of truth for requirements is `Yuksalish Agro — Ferma boshqaruv platformasi. Texnik topshiriq.md`.
 
 **Scope right now: web application only.** No Flutter app, no separate Python service. Field staff use the
-web app from a phone, so every screen must work at 360 px. AI features live inside the API (`modules/ai`).
+web app from a phone, so every screen must work at 360 px. AI features live inside the API (`modules/ai`),
+behind a swappable provider: Gemini by default, Claude as the alternative.
 
 ## Stack
 
@@ -37,6 +38,7 @@ packages/shared/src/
   permissions.ts roles, modules, default permission matrix
   enums.ts       stable string values for status/type columns
   dates.ts       business-date helpers (Asia/Tashkent)
+  brand.ts       PRODUCT_NAME, the only place the product name is written in code. The farm keeps its own name
   i18n/locales/{uz,ru,en}/<namespace>.json   one namespace per module
 apps/api/src/
   core/          kernel: context, http guard, errors, query helpers, journal, inventory, ledger, cost centers,
@@ -52,7 +54,14 @@ apps/web/src/
   components/ui/ UI kit. components/ shared composites (DataTable, PageHeader, ...)
   lib/           api client, auth, i18n, formatters
   features/<m>/  routes.tsx + pages + feature components
+  features/landing/  the public website: prerendered at build time, only the contact form is hydrated.
+                 Its copy is packages/shared/src/i18n/locales/<lang>/landing.json. Claim only what the
+                 product does. It speaks of livestock in general: species cover cattle, sheep, goats,
+                 horses and poultry (a test keeps the wording general).
 ```
+
+The development database was built with `db:setup`, not migrations, so `db:migrate` does not work on it.
+For a schema change there, apply the new table by hand; never run `db:reset` on data someone is using.
 
 ## Non-negotiable domain rules
 
@@ -66,6 +75,11 @@ apps/web/src/
    `expense` (direct), `inventory` (bought for stock: reaches a cost center only when issued),
    `capex` (via depreciation), `animal` (capitalised into the animal). Cost reports sum approved
    `expense` transactions plus stock `issue` movements. Purchases for stock must use `inventory`.
+   Money and goods stand or fall together: rejecting or voiding the money of a stock purchase takes its
+   receipt back, and if the stock was already used, the rejection is refused.
+   Money recorded later for a receipt stands alone: rejecting it puts the receipt back on the unpaid list,
+   and the goods stay. Farm-level operating expense is direct expenses plus stock used, leaving out own
+   produce, whose cost was counted as it grew. Net result is income less operating expense, everywhere.
 4. **Formulas live in `packages/shared/src/formulas`.** Do not reimplement one. Add it there with a test.
 5. **Missing data is `null`, never 0.** A zero denominator yields `null`; the UI shows a "not enough data"
    dash. Do not guess.
@@ -81,7 +95,11 @@ apps/web/src/
    dashboard and investor report, without the journal, accounts or counterparties.
 8. **Personal data** (phone, passport, salary, employee full name in reports) is hidden without `pii.view`.
 9. **AI never writes business data.** It reads through the `yap_ai` role and writes only `ai_insights`,
-   `ai_conversations` and `ai_messages`. Postgres enforces this, not just the code.
+   `ai_conversations`, `ai_messages` and `ai_proposals`. Postgres enforces this, not just the code. A
+   proposal reaches the books only when a person confirms it, through the owning service
+   (docs/assistant.md). Nothing on a card rests on the model's word alone: code finds each fact in the
+   person's words, and confirm decides again under a lock. Word evidence lives in
+   `packages/shared/src/formulas/record-words.ts` and `money-text.ts`, with tests in all four scripts.
 10. **Every domain action writes a journal event** via `recordEvent()` (spec 4.1 p.4). Row-level change
     history is captured automatically by audit triggers; do not write audit rows by hand.
 11. **Business dates** are `date` columns as `YYYY-MM-DD` strings. "Today" is `todayIso()` from shared,
@@ -101,6 +119,8 @@ apps/web/src/
 
 Every route goes through `routes()`, which authenticates, opens the tenant transaction, checks the
 permission, module and 2FA policy, replays idempotent requests, and wraps the result in `{ data }`.
+A switched-off module grants nothing: use `enabledPermissions(permissions, modules)` for any identity built
+outside `routes()`. An `Idempotency-Key` answers only for its own path and person.
 Return a plain value, or a `Page` from `paged()`. `apps/api/src/modules/finance/counterparties.*` is the
 reference module: copy its shape.
 
@@ -124,12 +144,12 @@ Route options include `transaction: false` for handlers that wait on something s
 
 | File | Exports |
 | --- | --- |
-| `errors` | `AppError`, `badRequest(code,msg,details?)`, `forbidden(msg?,code?,details?)`, `notFound(what)`, `conflict(code,msg,details?)`, `unauthorized()` |
+| `errors` | `AppError`, `badRequest(code,msg,details?)`, `forbidden(msg?,code?,details?)`, `notFound(what)`, `conflict(code,msg,details?)`, `unauthorized()`, `safeError(error)` for logs: never log a raw database error, its message holds the query's parameters |
 | `query` | `listQuery`, `idParam`, `isoDate`, `isoMonth`, `clientId`, `paged(q,table,where,rows)`, `searchAny(term,cols)`, `sortBy(sort,allowed,fallback,tieBreaker?)`, `sumOf(col)` |
 | `journal` | `recordEvent({type,entityType,entityId,severity,data,occurredAt,source,photoFileId})` |
 | `costCenters` | `ensureCostCenter(type,refId,name)` (call when creating a field, herd or asset, and store the id), `generalCostCenterId()` |
-| `inventory` | `receiveStock`, `issueStock` (FIFO or AVG, locks batches, `INSUFFICIENT_STOCK` on shortage, needs `costCenterId` unless reason is `sale`), `transferStock`, `adjustStock`, `reverseMovements(refType,refId)` (when a source record is edited or deleted: reverse, then re-issue), `stockOnHand`, `getItemOrThrow`, `COST_MOVEMENT_TYPES`, `COST_CREDIT_MOVEMENT_TYPES` |
-| `ledger` | `postTransaction(input)` (returns the row; large amounts stay `pending`), `approveTransaction(id)`, `rejectTransaction(id,reason)` |
+| `inventory` | `receiveStock`, `issueStock` (FIFO or AVG, locks batches, `INSUFFICIENT_STOCK` on shortage, needs `costCenterId` unless reason is `sale`), `transferStock`, `adjustStock`, `reverseMovements(refType,refId)` (when a source record is edited or deleted: reverse, then re-issue), `reverseStockDocument(refId)` (one receipt, by its unique reference, never by document number), `receiptOfBatch(batchId)`, `stockOnHand`, `getItemOrThrow`, `COST_MOVEMENT_TYPES`, `COST_CREDIT_MOVEMENT_TYPES` |
+| `ledger` | `postTransaction(input)` (returns the row; large amounts stay `pending`; `documentBase` for one document posted as several rows), `approveTransaction(id)`, `rejectTransaction(id,reason)`, `voidTransactions(match,reason)` (`DEBT_ALREADY_SETTLED` if a settlement would be stranded), `cancelStockPurchase(batchId,reason)`, `assertDebtRemovable(ids)`, `lockDebt(counterpartyId,direction)` (take it before any check-then-write on a debt), `accountTakesCurrency(account,currency)` (the one currency rule), `fxRateIsPlausible(given,stored)`, `resolveFxRate(currency,date,given?)`, `assertCostCenterOpen(id)` |
 | `geo` | `computeAreaHa(geojson)`: authoritative area through PostGIS |
 | `settings` | `TenantSettings`, read through `ctx().settings` |
 | `tenancy` | `provisionTenant`, `addMember` |

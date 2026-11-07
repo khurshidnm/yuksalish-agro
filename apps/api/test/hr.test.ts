@@ -7,8 +7,9 @@ import { ensureCostCenter, generalCostCenterId } from '../src/core/costCenters';
 import { approveTransaction } from '../src/core/ledger';
 import { addMember } from '../src/core/tenancy';
 import { signAccessToken } from '../src/core/tokens';
+import * as payroll from '../src/modules/hr/payroll.service';
 import { attendanceToday, reminders } from '../src/modules/hr/summary';
-import { seedHr } from '../src/seed/hr';
+import { seedHr, seedPayroll } from '../src/seed/hr';
 import { SEED } from '../src/seed/names';
 import { createFixture, getApp, type Client, type Fixture } from './helpers';
 
@@ -381,6 +382,211 @@ describe('termination', () => {
       tx().select().from(schema.events).where(and(eq(schema.events.entityId, e.id), eq(schema.events.type, 'employee.terminated'))),
     );
     expect(events).toHaveLength(1);
+  });
+
+  describe('ending the login', () => {
+    const phone = () => `+998${Math.floor(100_000_000 + Math.random() * 899_999_999)}`;
+    /** How a local number is typed in the Excel template. */
+    const handTyped = (p: string) => `${p.slice(4, 6)} ${p.slice(6, 9)}-${p.slice(9, 11)}-${p.slice(11)}`;
+    const dismiss = (owner: Client, id: string, body: object = {}) =>
+      owner.post(`/hr/employees/${id}/terminate`, { date: todayIso(), ...body });
+
+    async function login(f: Fixture, role: RoleKey, p = phone()) {
+      const { userId, membershipId } = await addMember({ tenantId: f.tenantId, farmId: f.farmId, roleId: f.roleIds[role], phone: p, fullName: 'Rustam Sobirov', password: 'Password123!' });
+      const token = await signAccessToken({ userId, membershipId, tenantId: f.tenantId, farmId: f.farmId });
+      const app = await getApp();
+      const stillIn = async () =>
+        (await app.inject({ method: 'GET', url: '/api/v1/hr/employees/lookup', headers: { authorization: `Bearer ${token}` } })).statusCode === 200;
+      return { p, userId, membershipId, stillIn };
+    }
+    const membershipStatus = async (f: Fixture, id: string) => {
+      const [row] = await f.run(() => tx().select().from(schema.memberships).where(eq(schema.memberships.id, id)));
+      return row.status;
+    };
+
+    it('an employee imported with the login\'s phone is dismissed for real', async () => {
+      const f = await createFixture();
+      const owner = await f.as('owner');
+      const worker = await login(f, 'storekeeper');
+      const e = await hire(owner, { phone: handTyped(worker.p) });
+      expect(await worker.stillIn()).toBe(true);
+
+      const res = await dismiss(owner, e.id);
+      expect(res.status).toBe(200);
+      expect(res.data.accessEnded).toBe(true);
+      expect(await worker.stillIn()).toBe(false);
+      expect(await membershipStatus(f, worker.membershipId)).toBe('blocked');
+      const list = await owner.get('/settings/users', { status: 'blocked' });
+      expect(list.data.map((m: any) => m.userId)).toEqual([worker.userId]);
+    });
+
+    it('the link is made when the record comes first, and when the login comes first', async () => {
+      const f = await createFixture();
+      const owner = await f.as('owner');
+
+      const worker = await login(f, 'storekeeper');
+      const afterLogin = await hire(owner, { phone: handTyped(worker.p) });
+      expect((await owner.get(`/hr/employees/${afterLogin.id}`)).data.userId).toBe(worker.userId);
+
+      const p = phone();
+      const beforeLogin = await hire(owner, { phone: handTyped(p) });
+      expect((await owner.get(`/hr/employees/${beforeLogin.id}`)).data.userId).toBeNull();
+      const added = await owner.post('/settings/users', { phone: p, fullName: 'Rustam Sobirov', roleId: f.roleIds.shepherd });
+      expect((await owner.get(`/hr/employees/${beforeLogin.id}`)).data.userId).toBe(added.data.member.userId);
+    });
+
+    it('correcting a phone on the record links it, and a link cleared by hand stays cleared', async () => {
+      const f = await createFixture();
+      const owner = await f.as('owner');
+      const worker = await login(f, 'storekeeper');
+      const e = await hire(owner, { phone: '901112233' });
+      expect((await owner.patch(`/hr/employees/${e.id}`, { phone: worker.p })).data.userId).toBe(worker.userId);
+      expect((await owner.patch(`/hr/employees/${e.id}`, { userId: null, phone: worker.p })).data.userId).toBeNull();
+    });
+
+    it('an invited person who accepts picks up the record waiting for them', async () => {
+      const f = await createFixture();
+      const owner = await f.as('owner');
+      const home = await createFixture();
+      const p = phone();
+      await addMember({ tenantId: home.tenantId, farmId: home.farmId, roleId: home.roleIds.shepherd, phone: p, fullName: 'Bor Xodim', password: 'Password123!' });
+      const e = await hire(owner, { phone: p });
+      const invited = await owner.post('/settings/users', { phone: p, fullName: 'Bor Xodim', roleId: f.roleIds.shepherd });
+      expect((await owner.get(`/hr/employees/${e.id}`)).data.userId).toBeNull();
+
+      const app = await getApp();
+      const signedIn = await app.inject({ method: 'POST', url: '/api/v1/auth/login', payload: { phone: p, password: 'Password123!' } });
+      const accept = await app.inject({
+        method: 'POST',
+        url: `/api/v1/auth/invitations/${invited.data.invitation.id}/accept`,
+        headers: { authorization: `Bearer ${signedIn.json().data.accessToken}` },
+      });
+      expect(accept.statusCode).toBe(200);
+      expect((await owner.get(`/hr/employees/${e.id}`)).data.userId).not.toBeNull();
+    });
+
+    it('a record from before the link is still caught at dismissal', async () => {
+      const f = await createFixture();
+      const owner = await f.as('owner');
+      const worker = await login(f, 'storekeeper');
+      const e = await hire(owner, { phone: worker.p });
+      await f.run(() => tx().update(schema.employees).set({ userId: null }).where(eq(schema.employees.id, e.id)));
+
+      const res = await dismiss(owner, e.id);
+      expect(res.data.accessEnded).toBe(true);
+      expect(res.data.userId).toBe(worker.userId);
+      expect(await worker.stillIn()).toBe(false);
+    });
+
+    it('says so when there was no login to end', async () => {
+      const f = await createFixture();
+      const owner = await f.as('owner');
+      const worker = await login(f, 'storekeeper');
+      const noPhone = await hire(owner);
+      const res = await dismiss(owner, noPhone.id);
+      expect(res.status).toBe(200);
+      expect(res.data.accessEnded).toBe(false);
+      expect(await worker.stillIn()).toBe(true);
+      const [event] = await f.run(() => tx().select().from(schema.events).where(and(eq(schema.events.entityId, noPhone.id), eq(schema.events.type, 'employee.terminated'))));
+      expect(event.data.accessEnded).toBe(false);
+    });
+
+    it('the person dismissing can name the login when no phone matches', async () => {
+      const f = await createFixture();
+      const owner = await f.as('owner');
+      const worker = await login(f, 'storekeeper');
+      const e = await hire(owner, { phone: '901112233' });
+
+      const res = await dismiss(owner, e.id, { userId: worker.userId });
+      expect(res.data.accessEnded).toBe(true);
+      expect(await worker.stillIn()).toBe(false);
+
+      const other = await hire(owner);
+      const stranger = (await createFixture()).as('shepherd');
+      const refused = await dismiss(owner, other.id, { userId: (await stranger).userId });
+      expect(refused.body.error.code).toBe('USER_NOT_ON_FARM');
+    });
+
+    it('two records sharing a phone is a question for a person, not a guess', async () => {
+      const f = await createFixture();
+      const owner = await f.as('owner');
+      const p = phone();
+      const first = await hire(owner, { phone: p });
+      await hire(owner, { phone: handTyped(p), fullName: 'Boshqa Odam' });
+      const added = await owner.post('/settings/users', { phone: p, fullName: 'Rustam Sobirov', roleId: f.roleIds.shepherd });
+      expect(added.status).toBe(201);
+      expect((await owner.get(`/hr/employees/${first.id}`)).data.userId).toBeNull();
+    });
+
+    it('a dismissal cannot do what the users page refuses', async () => {
+      const f = await createFixture();
+      const owner = await f.as('owner');
+      const director = await f.as('director');
+
+      const self = await hire(owner, { userId: director.userId });
+      const refusedSelf = await dismiss(director, self.id);
+      expect(refusedSelf.status).toBe(403);
+      expect(refusedSelf.body.error.code).toBe('CANNOT_BLOCK_SELF');
+
+      const boss = await hire(owner, { userId: owner.userId, fullName: 'Ega' });
+      const refused = await dismiss(director, boss.id);
+      expect(refused.status).toBe(403);
+      expect(refused.body.error.code).toBe('CANNOT_MANAGE_HIGHER_ROLE');
+      expect((await owner.get(`/hr/employees/${boss.id}`)).data.status).toBe('active');
+      expect(await membershipStatus(f, owner.membershipId)).toBe('active');
+    });
+
+    it('the last owner cannot be dismissed out of the workspace', async () => {
+      const f = await createFixture();
+      const owner = await f.as('owner');
+      const roleId = await f.run(async () => {
+        const [role] = await tx()
+          .insert(roles)
+          .values({ tenantId: f.tenantId, key: 'ega_orinbosari', name: "Ega o'rinbosari", permissions: DEFAULT_ROLE_PERMISSIONS.owner })
+          .returning();
+        return role.id;
+      });
+      const { userId, membershipId } = await addMember({ tenantId: f.tenantId, farmId: f.farmId, roleId, phone: phone(), fullName: "Ega O'rinbosari", password: 'Password123!' });
+      const token = await signAccessToken({ userId, membershipId, tenantId: f.tenantId, farmId: f.farmId });
+      const e = await hire(owner, { userId: owner.userId, fullName: 'Ega' });
+
+      const app = await getApp();
+      const refused = await app.inject({
+        method: 'POST',
+        url: `/api/v1/hr/employees/${e.id}/terminate`,
+        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+        payload: JSON.stringify({ date: todayIso() }),
+      });
+      expect(refused.statusCode).toBe(409);
+      expect(refused.json().error.code).toBe('LAST_OWNER');
+      expect((await owner.get(`/hr/employees/${e.id}`)).data.status).toBe('active');
+    });
+
+    it('reinstating brings the login back, and only then says it did', async () => {
+      const f = await createFixture();
+      const owner = await f.as('owner');
+      const worker = await login(f, 'storekeeper');
+      const e = await hire(owner, { phone: worker.p });
+      await dismiss(owner, e.id);
+      expect((await owner.post(`/hr/employees/${e.id}/reinstate`)).status).toBe(200);
+      expect(await worker.stillIn()).toBe(true);
+    });
+
+    it('the phone of a login is personal data on the link list too', async () => {
+      const f = await createFixture();
+      const roleId = await f.run(async () => {
+        const [role] = await tx()
+          .insert(roles)
+          .values({ tenantId: f.tenantId, key: 'kadrlar', name: 'Kadrlar', permissions: ['hr.view', 'hr.update'] })
+          .returning();
+        return role.id;
+      });
+      const { userId, membershipId } = await addMember({ tenantId: f.tenantId, farmId: f.farmId, roleId, phone: phone(), fullName: 'Kadrlar Bolimi', password: 'Password123!' });
+      const token = await signAccessToken({ userId, membershipId, tenantId: f.tenantId, farmId: f.farmId });
+      const app = await getApp();
+      const res = await app.inject({ method: 'GET', url: '/api/v1/hr/linkable-users', headers: { authorization: `Bearer ${token}` } });
+      expect(res.json().data.every((u: any) => u.phone === null)).toBe(true);
+    });
   });
 
   it('refuses a repeat, a future date and a date before hire', async () => {
@@ -1242,6 +1448,25 @@ describe('payroll approval', () => {
     expect((await owner.get(`/hr/payroll/${run.id}`)).status).toBe(404);
   });
 
+  it('wages owed cannot be paid from the debts page too, or they would be paid twice', async () => {
+    const { f, accountant, director, run } = await setup();
+    const accountId = await makeCashAccount(f);
+    await director.post(`/hr/payroll/${run.id}/approve`);
+    const debts = (await accountant.get('/finance/debts', { direction: 'payable' })).data;
+    const wages = debts.find((d: any) => d.isPayroll);
+    expect(wages.outstanding).toBeGreaterThan(0);
+    const refused = await accountant.post('/finance/debts/settle', {
+      direction: 'payable',
+      counterpartyId: wages.counterpartyId,
+      accountId,
+      amount: wages.outstanding,
+      date: '2026-10-05',
+    });
+    expect(refused.status).toBe(409);
+    expect(refused.body.error.code).toBe('WAGES_PAID_FROM_PAYROLL');
+    expect((await accountant.post(`/hr/payroll/${run.id}/pay`, { accountId, date: '2026-10-05' })).status).toBe(200);
+  });
+
   it('payment settles the net as a debt payment, without adding cost', async () => {
     const { f, accountant, director, e, run } = await setup();
     const accountId = await makeCashAccount(f);
@@ -1340,6 +1565,146 @@ describe('advances', () => {
     const recalculated = await owner.post(`/hr/payroll/${run.id}/recalculate`);
     expect(line(recalculated.data, e.id).advance).toBe(6_000_000);
     expect(line(recalculated.data, e.id).net).toBe(3_000_000);
+  });
+
+  it('paid after the run was worked out stops its approval until it is recalculated', async () => {
+    const f = await createFixture();
+    const owner = await f.as('owner');
+    const director = await f.as('director');
+    const e = await hire(owner);
+    await fillMonth(owner, [e.id]);
+    const accountId = await makeCashAccount(f);
+    const run = await createRun(owner);
+    expect(line(run, e.id).net).toBe(5_200_000);
+    expect((await owner.post('/hr/advances', { employeeId: e.id, date: '2026-09-15', amount: 1_000_000, accountId })).status).toBe(201);
+
+    const refused = await director.post(`/hr/payroll/${run.id}/approve`);
+    expect(refused.status).toBe(409);
+    expect(refused.body.error.code).toBe('PAYROLL_ADVANCES_CHANGED');
+    expect(await payrollTransactions(f, run.id)).toEqual([]);
+
+    // 5 200 000 less the 1 000 000 already in hand.
+    const recalculated = await owner.post(`/hr/payroll/${run.id}/recalculate`);
+    expect(line(recalculated.data, e.id).net).toBe(4_200_000);
+    expect((await director.post(`/hr/payroll/${run.id}/approve`)).status).toBe(200);
+  });
+
+  it('still waiting for approval stops the run, because approving it later would pay it twice', async () => {
+    const f = await createFixture();
+    const owner = await f.as('owner');
+    const director = await f.as('director');
+    const e = await hire(owner, { baseRate: 9_000_000 });
+    await fillMonth(owner, [e.id]);
+    const accountId = await makeCashAccount(f);
+    const advance = await owner.post('/hr/advances', { employeeId: e.id, date: '2026-09-15', amount: 6_000_000, accountId });
+    expect(advance.data.transactionStatus).toBe('pending');
+    const run = await createRun(owner);
+
+    const refused = await director.post(`/hr/payroll/${run.id}/approve`);
+    expect(refused.status).toBe(409);
+    expect(refused.body.error.code).toBe('PAYROLL_ADVANCES_WAITING');
+
+    expect((await director.post(`/finance/transactions/${advance.data.transactionId}/reject`, { reason: 'xato' })).status).toBe(200);
+    expect((await director.post(`/hr/payroll/${run.id}/approve`)).status).toBe(200);
+  });
+
+  it('typed into a line by hand is that person\'s figure, and does not stop the run', async () => {
+    const f = await createFixture();
+    const owner = await f.as('owner');
+    const director = await f.as('director');
+    const e = await hire(owner);
+    await fillMonth(owner, [e.id]);
+    const accountId = await makeCashAccount(f);
+    const run = await createRun(owner);
+    await owner.post('/hr/advances', { employeeId: e.id, date: '2026-09-15', amount: 1_000_000, accountId });
+    await owner.patch(`/hr/payroll/${run.id}/lines/${line(run, e.id).id}`, { advance: 700_000 });
+    expect((await director.post(`/hr/payroll/${run.id}/approve`)).status).toBe(200);
+  });
+
+  it('and a run being approved at the same moment: one of them sees the other', async () => {
+    const f = await createFixture();
+    const owner = await f.as('owner');
+    const director = await f.as('director');
+    const e = await hire(owner);
+    await fillMonth(owner, [e.id]);
+    const accountId = await makeCashAccount(f);
+    const run = await createRun(owner);
+
+    const [approved, advance] = await Promise.all([
+      director.post(`/hr/payroll/${run.id}/approve`),
+      owner.post('/hr/advances', { employeeId: e.id, date: '2026-09-15', amount: 1_000_000, accountId }),
+    ]);
+    expect([approved.status, advance.status].sort()).toEqual(approved.status === 200 ? [200, 409] : [201, 409]);
+    if (approved.status === 200) expect(advance.body.error.code).toBe('PAYROLL_CLOSED');
+    else expect(approved.body.error.code).toBe('PAYROLL_ADVANCES_CHANGED');
+  });
+
+  describe('while the month has no payroll yet', () => {
+    /** Starts `second` while `first` is still uncommitted, so it has to wait for the outcome. */
+    async function overlapping(f: Fixture, first: () => Promise<unknown>, second: () => Promise<unknown>): Promise<string> {
+      let other: Promise<string> = Promise.resolve('');
+      await f.run(async () => {
+        await first();
+        other = f.run(second).then(
+          () => 'done',
+          (error) => error.code,
+        );
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      });
+      return other;
+    }
+
+    /** One person makes and approves the run here, so the two-person rule is off for these. */
+    async function month() {
+      const f = await createFixture({ settings: { finance: { makerChecker: false } } });
+      const owner = await f.as('owner');
+      const e = await hire(owner);
+      await fillMonth(owner, [e.id]);
+      const accountId = await makeCashAccount(f);
+      const advance = () => payroll.createAdvance({ employeeId: e.id, date: '2026-09-15', amount: 1_000_000, accountId });
+      const approval = async () => payroll.approveRun((await payroll.createRun({ month: MONTH })).id);
+      return { f, e, advance, approval };
+    }
+
+    it('an advance being paid holds off a run made and approved meanwhile', async () => {
+      const { f, e, advance, approval } = await month();
+      expect(await overlapping(f, advance, approval)).toBe('PAYROLL_ADVANCES_CHANGED');
+
+      // The run was undone with its refusal, so the next one deducts the advance: 5 200 000 - 1 000 000.
+      const run = await f.run(approval);
+      expect(run.status).toBe('approved');
+      expect(line(run, e.id)).toMatchObject({ advance: 1_000_000, net: 4_200_000 });
+    });
+
+    it('a run being approved holds off an advance, which then finds the month closed', async () => {
+      const { f, advance, approval } = await month();
+      expect(await overlapping(f, approval, advance)).toBe('PAYROLL_CLOSED');
+
+      const [run] = (await f.run(() => payroll.listRuns({ page: 1, pageSize: 25 }))).data;
+      expect(run.status).toBe('approved');
+      expect(await f.run(() => payroll.listAdvances({ month: MONTH }))).toEqual([]);
+    });
+  });
+
+  it('two first payments at the same moment share one payroll counterparty, or the debt would split', async () => {
+    const f = await createFixture();
+    const e = await hire(await f.as('owner'));
+    const accountId = await makeCashAccount(f);
+    const paid = (date: string) => payroll.createAdvance({ employeeId: e.id, date, amount: 100_000, accountId });
+
+    let second: Promise<unknown> = Promise.resolve();
+    await f.run(async () => {
+      await paid('2026-08-15');
+      second = f.run(() => paid('2026-09-15'));
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    });
+    await second;
+
+    const rows = await f.run(() =>
+      tx().select({ counterpartyId: transactions.counterpartyId }).from(transactions).where(eq(transactions.sourceType, 'payroll_advance')),
+    );
+    expect(rows).toHaveLength(2);
+    expect(new Set(rows.map((row) => row.counterpartyId)).size).toBe(1);
   });
 
   it('cannot be added to a closed month', async () => {
@@ -1477,6 +1842,25 @@ describe('journal', () => {
   });
 });
 
+describe('advances and personal data', () => {
+  it('hides the name beside the amount without pii.view (rule 8)', async () => {
+    const f = await createFixture();
+    const owner = await f.as('owner');
+    const e = await hire(owner, { baseRate: 6_000_000 });
+    const accountId = await makeCashAccount(f);
+    const made = await owner.post('/hr/advances', { employeeId: e.id, date: todayIso(), amount: 100_000, accountId });
+    expect(made.status).toBe(201);
+    expect((await owner.get('/hr/advances')).data[0].fullName).toBeTruthy();
+    await f.run(async () => {
+      const roles = await tx().select().from(schema.roles).where(eq(schema.roles.key, 'accountant'));
+      const permissions = roles[0].permissions.filter((p: string) => p !== 'pii.view');
+      await tx().update(schema.roles).set({ permissions }).where(eq(schema.roles.id, roles[0].id));
+    });
+    const accountant = await f.as('accountant');
+    expect((await accountant.get('/hr/advances')).data[0].fullName).toBeNull();
+  });
+});
+
 describe('pilot seed', () => {
   it('builds the staff, timesheets and an approved October payroll', async () => {
     const f = await createFixture();
@@ -1486,14 +1870,18 @@ describe('pilot seed', () => {
       tx().insert(accounts).values({ tenantId: f.tenantId, farmId: f.farmId, name: SEED.account.cash, type: 'cash' }),
     );
 
-    await seedHr({
+    const seed = {
       tenantId: f.tenantId,
       farmId: f.farmId,
       users,
-      run: (fn, as = 'owner') => f.run(fn, { userId: users[as] }),
-    });
-
+      run: <T,>(fn: () => Promise<T>, as: RoleKey = 'owner') => f.run(fn, { userId: users[as] }),
+    };
+    await seedHr(seed);
     const owner = await f.as('owner');
+    const herd = await owner.post('/livestock/herds', { name: SEED.herd.pregnant });
+    expect(herd.status).toBe(201);
+    await seedPayroll(seed);
+
     const staff = await owner.get('/hr/employees', { pageSize: 50 });
     expect(staff.body.meta.total).toBe(13);
     const count = (position: string) => staff.body.data.filter((e: any) => e.position === position).length;
@@ -1513,6 +1901,9 @@ describe('pilot seed', () => {
     const run = (await owner.get(`/hr/payroll/${summary.id}`)).data;
     // The piece-rate mechanic joined in November.
     expect(run.lines).toHaveLength(12);
+    // A shepherd's wage is the herd's labour cost, not general overhead.
+    const onHerd = run.allocation.find((a: any) => a.name === SEED.herd.pregnant);
+    expect(onHerd.amount).toBeGreaterThan(0);
     // October 2026: 31 days, 4 Sundays, so 27 expected days and 27 present.
     const director = run.lines.find((l: any) => l.position === SEED.position.director);
     expect(director.base).toBe(5_000_000);
@@ -1521,9 +1912,10 @@ describe('pilot seed', () => {
     const guard = run.lines.find((l: any) => l.position === SEED.position.guard);
     expect(guard.base).toBe(1_925_925.93);
 
+    // One entry per cost center, together the whole payroll.
     const posted = await payrollTransactions(f, summary.id);
-    expect(posted).toHaveLength(1);
-    expect(posted[0].amountBase).toBe(summary.totalGross);
+    expect(posted).toHaveLength(2);
+    expect(posted.reduce((sum: number, row: any) => sum + row.amountBase, 0)).toBeCloseTo(summary.totalGross, 2);
 
     const grid = await owner.get('/hr/timesheets', { month: '2026-11' });
     const shepherd = grid.data.employees.find((p: any) => p.fullName === 'Sherzod Boboyev');

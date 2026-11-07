@@ -1,4 +1,4 @@
-import { and, desc, eq, getTableColumns, gte, lte, sql } from 'drizzle-orm';
+import { and, desc, eq, getTableColumns, gte, isNull, lte, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { ANIMAL_EXIT_TYPES, round, type Permission } from '@yap/shared';
 import { animalBookValue, kgToItemUnit, meatYieldPercent } from '@yap/shared/formulas/livestock';
@@ -13,6 +13,7 @@ import { hideMoney } from '../../core/privacy';
 import { clientId, isoDate, listQuery, paged, searchAny, sortBy } from '../../core/query';
 import { signedFileUrl } from '../files';
 import { markExited } from './animals.service';
+import { restingStatus } from './breeding.shared';
 import { animalsUnderWithdrawal } from './health.service';
 import {
   accumulatedCostPerHead,
@@ -23,7 +24,7 @@ import {
   type Animal,
 } from './refs';
 
-const { animalExits: t, animals, breedingRecords, counterparties, financeCategories, herds, transactions, warehouses } = schema;
+const { animalExits: t, animals, breedingRecords, counterparties, financeCategories, healthRecords, herds, transactions, warehouses } = schema;
 
 export const exitInput = z.object({
   id: clientId,
@@ -322,7 +323,26 @@ export async function undoExit(id: string) {
       ),
     )
     .returning({ id: breedingRecords.id });
-  if (reopened.length) await tx().update(animals).set({ status: 'pregnant' }).where(eq(animals.id, exit.animalId));
+  // markExited closed these on the exit date and gave no result, unlike a recovery.
+  const health = await tx()
+    .update(healthRecords)
+    .set({ reportStatus: sql`case when ${healthRecords.reportStatus} = 'resolved' then 'open' else ${healthRecords.reportStatus} end`, endedOn: null })
+    .where(
+      and(
+        eq(healthRecords.animalId, exit.animalId),
+        eq(healthRecords.endedOn, exit.date),
+        isNull(healthRecords.result),
+        or(eq(healthRecords.reportStatus, 'resolved'), eq(healthRecords.type, 'quarantine')),
+      ),
+    )
+    .returning({ type: healthRecords.type, until: healthRecords.nextDueDate });
+  const quarantine = health.find((row) => row.type === 'quarantine');
+  if (reopened.length || health.length) {
+    await tx()
+      .update(animals)
+      .set({ status: await restingStatus(exit.animalId), ...(quarantine ? { quarantineUntil: quarantine.until } : {}) })
+      .where(eq(animals.id, exit.animalId));
+  }
 
   await recordEvent({ type: 'animal.exit_undone', entityType: 'animal', entityId: exit.animalId, data: { tag: animal.tag, type: exit.type } });
   return { id };

@@ -159,7 +159,7 @@ export const fieldOperations = pgTable(
     weather: jsonb().$type<Record<string, unknown>>(),
     notes: text(),
   },
-  (t) => [index().on(t.farmId, t.date.desc()), index().on(t.fieldId, t.date.desc())],
+  (t) => [index().on(t.farmId, t.date), index().on(t.fieldId, t.date)],
 );
 
 export const fieldOperationMaterials = pgTable(
@@ -214,7 +214,7 @@ export const soilAnalyses = pgTable(
     fileId: uuid().references(() => files.id),
     notes: text(),
   },
-  (t) => [index().on(t.fieldId, t.date.desc())],
+  (t) => [index().on(t.fieldId, t.date)],
 );
 
 export const weatherDaily = pgTable(

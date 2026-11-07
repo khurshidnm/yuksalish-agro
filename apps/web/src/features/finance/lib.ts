@@ -1,7 +1,7 @@
 import { latinToCyrillic } from '@yap/shared/i18n';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { I18nName } from './types';
+import type { I18nName, Transaction } from './types';
 
 /** Reference data carries its own translations. Uzbek Cyrillic is derived, as in the dictionaries. */
 export function useLocalName(): (name: I18nName | null | undefined) => string {
@@ -23,6 +23,23 @@ export function useCenterName(): (name: string | null | undefined, type: string 
   return useCallback((name, type) => (type === 'general' ? t('enums:costCenterType.general') : (name ?? '—')), [t]);
 }
 
+type JournalEntry = Pick<Transaction, 'status' | 'sourceType' | 'type'>;
+
+/** The assistant only prepares entries, so what it wrote stays with finance. */
+const ownedByFinance = (row: JournalEntry) => !row.sourceType || row.sourceType === 'ai_proposal';
+
+/** Entries of other modules whose money can be cancelled here. The rest are changed where they were made. */
+const CANCELLED_IN_FINANCE = ['stock_batch', 'stock_doc', 'animal_exit', 'maintenance', 'rental_act', 'purchase_request'];
+
+/** Only an entry still waiting can change: an approved one is voided, and a rejected one stays as history. */
+export const canDeleteEntry = (row: JournalEntry) => row.status === 'pending' && ownedByFinance(row);
+
+/** A settlement is limited by the debt it pays, so changing it means entering it again. */
+export const canEditEntry = (row: JournalEntry) => canDeleteEntry(row) && row.type !== 'debt_payment' && row.type !== 'debt_receipt';
+
+export const canVoidEntry = (row: JournalEntry) =>
+  row.status === 'approved' && (ownedByFinance(row) || CANCELLED_IN_FINANCE.includes(row.sourceType ?? ''));
+
 /** The budget year runs from October to September: the 2026/27 farming season starts in autumn. */
 export function budgetYear(today: string): number {
   const year = Number(today.slice(0, 4));
@@ -35,10 +52,20 @@ export function budgetYearRange(year: number): { from: string; to: string } {
 
 export const budgetYearLabel = (year: number) => `${year}/${String(year + 1).slice(2)}`;
 
+/**
+ * Buying a long-lived thing reaches cost centers through depreciation, so it is capex from the start.
+ * Left as a plain expense it would count once on entry and again each month.
+ */
+export function treatmentForCategory<T extends string>(group: string | undefined, current: T): T | 'capex' | 'expense' {
+  if (group === 'investment') return 'capex';
+  return current === 'capex' ? 'expense' : current;
+}
+
 export const FINANCE_PATHS = {
   transactions: '/finance/transactions',
   accounts: '/finance/accounts',
   debts: '/finance/debts',
+  unpaidReceipts: '/finance/debts/unpaid-receipts',
   budget: '/finance/budget',
   summary: '/finance/summary',
   costs: '/finance/costs',

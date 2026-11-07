@@ -10,6 +10,7 @@ import {
 import { NAMESPACES } from '@yap/shared/i18n';
 import { toast } from 'sonner';
 import { ApiError, api, type QueryParams } from './api';
+import { formatNumber } from './format';
 import i18n from './i18n';
 import type { ListMeta } from './types';
 
@@ -24,7 +25,9 @@ export const queryClient = new QueryClient({
         return failures < 2;
       },
     },
-    mutations: { retry: false },
+    // Never paused and resumed later: with no signal a press fails at once and says so, because a
+    // press kept for later would go out after the person had moved on, cancelled or entered it again.
+    mutations: { retry: false, networkMode: 'always' },
   },
 });
 
@@ -45,12 +48,23 @@ export function pathKey(path: string, params?: QueryParams): QueryKey {
 export function errorMessage(error: unknown): string {
   if (!(error instanceof ApiError)) return i18n.t('common:errors.generic');
   if (error.status === 0) return i18n.t('common:errors.network');
-  if (error.status === 429) return i18n.t('common:errors.rateLimit');
-  if (error.status >= 500) return i18n.t('common:errors.server');
-  const details = error.details && typeof error.details === 'object' ? (error.details as Record<string, unknown>) : {};
+  const raw = error.details && typeof error.details === 'object' ? (error.details as Record<string, unknown>) : {};
+  // An amount reads as amounts do everywhere else: 480 000 000, not 480000000.
+  const details = typeof raw.amount === 'number' ? { ...raw, amount: formatNumber(raw.amount) } : raw;
+  const fallback = error.message || i18n.t('common:errors.generic');
+  // Modules word a shared code differently, and a wording whose value this error lacks would read with a hole in it.
+  const complete = NAMESPACES.filter((ns) => {
+    const text = i18n.getResource('en', ns, `errors.${error.code}`) as unknown;
+    return typeof text === 'string' && [...text.matchAll(/\{\{\s*(\w+)/g)].every(([, value]) => value in details);
+  });
+  if (complete.length === 0) {
+    if (error.status === 429) return i18n.t('common:errors.rateLimit');
+    if (error.status >= 500) return i18n.t('common:errors.server');
+    return fallback;
+  }
   return i18n.t(
-    NAMESPACES.map((ns) => `${ns}:errors.${error.code}`),
-    { ...details, defaultValue: error.message || i18n.t('common:errors.generic') },
+    complete.map((ns) => `${ns}:errors.${error.code}`),
+    { ...details, defaultValue: fallback },
   );
 }
 
@@ -102,6 +116,8 @@ export function useApiMutation<TVars = void, TResult = unknown>(config: ApiMutat
       config.onSuccess?.(result, vars);
     },
     onError: (error, vars) => {
+      // A lost answer may have saved it, and a refusal may be about a record that moved on.
+      for (const path of config.invalidate ?? []) void client.invalidateQueries({ queryKey: pathKey(path) });
       if (!config.silentError) toast.error(errorMessage(error));
       config.onError?.(error, vars);
     },

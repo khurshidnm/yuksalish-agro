@@ -163,7 +163,7 @@ export function PlanFormDialog({ open, onOpenChange, plan, seasonId }: PlanFormD
           <FormGrid>
             <NumberField form={form} name="expectedYieldTHa" label={t('plans.fields.yield')} suffix={t('unit.tPerHa')} hint={t('plans.fields.yieldHint')} />
             <NumberField form={form} name="ownUsePct" label={t('plans.fields.ownUse')} suffix="%" hint={t('plans.fields.ownUseHint')} />
-            {seesMoney && <NumberField form={form} name="plannedCost" label={t('plans.fields.plannedCost')} hint={t('plans.fields.plannedCostHint')} />}
+            {seesMoney && <NumberField money form={form} name="plannedCost" label={t('plans.fields.plannedCost')} hint={t('plans.fields.plannedCostHint')} />}
             {plan && <SelectField form={form} name="status" label={t('plans.fields.status')} options={enumOptions('cropPlanStatus', CROP_PLAN_STATUSES)} />}
             {plan && <DateField form={form} name="sowingDateFact" label={t('plans.fields.sowingFact')} hint={t('plans.fields.sowingFactHint')} />}
           </FormGrid>

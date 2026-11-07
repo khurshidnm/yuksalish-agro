@@ -1,6 +1,9 @@
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { Alert, Skeleton } from '@/components';
+import { AssistantBar } from '@/features/ai/AssistantBar';
+import { InsightStrip } from '@/features/ai/InsightStrip';
+import { useFarmBackdrop } from '@/features/farm/useFarmBackdrop';
 import { formatNumber } from '@/lib/format';
 import { AlertsBlock } from './blocks/AlertsBlock';
 import { CamerasBlock } from './blocks/CamerasBlock';
@@ -83,18 +86,25 @@ export function Overview({ data, onRetry }: { data: DashboardData; onRetry: () =
   const link = useLinkTo();
   const alerts = data.blocks.alerts?.data;
   const tiles = headlineTiles(data, t, link);
+  const backdrop = useFarmBackdrop();
+  // The reader's first calm figure leads the row. A warning keeps its own colour instead.
+  const featured = tiles.findIndex((tile) => (tile.tone ?? 'neutral') === 'neutral');
 
   return (
     <div className="flex flex-col gap-5">
       {alerts && <StatusBanner counts={alerts.counts} to={link('/alerts', 'dashboard.view')} />}
 
+      <AssistantBar />
+
       {tiles.length > 0 && (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {tiles.map(({ key, ...tile }) => (
-            <Tile key={key} {...tile} />
+          {tiles.map(({ key, ...tile }, index) => (
+            <Tile key={key} {...tile} featured={index === featured} backdrop={backdrop} />
           ))}
         </div>
       )}
+
+      <InsightStrip />
 
       {data.order.map((key) => {
         const target = SECTION_LINK[key];

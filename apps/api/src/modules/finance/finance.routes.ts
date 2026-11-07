@@ -1,13 +1,14 @@
 import type { FastifyInstance } from 'fastify';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, or } from 'drizzle-orm';
 import { z } from 'zod';
 import { CATEGORY_KINDS, COST_CENTER_TYPES, EXPENSE_GROUPS, INCOME_GROUPS } from '@yap/shared';
+import { LANGUAGES, resources } from '@yap/shared/i18n';
 import { schema } from '../../db/client';
 import { ctx, tx } from '../../core/context';
 import { badRequest, notFound } from '../../core/errors';
 import { routes } from '../../core/http';
-import { approveTransaction, rejectTransaction } from '../../core/ledger';
-import { clientId, idParam, isoDate, isoMonth, searchAny } from '../../core/query';
+import { clientId, idParam, isoDate, isoMonth, listQuery, searchAny } from '../../core/query';
+import { receiptMoneyInput, recordReceiptMoney, unpaidReceipts } from '../inventory/stock.service';
 import * as accounts from './accounts.service';
 import * as budget from './budget.service';
 import * as debts from './debts.service';
@@ -18,6 +19,18 @@ import * as summary from './summary';
 import * as transactions from './transactions.service';
 
 const { costCenters, financeCategories: cat } = schema;
+
+/** The general center is stored as 'General' and shown translated, so people search for the translation. */
+function namesGeneral(search: string | undefined): boolean {
+  const term = search?.toLocaleLowerCase();
+  return (
+    !!term &&
+    LANGUAGES.some(({ code }) => {
+      const { costCenterType } = resources[code].enums as { costCenterType: { general: string } };
+      return costCenterType.general.toLocaleLowerCase().includes(term);
+    })
+  );
+}
 
 const period = z.object({ from: isoDate.optional(), to: isoDate.optional() });
 const reason = z.object({ reason: z.string().trim().min(1).max(300) });
@@ -57,7 +70,7 @@ export function registerFinance(app: FastifyInstance) {
             eq(costCenters.farmId, ctx().farmId),
             eq(costCenters.active, true),
             req.query.type ? eq(costCenters.type, req.query.type) : undefined,
-            searchAny(req.query.search, [costCenters.name]),
+            or(searchAny(req.query.search, [costCenters.name]), namesGeneral(req.query.search) ? eq(costCenters.type, 'general') : undefined),
           ),
         )
         .orderBy(asc(costCenters.type), asc(costCenters.name))
@@ -233,7 +246,7 @@ export function registerFinance(app: FastifyInstance) {
     access: 'finance.update',
     summary: 'Change a transaction that is not approved yet',
     params: idParam,
-    body: transactions.transactionInput.partial(),
+    body: transactions.transactionPatch,
     handler: (req) => transactions.update(req.params.id, req.body),
   });
 
@@ -247,14 +260,15 @@ export function registerFinance(app: FastifyInstance) {
   r.post('/transactions/:id/approve', {
     access: 'finance.approve',
     params: idParam,
-    handler: (req) => approveTransaction(req.params.id),
+    body: transactions.asRead.optional(),
+    handler: (req) => transactions.approve(req.params.id, req.body?.baseUpdatedAt),
   });
 
   r.post('/transactions/:id/reject', {
     access: 'finance.approve',
     params: idParam,
-    body: reason,
-    handler: (req) => rejectTransaction(req.params.id, req.body.reason),
+    body: reason.extend(transactions.asRead.shape),
+    handler: (req) => transactions.reject(req.params.id, req.body.reason, req.body.baseUpdatedAt),
   });
 
   r.post('/transactions/:id/void', {
@@ -286,6 +300,24 @@ export function registerFinance(app: FastifyInstance) {
     handler: async (req, reply) => {
       reply.code(201);
       return debts.settle(req.body);
+    },
+  });
+
+  r.get('/debts/unpaid-receipts', {
+    access: 'finance.view',
+    summary: 'Purchases received from a supplier with no payment or debt recorded',
+    query: listQuery,
+    handler: (req) => unpaidReceipts(req.query),
+  });
+
+  r.post('/debts/unpaid-receipts/:id/record', {
+    access: 'finance.create',
+    summary: 'Record one of them as paid or as a debt, linked to the receipt',
+    params: idParam,
+    body: receiptMoneyInput,
+    handler: async (req, reply) => {
+      reply.code(201);
+      return recordReceiptMoney(req.params.id, req.body);
     },
   });
 

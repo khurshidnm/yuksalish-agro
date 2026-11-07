@@ -84,6 +84,8 @@ export const alerts = pgTable(
     /** Urgent alerts repeat until acknowledged (spec 17.3). */
     notifyCount: integer().notNull().default(0),
     nextNotifyAt: ts(),
+    /** Since when an urgent alert has reached nobody outside the app. Null once one message got through. */
+    undeliveredSince: ts(),
     /** Role keys that are told about this alert and may see it without dashboard access. */
     notifyRoles: jsonb().$type<string[]>().notNull().default([]),
     /** Only holders of this permission may see the alert, e.g. 'finance.view' when it shows money. */
@@ -107,16 +109,34 @@ export const notifications = pgTable(
     /** Selects the user's channel preferences, e.g. 'alert_urgent', 'daily_summary'. */
     eventType: text(),
     severity: text().notNull().default('info'),
+    /** In the language of the recipient's account when it was written. */
     title: text().notNull(),
     body: text(),
+    /** The same words in every interface language, for a reader on another one. Older rows have none. */
+    texts: jsonb().$type<Record<string, { title: string; body: string | null }>>(),
     link: text(),
     alertId: uuid(),
+    /** The reader must still hold this when it goes out or is read, e.g. 'finance.view' when the text shows money. */
+    permission: text(),
     /** Delivery state per external channel, e.g. { telegram: 'sent' }. */
     deliveries: jsonb().$type<Record<string, string>>().notNull().default({}),
     readAt: ts(),
     createdAt: ts().notNull().defaultNow(),
   },
-  (t) => [index().on(t.userId, t.readAt), index().on(t.tenantId, t.createdAt.desc())],
+  (t) => [index().on(t.userId, t.readAt), index().on(t.tenantId, t.createdAt)],
+);
+
+/** When each scheduled job is next owed on each farm, so that a run missed in an outage can be found. */
+export const jobRuns = pgTable(
+  'job_runs',
+  {
+    id: pk(),
+    ...tenantColumns(),
+    job: text().notNull(),
+    nextDueAt: ts().notNull(),
+    lastRunAt: ts(),
+  },
+  (t) => [uniqueIndex().on(t.farmId, t.job)],
 );
 
 /** Per-user channel choice per event type (spec 17.3). */

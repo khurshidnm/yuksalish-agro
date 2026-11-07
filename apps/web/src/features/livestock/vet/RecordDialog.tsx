@@ -95,7 +95,7 @@ export function RecordDialog({ open, onOpenChange, record, preset }: RecordDialo
         animalId: targetKind === 'animal' ? values.animalId : null,
         herdId: targetKind === 'herd' ? values.herdId : null,
       };
-      return record ? api.patch(`${PATH}/${record.id}`, body) : api.post(PATH, { ...body, type });
+      return record ? api.patch(`${PATH}/${record.id}`, body) : api.postOnce(PATH, { ...body, type });
     },
     // A record moves drugs out of stock, and withdrawal dates change what can be sold.
     invalidate: [HEALTH_PATH, ANIMALS_PATH, '/inventory'],
@@ -166,15 +166,15 @@ export function RecordDialog({ open, onOpenChange, record, preset }: RecordDialo
                     <NumberField form={form} name="dose" label={t('journal.dose')} hint={t('journal.doseHint')} />
                     <TextField form={form} name="doseUnit" label={t('journal.doseUnit')} placeholder={unitLabel ? t(`enums:unit.${unitLabel}`) : undefined} />
                     <NumberField form={form} name="qtyUsed" label={t('journal.qtyUsed')} hint={t('journal.qtyUsedHint')} suffix={unitLabel ? t(`enums:unit.${unitLabel}`) : undefined} />
-                    <NumberField form={form} name="withdrawalDays" label={t('journal.withdrawalDays')} hint={t('journal.withdrawalHint')} suffix={t('common.days')} />
+                    <NumberField form={form} name="withdrawalDays" label={t('journal.withdrawalDays')} hint={t('journal.withdrawalHint')} suffix={t('common.days')} maxDigits={0} />
                   </FormGrid>
                 )}
               </>
             )}
 
             <FormGrid>
-              {isCourse && <NumberField form={form} name="courseDays" label={t('journal.courseDays')} suffix={t('common.days')} />}
-              {targetKind === 'herd' && <NumberField form={form} name="headCount" label={t('journal.headCount')} hint={t('journal.headCountHint')} />}
+              {isCourse && <NumberField form={form} name="courseDays" label={t('journal.courseDays')} suffix={t('common.days')} maxDigits={0} />}
+              {targetKind === 'herd' && <NumberField form={form} name="headCount" label={t('journal.headCount')} hint={t('journal.headCountHint')} maxDigits={0} />}
               <ComboboxField form={form} name="vetEmployeeId" label={t('journal.vet')} loadOptions={employeeOptions()} selectedLabel={record?.vetName} />
               {usesDrug && <DateField form={form} name="nextDueDate" label={t('journal.nextDue')} />}
             </FormGrid>

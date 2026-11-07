@@ -15,6 +15,19 @@ export function asLanguage(value: string | null | undefined): LanguageCode {
   return value === 'ru' || value === 'en' || value === 'uz' || value === 'uz-Cyrl' ? value : DEFAULT_LANGUAGE;
 }
 
+const UZBEK_CYRILLIC = /[ўқғҳ]/i;
+const ANY_CYRILLIC = /[а-яё]/i;
+const ENGLISH_WORD = /\b(the|paid|for|from|bought|sold|spent|received|cash|how|what|is|was)\b/i;
+const UZBEK_WORD = /(ga|dan|ni|lik|ning)\b|\b(naqd|kassa|bugun|kecha|oldim|berdim|to'ladim|mln|ming)\b/i;
+
+/** The language to answer a message in, when its words show it. A short answer shows nothing. */
+export function messageLanguage(text: string, fallback: LanguageCode): LanguageCode {
+  if (UZBEK_CYRILLIC.test(text)) return 'uz-Cyrl';
+  if (ANY_CYRILLIC.test(text)) return fallback === 'uz-Cyrl' ? 'uz-Cyrl' : 'ru';
+  if (ENGLISH_WORD.test(text) && !UZBEK_WORD.test(text)) return 'en';
+  return fallback;
+}
+
 function lookup(dictionary: unknown, path: string): string | null {
   let node = dictionary;
   for (const part of path.split('.')) {
