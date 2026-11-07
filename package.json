@@ -1,8 +1,8 @@
 {
-  "name": "agro-panel",
+  "name": "agropanel",
   "version": "0.1.0",
   "private": true,
-  "description": "Agro Panel (code name YAP) — multi-tenant farm management SaaS",
+  "description": "AgroPanel (code name YAP) — multi-tenant farm management SaaS",
   "packageManager": "pnpm@12.16.1",
   "engines": {
     "node": ">=22"

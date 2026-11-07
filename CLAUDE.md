@@ -1,6 +1,6 @@
-# Agro Panel (code name YAP) — engineering guide
+# AgroPanel (code name YAP) — engineering guide
 
-Multi-tenant farm-management SaaS, named Agro Panel (agropanel.uz). Pilot tenant: Yuksalish Agro (210 ha of which 90 ha arable, 700 Hisori ewes from Tatarstan, Qorovulbozor).
+Multi-tenant farm-management SaaS, named AgroPanel (agropanel.uz). Pilot tenant: Yuksalish Agro (210 ha of which 90 ha arable, 700 Hisori ewes from Tatarstan, Qorovulbozor).
 The source of truth for requirements is `Yuksalish Agro — Ferma boshqaruv platformasi. Texnik topshiriq.md`.
 
 **Scope right now: web application only.** No Flutter app, no separate Python service. Field staff use the
