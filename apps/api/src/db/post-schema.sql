@@ -66,7 +66,8 @@ DECLARE
   identity_tables text[] := ARRAY['roles', 'farms', 'memberships', 'api_keys', 'invitations'];
   -- High volume or derived; change history adds noise, not accountability.
   no_audit text[] := ARRAY['audit_logs', 'events', 'idempotency_keys', 'notifications',
-                           'notification_prefs', 'ai_messages', 'weather_daily', 'import_jobs',
+                           'notification_prefs', 'ai_messages', 'weather_daily', 'weather_hourly',
+                           'satellite_scenes', 'field_vegetation', 'import_jobs',
                            'webhook_deliveries', 'job_runs'];
   -- Secrets the AI role must never read.
   no_ai_read text[] := ARRAY['api_keys', 'idempotency_keys', 'audit_logs', 'telegram_link_codes', 'invitations'];

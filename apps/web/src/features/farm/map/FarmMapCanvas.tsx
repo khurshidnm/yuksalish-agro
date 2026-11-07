@@ -2,6 +2,8 @@ import { area } from '@turf/area';
 import type { Feature, Geometry } from 'geojson';
 import L from 'leaflet';
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { HEALTH_PANE, ensureHealthPane, gridImage } from '../satellite/ndvi';
+import type { VegetationGrid } from '../satellite/types';
 import type { FarmMapData, MapProps } from '../types';
 import { loadGeoman } from './geoman';
 import { CROP_SLOT, LAND_USE_SLOT } from './slots';
@@ -10,10 +12,10 @@ import './farm-map.css';
 export { CROP_SLOT, LAND_USE_SLOT };
 
 export type BaseLayer = 'satellite' | 'streets';
-export type ColorBy = 'landUse' | 'crop';
+export type ColorBy = 'landUse' | 'crop' | 'health';
 export type DrawShape = 'Polygon' | 'CircleMarker';
 
-const BASE_LAYERS: Record<BaseLayer, { url: string; attribution: string; maxZoom: number }> = {
+export const BASE_LAYERS: Record<BaseLayer, { url: string; attribution: string; maxZoom: number }> = {
   satellite: {
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     attribution: 'Tiles &copy; Esri',
@@ -44,6 +46,8 @@ export function slotToken(slot: number | undefined): string {
 
 function strokeFor(props: MapProps, colorBy: ColorBy): string {
   if (props.kind === 'facility') return token('--foreground');
+  // Over the crop-health images an outline only marks the edge.
+  if (colorBy === 'health') return token('--accent');
   const slot = colorBy === 'crop' ? CROP_SLOT[props.cropKey ?? ''] : LAND_USE_SLOT[props.landUse];
   return token(slotToken(slot));
 }
@@ -55,7 +59,7 @@ function styleFor(props: MapProps, colorBy: ColorBy, selected: boolean): L.PathO
     color: selected ? token('--accent') : color,
     weight: selected ? 4 : 2,
     fillColor: color,
-    fillOpacity: isFacility ? 0.55 : colorBy === 'crop' && !(props as { cropKey: string | null }).cropKey ? 0.1 : 0.35,
+    fillOpacity: isFacility ? 0.55 : colorBy === 'health' ? 0 : colorBy === 'crop' && !(props as { cropKey: string | null }).cropKey ? 0.1 : 0.35,
   };
 }
 
@@ -98,6 +102,8 @@ export interface FarmMapCanvasProps {
   onSelect: (props: MapProps | null) => void;
   onDrawn: (shape: DrawnShape) => void;
   onLiveArea: (hectares: number | null) => void;
+  /** Crop-health images laid over their fields, when colouring by health. */
+  overlays?: VegetationGrid[];
   /** Reports whether drawing tools are available. */
   onReady: (canDraw: boolean) => void;
 }
@@ -107,11 +113,12 @@ export interface FarmMapCanvasProps {
  * render cycle would fight. React state stays in FarmMapPage, which drives this through a handle.
  */
 export const FarmMapCanvas = forwardRef<FarmMapHandle, FarmMapCanvasProps>(function FarmMapCanvas(props, ref) {
-  const { data, baseLayer, colorBy, selectedId, className, fitBottom = 24 } = props;
+  const { data, baseLayer, colorBy, selectedId, className, fitBottom = 24, overlays } = props;
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const tiles = useRef<L.TileLayer | null>(null);
   const features = useRef<L.GeoJSON | null>(null);
+  const images = useRef<L.LayerGroup | null>(null);
   const layers = useRef(new Map<string, L.Path>());
   const drawn = useRef<L.Layer | null>(null);
   const working = useRef<L.Polygon | null>(null);
@@ -245,6 +252,22 @@ export const FarmMapCanvas = forwardRef<FarmMapHandle, FarmMapCanvasProps>(funct
       }
     }
   }, [ready, data, colorBy, generation]);
+
+  useEffect(() => {
+    const instance = map.current;
+    if (!ready || !instance) return;
+    images.current?.remove();
+    images.current = null;
+    if (!overlays?.length) return;
+    ensureHealthPane(instance);
+    const group = L.layerGroup(
+      overlays
+        .map((grid) => ({ grid, url: gridImage(grid) }))
+        .filter((o) => o.url)
+        .map(({ grid, url }) => L.imageOverlay(url, [[grid.south, grid.west], [grid.north, grid.east]], { className: 'health-grid', interactive: false, pane: HEALTH_PANE })),
+    ).addTo(instance);
+    images.current = group;
+  }, [ready, overlays]);
 
   const restyle = useCallback(() => {
     for (const [id, layer] of layers.current) {

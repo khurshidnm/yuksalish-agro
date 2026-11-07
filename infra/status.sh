@@ -86,6 +86,14 @@ if [[ -r "$STATE_DIR/last-deploy" ]]; then
 fi
 
 echo
+echo "Automatic deploys"
+if ! auto_deploy="$("$YAP_ROOT/infra/auto-deploy.sh" status 2>&1)"; then
+  looks="$(grep -c '^  LOOK  ' <<< "$auto_deploy")"
+  problems=$((problems + (looks > 0 ? looks : 1)))
+fi
+echo "$auto_deploy"
+
+echo
 echo "Backups"
 check_backup() {
   local label="$1" pattern="$2" limit_hours="$3" newest age

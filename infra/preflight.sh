@@ -6,9 +6,10 @@
 #
 # Exit code 0 means go ahead. WARN lines do not stop a deploy. FAIL lines do.
 #
-# Optional settings, from the environment:
-#   MIN_DISK_GB, MIN_RAM_MB   defaults 15 and 3500
-#   YAP_SERVER_IP             this server's public address, if it cannot be worked out
+# Optional settings:
+#   MIN_DISK_GB, MIN_RAM_MB   defaults 15 and 3500, from the environment or .env.production
+#                             (there, automatic deploys use them too)
+#   YAP_SERVER_IP             from the environment: this server's public address, if it cannot be worked out
 set -uo pipefail
 
 # shellcheck source=infra/lib.sh
@@ -395,7 +396,7 @@ to_mb() {
 }
 
 section "Disk and memory"
-min_disk="${MIN_DISK_GB:-15}"
+min_disk="$(setting MIN_DISK_GB 15)"
 docker_root="$(docker info --format '{{.DockerRootDir}}')"
 docker_free="$(free_gb "$docker_root")"
 if ((docker_free < min_disk)); then
@@ -404,7 +405,7 @@ else
   pass "$docker_free GB free for Docker"
 fi
 
-min_ram="${MIN_RAM_MB:-3500}"
+min_ram="$(setting MIN_RAM_MB 3500)"
 ram_mb="$(awk '/^MemTotal:/ { print int($2 / 1024) }' /proc/meminfo)"
 swap_mb="$(awk '/^SwapTotal:/ { print int($2 / 1024) }' /proc/meminfo)"
 if ((ram_mb < min_ram)); then

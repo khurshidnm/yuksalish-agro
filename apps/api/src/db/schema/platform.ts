@@ -83,6 +83,8 @@ export const farms = pgTable(
     totalAreaHa: dec(12, 4),
     lat: doublePrecision(),
     lng: doublePrecision(),
+    /** Metres above sea level, for crop water use. Taken from the weather service when unset. */
+    elevationM: doublePrecision(),
     cadastreNumber: text(),
     /** Passport details (6.1.1): lease contract, responsible people, requisites. */
     passport: jsonb().$type<Record<string, unknown>>().notNull().default({}),

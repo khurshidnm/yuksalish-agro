@@ -73,7 +73,9 @@
     "savedArea": "Saved. Calculated area: {{area}}",
     "overlap": "Warning: this contour overlaps №{{number}} by {{area}}. That area counts twice in the land balance.",
     "unmappedTitle": "Contours not drawn on the map",
-    "toolsFailed": "The drawing tools did not load, so the map is view-only. Try reloading the page."
+    "toolsFailed": "The drawing tools did not load, so the map is view-only. Try reloading the page.",
+    "colorHealth": "By crop health (satellite)",
+    "healthEmpty": "No clear satellite image of the fields in the last 30 days yet. Images arrive every 2 to 5 days; cloudy days are skipped."
   },
   "fields": {
     "title": "Fields",
@@ -128,7 +130,11 @@
     "noCropTitle": "No current crop",
     "noCropBody": "Crop plans are assigned in the Crops section.",
     "rotationEmptyTitle": "No crop history yet",
-    "rotationEmptyBody": "Crops, yield and cost for the last 5 years appear here."
+    "rotationEmptyBody": "Crops, yield and cost for the last 5 years appear here.",
+    "tabSatellite": "Crop health",
+    "tabWater": "Water",
+    "soilTexture": "Soil texture",
+    "soilTextureHint": "Sets how much water the soil holds, for the watering advice."
   },
   "soil": {
     "add": "Add analysis",
@@ -231,7 +237,12 @@
     "rain": "{{value}} mm",
     "emptyTitle": "No forecast yet",
     "emptyBody": "The weather updates automatically every 6 hours.",
-    "unavailable": "The weather service is not responding. It will update automatically later."
+    "unavailable": "The weather service is not responding. It will update automatically later.",
+    "credit": "Data: MET Norway (CC BY 4.0), NASA POWER",
+    "spray": "Spraying: next good hours {{date}}, {{from}}–{{to}}",
+    "sprayNow": "Spraying: good now, until {{to}}",
+    "sprayNone": "Spraying: no good daytime hours in the next 2 days (wind, rain or heat)",
+    "today": "today"
   },
   "errors": {
     "FIELD_NUMBER_TAKEN": "Contour number {{number}} already exists. Choose another number.",
@@ -247,5 +258,183 @@
     "INVALID_FIELD": "One of the linked fields was not found.",
     "EXPIRY_BEFORE_ISSUE": "The expiry date cannot be before the issue date.",
     "ENTITY_INCOMPLETE": "The object this document links to is incomplete."
+  },
+  "satellite": {
+    "title": "Crop health from space",
+    "cropLine": "{{crop}}, {{status}}",
+    "date": "Image date",
+    "refresh": "Check for new images",
+    "refreshed": "New satellite readings: {{count}}",
+    "refreshPending": "Images are coming in; the rest are read tonight.",
+    "refreshNothing": "No new clear image since the last check.",
+    "unavailable": "The satellite catalogue is not responding. The nightly check will try again.",
+    "noBoundaryTitle": "Draw the field to see it from space",
+    "noBoundaryBody": "Crop health is read for the field's outline. Draw it on the farm map.",
+    "emptyTitle": "No clear image yet",
+    "emptyBody": "Sentinel-2 passes every 2 to 5 days. The first readings appear after tonight's check.",
+    "emptyCloudy": "The last image, on {{date}}, was too cloudy over this field. The next pass comes in 2 to 5 days.",
+    "legend": "Crop health colours",
+    "band": {
+      "bare": "Bare",
+      "sparse": "Sparse",
+      "moderate": "Moderate",
+      "good": "Good",
+      "dense": "Dense"
+    },
+    "ndvi": "NDVI",
+    "sincePrevious": "since the previous image",
+    "spread": "Weakest to strongest tenth",
+    "spreadHint": "The closer the two, the more even the field.",
+    "weakZones": "Weak zones",
+    "noZones": "None",
+    "zoneCount": "Zones: {{count}}",
+    "imageDate": "Image",
+    "clear": "{{value}}% of the field clear of cloud",
+    "credit": "Contains modified Copernicus Sentinel data {{year}}. 10 m per cell.",
+    "zonesTitle": "Weak zones: {{count}}",
+    "zonesHint": "Parts of the field well below the rest. Walk there and look for pests, dry or waterlogged soil, poor emergence or missing fertiliser.",
+    "zoneLine": "{{area}}, NDVI {{ndvi}}",
+    "zoneMarker": "Weak zone {{n}}",
+    "showZone": "Show",
+    "walkThere": "Walk there",
+    "stopWalking": "Stop",
+    "openInMaps": "Open in maps",
+    "createTask": "Create task",
+    "taskCreated": "Task created",
+    "taskTitle": "Check weak zone {{n}} on field {{field}}",
+    "taskBody": "Satellite image of {{date}}: {{area}} with NDVI {{ndvi}}, well below the rest of the field. Coordinates: {{lat}}, {{lng}}. Directions: {{link}}",
+    "distance": "{{metres}} m to the {{direction}}",
+    "locating": "Finding where you are…",
+    "position": {
+      "unsupported": "This device cannot share its location.",
+      "denied": "Location access is off. Allow it for this site to walk to the zone.",
+      "unavailable": "Your location is not available right now. Step into the open and try again."
+    },
+    "compass": {
+      "n": "north",
+      "ne": "north-east",
+      "e": "east",
+      "se": "south-east",
+      "s": "south",
+      "sw": "south-west",
+      "w": "west",
+      "nw": "north-west"
+    },
+    "curveTitle": "Crop health through the season",
+    "curveHint": "Mean NDVI of the field on each clear image.",
+    "events": "What the satellite saw",
+    "event": {
+      "green_up": "Green-up {{date}}",
+      "harvest": "Crop removed {{date}}",
+      "bare": "Bare soil {{date}}"
+    },
+    "check": {
+      "no_green_up": {
+        "title": "No crop seen since sowing",
+        "body": "Sown on {{date}}, but the satellite still sees bare soil. Check the emergence, or correct the sowing date."
+      },
+      "harvest_not_seen": {
+        "title": "Harvest recorded, crop still standing",
+        "body": "A harvest is recorded on {{date}}, but the satellite still sees a green crop. Check the record."
+      },
+      "unrecorded_harvest": {
+        "title": "Crop removed, no harvest recorded",
+        "body": "Around {{date}} the satellite saw the crop removed (harvest, cutting or defoliation). Record the harvest if it took place."
+      }
+    },
+    "clearShare": "Cloud-free",
+    "clearHint": "of the field, image of {{date}}"
+  },
+  "pasture": {
+    "title": "Grazing on this pasture",
+    "hint": "Green feed on {{area}}, estimated from the satellite image.",
+    "grazingDays": "Grazing days",
+    "days": "{{value}} days",
+    "forHead": "for {{count}} sheep and goats",
+    "biomass": "Green dry matter",
+    "kgHa": "{{value}} kg/ha",
+    "kgHaShort": "kg/ha",
+    "model": "Estimate",
+    "estimate": "Rough",
+    "calibrated": "Calibrated",
+    "fit": "{{n}} samples, R² {{r2}}",
+    "needSamples": "3 samples make it this farm's own",
+    "assumptions": "Each animal eats {{intake}} kg of dry matter a day, and {{share}}% of the grass is grazed so the pasture regrows. Without samples the estimate assumes bare soil at NDVI 0.15 and 3,000 kg/ha at NDVI 0.75. Dry summer grass looks bare from space.",
+    "addSample": "Add a sample",
+    "howTo": "Cut all grass in a 1 × 1 m square to the ground, dry it in the sun until it crumbles, and weigh it. Grams per square metre × 10 = kg per hectare.",
+    "sampleDate": "Date cut",
+    "emptyTitle": "No samples yet",
+    "emptyBody": "Three cut-and-weigh samples on different dates turn the rough estimate into this pasture's own.",
+    "deleteTitle": "Delete this sample?",
+    "deleteBody": "The sample of {{date}} will no longer calibrate the estimate."
+  },
+  "water": {
+    "pageTitle": "Watering",
+    "pageDescription": "How much water each growing crop has used and when it needs the next watering, from the weather and the crop's growth stage (FAO-56).",
+    "title": "Water balance",
+    "field": "Field",
+    "stageHeader": "Growth stage",
+    "stage": {
+      "initial": "Initial",
+      "development": "Development",
+      "mid": "Mid-season",
+      "late": "Late season"
+    },
+    "rawUsed": "Easy water used",
+    "store": "{{used}} mm used of {{raw}} mm the crop takes up easily ({{taw}} mm in the root zone in all)",
+    "due": "Watering due",
+    "dueNow": "Now",
+    "notSoon": "Not this week",
+    "refill": "To refill",
+    "m3": "{{value}} m³",
+    "mm": "{{value}} mm",
+    "efficiency": "at {{value}}% furrow efficiency",
+    "used7": "Used, last 7 days",
+    "next7": "Forecast, next 7 days",
+    "et0Today": "Reference ET today {{value}} mm",
+    "lastIrrigation": "Last watering recorded: {{date}}, {{m3}} m³.",
+    "noIrrigation": "No watering recorded since sowing.",
+    "assumptions": "The advice assumes the root zone was full at sowing, as after pre-sowing watering, and that rain under a fifth of the day's water use evaporates. Record every watering with its m³ so the balance stays true.",
+    "setSoil": "Set soil texture",
+    "toPlans": "Crop plans",
+    "emptyTitle": "No growing crop",
+    "emptyBody": "Watering advice starts when a crop plan has a sowing date and the status sown or growing.",
+    "gap": {
+      "crop_unknown": {
+        "title": "No water data for this crop",
+        "body": "The advice covers wheat, barley, cotton, corn, alfalfa and rice.",
+        "short": "Crop not covered"
+      },
+      "no_sowing_date": {
+        "title": "Sowing date missing",
+        "body": "Enter the actual sowing date in the crop plan.",
+        "short": "No sowing date"
+      },
+      "not_sown_yet": {
+        "title": "Not sown yet",
+        "body": "The balance starts on the sowing date.",
+        "short": "Not sown yet"
+      },
+      "season_over": {
+        "title": "Season over",
+        "body": "The crop has passed the end of its season.",
+        "short": "Season over"
+      },
+      "flooded": {
+        "title": "Flooded crop",
+        "body": "Rice stands in water, so only its water use is shown.",
+        "short": "Flooded"
+      },
+      "no_soil_texture": {
+        "title": "Soil texture missing",
+        "body": "Water use is known, but how much the soil holds is not. Set the soil texture on the field.",
+        "short": "No soil texture"
+      },
+      "no_weather": {
+        "title": "Not enough weather data",
+        "body": "Weather for a day since sowing is not in yet. Observed weather is published 3 to 5 days late, so a new farm waits a few days; the weather check fills the gap by itself. If the farm's location is not set, set it in the farm passport.",
+        "short": "No weather"
+      }
+    }
   }
 }

@@ -7,6 +7,13 @@ The source of truth for requirements is `Yuksalish Agro — Ferma boshqaruv plat
 web app from a phone, so every screen must work at 360 px. AI features live inside the API (`modules/ai`),
 behind a swappable provider: Gemini by default, Claude as the alternative.
 
+Outside data comes only from free sources that allow use in a paid product, and each shows its credit
+where its data appears: weather from MET Norway (forecast, CC BY 4.0, identifying User-Agent) and NASA
+POWER (past days, 3 to 5 days late); crop health from Sentinel-2 L2A via Earth Search on AWS, read as
+small windows of cloud-optimised GeoTIFFs (`modules/farm/satellite.service.ts`). Open-Meteo's free tier
+is non-commercial: do not use it. Crop water use, heat stress and spraying hours are in
+`formulas/agro-weather.ts` and `formulas/water-balance.ts`, NDVI and pasture in `formulas/vegetation.ts`.
+
 ## Stack
 
 | Layer | Choice |

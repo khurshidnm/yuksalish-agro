@@ -243,8 +243,12 @@ describe('urgent jobs do not depend on the queue', () => {
 
   it('one that is still running is not started again', async () => {
     await createFixture();
-    let finish!: () => void;
-    const { job, runs } = fake('notifications.dispatch', '* * * * *', () => new Promise((resolve) => (finish = resolve)));
+    // Runs hold until released; once released, later farms' runs finish at once. Releasing them one
+    // by one would take longer with every farm the other tests add to the shared database.
+    let released = false;
+    const waiting: (() => void)[] = [];
+    const hold = () => (released ? Promise.resolve() : new Promise<void>((resolve) => waiting.push(resolve)));
+    const { job, runs } = fake('notifications.dispatch', '* * * * *', hold);
     const runner = createRunner(quietLog(), [job]);
 
     const first = runner.runEverywhere(job);
@@ -254,12 +258,11 @@ describe('urgent jobs do not depend on the queue', () => {
     await runner.runStaleUrgent(new Date(Date.now() + 200_000));
     expect(runs).toHaveLength(started);
 
-    for (;;) {
-      finish();
-      const done = await Promise.race([first.then(() => true), new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 20))]);
-      if (done) break;
-    }
-  });
+    released = true;
+    for (const resolve of waiting.splice(0)) resolve();
+    await first;
+    // The first run still visits every farm in the database, and in a full run that can pass 30 seconds.
+  }, 120_000);
 
   it('other jobs wait for the queue', async () => {
     await createFixture();

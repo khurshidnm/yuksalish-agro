@@ -30,6 +30,8 @@ import { FACILITY_PATHS, FacilityFormDialog } from './FacilityFormDialog';
 import { FIELD_PATHS, FieldFormDialog, type SavedField, warnAboutOverlaps } from './FieldFormDialog';
 import { FieldPhoto } from './FieldPhoto';
 import { outerRings } from './geometry';
+import { HealthLegend } from './satellite/HealthLegend';
+import type { LatestReading, VegetationGrid } from './satellite/types';
 import { type BaseLayer, type ColorBy, CROP_SLOT, type DrawShape, type DrawnShape, FarmMapCanvas, type FarmMapHandle, LAND_USE_SLOT, slotToken } from './map/FarmMapCanvas';
 import type { FarmMapData, FieldProps, I18nName, MapFeature, MapProps, UnmappedField } from './types';
 import { fieldTitle, formatHa, useLocalName } from './utils';
@@ -45,7 +47,7 @@ function Legend({ data, colorBy }: { data: FarmMapData | undefined; colorBy: Col
   const localName = useLocalName();
 
   const entries = useMemo(() => {
-    if (colorBy === 'landUse') {
+    if (colorBy === 'landUse' || colorBy === 'health') {
       return LAND_USES.map((use) => ({ key: use, label: t(`enums:landUse.${use}`), slot: LAND_USE_SLOT[use] }));
     }
     const crops = new Map<string, I18nName>();
@@ -59,6 +61,7 @@ function Legend({ data, colorBy }: { data: FarmMapData | undefined; colorBy: Col
     ];
   }, [colorBy, data, localName, t]);
 
+  if (colorBy === 'health') return <HealthLegend className="max-w-md" />;
   return (
     <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm" aria-label={t('map.legend')}>
       {entries.map((entry) => (
@@ -164,6 +167,11 @@ export default function FarmMapPage() {
   const [baseLayer, setBaseLayer] = useUrlParam('base', 'satellite');
   const [colorBy, setColorBy] = useUrlParam('color', 'landUse');
   const [focus, setFocus] = useUrlParam('focus');
+  const health = useDetail<LatestReading[]>(colorBy === 'health' ? '/farm/satellite/latest' : null);
+  const healthGrids = useMemo(
+    () => (colorBy === 'health' ? (health.data ?? []).map((r) => r.grid).filter((g): g is VegetationGrid => g !== null) : undefined),
+    [colorBy, health.data],
+  );
 
   const canvas = useRef<FarmMapHandle>(null);
   const mapArea = useRef<HTMLDivElement>(null);
@@ -319,6 +327,7 @@ export default function FarmMapPage() {
       ) : (
         <div className="flex flex-col gap-4">
           {toolsFailed && <Alert tone="warning">{t('map.toolsFailed')}</Alert>}
+          {colorBy === 'health' && health.data?.length === 0 && <Alert tone="info">{t('map.healthEmpty')}</Alert>}
 
           <Card className="overflow-hidden">
             <div className="grid grid-cols-2 gap-2 border-b border-border p-2 md:flex md:flex-wrap md:items-center">
@@ -339,6 +348,7 @@ export default function FarmMapPage() {
                 options={[
                   { value: 'landUse', label: t('map.colorLandUse') },
                   { value: 'crop', label: t('map.colorCrop') },
+                  { value: 'health', label: t('map.colorHealth') },
                 ]}
                 className="md:w-44"
               />
@@ -356,6 +366,7 @@ export default function FarmMapPage() {
                   data={query.data}
                   baseLayer={baseLayer as BaseLayer}
                   colorBy={colorBy as ColorBy}
+                  overlays={healthGrids}
                   selectedId={mode.kind === 'edit' ? mode.feature.id : (selected?.id ?? null)}
                   className="h-[calc(100dvh-20rem)] min-h-96 w-full"
                   fitBottom={window.innerWidth >= 768 ? 220 : 110}

@@ -1,7 +1,7 @@
 # Data model
 
 Generated from `apps/api/src/db/schema` by `apps/api/src/db/erd.ts`. Do not edit by hand; run
-`pnpm --filter @yap/api exec tsx src/db/erd.ts` after a schema change. 100 tables.
+`pnpm --filter @yap/api exec tsx src/db/erd.ts` after a schema change. 104 tables.
 
 Links to `tenants`, `farms` and `users` (`tenant_id`, `farm_id`, `created_by`) are on almost every
 table and are left out of the lines to keep the diagrams readable. A table from another domain appears
@@ -37,6 +37,7 @@ erDiagram
     numeric total_area_ha
     double_precision lat
     double_precision lng
+    double_precision elevation_m
     text cadastre_number
     jsonb passport
     timestamp_with_time_zone created_at
@@ -388,6 +389,25 @@ erDiagram
     jsonb weather
     text notes
   }
+  field_vegetation {
+    uuid id PK
+    uuid tenant_id FK
+    uuid farm_id FK
+    uuid created_by FK
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+    uuid field_id FK
+    uuid scene_id FK
+    date date
+    numeric clear_pct
+    integer cell_count
+    numeric ndvi_mean
+    numeric ndvi_p10
+    numeric ndvi_p50
+    numeric ndvi_p90
+    jsonb grid
+    jsonb weak_zones
+  }
   fields {
     uuid id PK
     uuid tenant_id FK
@@ -401,6 +421,7 @@ erDiagram
     numeric area_ha
     jsonb boundary
     text soil_type
+    text soil_texture
     text salinity_level
     text irrigation_source
     uuid cost_center_id
@@ -440,6 +461,33 @@ erDiagram
     jsonb geometry
     jsonb field_ids
     text notes
+  }
+  pasture_samples {
+    uuid id PK
+    uuid tenant_id FK
+    uuid farm_id FK
+    uuid created_by FK
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+    uuid field_id FK
+    date date
+    numeric biomass_kg_ha
+    numeric ndvi
+    text notes
+  }
+  satellite_scenes {
+    uuid id PK
+    uuid tenant_id FK
+    uuid farm_id FK
+    uuid created_by FK
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+    text scene_id
+    date date
+    text source
+    numeric tile_cloud_pct
+    numeric clear_pct
+    text status
   }
   seasons {
     uuid id PK
@@ -496,8 +544,28 @@ erDiagram
     numeric precipitation_mm
     numeric wind_max_kmh
     integer weather_code
+    numeric rh_mean_pct
+    numeric dew_point_c
+    numeric wind_mean_ms
+    numeric solar_mj
     boolean is_forecast
     text source
+    timestamp_with_time_zone fetched_at
+  }
+  weather_hourly {
+    uuid id PK
+    uuid tenant_id FK
+    uuid farm_id FK
+    uuid created_by FK
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+    timestamp_with_time_zone time
+    integer period_hours
+    numeric temp_c
+    numeric rh_pct
+    numeric wind_ms
+    numeric precip_mm
+    integer weather_code
     timestamp_with_time_zone fetched_at
   }
   assets ||--o{ field_operations : "asset_id"
@@ -510,11 +578,14 @@ erDiagram
   field_operations ||--o{ field_operation_materials : "operation_id"
   fields ||--o{ crop_plans : "field_id"
   fields ||--o{ field_operations : "field_id"
+  fields ||--o{ field_vegetation : "field_id"
   fields ||--o{ harvests : "field_id"
+  fields ||--o{ pasture_samples : "field_id"
   fields ||--o{ soil_analyses : "field_id"
   files ||--o{ soil_analyses : "file_id"
   items ||--o{ field_operation_materials : "item_id"
   items ||--o{ harvests : "item_id"
+  satellite_scenes ||--o{ field_vegetation : "scene_id"
   seasons ||--o{ crop_plans : "season_id"
   stock_batches ||--o{ harvests : "batch_id"
   warehouses ||--o{ field_operation_materials : "warehouse_id"
@@ -1351,6 +1422,9 @@ erDiagram
     text inventory_no
     date purchase_date
     numeric purchase_price
+    numeric purchase_amount
+    text purchase_currency
+    numeric purchase_fx_rate
     text status
     numeric useful_life_months
     numeric salvage_value

@@ -31,6 +31,7 @@ export interface FieldRow {
   landUse: LandUse;
   areaHa: number;
   soilType: string | null;
+  soilTexture: string | null;
   salinityLevel: string | null;
   irrigationSource: string | null;
   status: 'active' | 'archived';
@@ -176,6 +177,16 @@ export interface WeatherDay {
   weatherCode: number | null;
   isForecast: boolean;
   frost: boolean | null;
+}
+
+export interface WeatherHour {
+  time: string;
+  periodHours: number;
+  tempC: number | null;
+  rhPct: number | null;
+  windMs: number | null;
+  precipMm: number | null;
+  weatherCode: number | null;
 }
 
 export interface FieldProps {

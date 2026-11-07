@@ -1,4 +1,4 @@
-import { addDays, todayIso } from '@yap/shared';
+import { type SOIL_TEXTURE_CLASSES, addDays, todayIso } from '@yap/shared';
 import { and, eq } from 'drizzle-orm';
 import { ctx, tx } from '../core/context';
 import { computeAreaHa } from '../core/geo';
@@ -68,6 +68,8 @@ const CONTOURS: {
   soilType?: string;
   salinityLevel?: string;
   irrigationSource?: string;
+  /** Simulated: the pilot's lab results give the soil name, not its texture class. */
+  soilTexture?: (typeof SOIL_TEXTURE_CLASSES)[number];
   notes?: string;
 }[] = [
   {
@@ -77,6 +79,7 @@ const CONTOURS: {
     areaHa: 10,
     corners: [[-193, 112], [-62, 152], [-110, -368], [-244, -375], [-322, -292], [-336, -127]],
     soilType: "O'tloqi-bo'z",
+    soilTexture: 'loam',
     salinityLevel: 'low',
     irrigationSource: 'Magistral kanal',
   },
@@ -87,6 +90,7 @@ const CONTOURS: {
     areaHa: 9,
     corners: [[-62, 152], [108, 228], [211, 180], [86, -7], [64, -136], [13, -255], [-24, -356], [-110, -368]],
     soilType: "O'tloqi-bo'z",
+    soilTexture: 'loam',
     salinityLevel: 'low',
     irrigationSource: 'Magistral kanal',
   },
@@ -97,6 +101,7 @@ const CONTOURS: {
     areaHa: 18,
     corners: [[-640, 505], [-430, 520], [-120, 625], [-105, 900], [-600, 905]],
     soilType: "O'tloqi-bo'z",
+    soilTexture: 'loam',
     salinityLevel: 'low',
     irrigationSource: 'Ariq №1',
   },
@@ -107,6 +112,7 @@ const CONTOURS: {
     areaHa: 15,
     corners: [[-110, 250], [300, 232], [330, 585], [-110, 622]],
     soilType: "Bo'z tuproq",
+    soilTexture: 'sandy_loam',
     salinityLevel: 'medium',
     irrigationSource: 'Ariq №1',
   },
@@ -117,6 +123,7 @@ const CONTOURS: {
     areaHa: 28,
     corners: [[-100, 630], [330, 592], [655, 598], [695, 640], [640, 790], [520, 930], [300, 1000], [100, 1055], [-60, 1000], [-95, 880]],
     soilType: "O'tloqi",
+    soilTexture: 'silt_loam',
     salinityLevel: 'low',
     irrigationSource: 'Magistral kanal',
   },
@@ -127,6 +134,7 @@ const CONTOURS: {
     areaHa: 10,
     corners: [[300, 232], [515, 215], [625, 430], [640, 590], [330, 585]],
     soilType: "O'tloqi",
+    soilTexture: 'silt_loam',
     salinityLevel: 'low',
     irrigationSource: 'Magistral kanal',
   },

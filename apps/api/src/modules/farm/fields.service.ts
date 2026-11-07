@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray, ne, sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
-import { LAND_USES, round, yieldPerHectare } from '@yap/shared';
+import { LAND_USES, SOIL_TEXTURE_CLASSES, round, yieldPerHectare } from '@yap/shared';
 import { ctx, today, tx } from '../../core/context';
 import { deactivateCostCenter, ensureCostCenter, renameCostCenter } from '../../core/costCenters';
 import { badRequest, conflict, notFound } from '../../core/errors';
@@ -22,6 +22,7 @@ export const fieldInput = z.object({
   areaHa: z.number().positive().max(10_000_000).nullish(),
   boundary: areaGeometry.nullish(),
   soilType: textField(80),
+  soilTexture: z.enum(SOIL_TEXTURE_CLASSES).nullish(),
   salinityLevel: textField(40),
   irrigationSource: textField(120),
   notes: textField(1000),
@@ -140,6 +141,7 @@ const listColumns = {
   landUse: t.landUse,
   areaHa: t.areaHa,
   soilType: t.soilType,
+  soilTexture: t.soilTexture,
   salinityLevel: t.salinityLevel,
   irrigationSource: t.irrigationSource,
   status: t.status,

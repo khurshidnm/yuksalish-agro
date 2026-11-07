@@ -9,7 +9,7 @@ tells you what went wrong and what to do.
 - [Before you start](#before-you-start)
 - [Go live, step by step](#go-live-step-by-step)
 - [Check on day one](#check-on-day-one)
-- [Everyday work](#everyday-work): looking, the watchdog, updating, going back, fixing problems
+- [Everyday work](#everyday-work): looking, the watchdog, updating, automatic deploys, going back, fixing problems
 - [Backups](#backups)
 - [Restore](#restore)
 - [Settings](#settings)
@@ -488,6 +488,63 @@ The public pages stay up. The API was away for 2 seconds in testing. Expect long
 meanwhile. Choose a quiet hour if the update has migrations. To change a setting, edit `.env.production`, then run
 `infra/deploy.sh`.
 
+### Automatic deploys
+
+Once this is on, pushing to `main` on GitHub is the whole update. GitHub runs the typecheck, the tests and the web build
+(`.github/workflows/ci.yml`, the job named `tests`). Every 5 minutes the server asks GitHub whether `main` has a newer
+commit, and once that commit's tests have passed, it checks the commit out and runs `infra/deploy.sh`, which does
+everything listed above. The chat in `BACKUP_ALERT_CHAT_ID` hears the result.
+
+GitHub holds no key to the server, and nothing on GitHub can reach it: the server does the asking. The repository is
+public, so the server fetches without signing in.
+
+**Turn it on, once.** If the code reached the server some other way than `git clone` from GitHub, point it there first.
+On a server smaller than the minimum, put the lower figure in `.env.production`, for example `MIN_RAM_MB=1800`, so that
+deploys by hand and automatic ones both pass preflight. Then:
+
+```sh
+cd /opt/yap
+git remote set-url origin https://github.com/khurshidnm/yuksalish-agro.git
+infra/auto-deploy.sh install
+```
+
+It fetches `main`, runs preflight, and refuses with the reason if anything would stop a deploy later. If it is happy, it
+writes `/etc/cron.d/yap-auto-deploy` and says whether the newest commit on `main` is about to go live.
+
+**Every day.** Work on another branch, and merge into `main` when a change should go live. That merge is the decision to
+deploy, so a change with database migrations is best merged at a quiet hour: the API stops while they run.
+
+```sh
+infra/auto-deploy.sh status         # where it stands. infra/status.sh shows the same
+tail -n 20 /var/log/yap/auto-deploy.log
+```
+
+**What it will not do.**
+
+| When | What happens |
+| --- | --- |
+| The tests failed on GitHub | Nothing is deployed, and the chat hears it once. Push a fix. If a test failed by chance, use **Re-run jobs** on GitHub: a pass on the same commit still deploys. |
+| Several pushes came close together | Only the newest commit is deployed. |
+| The deploy failed | The site went back by itself, and the checkout goes back to the running commit too. The same commit is not tried again by itself, because each try means a backup and a long build. Push a fix, or after fixing the cause on the server, run `infra/auto-deploy.sh retry`. |
+| The deploy failed, and going back failed too | The site is probably down. It pauses itself and leaves everything as it is for a person: see [When a deploy fails](#when-a-deploy-fails). |
+| Someone changed files in `/opt/yap` by hand | Nothing is deployed over them, and the chat hears what they are. Put the change into a commit through GitHub, or undo it with `git checkout -- FILE`, and the next look deploys. `.env.production` does not count: git ignores it. |
+| A backup is running | It waits for the next look. |
+| You went back by hand with `infra/deploy.sh --rollback` | The older version stays until the next push to `main`. |
+| GitHub cannot be reached | It waits. `infra/status.sh` says `LOOK` after an hour without reaching it. |
+
+**Pause it** for a restore, or a day that must stay quiet. A deploy already running finishes first.
+
+```sh
+infra/auto-deploy.sh pause
+infra/auto-deploy.sh resume
+```
+
+`infra/auto-deploy.sh uninstall` turns it off. `infra/deploy.sh` by hand works the same whether it is on or off.
+
+Settings, all optional, in `.env.production`: `AUTO_DEPLOY_BRANCH` (default `main`), `AUTO_DEPLOY_CHECK` (default
+`tests`, the job in the workflow that has to pass; rename both together), and `AUTO_DEPLOY_REPO` (`owner/name`,
+worked out from `origin` when empty).
+
 ### Someone cannot sign in
 
 | Who, and what happened | What to do |
@@ -598,7 +655,8 @@ infra/init-env.sh --resize
 infra/deploy.sh
 ```
 
-The database restarts once, for a few seconds.
+The database restarts once, for a few seconds. If `.env.production` has a `MIN_RAM_MB` line from the smaller server,
+delete it first, so preflight holds the new one to the usual minimum.
 
 ## Backups
 

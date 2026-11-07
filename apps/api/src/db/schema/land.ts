@@ -26,6 +26,8 @@ export const fields = pgTable(
     areaHa: dec(12, 4).notNull().default(0),
     boundary: jsonb().$type<GeoJsonGeometry>(),
     soilType: text(),
+    /** FAO texture class (SOIL_TEXTURES), which sets how much water the soil holds. */
+    soilTexture: text(),
     salinityLevel: text(),
     irrigationSource: text(),
     costCenterId: uuid(),
@@ -228,9 +230,113 @@ export const weatherDaily = pgTable(
     precipitationMm: dec(7, 2),
     windMaxKmh: dec(6, 2),
     weatherCode: integer(),
+    /** Daily means for crop water use (FAO-56). */
+    rhMeanPct: dec(5, 2),
+    dewPointC: dec(5, 2),
+    /** Mean wind at 2 m above ground. */
+    windMeanMs: dec(5, 2),
+    /** Measured solar radiation. Forecasts have none; water use then estimates it from the temperature range. */
+    solarMj: dec(6, 2),
     isForecast: boolean().notNull().default(false),
-    source: text().notNull().default('open-meteo'),
+    source: text().notNull().default('met-norway'),
     fetchedAt: ts().notNull().defaultNow(),
   },
   (t) => [unique().on(t.farmId, t.date)],
+);
+
+/**
+ * Forecast points for hour-level advice: spraying windows, heat stress, night frost. MET Norway
+ * gives hourly points for about 2.5 days and 6-hourly points after that; `periodHours` says which.
+ */
+export const weatherHourly = pgTable(
+  'weather_hourly',
+  {
+    id: pk(),
+    ...tenantColumns(),
+    time: ts().notNull(),
+    periodHours: integer().notNull().default(1),
+    tempC: dec(5, 2),
+    rhPct: dec(5, 2),
+    /** Wind at 10 m, as forecast. */
+    windMs: dec(5, 2),
+    precipMm: dec(7, 2),
+    weatherCode: integer(),
+    fetchedAt: ts().notNull().defaultNow(),
+  },
+  (t) => [unique().on(t.farmId, t.time)],
+);
+
+/** A Sentinel-2 scene that was read for the farm, clear or not, so it is not read twice. */
+export const satelliteScenes = pgTable(
+  'satellite_scenes',
+  {
+    id: pk(),
+    ...tenantColumns(),
+    sceneId: text().notNull(),
+    date: day().notNull(),
+    source: text().notNull().default('sentinel-2'),
+    /** Cloud cover of the whole 110 km tile, as published. */
+    tileCloudPct: dec(5, 2),
+    /** Share of the farm's field cells that were clear. */
+    clearPct: dec(5, 2),
+    status: text().notNull().default('done'),
+  },
+  (t) => [unique().on(t.farmId, t.sceneId), index().on(t.farmId, t.date)],
+);
+
+export interface VegetationGrid {
+  /** Bounds in degrees; the grid is north-up in latitude and longitude. */
+  west: number;
+  south: number;
+  east: number;
+  north: number;
+  width: number;
+  height: number;
+  /** Base64 bytes, row 0 north: NDVI as round((ndvi + 1) × 100), 255 where unknown. */
+  data: string;
+}
+
+export interface WeakZoneRecord {
+  areaHa: number;
+  meanNdvi: number;
+  /** Centre of the zone, for walking to it. */
+  lat: number;
+  lng: number;
+}
+
+/** Crop health of one field in one clear scene. */
+export const fieldVegetation = pgTable(
+  'field_vegetation',
+  {
+    id: pk(),
+    ...tenantColumns(),
+    fieldId: uuid().notNull().references(() => fields.id),
+    sceneId: uuid().notNull().references(() => satelliteScenes.id),
+    date: day().notNull(),
+    clearPct: dec(5, 2).notNull(),
+    cellCount: integer().notNull(),
+    ndviMean: dec(5, 3),
+    ndviP10: dec(5, 3),
+    ndviP50: dec(5, 3),
+    ndviP90: dec(5, 3),
+    grid: jsonb().$type<VegetationGrid>(),
+    weakZones: jsonb().$type<WeakZoneRecord[]>().notNull().default([]),
+  },
+  (t) => [unique().on(t.fieldId, t.sceneId), index().on(t.fieldId, t.date)],
+);
+
+/** Cut-and-weigh samples that calibrate pasture biomass against NDVI. */
+export const pastureSamples = pgTable(
+  'pasture_samples',
+  {
+    id: pk(),
+    ...tenantColumns(),
+    fieldId: uuid().notNull().references(() => fields.id),
+    date: day().notNull(),
+    biomassKgHa: dec(10, 1).notNull(),
+    /** NDVI of the field from the nearest clear scene within a week, stored when the sample is saved. */
+    ndvi: dec(5, 3),
+    notes: text(),
+  },
+  (t) => [index().on(t.fieldId, t.date)],
 );

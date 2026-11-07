@@ -65,7 +65,8 @@
     "audit": "Журнал аудита",
     "platform": "Платформа",
     "leads": "Заявки",
-    "platformUsers": "Все пользователи"
+    "platformUsers": "Все пользователи",
+    "water": "Полив"
   },
   "shell": {
     "menu": "Меню",

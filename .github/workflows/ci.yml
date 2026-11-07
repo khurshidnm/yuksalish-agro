@@ -1,0 +1,47 @@
+# Typecheck, tests and the web build, on every push and pull request.
+#
+# The server deploys main only once the job below has passed on the newest commit: infra/auto-deploy.sh
+# asks GitHub for the check named "tests". Renaming the job stops automatic deploys until
+# AUTO_DEPLOY_CHECK in the server's .env.production says the new name.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+# A newer push makes the older run pointless: only the newest commit on a branch is ever deployed.
+concurrency:
+  group: ci-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      # As in the Dockerfiles: pnpm 12 otherwise stops at dependencies whose build scripts are not approved.
+      pnpm_config_strict_dep_builds: 'false'
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          package-manager-cache: false
+
+      # The version comes from packageManager in package.json.
+      - uses: pnpm/action-setup@v6
+        with:
+          cache: true
+
+      # The same Postgres with PostGIS and the same Redis as on a laptop, on the same ports.
+      - name: Start Postgres and Redis
+        run: docker compose up -d --wait db redis
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build

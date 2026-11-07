@@ -3,6 +3,8 @@ import { registerDocuments } from './documents.routes';
 import { registerFacilities } from './facilities.routes';
 import { registerFields } from './fields.routes';
 import { registerPassport } from './passport.routes';
+import { registerSatellite } from './satellite.routes';
+import { registerWater } from './water.routes';
 import { registerWeather } from './weather.routes';
 
 export default async function farmModule(app: FastifyInstance) {
@@ -11,4 +13,6 @@ export default async function farmModule(app: FastifyInstance) {
   registerFacilities(app);
   registerDocuments(app);
   registerWeather(app);
+  registerSatellite(app);
+  registerWater(app);
 }

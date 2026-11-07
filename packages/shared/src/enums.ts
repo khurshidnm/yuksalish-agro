@@ -7,6 +7,8 @@ const e = <const T extends readonly [string, ...string[]]>(v: T) => v;
 
 // Land and crops
 export const LAND_USES = e(['arable', 'pasture', 'reserve', 'yard', 'infrastructure']);
+/** FAO soil texture classes; formulas/water-balance.ts holds how much water each one stores. */
+export const SOIL_TEXTURE_CLASSES = e(['sand', 'loamy_sand', 'sandy_loam', 'loam', 'silt_loam', 'silt', 'silty_clay_loam', 'silty_clay', 'clay']);
 export const FACILITY_TYPES = e(['barn', 'feed_storage', 'warehouse', 'water', 'well', 'pump', 'power', 'road', 'fence', 'guardhouse', 'other']);
 export const IRRIGATION_NODE_TYPES = e(['canal', 'ditch', 'pump', 'pipe', 'well']);
 export const OPERATION_TYPES = e(['tillage', 'sowing', 'irrigation', 'fertilizing', 'protection', 'observation', 'harvest']);

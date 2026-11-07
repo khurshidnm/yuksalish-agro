@@ -40,6 +40,12 @@ const RESPONSIBLE: Record<string, RoleKey[]> = {
   camera: ['director', 'owner'],
   device: ['director', 'owner'],
   fuel: ['director', 'storekeeper'],
+  crop: ['agronomist', 'director'],
+  satellite: ['agronomist', 'director'],
+  frost: ['agronomist', 'director'],
+  spray: ['agronomist'],
+  heat: ['zootechnician', 'shepherd', 'director'],
+  irrigation: ['agronomist', 'director'],
 };
 
 const DEFAULT_RESPONSIBLE: RoleKey[] = ['director', 'owner'];
