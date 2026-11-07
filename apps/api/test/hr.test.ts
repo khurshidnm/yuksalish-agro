@@ -1919,7 +1919,12 @@ describe('pilot seed', () => {
 
     const grid = await owner.get('/hr/timesheets', { month: '2026-11' });
     const shepherd = grid.data.employees.find((p: any) => p.fullName === 'Sherzod Boboyev');
-    expect(shepherd.days[todayIso()]).toBeUndefined();
+    // Today is left for the demo shepherd to check in, except on a Sunday, the seed's day off for everyone.
+    if (new Date(`${todayIso()}T00:00:00Z`).getUTCDay() === 0) {
+      expect(shepherd.days[todayIso()].status).toBe('day_off');
+    } else {
+      expect(shepherd.days[todayIso()]).toBeUndefined();
+    }
     const [firstNovember] = Object.values(shepherd.days) as any[];
     expect(firstNovember).toBeDefined();
 

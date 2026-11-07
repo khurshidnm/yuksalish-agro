@@ -111,6 +111,7 @@ a short path for a first deploy to show people. These scripts run on the server,
 | `infra/init-env.sh` | Writes `.env.production` with fresh secrets. `--resize` redoes only the memory settings. |
 | `infra/preflight.sh` | Checks the server and the settings, and changes nothing. It asks Telegram whether it accepts the bot token. |
 | `infra/deploy.sh` | Goes live or updates: preflight, backup, build, start, smoke check, and back again if that fails. `--rollback` goes back later. |
+| `infra/auto-deploy.sh` | Optional. Once `install`ed, cron runs it every 5 minutes, and it deploys the newest commit on `main` through `deploy.sh` once its tests have passed on GitHub. |
 | `infra/status.sh` | One look at everything, including the deep health check, the backups, the saved key and a real question to Telegram. |
 | `infra/backup.sh`, `infra/backup-cron.sh`, `infra/backup-prune.sh` | Encrypted backups, what cron runs, and how long they stay. `backup-cron.sh check` restores the newest one for real. |
 | `infra/restore.sh` | Puts a backup back, or checks one without touching anything live. |
