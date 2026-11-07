@@ -3,7 +3,7 @@ import { and, asc, count, eq, gt, isNull, lt, or, sql } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { generateSecret, generateURI, verify as verifyOtp } from 'otplib';
 import { v7 as uuidv7 } from 'uuid';
-import { ROLES_REQUIRING_2FA, type RoleKey } from '@yap/shared';
+import { PRODUCT_NAME, ROLES_REQUIRING_2FA, type RoleKey } from '@yap/shared';
 import { config } from '../../config';
 import { db, schema, type Tx } from '../../db/client';
 import { tx, withPlatform, withTenant } from '../../core/context';
@@ -428,7 +428,7 @@ export async function setupTwoFactor(userId: string) {
     await trx.update(users).set({ totpSecret: seal(fresh), totpLastStep: null }).where(eq(users.id, userId));
     return fresh;
   });
-  return { secret, otpauthUrl: generateURI({ issuer: 'Yuksalish Agro', label: user.phone, secret }) };
+  return { secret, otpauthUrl: generateURI({ issuer: PRODUCT_NAME, label: user.phone, secret }) };
 }
 
 /** Returns the recovery codes, which are never available again. */

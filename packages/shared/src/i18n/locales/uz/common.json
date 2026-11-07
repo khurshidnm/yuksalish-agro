@@ -1,5 +1,5 @@
 {
-  "app": { "name": "Yuksalish Agro", "tagline": "Ferma boshqaruv platformasi" },
+  "app": { "name": "Agro Panel", "tagline": "Ferma boshqaruv platformasi" },
   "actions": {
     "save": "Saqlash", "cancel": "Bekor qilish", "delete": "O'chirish", "edit": "Tahrirlash", "add": "Qo'shish",
     "create": "Yaratish", "close": "Yopish", "back": "Orqaga", "search": "Qidirish", "filter": "Filtr",

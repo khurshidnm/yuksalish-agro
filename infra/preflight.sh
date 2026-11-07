@@ -151,7 +151,7 @@ expected_origin="https://$domain"
 
 domain_ok=no
 if [[ -z "$domain" ]]; then
-  fail "DOMAIN is empty." "Set it to the name people will type, for example app.yuksalish.uz."
+  fail "DOMAIN is empty." "Set it to the name people will type, for example agropanel.uz."
 elif [[ "$domain" == *example* ]]; then
   fail "DOMAIN is still an example: $domain"
 elif [[ ! "$domain" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$ || "$domain" =~ ^[0-9.]+$ ]]; then

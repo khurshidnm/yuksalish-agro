@@ -27,7 +27,7 @@ export function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () =
     const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'yuksalish-agro-recovery-codes.txt';
+    link.download = 'agro-panel-recovery-codes.txt';
     link.click();
     URL.revokeObjectURL(url);
   };

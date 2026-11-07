@@ -7,6 +7,8 @@ import ru from './locales/ru/landing.json';
 import uz from './locales/uz/landing.json';
 import { latinToCyrillic } from './translit';
 
+export { PRODUCT_NAME } from '../brand';
+
 export type LandingCopy = typeof uz;
 export type LandingLanguage = 'uz' | 'uz-Cyrl' | 'ru' | 'en';
 

@@ -1,6 +1,6 @@
-# Yuksalish Agro Platform (YAP) — engineering guide
+# Agro Panel (code name YAP) — engineering guide
 
-Multi-tenant farm-management SaaS. Pilot tenant: Yuksalish Agro (210 ha of which 90 ha arable, 700 Hisori ewes from Tatarstan, Qorovulbozor).
+Multi-tenant farm-management SaaS, named Agro Panel (agropanel.uz). Pilot tenant: Yuksalish Agro (210 ha of which 90 ha arable, 700 Hisori ewes from Tatarstan, Qorovulbozor).
 The source of truth for requirements is `Yuksalish Agro — Ferma boshqaruv platformasi. Texnik topshiriq.md`.
 
 **Scope right now: web application only.** No Flutter app, no separate Python service. Field staff use the
@@ -38,6 +38,7 @@ packages/shared/src/
   permissions.ts roles, modules, default permission matrix
   enums.ts       stable string values for status/type columns
   dates.ts       business-date helpers (Asia/Tashkent)
+  brand.ts       PRODUCT_NAME, the only place the product name is written in code. The farm keeps its own name
   i18n/locales/{uz,ru,en}/<namespace>.json   one namespace per module
 apps/api/src/
   core/          kernel: context, http guard, errors, query helpers, journal, inventory, ledger, cost centers,

@@ -1,5 +1,5 @@
 {
-  "app": { "name": "Yuksalish Agro", "tagline": "Платформа управления фермой" },
+  "app": { "name": "Agro Panel", "tagline": "Платформа управления фермой" },
   "actions": {
     "save": "Сохранить", "cancel": "Отмена", "delete": "Удалить", "edit": "Изменить", "add": "Добавить",
     "create": "Создать", "close": "Закрыть", "back": "Назад", "search": "Поиск", "filter": "Фильтр",

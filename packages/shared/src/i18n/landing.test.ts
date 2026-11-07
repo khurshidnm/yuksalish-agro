@@ -36,7 +36,9 @@ describe('landing copy', () => {
   it('derives Cyrillic but keeps brand names and identifiers', () => {
     const cyrillic = landingCopy['uz-Cyrl'];
     expect(cyrillic.nav.login).toBe('Кириш');
-    expect(cyrillic.meta.title).toContain('Yuksalish Agro');
+    expect(cyrillic.meta.title).toContain('Agro Panel');
+    // The pilot farm is named in the copy, and its name stays in Latin as well.
+    expect(JSON.stringify(cyrillic)).toContain('Yuksalish Agro');
     expect(cyrillic.modules.items[0].key).toBe('land');
     expect(cyrillic.roles.items[0].key).toBe('owner');
     expect(strings(cyrillic.how).join(' ')).toContain('Excel');

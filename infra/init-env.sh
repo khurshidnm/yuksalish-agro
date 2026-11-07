@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Writes .env.production: fresh secrets, the domain, and memory settings for this server.
 #
-#   infra/init-env.sh app.yuksalish.uz   first time. Refuses to touch a file that already exists.
+#   infra/init-env.sh agropanel.uz   first time. Refuses to touch a file that already exists.
 #   infra/init-env.sh --resize           after a server upgrade: only the memory settings change.
 #
 # Passwords are only written once, on purpose. New ones would not match the database already created.
@@ -76,7 +76,7 @@ fi
 domain="${domain#https://}"
 domain="${domain%/}"
 if [[ ! "$domain" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$ ]]; then
-  echo "'$domain' does not look like a domain name. Example: app.yuksalish.uz" >&2
+  echo "'$domain' does not look like a domain name. Example: agropanel.uz" >&2
   exit 2
 fi
 if [[ -e "$ENV_FILE" ]]; then

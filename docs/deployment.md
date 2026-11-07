@@ -109,7 +109,7 @@ running stayed under 3 GB, disk cache included. Keep at least 15 GB of disk free
 
 ### A domain name
 
-Choose the name people will type, for example `app.yuksalish.uz`. You will point it at the server in step 1.
+Choose the name people will type, for example `agropanel.uz`. You will point it at the server in step 1.
 
 No domain yet? `<server-ip-with-dashes>.sslip.io` points at the server and can get a certificate, for example
 `203-0-113-10.sslip.io`. Use it until the real name is ready, then change `DOMAIN` and deploy again. Plain `http://`
@@ -274,7 +274,7 @@ If the backup machine is a computer at the office instead, follow
 ### 7. Create the settings file
 
 ```sh
-infra/init-env.sh app.yuksalish.uz
+infra/init-env.sh agropanel.uz
 nano .env.production
 ```
 
@@ -313,7 +313,7 @@ see [what the message means](#when-a-deploy-fails).
 
 ### 9. Create the real farm
 
-1. Open `https://app.yuksalish.uz/login` and sign in with the admin phone and password. The admin must use
+1. Open `https://agropanel.uz/login` and sign in with the admin phone and password. The admin must use
    two-factor sign-in, so the app stops here until it is on: scan the QR code with the authenticator app, enter the
    6-digit code, and press **Yoqish**. Save the ten recovery codes it shows, tick the box, and continue. You land on
    **Platforma**. If you lose the phone and the codes, see [Someone cannot sign in](#someone-cannot-sign-in).

@@ -1,8 +1,8 @@
 {
-  "name": "yuksalish-agro",
+  "name": "agro-panel",
   "version": "0.1.0",
   "private": true,
-  "description": "Yuksalish Agro Platform (YAP) — multi-tenant farm management SaaS",
+  "description": "Agro Panel (code name YAP) — multi-tenant farm management SaaS",
   "packageManager": "pnpm@12.16.1",
   "engines": {
     "node": ">=22"

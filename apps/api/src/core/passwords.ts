@@ -19,7 +19,7 @@ const COMMON_WORDS = new Set(
   abc abcd abcde abcdef abcdefg abcdefgh abcdefghij
   parol parolim parolcha mening menikiman salom salomlar assalom assalomu dunyo vatan onam otam oilam ukam akam
   opam bolam sevgi sevaman muhabbat bismillah allah alloh inshaalloh
-  yuksalish yuksalishagro yuksalishferma agro agroferma ferma fermer dehqon hisori qoy qoylar chorva bogdorchilik
+  yuksalish yuksalishagro yuksalishferma agro agroferma agropanel ferma fermer dehqon hisori qoy qoylar chorva bogdorchilik
   uzbekistan uzbek ozbekiston ozbek ozbegim toshkent tashkent samarqand samarkand buxoro bukhara qashqadaryo
   surxondaryo termiz qarshi navoiy jizzax sirdaryo andijon fargona namangan xorazm urganch qorovulbozor
   пароль парольпароль йцукен йцукенг йцукенгшщз фывапролд админ привет любовь ташкент узбекистан`.split(/\s+/),

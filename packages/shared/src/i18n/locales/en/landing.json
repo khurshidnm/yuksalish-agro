@@ -1,9 +1,9 @@
 {
   "meta": {
-    "title": "Farm Management Software for Uzbekistan | Yuksalish Agro",
+    "title": "Farm Management Software for Uzbekistan | Agro Panel",
     "description": "Run fields, livestock, warehouse, money and staff in one system. Works on a phone, and field records save without internet. Ask for a demo.",
     "keywords": "farm management software, livestock management software, cattle records, sheep records, crop records, farm accounting, cost per head, agriculture software Uzbekistan",
-    "ogImageAlt": "Yuksalish Agro farm management platform"
+    "ogImageAlt": "Agro Panel farm management platform"
   },
   "nav": {
     "features": "Features",
@@ -28,7 +28,7 @@
       "Field records without internet",
       "In Uzbek and Russian"
     ],
-    "imageAlt": "Yuksalish Agro dashboard: cash, expenses, head count and feed reserve on one screen",
+    "imageAlt": "Agro Panel dashboard: cash, expenses, head count and feed reserve on one screen",
     "phoneAlt": "The Today screen on a phone: daily log and quick actions for a herder"
   },
   "problem": {

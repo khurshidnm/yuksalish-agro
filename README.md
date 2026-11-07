@@ -1,4 +1,4 @@
-# Yuksalish Agro Platform (YAP)
+# Agro Panel (code name YAP)
 
 Multi-tenant farm management: land, crops, livestock, feed and stock, finance, staff, machinery, sales,
 reports, alerts and an AI assistant. The pilot tenant is the Yuksalish Agro farm in Qorovulbozor

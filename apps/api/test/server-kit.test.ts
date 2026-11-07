@@ -112,10 +112,10 @@ exec "$@"`,
     };
 
     it('names the bot when Telegram accepts the token, and asks with getMe', async () => {
-      answer = json(200, { ok: true, result: { id: 1, is_bot: true, username: 'yuksalish_bot' } });
+      answer = json(200, { ok: true, result: { id: 1, is_bot: true, username: 'agropanel_bot' } });
       const said = await ask();
-      expect(said).toContain('ok yuksalish_bot\n');
-      expect(said).toContain('@yuksalish_bot');
+      expect(said).toContain('ok agropanel_bot\n');
+      expect(said).toContain('@agropanel_bot');
       expect(said).toContain('exit=0');
       expect(asked).toEqual([`/bot${TOKEN}/getMe`]);
     });

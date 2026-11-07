@@ -1,3 +1,4 @@
+export * from './brand';
 export * from './enums';
 export * from './permissions';
 export * from './dates';

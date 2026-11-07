@@ -12,7 +12,7 @@ import {
   serializerCompiler,
   validatorCompiler,
 } from 'fastify-type-provider-zod';
-import { MAX_UPLOAD_BYTES } from '@yap/shared';
+import { MAX_UPLOAD_BYTES, PRODUCT_NAME } from '@yap/shared';
 import { config, isProd, isTest } from './config';
 import { AppError, safeError } from './core/errors';
 import { databaseAnswers, deepHealth } from './core/health';
@@ -157,7 +157,7 @@ export async function buildApp(logStream?: LogStream, docs = !isProd || config.A
   await app.register(swagger, {
     openapi: {
       openapi: '3.1.0',
-      info: { title: 'Yuksalish Agro Platform API', version: '1.0.0' },
+      info: { title: `${PRODUCT_NAME} API`, version: '1.0.0' },
       components: {
         securitySchemes: {
           bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },

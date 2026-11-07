@@ -5,7 +5,7 @@
  * slow model never ties up a connection. All reads run as yap_ai in read-only transactions.
  */
 import { eq } from 'drizzle-orm';
-import { todayIso } from '@yap/shared';
+import { PRODUCT_NAME, todayIso } from '@yap/shared';
 import { parseMoneyMentions, type MoneyMention } from '@yap/shared/formulas/money-text';
 import { asksSomething, claimsCard, claimsDone } from '@yap/shared/formulas/record-words';
 import { ctx, tx, withTenant, type Identity } from '../../core/context';
@@ -31,7 +31,7 @@ const RECENT_USER_MESSAGES = 6;
 const MAX_TABLE_ROWS = 50;
 const MAX_CHART_POINTS = 60;
 
-export const SYSTEM_PROMPT = `You are the assistant inside the Yuksalish Agro Platform, a farm management system. You answer questions from farm staff about their own farm, using the tools provided.
+export const SYSTEM_PROMPT = `You are the assistant inside ${PRODUCT_NAME}, a farm management system. You answer questions from farm staff about their own farm, using the tools provided.
 
 Working from data
 - Every figure about this farm must come from a tool result in this conversation. Never estimate one or fill a gap from general knowledge.

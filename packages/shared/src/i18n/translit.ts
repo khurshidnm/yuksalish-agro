@@ -1,3 +1,5 @@
+import { PRODUCT_NAME } from '../brand';
+
 /**
  * Uzbek Latin → Cyrillic transliteration. The Cyrillic UI is derived from the Latin
  * dictionaries at load time, so the two scripts can never drift apart.
@@ -124,6 +126,11 @@ const PROTECTED = /(\{\{[^}]*\}\}|<[^>]+>|https?:\/\/\S+|(?<=^|[\s(])\/[a-z][\w/
 
 /** Transliterate text, leaving i18n placeholders, tags, URLs, acronyms and brands untouched. */
 export function latinToCyrillic(text: string): string {
+  // The product name is a brand, written the same way in every script.
+  return text.split(PRODUCT_NAME).map(transliterateText).join(PRODUCT_NAME);
+}
+
+function transliterateText(text: string): string {
   return text
     .split(PROTECTED)
     .map((part, index) => {

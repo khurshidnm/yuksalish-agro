@@ -1,4 +1,4 @@
-import type { LandingLanguage } from '@yap/shared/landing';
+import { PRODUCT_NAME, type LandingLanguage } from '@yap/shared/landing';
 
 /**
  * Public details of the website, set at build time. Each is optional so a build never publishes
@@ -9,7 +9,7 @@ export const CONTACT_PHONE = String(import.meta.env.VITE_CONTACT_PHONE ?? '').tr
 /** A Telegram username without the @. */
 export const CONTACT_TELEGRAM = String(import.meta.env.VITE_CONTACT_TELEGRAM ?? '').replace(/^@/, '').trim();
 
-export const SITE_NAME = 'Yuksalish Agro';
+export const SITE_NAME = PRODUCT_NAME;
 
 export const LANDING_PATHS: Record<LandingLanguage, string> = {
   uz: '/',
