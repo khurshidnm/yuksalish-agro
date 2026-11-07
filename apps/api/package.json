@@ -14,7 +14,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --env-file-if-exists=../../.env src/db/migrate.ts",
     "ai:check": "tsx --env-file=../../.env src/modules/ai/provider/check.ts",
-    "ai:eval": "tsx --env-file=../../.env eval/assistant.ts"
+    "ai:eval": "tsx --env-file=../../.env eval/assistant.ts",
+    "tracking:simulate": "tsx src/modules/tracking/simulate.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.4.0",

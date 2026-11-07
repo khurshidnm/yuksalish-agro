@@ -166,6 +166,23 @@ export function formatDateTime(value: string | Date | null | undefined): string 
   }).format(d);
 }
 
+/**
+ * How long ago, for live data: "hozirgina", "5 daq. oldin", "3 soat oldin", "2 kun oldin", and the
+ * date and time once it is more than a week old. The words come from our dictionaries, because
+ * Uzbek borrows Russian number formats from Intl.
+ */
+export function formatAgo(value: string | Date | null | undefined, now: number = Date.now()): string {
+  if (!value) return DASH;
+  const d = parseDate(value);
+  if (!d) return DASH;
+  const minutes = Math.floor((now - d.getTime()) / 60_000);
+  if (minutes < 1) return i18n.t('common:date.justNow');
+  if (minutes < 60) return i18n.t('common:date.minutesAgo', { count: minutes });
+  if (minutes < 24 * 60) return i18n.t('common:date.hoursAgo', { count: Math.floor(minutes / 60) });
+  if (minutes < 7 * 24 * 60) return i18n.t('common:date.daysAgo', { count: Math.floor(minutes / (24 * 60)) });
+  return formatDateTime(d);
+}
+
 /** "YYYY-MM" → "Noyabr 2026". */
 export function formatMonth(month: string | null | undefined): string {
   if (!month) return DASH;

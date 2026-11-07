@@ -1072,6 +1072,7 @@ describe('alert labels', () => {
   const COMPUTED: Record<string, string[]> = {
     'rule.key': RULES.map((rule) => rule.key),
     'offlineRule(device)': ['camera_offline', 'device_offline'],
+    'FLAG_RULE[v.flag]': ['animal_isolated', 'animal_inactive', 'animal_fever'],
     UNREACHABLE_RULE: ['not_configured', 'channel_down', 'not_linked', 'undelivered'].map((reason) => `urgent_unreachable_${reason}`),
   };
   const AI_FAMILY = '`ai.${finding.type}`';

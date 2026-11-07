@@ -1,7 +1,7 @@
 # Data model
 
 Generated from `apps/api/src/db/schema` by `apps/api/src/db/erd.ts`. Do not edit by hand; run
-`pnpm --filter @yap/api exec tsx src/db/erd.ts` after a schema change. 104 tables.
+`pnpm --filter @yap/api exec tsx src/db/erd.ts` after a schema change. 109 tables.
 
 Links to `tenants`, `farms` and `users` (`tenant_id`, `farm_id`, `created_by`) are on almost every
 table and are left out of the lines to keep the diagrams readable. A table from another domain appears
@@ -1755,6 +1755,7 @@ erDiagram
     text status
     timestamp_with_time_zone last_seen_at
     uuid api_key_id FK
+    text external_id
     jsonb config
     text notes
   }
@@ -1793,6 +1794,101 @@ erDiagram
   api_keys ||--o{ devices : "api_key_id"
   facilities ||--o{ devices : "facility_id"
   webhook_subscriptions ||--o{ webhook_deliveries : "subscription_id"
+```
+
+## Animal tracking
+
+```mermaid
+erDiagram
+  animal_track_days {
+    uuid id PK
+    uuid tenant_id FK
+    uuid farm_id FK
+    uuid created_by FK
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+    uuid animal_id FK
+    date date
+    integer readings
+    integer fixes
+    numeric distance_m
+    double_precision activity_mean
+    numeric temperature_median_c
+    numeric temperature_max_c
+  }
+  animal_tracking {
+    uuid id PK
+    uuid tenant_id FK
+    uuid farm_id FK
+    uuid created_by FK
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+    uuid animal_id FK
+    double_precision lat
+    double_precision lng
+    timestamp_with_time_zone position_at
+    numeric temperature_c
+    timestamp_with_time_zone temperature_at
+    double_precision activity
+    timestamp_with_time_zone activity_at
+    timestamp_with_time_zone last_reading_at
+    jsonb flags
+  }
+  tracker_assignments {
+    uuid id PK
+    uuid tenant_id FK
+    uuid farm_id FK
+    uuid created_by FK
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+    uuid device_id FK
+    uuid animal_id FK
+    date fitted_on
+    date removed_on
+    text notes
+  }
+  tracker_readings {
+    uuid id PK
+    uuid tenant_id FK
+    uuid farm_id FK
+    uuid created_by FK
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+    uuid device_id FK
+    uuid animal_id FK
+    timestamp_with_time_zone recorded_at
+    timestamp_with_time_zone received_at
+    double_precision lat
+    double_precision lng
+    double_precision activity
+    numeric temperature_c
+    numeric battery_pct
+    integer rssi
+    numeric snr
+    text gateway_id
+  }
+  tracker_state {
+    uuid id PK
+    uuid tenant_id FK
+    uuid farm_id FK
+    uuid created_by FK
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+    uuid device_id FK
+    timestamp_with_time_zone last_reading_at
+    numeric battery_pct
+    timestamp_with_time_zone battery_at
+    integer rssi
+    numeric snr
+    text gateway_id
+  }
+  animals ||--o{ animal_track_days : "animal_id"
+  animals ||--o{ animal_tracking : "animal_id"
+  animals ||--o{ tracker_assignments : "animal_id"
+  animals ||--o{ tracker_readings : "animal_id"
+  devices ||--o{ tracker_assignments : "device_id"
+  devices ||--o{ tracker_readings : "device_id"
+  devices ||--o{ tracker_state : "device_id"
 ```
 
 ## AI

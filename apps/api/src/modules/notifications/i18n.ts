@@ -48,6 +48,8 @@ export function interpolate(template: string, params: Params, locale?: string | 
     if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return displayDate(value, locale);
     if (name === 'month' && typeof value === 'string' && /^\d{4}-\d{2}$/.test(value)) return displayMonth(value, locale);
     if (name === 'unit') return lookup(locale, 'enums', `unit.${String(value)}`) ?? String(value);
+    // A fraction is written with a comma in Uzbek and Russian, as the web app writes it.
+    if (typeof value === 'number' && !Number.isInteger(value) && language(locale) !== 'en') return String(value).replace('.', ',');
     return String(value);
   });
 }

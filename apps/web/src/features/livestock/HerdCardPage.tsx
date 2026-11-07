@@ -1,4 +1,4 @@
-import { Archive, ArrowRightLeft, ClipboardList, Home, PawPrint, Pencil, Scale, Wheat } from 'lucide-react';
+import { Archive, ArrowRightLeft, ClipboardList, Home, MapPin, PawPrint, Pencil, Scale, Wheat } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router';
@@ -82,6 +82,12 @@ export default function HerdCardPage() {
                 </Link>
               </Button>
             )}
+            <Button variant="outline" asChild>
+              <Link to={`/livestock/tracking?herd=${herd.id}`}>
+                <MapPin aria-hidden />
+                {t('tracking:map')}
+              </Link>
+            </Button>
             {canManage && (
               <Button variant="outline" asChild>
                 <Link to={`/livestock/herds?tab=weighing&herd=${herd.id}`}>

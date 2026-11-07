@@ -11,6 +11,7 @@ import * as ai from './schema/ai';
 import * as assets from './schema/assets';
 import * as core from './schema/core';
 import * as devices from './schema/devices';
+import * as tracking from './schema/tracking';
 import * as finance from './schema/finance';
 import * as hr from './schema/hr';
 import * as inventory from './schema/inventory';
@@ -33,6 +34,7 @@ const DOMAINS: [string, Record<string, unknown>][] = [
   ['Sales and purchasing', sales],
   ['Tasks, alerts, notifications', tasks],
   ['Devices', devices],
+  ['Animal tracking', tracking],
   ['AI', ai],
   ['Reports and import', reports],
 ];

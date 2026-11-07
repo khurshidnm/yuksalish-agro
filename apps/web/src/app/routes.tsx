@@ -18,6 +18,7 @@ import { routes as sales } from '@/features/sales/routes';
 import { routes as settings } from '@/features/settings/routes';
 import { routes as tasks } from '@/features/tasks/routes';
 import { routes as today } from '@/features/today/routes';
+import { routes as tracking } from '@/features/tracking/routes';
 import { NotFoundPage } from './pages';
 
 /** The pages behind sign-in. */
@@ -33,6 +34,7 @@ export const appRoutes: RouteObject[] = [
   ...farm,
   ...crops,
   ...livestock,
+  ...tracking,
   ...inventory,
   ...feed,
   ...finance,

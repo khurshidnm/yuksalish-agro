@@ -17,6 +17,7 @@ times in force, and the same counts go to the API's log. A run that finds nothin
 | What the assistant looked up (`ai_messages`) | 90 days | Policies | See below. |
 | Imports never finished | 90 days, the whole row | Policies | An upload nobody confirmed holds spreadsheet rows, often phones and names, and has no other use. |
 | Rows held by a finished import | 90 days | Policies | The rows that failed stay for fixing, for a while. The record of the import stays: who, when, how many. |
+| Collar and bolus readings (`tracker_readings`) | 30 days | Policies | About 100,000 rows a day for 700 animals. The nightly `tracking.daily` job first keeps each animal's day in `animal_track_days` (distance, activity, temperature), which stays. See [tracking](tracking.md). |
 | Dead sessions (`refresh_tokens`) | 30 days after expiry | Fixed | They can never be accepted again. The month is for looking into a break-in. They hold an address and a browser name. |
 | Telegram link codes | 7 days after expiry | Fixed | They last 15 minutes. |
 
@@ -36,7 +37,8 @@ Nothing below has a removal path, and the database refuses the API any change to
 - **The books:** transactions, accounts, debts and loans, budgets, sales and contracts, payroll, stock movements and
   batches, assets and depreciation.
 - **The journal** (`events`) and the **audit log** (`audit_logs`).
-- **Farm records:** animals and every record about them, fields and their operations, harvests, weather, tasks.
+- **Farm records:** animals and every record about them, fields and their operations, harvests, weather, tasks,
+  which tracker each animal wore, and each animal's daily tracking summary.
 - **Stored files:** receipts, scans, photos, monthly investor PDFs. No job removes a file, because many records can
   point at one.
 - **Alerts**, including resolved ones: a fire alert is a record of what happened and who answered.

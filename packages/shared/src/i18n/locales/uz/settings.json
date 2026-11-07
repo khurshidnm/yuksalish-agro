@@ -72,6 +72,8 @@
     "aiToolDataDaysHint": "Yordamchining javoblari qoladi. Faqat javob uchun ko'rib chiqqani o'chiriladi.",
     "importDays": "Import jadvallari qatorlari",
     "importDaysHint": "Yuklangan jadvaldagi shaxsiy ma'lumotlar. Oxiriga yetkazilmagan import butunlay o'chiriladi.",
+    "trackerReadingsDays": "Bo'yinbog' va bolyus ko'rsatkichlari",
+    "trackerReadingsDaysHint": "Har bir joylashuv va harorat kelgan holicha. Har bir hayvonning kunlik xulosasi qoladi. 7 kundan 365 kungacha.",
     "idempotencyDays": "Ikki marta yozilishdan himoya",
     "idempotencyDaysHint": "Telefondan ikki marta yuborilgan yozuv shu muddatda taniladi. Kamida 30 kun."
   },

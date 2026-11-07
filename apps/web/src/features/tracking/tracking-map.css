@@ -1,0 +1,37 @@
+/* A flagged sheep: a 44 px tap target around a coloured dot, for gloved hands. Colours are theme tokens. */
+.farm-map .tracking-pin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.farm-map .tracking-pin span {
+  display: block;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 3px solid var(--card);
+  border-radius: 9999px;
+  box-shadow: var(--shadow-pop);
+}
+
+.farm-map .tracking-pin-fever span {
+  background: var(--destructive);
+}
+
+.farm-map .tracking-pin-isolated span {
+  background: var(--warning-fill);
+}
+
+.farm-map .tracking-pin-inactive span {
+  background: var(--info);
+}
+
+.farm-map .tracking-pin-stale span {
+  opacity: 0.55;
+}
+
+.farm-map .tracking-pin-selected span {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-color: var(--accent);
+}

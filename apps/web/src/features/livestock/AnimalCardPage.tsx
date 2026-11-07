@@ -23,6 +23,8 @@ import { type Animal, type I18nName, StatusBadge, compressImage, isOnFarm, useAg
 import { TransferDialog } from './TransferDialog';
 
 const WeightChart = lazyPart(() => import('./WeightChart'));
+// Leaflet and the charts load only when the tab is opened.
+const AnimalTrackingTab = lazyPart(() => import('@/features/tracking/AnimalTrackingTab'));
 
 interface WeightRow {
   id: string;
@@ -514,6 +516,15 @@ export default function AnimalCardPage() {
             label: t('card.health.title'),
             hidden: !canSeeHealth,
             content: <AnimalHealthTab animalId={animal.id} tag={animal.tag} onFarm={active} />,
+          },
+          {
+            value: 'location',
+            label: t('tracking:passport.tab'),
+            content: (
+              <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+                <AnimalTrackingTab animalId={animal.id} />
+              </Suspense>
+            ),
           },
           { value: 'weights', label: t('card.tabs.weights'), content: weights },
           { value: 'identifiers', label: t('card.tabs.identifiers'), content: identifiers },

@@ -1,0 +1,146 @@
+{
+  "title": "Poda xaritasi",
+  "description": "Bo'yinbog' taqilgan har bir qo'y qayerda va qaysilarini borib ko'rish kerak.",
+  "map": "Poda xaritasi",
+  "tabs": {
+    "map": "Xarita",
+    "trackers": "Trekerlar"
+  },
+  "kind": {
+    "collar": "Bo'yinbog'",
+    "bolus": "Bolyus",
+    "ear_tag": "Quloq datchigi"
+  },
+  "flag": {
+    "fever": "Isitma",
+    "isolated": "Podadan ajralgan",
+    "inactive": "Harakatsiz"
+  },
+  "legend": {
+    "title": "Belgilar",
+    "ok": "Hammasi joyida",
+    "stale": "Ko'rsatkich eskirgan"
+  },
+  "stats": {
+    "located": "Xaritada",
+    "flagged": "E'tibor kerak",
+    "silent": "Signalsiz trekerlar",
+    "lowBattery": "Batareya kam"
+  },
+  "live": {
+    "noReading": "Hali ko'rsatkich yo'q",
+    "temperature": "{{value}} °C",
+    "passport": "Pasport",
+    "herdFilter": "Podani ko'rsatish",
+    "allHerds": "Barcha podalar",
+    "unnamedHerd": "Poda",
+    "updatedAt": "{{time}} da yangilandi",
+    "refresh": "Yangilash",
+    "noPositions": "Hali joylashuv yo'q. Bo'yinbog' yoqilganidan keyin 15 daqiqa ichida birinchisini yuboradi.",
+    "attention": "E'tibor kerak",
+    "allWell": "Kuzatilayotgan barcha qo'ylar yaxshi.",
+    "silentCount": "{{hours}} soatdan ortiq signalsiz trekerlar: {{count}}.",
+    "seeTrackers": "Trekerlarga o'tish"
+  },
+  "empty": {
+    "title": "Hali treker taqilmagan",
+    "description": "Sotuvchidan olingan bo'yinbog'lar ro'yxatini har biri taqilgan hayvon birkasi bilan yuklang, poda shu yerda paydo bo'ladi.",
+    "action": "Trekerlarni yuklash"
+  },
+  "fields": {
+    "externalId": "DevEUI",
+    "animal": "Hayvon",
+    "animalCode": "Birka yoki RFID",
+    "kind": "Turi",
+    "herd": "Poda",
+    "battery": "Batareya",
+    "lastReading": "Oxirgi ko'rsatkich",
+    "fittedOn": "Taqilgan sana",
+    "temperature": "Harorat",
+    "position": "Oxirgi joylashuv",
+    "activity": "Faollik",
+    "distance": "Masofa"
+  },
+  "trackers": {
+    "search": "DevEUI yoki birka",
+    "filter": "Taqilgan yoki bo'sh",
+    "fitted": {
+      "all": "Hammasi",
+      "yes": "Taqilgan",
+      "no": "Bo'sh"
+    },
+    "free": "Taqilmagan",
+    "never": "Hech qachon",
+    "fit": "Hayvonga taqish",
+    "fitTitle": "{{id}} trekerini taqish",
+    "fitMoves": "Avval {{tag}} dan yechiladi.",
+    "animalHint": "Hayvonning birkasi, RFID yoki QR kodi. Shu hayvondagi shu turdagi treker yechiladi.",
+    "remove": "Yechish",
+    "removeTitle": "{{tag}} dan treker yechilsinmi?",
+    "removeDescription": "Uning ko'rsatkichlari hayvon tarixida qoladi. Treker boshqa hayvon uchun bo'shaydi.",
+    "emptyTitle": "Trekerlar yo'q",
+    "emptyDescription": "Bo'yinbog' va bolyuslar yuklangandan keyin shu yerda ko'rinadi."
+  },
+  "import": {
+    "open": "Trekerlarni yuklash",
+    "title": "Trekerlarni yuklash",
+    "description": "Sotuvchi yoki jadvaldan ro'yxatni joylang. Avval tekshiriladi va barcha qatorlar to'g'ri bo'lmaguncha hech narsa o'zgarmaydi.",
+    "list": "Har qatorda bitta treker",
+    "listHint": "DevEUI, keyin u taqilgan hayvonning birkasi. Ixtiyoriy ravishda ular orasida turi: collar, bolus yoki ear_tag.",
+    "placeholder": "A840410000000001, YA-0001\nA840410000000002, bolus, YA-0002",
+    "defaultKind": "Qatorda ko'rsatilmagan bo'lsa, turi",
+    "lines": "Qatorlar: {{count}}",
+    "check": "Tekshirish",
+    "apply": "Yuklash ({{count}})",
+    "allGood": "Barcha qatorlar to'g'ri. Saqlash uchun «Yuklash»ni bosing.",
+    "line": "{{line}}-qator:",
+    "tooMany": "Bir martada ko'pi bilan {{max}} qator.",
+    "done": "Ro'yxatga olindi: {{registered}}. Taqildi: {{fitted}}.",
+    "summary": {
+      "register": "Yangi: {{count}}",
+      "fit": "Taqiladi: {{count}}",
+      "move": "Ko'chiriladi: {{count}}",
+      "unchanged": "O'zgarmaydi: {{count}}",
+      "errors": "Xatolar: {{count}}"
+    }
+  },
+  "passport": {
+    "tab": "Joylashuv va salomatlik",
+    "noTracker": "Bu hayvonda treker yo'q",
+    "noTrackerHint": "Bo'yinbog' yoki bolyus taqing, shu yerda joylashuv, faollik va harorat ko'rinadi.",
+    "toTrackers": "Trekerlar",
+    "removed": "Treker yechilgan. Uning tarixi quyida.",
+    "flaggedHint": "Salomatlik qoidalari belgiladi. Borib ko'ring: treker tashxis qo'ymaydi.",
+    "track": "Oxirgi 24 soat",
+    "temperatureChart": "Harorat, oxirgi 7 kun",
+    "noTemperature": "Harorat ko'rsatkichlari yo'q. Uni faqat katta qorin bolyusi o'lchaydi.",
+    "activityChart": "Faollik, oxirgi 7 kun",
+    "noActivity": "Faollik ko'rsatkichlari yo'q.",
+    "distanceChart": "Kunlik yurgan masofa",
+    "km": "{{value}} km",
+    "noHistory": "Birinchi kunning xulosasi ertasi kuni ertalab paydo bo'ladi.",
+    "trackers": "Taqilgan trekerlar"
+  },
+  "toast": {
+    "fitted": "Treker taqildi",
+    "removed": "Treker yechildi"
+  },
+  "errors": {
+    "INVALID_EXTERNAL_ID": "Bu DevEUI (16 ta o'n oltilik raqam) ham, seriya raqami ham emas.",
+    "DUPLICATE_IN_IMPORT": "Bu treker ikki marta yozilgan.",
+    "EXTERNAL_ID_TAKEN": "Bu raqam boshqa qurilma yoki fermada band.",
+    "TRACKER_KIND_MISMATCH": "Bu treker boshqa tur bilan ro'yxatga olingan.",
+    "ANIMAL_NOT_FOUND": "Fermada bunday birkali hayvon yo'q.",
+    "ANIMAL_NOT_ON_FARM": "Bu hayvon endi fermada emas.",
+    "DUPLICATE_ANIMAL": "Bu hayvonga bir turdagi ikkita treker tushadi.",
+    "TRACKER_ALREADY_FITTED": "Bu treker allaqachon shu hayvonda.",
+    "TRACKER_ALREADY_REMOVED": "Bu treker allaqachon yechilgan.",
+    "REMOVED_BEFORE_FITTED": "Treker taqilishidan oldin yechilishi mumkin emas.",
+    "INVALID_UPLINK": "Xabarda qurilma raqami yo'q.",
+    "NOT_A_TRACKER": "Bu qurilma hayvon trekeri emas.",
+    "INVALID_READING_TIME": "Ko'rsatkich vaqti kelajakda.",
+    "INVALID_RANGE": "Boshlanish oxiridan oldin bo'lishi kerak.",
+    "RANGE_TOO_LONG": "Bir martada ko'pi bilan 31 kun.",
+    "DATE_IN_FUTURE": "Sana kelajakda."
+  }
+}
