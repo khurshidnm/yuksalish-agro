@@ -3,7 +3,7 @@
  * is enough: the shepherd who walks with the flock sees it.
  */
 import { addDays, ANIMAL_ON_FARM_STATUSES } from '@yap/shared';
-import { medianPoint, TRACKING_RULES } from '@yap/shared/formulas/tracking';
+import { medianPoint, silentAfterMsFor, TRACKING_RULES } from '@yap/shared/formulas/tracking';
 import { and, asc, eq, gte, inArray, isNotNull, isNull, lte, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { schema } from '../../db/client';
@@ -58,7 +58,7 @@ export async function live(q: z.infer<typeof liveQuery>) {
     : [];
   const stateOf = new Map(states.map((s) => [s.animalId, s]));
 
-  const silent = (at: Date | null) => !at || now - at.getTime() > TRACKING_RULES.silentAfterMs;
+  const silent = (at: Date | null, kind: string) => !at || now - at.getTime() > silentAfterMsFor(kind);
   const fresh = (at: Date | null) => !!at && now - at.getTime() <= TRACKING_RULES.silentAfterMs;
 
   const byAnimal = new Map<string, (typeof worn)[number][]>();
@@ -77,14 +77,10 @@ export async function live(q: z.infer<typeof liveQuery>) {
       lng: s?.lng ?? null,
       positionAt: iso(s?.positionAt ?? null),
       temperatureC: s?.temperatureC ?? null,
-      temperatureAt: iso(s?.temperatureAt ?? null),
-      activity: s?.activity ?? null,
-      activityAt: iso(s?.activityAt ?? null),
       lastReadingAt: iso(s?.lastReadingAt ?? null),
       flags: s?.flags ?? {},
       batteryPct: batteries.length ? Math.min(...batteries) : null,
-      silent: trackers.every((t) => silent(t.lastReadingAt)),
-      trackers: trackers.map((t) => ({ kind: t.kind, externalId: t.externalId, lastReadingAt: iso(t.lastReadingAt), batteryPct: t.batteryPct })),
+      silent: trackers.every((t) => silent(t.lastReadingAt, t.kind)),
     };
   });
 
@@ -107,6 +103,7 @@ export async function live(q: z.infer<typeof liveQuery>) {
   return {
     now: new Date(now).toISOString(),
     silentAfterMinutes: TRACKING_RULES.silentAfterMs / 60_000,
+    bolusSilentAfterMinutes: TRACKING_RULES.bolusSilentAfterMs / 60_000,
     lowBatteryPct: low,
     summary: {
       tracked: list.length,

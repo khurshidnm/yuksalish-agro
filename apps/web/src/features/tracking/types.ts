@@ -14,13 +14,6 @@ export const FLAGS: TrackingFlag[] = ['fever', 'isolated', 'inactive'];
 /** Since when each flag has been raised, ISO time. */
 export type Flags = Partial<Record<TrackingFlag, string>>;
 
-export interface LiveTracker {
-  kind: TrackerKind;
-  externalId: string | null;
-  lastReadingAt: string | null;
-  batteryPct: number | null;
-}
-
 export interface LiveAnimal {
   animalId: string;
   tag: string;
@@ -30,14 +23,12 @@ export interface LiveAnimal {
   lng: number | null;
   positionAt: string | null;
   temperatureC: number | null;
-  temperatureAt: string | null;
-  activity: number | null;
-  activityAt: string | null;
   lastReadingAt: string | null;
   flags: Flags;
+  /** The lowest of its trackers. */
   batteryPct: number | null;
+  /** Every tracker it wears is past its silence limit. */
   silent: boolean;
-  trackers: LiveTracker[];
 }
 
 export interface LiveHerd {
@@ -53,6 +44,7 @@ export interface LiveHerd {
 export interface LiveData {
   now: string;
   silentAfterMinutes: number;
+  bolusSilentAfterMinutes: number;
   lowBatteryPct: number;
   summary: { tracked: number; located: number; silent: number; flagged: number; lowBattery: number };
   herds: LiveHerd[];

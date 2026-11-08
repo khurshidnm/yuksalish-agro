@@ -571,6 +571,14 @@ for old in $(ls -1t "$STATE_DIR"/images-*.list 2> /dev/null | tail -n +3); do
 done
 printf 'commit=%s\ndeployed_at=%s\n' "$commit" "$(date -Is)" > "$STATE_DIR/last-deploy"
 
+# A simulated flock (infra/simulate.sh) runs on the image it was started with. One that is running moves
+# to the new image now, so it posts with the code just deployed. One that was never started stays off.
+if [[ -n "$(compose --profile simulation ps -q tracking-sim 2> /dev/null)" ]]; then
+  say "Moving the simulated flock to the new image"
+  compose --profile simulation up -d --no-build --no-deps --force-recreate tracking-sim ||
+    echo "Could not restart the flock simulator. The site is fine. Start it by hand: infra/simulate.sh start"
+fi
+
 say "Done"
 echo "Commit $commit is live at $origin."
 [[ -z "$backup_file" ]] || echo "Backup from just before this deploy: $backup_file"

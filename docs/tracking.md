@@ -69,7 +69,7 @@ herd needs at least 5 sheep with fresh data, or the rule says nothing.
 | --- | --- | --- |
 | Apart from the flock | Its last two fixes are both farther from the herd's median point than the larger of 300 m and 4 × the herd's median distance. If more than 10% of the herd is that far, it is a split flock instead: one alert for the herd. | `animal_isolated`, `tracking_herd_split` |
 | Not moving | By day (07:00 to 20:00), over the last 3 hours: its fixes stayed within 25 m while the median sheep ranged 100 m or more, or its activity was below 25% of the herd's median. When a sheep has both signs, both must agree. | `animal_inactive` |
-| Fever | The median of its last hour is at least 1.0 °C above the herd's and at least 0.8 °C above its own 7-day normal. It is urgent at 2.0 °C over the herd. It needs 2 readings in the hour and 3 days of history. Water drunk lowers a reading, and the median drops it. | `animal_fever` |
+| Fever | The median of its last 2 hours is at least 1.0 °C above the herd's and at least 0.8 °C above its own normal: the lower quarter of its last 7 daily medians, so days of an illness do not become its normal. It is urgent at 2.0 °C over the herd. It needs 2 readings in those 2 hours (a bolus sends 4, so one lost message does not hide a fever) and 3 days of history. Water drunk lowers a reading, and the median drops it. | `animal_fever` |
 
 These thresholds are **starting values**. Tune them against the pilot flock's own data in
 `TRACKING_RULES` before trusting them. A flag clears only when fresh data says all is well; silence keeps it.
@@ -102,17 +102,67 @@ late, and looking back a week for any day it missed. It also takes trackers off 
 day they left. Readings are telemetry, so they are not written to the journal. Fitting, removing and importing
 trackers are domain actions, and each is.
 
-## Trying it without hardware
+## Simulating a sensored flock
 
-`apps/api/src/modules/tracking/simulate.ts` plays the network server. It invents readings for a flock grazing
-around a point:
+`apps/api/src/modules/tracking/simulator` imagines that every sheep on a demo farm wears a GPS collar and a rumen
+bolus, and runs the whole process end to end:
+
+1. **Fitting.** It imports a collar and a bolus for every sheep on the farm, through the same all-or-nothing
+   import as the Trackers tab. Their DevEUIs start `53494D` ("SIM" in hex). It also creates its own API key,
+   named "Tracking simulator".
+2. **History.** The first time, it fills the last 7 days (`SIM_HISTORY_DAYS`, 1 to 7) through the batch
+   endpoint, as a vendor bridge sends what it buffered. It then writes the daily summaries and runs the health
+   rules once, so the charts and each sheep's normal temperature are there from the start.
+3. **Live.** It posts every uplink as it happens, one ChirpStack `up` event each, to
+   `/api/v1/tracking/ingest/chirpstack`. Once a day each device also sends a `status` battery report. That is
+   about 1.2 requests a second for 700 sheep, the load real trackers would bring.
+
+The world is a pure function of the clock (`simulator/world.ts`). A restart resumes exactly where it stopped, and
+after a pause it fills the gap. The day follows a winter day at the farm:
+
+| Farm time | The flock |
+| --- | --- |
+| 21:00 to 07:30 | In the barn (the herd's facility outline) |
+| 07:30 to 08:15 | Walks out in a column, the lame at the back |
+| 08:15 to 12:00 | Grazes a slow loop across its pasture (the open pasture move, or the largest pasture) |
+| 12:00 to 13:30 | Rests at a trough on the pasture's edge nearest the barn |
+| 13:30 to 16:30 | Grazes again |
+| 16:30 to 17:15 | Walks home |
+
+Things happen at made-up but plausible rates, all driven by the seed:
+
+- Most days one sheep wanders 650 to 1,300 m off for two to three hours. That raises *apart from the flock*.
+- About every third day one falls ill for three to five days. It runs a fever of 1.4 to 2.3 °C, moves a third
+  as much, and lies down where grazing began. That raises *fever*, then *not moving*.
+- About 1% are lame.
+- Now and then a collar slips off on the pasture and is fitted again next morning.
+- A few collars arrived half flat, and one runs out within the week. That raises *low battery*, then *silent*.
+- About 0.4% of GPS fixes fail, and 2% of messages are lost to radio collisions.
+- Cold water drops the rumen temperature for an hour after each drink.
+
+The radio follows distance. There is a gateway on the barn roof and a mast at each trough. Collars reach a few km.
+A bolus speaks from inside the sheep, so it is heard only within about 300 m of a gateway: at night in the barn,
+and at the midday rest. That is why a gateway belongs where the flock sleeps and drinks.
+
+**On the server.** It is an optional service, `tracking-sim` (compose profile `simulation`). A deploy never starts
+it, and moves a running one to the new code:
 
 ```sh
-pnpm --filter @yap/api tracking:simulate -- --key <events:write key> --list trackers.csv --backfill 24
+infra/simulate.sh start    # fit, fill history, then live, day and night
+infra/simulate.sh logs     # what the flock is doing: phase, who strayed, who is ill
+infra/simulate.sh status
+infra/simulate.sh stop     # trackers and readings stay
+infra/simulate.sh remove   # take every simulated tracker, reading, flag and alert away
 ```
 
-Use the same list as the import. The first collar wanders off, the second stands still by day, the third runs
-low on battery, and the first bolus runs a fever after an hour. It is for development and demos only.
+**Locally**, with the database settings in `.env`:
+
+```sh
+pnpm --filter @yap/api tracking:simulate start --url http://localhost:4000
+```
+
+It invents data. Run it on a demo farm only, and `remove` it before real trackers arrive. Its alerts go out
+like any other: a fever is urgent, and reaches Telegram if the bot is set up.
 
 ## Hardware notes
 

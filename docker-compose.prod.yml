@@ -187,6 +187,25 @@ services:
       timeout: 3s
       retries: 6
 
+  # A simulated flock for a demo farm: a collar and a bolus on every sheep, posting as a LoRaWAN
+  # network server would (docs/tracking.md). Off unless started with infra/simulate.sh start. It invents
+  # readings, so never on a farm with real trackers. It stays out of deploys and preflight's memory sum.
+  tracking-sim:
+    image: ${YAP_IMAGE_PREFIX:-yap}/api:latest
+    profiles: ["simulation"]
+    command: ["tsx", "src/modules/tracking/simulator/cli.ts", "start"]
+    restart: unless-stopped
+    mem_limit: ${SIM_MEM_LIMIT:-256m}
+    logging: *logging
+    environment:
+      <<: *api-env
+      NODE_OPTIONS: --max-old-space-size=${SIM_HEAP_MB:-192}
+      SIM_API_URL: http://api:4000
+      SIM_HISTORY_DAYS: ${SIM_HISTORY_DAYS:-7}
+    depends_on:
+      api:
+        condition: service_healthy
+
 volumes:
   db:
   redis:

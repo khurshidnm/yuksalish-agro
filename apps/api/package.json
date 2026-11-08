@@ -15,7 +15,7 @@
     "db:migrate": "tsx --env-file-if-exists=../../.env src/db/migrate.ts",
     "ai:check": "tsx --env-file=../../.env src/modules/ai/provider/check.ts",
     "ai:eval": "tsx --env-file=../../.env eval/assistant.ts",
-    "tracking:simulate": "tsx src/modules/tracking/simulate.ts"
+    "tracking:simulate": "tsx --env-file-if-exists=../../.env src/modules/tracking/simulator/cli.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.4.0",

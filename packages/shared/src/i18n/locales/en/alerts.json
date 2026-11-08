@@ -168,7 +168,7 @@
     },
     "tracking_silent": {
       "title": "Trackers not reporting: {{count}}",
-      "body": "No reading for over {{hours}} hours. Check the collars, or whether the flock is out of the gateway's reach."
+      "body": "No reading for over {{hours}} hours from a collar, or {{bolusHours}} hours from a bolus. Check the collars, or whether the flock is out of the gateway's reach."
     },
     "tracking_silent_all": {
       "title": "No tracker is reporting",

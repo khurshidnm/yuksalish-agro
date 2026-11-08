@@ -171,12 +171,22 @@ describe('herdFever', () => {
   it('finds the sheep above both its herd and its own normal', () => {
     const result = herdFever(herd([40.4, 40.6]))!;
     // Medians: 39.05, 39.15, 39.0, 39.15, 39.05, 40.5; herd median (39.05 + 39.15) / 2 = 39.1.
-    // Own normal: median of 39.1, 39.0, 39.2 = 39.1. 40.5 is 1.4 above both, below the 2.0 for urgent.
+    // Own normal: lower quarter of 39.0, 39.1, 39.2 = 39.05. 40.5 is 1.4 above the herd and 1.45 above
+    // its normal, below the 2.0 over the herd for urgent.
     expect(result.herdMedianC).toBeCloseTo(39.1, 6);
     expect(result.fever).toHaveLength(1);
     expect(result.fever[0]).toMatchObject({ animalId: 'hot', urgent: false });
     expect(result.fever[0]!.overHerdC).toBeCloseTo(1.4, 6);
-    expect(result.fever[0]!.overBaselineC).toBeCloseTo(1.4, 6);
+    expect(result.fever[0]!.overBaselineC).toBeCloseTo(1.45, 6);
+  });
+
+  it('still finds a fever after most of its week was feverish', () => {
+    // Its last 7 days: 39.0, 39.1, 39.2, then 40.3, 40.4, 40.5, 40.6 ill. Their median 40.3 would hide a
+    // 40.5 today; their lower quarter (position 1.5 of 0-6) is 39.15, and 40.5 is 1.35 above it.
+    const week = [39.1, 39.0, 39.2, 40.4, 40.6, 40.5, 40.3];
+    const result = herdFever(herd([40.4, 40.6], week))!;
+    expect(result.fever.map((x) => x.animalId)).toEqual(['hot']);
+    expect(result.fever[0]!.overBaselineC).toBeCloseTo(1.35, 6);
   });
 
   it('is urgent 2 °C above the herd', () => {

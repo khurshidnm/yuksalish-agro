@@ -70,7 +70,7 @@ const SYSTEM_PERMISSIONS = MODULES.flatMap((m) =>
   ['view', 'create', 'update', 'approve', 'delete'].map((a) => `${m}.${a}`),
 );
 
-async function activeFarms(): Promise<Identity[]> {
+export async function activeFarms(): Promise<Identity[]> {
   const rows = await withPlatform((trx) =>
     trx
       .select({

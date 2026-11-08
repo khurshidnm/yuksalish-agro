@@ -580,6 +580,16 @@ docker compose -f docker-compose.prod.yml -f docker-compose.tls.yml --env-file .
   exec db sh -c 'psql -U yap yap -c "select created_at, admin_id, action, target_id, ip from platform_audit order by created_at desc limit 50"'
 ```
 
+### A simulated flock for demos
+
+On a demo farm, `infra/simulate.sh start` fits a GPS collar and a rumen bolus to every sheep, fills a week of
+history, and then posts their messages live, as a LoRaWAN network server would. `logs`, `status`, `stop` and
+`remove` do what they say. It is an optional service that a deploy never starts; once running, each deploy moves it to the
+new image, so it runs the new code. It takes about 150 MB of memory (`SIM_MEM_LIMIT`, 256m by default, with a `SIM_HEAP_MB` of 192)
+and about 35 MB of database a day for 700 sheep, and the readings go after 30 days. `SIM_HISTORY_DAYS` (1 to 7,
+default 7) is how much history the first start fills in. It invents data, so `remove` it before real trackers arrive. See
+[Simulating a sensored flock](tracking.md#simulating-a-sensored-flock).
+
 ### Going back
 
 If the deploy itself fails, it goes back by itself. If you find a problem later:

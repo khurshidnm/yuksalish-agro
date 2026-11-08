@@ -41,11 +41,15 @@ describe('settings reach the containers', () => {
     const migrateOnly = ['DATABASE_OWNER_URL', 'PLATFORM_ADMIN_PHONE', 'PLATFORM_ADMIN_PASSWORD'];
     // Set on the one command that seeds demo data: see docs/deployment.md.
     const seedOnly = ['SEED_PASSWORD'];
+    // Read by the flock simulator, which runs as its own service: the check below sees they reach it.
+    const simulatorOnly = ['SIM_API_URL', 'SIM_HISTORY_DAYS'];
+    const simulator = compose.slice(compose.indexOf('\n  tracking-sim:'), compose.indexOf('\nvolumes:'));
+    expect(simulatorOnly.filter((name) => !simulator.includes(`${name}:`))).toEqual([]);
     const files = readdirSync(join(apiRoot, 'src'), { recursive: true, encoding: 'utf8' }).filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts'));
     const inCode = files.flatMap((f) => [...source(f).matchAll(/process\.env\.([A-Z][A-Z0-9_]*)/g)].map((m) => m[1]));
     const declared = [...source('config.ts').matchAll(/^ {2}([A-Z][A-Z0-9_]*):/gm)].map((m) => m[1]);
     const apiEnv = compose.slice(compose.indexOf('x-api-env'), compose.indexOf('services:'));
-    const missing = [...new Set([...inCode, ...declared])].filter((name) => !onDefaults.includes(name) && !migrateOnly.includes(name) && !seedOnly.includes(name) && !apiEnv.includes(`${name}:`));
+    const missing = [...new Set([...inCode, ...declared])].filter((name) => !onDefaults.includes(name) && !migrateOnly.includes(name) && !seedOnly.includes(name) && !simulatorOnly.includes(name) && !apiEnv.includes(`${name}:`));
     expect(missing).toEqual([]);
   });
 });
