@@ -168,7 +168,7 @@
     },
     "tracking_silent": {
       "title": "Signal bermayotgan trekerlar: {{count}}",
-      "body": "{{hours}} soatdan beri ko'rsatkich yo'q. Bo'yinbog'larni tekshiring yoki poda shlyuz qamrovidan chiqib ketmaganini bilib oling."
+      "body": "Bo'yinbog'dan {{hours}} soatdan, bolyusdan {{bolusHours}} soatdan beri ko'rsatkich yo'q. Bo'yinbog'larni tekshiring yoki poda shlyuz qamrovidan chiqib ketmaganini bilib oling."
     },
     "tracking_silent_all": {
       "title": "Hech bir treker signal bermayapti",

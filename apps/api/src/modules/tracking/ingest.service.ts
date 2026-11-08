@@ -152,7 +152,7 @@ async function storeReadings(rows: Row[]): Promise<void> {
   await tx()
     .insert(trackerReadings)
     .values(
-      [...merged.values()].map((r) => ({
+      [...merged.values()].sort(byLockOrder).map((r) => ({
         tenantId: c.tenantId,
         farmId: c.farmId,
         deviceId: r.device.id,
@@ -173,6 +173,14 @@ async function storeReadings(rows: Row[]): Promise<void> {
 }
 
 const camel = (snake: string) => snake.replace(/_([a-z])/g, (_, ch: string) => ch.toUpperCase());
+
+/**
+ * Two batches at once that upsert the same rows in different orders deadlock, and Postgres refuses
+ * one of them. Every upsert here takes its rows in the same order, by device and time, so a bridge
+ * posting batches in parallel gets them all through.
+ */
+const byLockOrder = (a: Row, b: Row) =>
+  a.device.id < b.device.id ? -1 : a.device.id > b.device.id ? 1 : a.at.getTime() - b.at.getTime();
 
 const mergeFields = (a: ReadingFields, b: ReadingFields): ReadingFields => ({
   lat: a.lat ?? b.lat,
@@ -232,6 +240,7 @@ async function updateTrackerState(rows: Row[]): Promise<void> {
     };
   });
   if (values.length === 0) return;
+  values.sort((a, b) => (a.deviceId < b.deviceId ? -1 : a.deviceId > b.deviceId ? 1 : 0));
   await tx()
     .insert(trackerState)
     .values(values)
@@ -266,6 +275,7 @@ async function updateAnimals(rows: Row[]): Promise<void> {
     };
   });
   if (values.length === 0) return;
+  values.sort((a, b) => (a.animalId < b.animalId ? -1 : a.animalId > b.animalId ? 1 : 0));
   await tx()
     .insert(animalTracking)
     .values(values)

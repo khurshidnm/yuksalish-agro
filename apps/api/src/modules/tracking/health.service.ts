@@ -11,6 +11,7 @@ import {
   herdInactivity,
   herdIsolation,
   isDaytime,
+  silentAfterMsFor,
   TRACKING_RULES,
   type AnimalFixes,
   type AnimalTemperatures,
@@ -24,7 +25,7 @@ import { ctx, today, tx } from '../../core/context';
 import { recordEvent } from '../../core/journal';
 import { raiseAlert, resolveByDedupKey } from '../alerts/alerts.service';
 
-const { animals, animalTrackDays, animalTracking, herds, trackerAssignments: a, trackerReadings: r, trackerState } = schema;
+const { animals, animalTrackDays, animalTracking, devices, herds, trackerAssignments: a, trackerReadings: r, trackerState } = schema;
 
 const ON_FARM = [...ANIMAL_ON_FARM_STATUSES];
 const HOUR = 3_600_000;
@@ -160,12 +161,12 @@ export async function evaluateHealth(now: Date = new Date(), checkSilence = true
     }
 
     // Fever
-    const hourAgo = now.getTime() - HOUR;
+    const feverFrom = now.getTime() - TRACKING_RULES.feverWindowMs;
     const fever = herdFever(
       members.map(
         (m): AnimalTemperatures => ({
           animalId: m.animalId,
-          recent: own(m.animalId).flatMap((x) => (x.temperatureC !== null && x.at.getTime() >= hourAgo ? [x.temperatureC] : [])),
+          recent: own(m.animalId).flatMap((x) => (x.temperatureC !== null && x.at.getTime() >= feverFrom ? [x.temperatureC] : [])),
           baselineDays: (baselineOf.get(m.animalId) ?? []).map((b) => b.c!),
         }),
       ),
@@ -173,7 +174,7 @@ export async function evaluateHealth(now: Date = new Date(), checkSilence = true
     if (fever) {
       const hot = new Map(fever.fever.map((x) => [x.animalId, x]));
       for (const m of members) {
-        const recent = own(m.animalId).filter((x) => x.temperatureC !== null && x.at.getTime() >= hourAgo).length;
+        const recent = own(m.animalId).filter((x) => x.temperatureC !== null && x.at.getTime() >= feverFrom).length;
         const x = hot.get(m.animalId);
         say(m.animalId, {
           flag: 'fever',
@@ -263,9 +264,16 @@ async function herdSplitAlert(
 /** Fitted trackers that should be reporting: on an animal on the farm. */
 const fittedTrackers = () =>
   tx()
-    .select({ deviceId: a.deviceId, fittedOn: a.fittedOn, lastReadingAt: trackerState.lastReadingAt, batteryPct: trackerState.batteryPct })
+    .select({
+      deviceId: a.deviceId,
+      kind: sql<string>`${devices.config}->>'trackerKind'`,
+      fittedOn: a.fittedOn,
+      lastReadingAt: trackerState.lastReadingAt,
+      batteryPct: trackerState.batteryPct,
+    })
     .from(a)
     .innerJoin(animals, eq(animals.id, a.animalId))
+    .innerJoin(devices, eq(devices.id, a.deviceId))
     .leftJoin(trackerState, eq(trackerState.deviceId, a.deviceId))
     .where(and(eq(a.farmId, ctx().farmId), isNull(a.removedOn), inArray(animals.status, ON_FARM)));
 
@@ -276,7 +284,7 @@ const fittedTrackers = () =>
 async function silenceAlert(now: Date): Promise<number> {
   const fitted = await fittedTrackers();
   const due = fitted.filter((t) => t.lastReadingAt !== null || t.fittedOn < today());
-  const silent = due.filter((t) => !t.lastReadingAt || now.getTime() - t.lastReadingAt.getTime() > TRACKING_RULES.silentAfterMs);
+  const silent = due.filter((t) => !t.lastReadingAt || now.getTime() - t.lastReadingAt.getTime() > silentAfterMsFor(t.kind));
   const dedupKey = `tracking_silent:${ctx().farmId}`;
   if (silent.length === 0) {
     await resolveByDedupKey(dedupKey);
@@ -284,6 +292,7 @@ async function silenceAlert(now: Date): Promise<number> {
   }
   const all = silent.length === due.length && due.length >= TRACKING_RULES.minHerdTracked;
   const hours = TRACKING_RULES.silentAfterMs / HOUR;
+  const bolusHours = TRACKING_RULES.bolusSilentAfterMs / HOUR;
   await raiseAlert({
     ruleKey: 'tracking_silent',
     dedupKey,
@@ -291,7 +300,7 @@ async function silenceAlert(now: Date): Promise<number> {
     title: all ? 'Hech bir treker signal bermayapti' : `${silent.length} ta treker signal bermayapti`,
     link: '/livestock/tracking?tab=trackers',
     source: 'device',
-    data: { count: silent.length, total: due.length, hours, ...(all ? { textKey: 'tracking_silent_all' } : {}) },
+    data: { count: silent.length, total: due.length, hours, bolusHours, ...(all ? { textKey: 'tracking_silent_all' } : {}) },
     notify: ['zootechnician', 'director'],
   });
   return silent.length;

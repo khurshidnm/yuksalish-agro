@@ -14,6 +14,8 @@ import { ImportTrackersDialog } from './ImportTrackersDialog';
 import { LIVE, TRACKERS, TRACKING, isStale, type TrackerRow } from './types';
 
 const SILENT_MINUTES = 120;
+/** A bolus is heard only near a gateway, so it is quiet whenever the flock grazes (docs/tracking.md). */
+const BOLUS_SILENT_MINUTES = 14 * 60;
 const LOW_BATTERY = 20;
 
 const fitSchema = z.object({ animal: zText(64), fittedOn: zDate() });
@@ -76,7 +78,7 @@ export function TrackersTab() {
       header: t('fields.lastReading'),
       cell: (row) =>
         row.lastReadingAt ? (
-          <span className={isStale(row.lastReadingAt, now, SILENT_MINUTES) ? 'text-warning' : undefined}>{formatAgo(row.lastReadingAt, now)}</span>
+          <span className={isStale(row.lastReadingAt, now, row.kind === 'bolus' ? BOLUS_SILENT_MINUTES : SILENT_MINUTES) ? 'text-warning' : undefined}>{formatAgo(row.lastReadingAt, now)}</span>
         ) : (
           <span className="text-muted-foreground">{t('trackers.never')}</span>
         ),

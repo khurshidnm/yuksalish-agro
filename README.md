@@ -112,6 +112,7 @@ a short path for a first deploy to show people. These scripts run on the server,
 | `infra/preflight.sh` | Checks the server and the settings, and changes nothing. It asks Telegram whether it accepts the bot token. |
 | `infra/deploy.sh` | Goes live or updates: preflight, backup, build, start, smoke check, and back again if that fails. `--rollback` goes back later. |
 | `infra/auto-deploy.sh` | Optional. Once `install`ed, cron runs it every 5 minutes, and it deploys the newest commit on `main` through `deploy.sh` once its tests have passed on GitHub. |
+| `infra/simulate.sh` | Optional, for a demo farm only. `start` fits a collar and a bolus to every sheep and posts their readings day and night, as a LoRaWAN network server would; `remove` takes it all away. |
 | `infra/status.sh` | One look at everything, including the deep health check, the backups, the saved key and a real question to Telegram. |
 | `infra/backup.sh`, `infra/backup-cron.sh`, `infra/backup-prune.sh` | Encrypted backups, what cron runs, and how long they stay. `backup-cron.sh check` restores the newest one for real. |
 | `infra/restore.sh` | Puts a backup back, or checks one without touching anything live. |

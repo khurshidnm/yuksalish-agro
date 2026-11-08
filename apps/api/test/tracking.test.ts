@@ -376,6 +376,20 @@ describe('health rules', () => {
     expect(await openAlerts(x.f, 'tracking_silent')).toHaveLength(0);
   });
 
+  it('a bolus out on the pasture is quiet for hours without counting as silent; a whole night is too long', async () => {
+    const x = await farm(6, 'bolus');
+    const temps = (minutesAgo: number) =>
+      send(x.f, x.key, '/readings', { readings: x.sheep.map((_, i) => ({ externalId: eui(i), recordedAt: ago(minutesAgo), temperatureC: 39.1 })) });
+    await temps(180);
+    await x.f.run(() => evaluateHealth(new Date(), true));
+    expect(await openAlerts(x.f, 'tracking_silent')).toHaveLength(0);
+
+    await x.f.run(() => tx().update(trackerState).set({ lastReadingAt: new Date(Date.now() - 15 * 60 * MIN) }));
+    await x.f.run(() => evaluateHealth(new Date(), true));
+    const [silent] = await openAlerts(x.f, 'tracking_silent');
+    expect(silent!.data).toMatchObject({ count: 6, hours: 2, bolusHours: 14 });
+  });
+
   it('the per-device offline check leaves trackers alone', async () => {
     const x = await farm(1);
     await x.f.run(() => tx().update(devices).set({ status: 'online', lastSeenAt: new Date(Date.now() - 60 * MIN) }));

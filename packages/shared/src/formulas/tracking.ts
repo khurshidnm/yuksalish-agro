@@ -49,7 +49,12 @@ export const TRACKING_RULES = {
   inactiveMinActivityReadings: 3,
   /** Below this share of the herd's median activity a sheep is idle. */
   inactiveActivityShare: 0.25,
-  /** Temperature readings in the last hour needed to judge a fever. */
+  /**
+   * A fever is judged over this window. A bolus speaks every 30 minutes and about one message in
+   * fifty is lost, so two hours holds four readings and one lost message does not hide a fever.
+   */
+  feverWindowMs: 2 * HOUR,
+  /** Temperature readings in the window needed to judge a fever. */
   feverMinReadings: 2,
   /** Days of a sheep's own readings needed before its normal is known. */
   feverMinBaselineDays: 3,
@@ -63,8 +68,13 @@ export const TRACKING_RULES = {
   maxSpeedKmh: 10,
   /** Steps shorter than this are GPS jitter of a sheep standing still. */
   jitterM: 5,
-  /** A tracker silent this long needs someone to look. */
+  /** A collar silent this long needs someone to look. */
   silentAfterMs: 2 * HOUR,
+  /**
+   * A bolus speaks from inside the rumen and is heard only near a gateway, so it is quiet all the
+   * while the flock grazes. One silent through a whole night in the barn needs someone to look.
+   */
+  bolusSilentAfterMs: 14 * HOUR,
   /** Battery below this needs replacing soon. */
   lowBatteryPct: 20,
 } as const;
@@ -88,6 +98,16 @@ export function median(values: readonly number[]): number | null {
   if (known.length === 0) return null;
   const mid = known.length >> 1;
   return known.length % 2 ? known[mid]! : (known[mid - 1]! + known[mid]!) / 2;
+}
+
+/** The value below which a share `q` (0 to 1) of the values fall, interpolated (type 7). `null` for none. */
+export function quantile(values: readonly number[], q: number): number | null {
+  const known = values.filter((v) => Number.isFinite(v)).sort((a, b) => a - b);
+  if (known.length === 0) return null;
+  const pos = (known.length - 1) * Math.min(1, Math.max(0, q));
+  const lo = Math.floor(pos);
+  const hi = Math.ceil(pos);
+  return known[lo]! + (known[hi]! - known[lo]!) * (pos - lo);
 }
 
 /**
@@ -127,6 +147,11 @@ export function rangeM(fixes: readonly LatLng[]): number | null {
   const centre = medianPoint(fixes);
   if (!centre) return null;
   return Math.max(...fixes.map((f) => haversineM(centre, f)));
+}
+
+/** How long a tracker of this kind may stay silent before it counts as silent. */
+export function silentAfterMsFor(kind: string | null | undefined): number {
+  return kind === 'bolus' ? TRACKING_RULES.bolusSilentAfterMs : TRACKING_RULES.silentAfterMs;
 }
 
 /** Whether a local hour (0-23) is daylight for the inactivity rule. */
@@ -238,9 +263,9 @@ export function herdInactivity(animals: readonly AnimalWindow[]): InactivityResu
 
 export interface AnimalTemperatures {
   animalId: string;
-  /** Readings from the last hour, °C. */
+  /** Readings from the last `feverWindowMs`, °C. */
   recent: readonly number[];
-  /** The sheep's daily median temperature on previous days, °C. */
+  /** The sheep's daily median temperature on previous days, °C. Its normal is their lower quarter. */
   baselineDays: readonly number[];
 }
 
@@ -266,7 +291,9 @@ export function herdFever(animals: readonly AnimalTemperatures[]): FeverResult |
   const fever: FeverResult['fever'] = [];
   for (const { a, medianC } of medians) {
     if (a.baselineDays.length < r.feverMinBaselineDays) continue;
-    const baseline = median(a.baselineDays)!;
+    // The lower quarter of its days, not the middle: a sheep ill for days would otherwise make
+    // its fever its normal, and the fever would vanish.
+    const baseline = quantile(a.baselineDays, 0.25)!;
     const overHerdC = medianC - herdMedianC;
     const overBaselineC = medianC - baseline;
     if (overHerdC >= r.feverOverHerdC && overBaselineC >= r.feverOverBaselineC) {
