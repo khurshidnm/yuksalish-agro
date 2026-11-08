@@ -145,6 +145,16 @@ remember_images() {
   fi
 }
 
+# The images run the code as a non-root user, and Docker COPY keeps each file's mode. A checkout made
+# under umask 027 (this script's, cron's, or an older auto-deploy.sh's) leaves files only root can read,
+# and the migration then cannot open apps/api/package.json. Tracked files are public on GitHub anyway,
+# so they are opened to all. Untracked ones, .env.production and the backups among them, keep their modes.
+open_code() {
+  local repo=(git -c safe.directory='*' -C "$YAP_ROOT")
+  "${repo[@]}" ls-files -z | xargs -0 -r chmod -- a+r &&
+    { printf '.\0' && "${repo[@]}" ls-tree -r -d -z --name-only HEAD; } | xargs -0 -r chmod -- a+rx
+}
+
 build_images() {
   local service pull=(--pull)
   [[ "$(setting DEPLOY_PULL yes)" == "yes" ]] || pull=()
@@ -482,6 +492,13 @@ say "Preflight"
 if ! infra/preflight.sh; then
   echo
   echo "Deploy refused. Nothing was changed. Log: $log_file"
+  leave 2
+fi
+
+say "Making the checked-out code readable inside the images"
+if ! open_code; then
+  echo
+  echo "Deploy refused: could not open the checked-out code to the images. The running site was not touched. Log: $log_file"
   leave 2
 fi
 

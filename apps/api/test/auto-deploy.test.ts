@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -177,6 +177,22 @@ describe('an automatic deploy', () => {
     expect(auto().said).toBe('');
     expect(lines('deployed')).toEqual([tip]);
     expect(lines('telegram')).toHaveLength(1);
+  });
+
+  it('checks the code out readable by everyone, as the images run it as a non-root user', () => {
+    // On 2026-11-08 a checkout under the script's umask 027 left apps/api/package.json readable by root
+    // alone, and the migration in the API image could not open it.
+    mkdirSync(join(dev, 'apps', 'api'), { recursive: true });
+    writeFileSync(join(dev, 'apps', 'api', 'package.json'), '{}\n');
+    git(dev, 'add', '-A');
+    git(dev, 'commit', '-qm', 'a new folder');
+    git(dev, 'push', '-q', 'origin', 'main');
+    passed();
+
+    auto();
+
+    expect(statSync(join(server, 'apps', 'api', 'package.json')).mode & 0o777).toBe(0o644);
+    expect(statSync(join(server, 'apps', 'api')).mode & 0o777).toBe(0o755);
   });
 
   it('asks GitHub for the check named in the workflow, on that very commit', () => {
