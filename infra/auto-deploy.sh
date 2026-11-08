@@ -47,6 +47,11 @@ say() { printf '%s %s\n' "$(stamp)" "$*"; }
 short() { printf '%s' "${1:0:7}"; }
 in_repo() { git -c safe.directory='*' -C "$YAP_ROOT" "$@"; }
 
+# The images run the code as a non-root user, and Docker COPY keeps each file's mode. Under this
+# script's umask 027 a checkout writes files only root can read, so it checks out under 022: the code
+# is public on GitHub anyway. Untracked files, .env.production among them, are not touched.
+checkout_code() { (umask 022 && in_repo checkout --quiet -B "$1" "$2"); }
+
 tell() {
   say "$1"
   telegram_send "YAP deploy on $(hostname): $1"
@@ -154,7 +159,7 @@ reason_in() {
 }
 
 go_back() {
-  in_repo checkout --quiet -B "$1" "$2" ||
+  checkout_code "$1" "$2" ||
     say "Could not check out $(short "$2") again. Look: git -C $YAP_ROOT status"
 }
 
@@ -164,7 +169,7 @@ deploy() {
   local branch="$1" tip="$2" previous output code reason log subject
   previous="$(in_repo rev-parse HEAD)"
   subject="$(in_repo log -1 --format=%s "$tip")"
-  if ! in_repo checkout --quiet -B "$branch" "$tip"; then
+  if ! checkout_code "$branch" "$tip"; then
     remember "$tip" refused "git could not check it out"
     tell "Not deploying $(short "$tip"): git could not check it out in $YAP_ROOT. Look: git -C $YAP_ROOT status"
     return
