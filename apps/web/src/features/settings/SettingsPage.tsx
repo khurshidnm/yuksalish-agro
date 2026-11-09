@@ -7,7 +7,7 @@ import { DataTableView, ErrorCard, FormGrid, NumberField, PageHeader, SelectFiel
 import { Alert, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Skeleton } from '@/components/ui';
 import { api } from '@/lib/api';
 import { useAuth, useCan } from '@/lib/auth';
-import { formatNumber } from '@/lib/format';
+import { currencyLabel, formatNumber } from '@/lib/format';
 import { zEnum, zNonNegative, zOptionalNumber, zOptionalText, zText } from '@/lib/forms';
 import { enumOptions } from '@/lib/i18n';
 import { errorMessage, useApiMutation, useDetail } from '@/lib/query';
@@ -203,7 +203,7 @@ function PolicyTab() {
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
               <FormGrid>
-                <NumberField money form={form} name="finance.approvalThreshold" label={t('policy.approvalThreshold')} hint={t('policy.approvalThresholdHint')} suffix={query.data?.currency} />
+                <NumberField money form={form} name="finance.approvalThreshold" label={t('policy.approvalThreshold')} hint={t('policy.approvalThresholdHint')} suffix={currencyLabel(form.watch('currency') || query.data.currency)} />
                 <SelectField form={form} name="finance.overheadBase" label={t('policy.overheadBase')} hint={t('policy.overheadBaseHint')} options={enumOptions('overheadBase', OVERHEAD_BASES)} />
               </FormGrid>
               <SwitchField form={form} name="finance.makerChecker" label={t('policy.makerChecker')} hint={t('policy.makerCheckerHint')} />
@@ -319,10 +319,12 @@ function DataTab() {
   const tables = (query.data ?? []).filter((table) => table.rows > 0);
   const columns: Column<ExportTable>[] = [
     { key: 'name', header: t('data.table'), cell: (row) => t(`entities.${row.name}`, { defaultValue: row.name }), mobile: 'title' },
-    { key: 'rows', header: t('data.rows'), cell: (row) => `${formatNumber(row.rows)}${row.capped ? '+' : ''}`, align: 'right', mobile: 'subtitle' },
+    // On a phone the count reads 'Yozuvlar 3' beside its label, not a bare '3' under the name.
+    { key: 'rows', header: t('data.rows'), cell: (row) => `${formatNumber(row.rows)}${row.capped ? '+' : ''}`, align: 'right' },
     {
       key: 'csv',
-      header: 'CSV',
+      // The button says CSV already; on a phone card the label beside it would say it twice.
+      header: <span className="max-md:sr-only">CSV</span>,
       align: 'right',
       cell: (row) => (
         <Button

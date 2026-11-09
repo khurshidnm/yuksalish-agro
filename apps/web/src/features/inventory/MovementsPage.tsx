@@ -1,7 +1,8 @@
 import { MOVEMENT_TYPES } from '@yap/shared';
 import { FileDown, History, Undo2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { type Column, Badge, type BadgeVariant, DataTable, DateInput, Label, PageHeader, Select, useConfirm, useUrlParam } from '@/components';
+import { type Column, Badge, type BadgeVariant, DataTable, DateInput, PageHeader, Select, useConfirm, useUrlParam } from '@/components';
+import { useCenterName } from '@/features/finance/lib';
 import { api } from '@/lib/api';
 import { usePermission } from '@/lib/auth';
 import { formatDate, formatMoney, formatQty } from '@/lib/format';
@@ -26,6 +27,7 @@ export default function MovementsPage() {
   const canSeeMoney = usePermission('finance.view');
   const canReverse = usePermission('inventory.delete');
   const confirm = useConfirm();
+  const centerName = useCenterName();
   const warehouses = useWarehouseOptions();
   const [type, setType] = useUrlParam('type');
   const [warehouseId, setWarehouseId] = useUrlParam('warehouse');
@@ -41,7 +43,17 @@ export default function MovementsPage() {
   const columns: Column<MovementRow>[] = [
     { key: 'itemName', header: t('movements.item'), cell: (row) => row.itemName, sortable: true, mobile: 'title' },
     { key: 'date', header: t('movements.date'), cell: (row) => formatDate(row.date), sortable: true, mobile: 'subtitle' },
-    { key: 'type', header: t('movements.type'), cell: (row) => <Badge variant={VARIANT[row.type] ?? 'neutral'}>{t(`enums:movementType.${row.type}`)}</Badge> },
+    {
+      key: 'type',
+      header: t('movements.type'),
+      cell: (row) => (
+        <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+          <Badge variant={VARIANT[row.type] ?? 'neutral'}>{t(`enums:movementType.${row.type}`)}</Badge>
+          {/* Purchase, opening balance and own harvest are all receipts: the purpose tells them apart. */}
+          {row.reason && <span className="text-sm text-muted-foreground">{t(`reason.${row.reason}`, { defaultValue: row.reason })}</span>}
+        </span>
+      ),
+    },
     {
       key: 'qty',
       header: t('movements.qty'),
@@ -55,9 +67,10 @@ export default function MovementsPage() {
       ),
     },
     { key: 'warehouse', header: t('movements.warehouse'), cell: (row) => row.warehouseName, mobile: 'hidden' },
-    { key: 'costCenter', header: t('movements.costCenter'), cell: (row) => row.costCenterName ?? '—', mobile: 'hidden' },
+    { key: 'costCenter', header: t('movements.costCenter'), cell: (row) => centerName(row.costCenterName, row.costCenterType), mobile: 'hidden' },
     ...(canSeeMoney ? [{ key: 'cost', header: t('movements.cost'), align: 'right' as const, cell: (row: MovementRow) => formatMoney(row.totalCost) }] : []),
     { key: 'doc', header: t('movements.document'), cell: (row) => row.docNo ?? '—', mobile: 'hidden' },
+    { key: 'author', header: t('movements.author'), cell: (row) => row.createdByName ?? '—', mobile: 'hidden' },
   ];
 
   return (
@@ -86,19 +99,10 @@ export default function MovementsPage() {
               placeholder={t('stock.allWarehouses')}
               className="md:w-52"
             />
+            {/* Label-less, as on the other journals, so the dates line up with the search box and selects. */}
             <div className="grid grid-cols-2 gap-2">
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="movements-from" className="text-xs text-muted-foreground">
-                  {t('movements.from')}
-                </Label>
-                <DateInput id="movements-from" value={from} onChange={(e) => setFrom(e.target.value)} />
-              </div>
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="movements-to" className="text-xs text-muted-foreground">
-                  {t('movements.to')}
-                </Label>
-                <DateInput id="movements-to" value={to} onChange={(e) => setTo(e.target.value)} />
-              </div>
+              <DateInput aria-label={t('movements.from')} title={t('movements.from')} value={from} onChange={(e) => setFrom(e.target.value)} />
+              <DateInput aria-label={t('movements.to')} title={t('movements.to')} value={to} onChange={(e) => setTo(e.target.value)} />
             </div>
           </>
         }

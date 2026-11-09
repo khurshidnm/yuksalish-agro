@@ -42,7 +42,10 @@ function RationCard({ ration, canEdit, canDelete, canSeeMoney, onEdit, onDelete 
         <ul className="flex flex-col gap-1.5">
           {ration.lines.map((line) => (
             <li key={line.id} className="flex items-baseline justify-between gap-3 text-sm">
-              <span className="min-w-0 break-words">{line.itemName}</span>
+              <span className="min-w-0 break-words">
+                {line.itemName}
+                {line.dryMatterPct != null && <span className="text-muted-foreground"> · {t('rations.dryMatterPct', { pct: formatNumber(line.dryMatterPct, 0) })}</span>}
+              </span>
               <span className="shrink-0 font-medium tabular-nums">{t('rations.amount', { kg: formatNumber(line.kgPerHeadDay, 3) })}</span>
             </li>
           ))}
@@ -51,6 +54,13 @@ function RationCard({ ration, canEdit, canDelete, canSeeMoney, onEdit, onDelete 
           <div className="flex justify-between gap-3">
             <dt className="text-muted-foreground">{t('rations.totalLabel')}</dt>
             <dd className="font-medium tabular-nums">{t('rations.amount', { kg: formatNumber(ration.totalKgPerHeadDay, 3) })}</dd>
+          </div>
+          {/* Silage and hay do not add up as fed; dry matter is the figure norms are written in. */}
+          <div className="flex justify-between gap-3">
+            <dt className="text-muted-foreground">{t('rations.dryMatter')}</dt>
+            <dd className="font-medium tabular-nums">
+              {ration.totalDryMatterKg === null || ration.totalDryMatterKg === undefined ? '—' : t('rations.amount', { kg: formatNumber(ration.totalDryMatterKg, 2) })}
+            </dd>
           </div>
           {canSeeMoney && (
             <>

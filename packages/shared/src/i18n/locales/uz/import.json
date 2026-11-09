@@ -1,6 +1,6 @@
 {
   "page": {
-    "title": "Excel orqali yuklash",
+    "title": "Import va eksport",
     "description": "Ma'lumotlarni Excel fayldan yuklang yoki ro'yxatlarni yuklab oling.",
     "tabs": {
       "import": "Yuklash",

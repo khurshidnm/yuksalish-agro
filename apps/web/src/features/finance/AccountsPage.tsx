@@ -76,16 +76,24 @@ function AccountCard({
   const session = useSession();
   const Icon = account.holder ? HandCoins : (ICONS[account.type as keyof typeof ICONS] ?? Wallet);
   const foreign = account.currency !== (session.tenant?.currency ?? 'UZS');
+  const label = accountLabel(account);
+  const subtitle = account.holder
+    ? t(account.holder.isMe ? 'cashHolders.yourCash' : 'cashHolders.personsCash')
+    : [account.bankName, account.accountNumber].filter(Boolean).join(' · ') || t(`enums:accountType.${account.type}`);
   return (
     <Card>
       <CardHeader className="flex-row items-start justify-between gap-2">
         <div className="min-w-0">
-          <CardTitle className="truncate">{accountLabel(account)}</CardTitle>
-          <p className="truncate text-sm text-muted-foreground">
-            {account.holder
-              ? t(account.holder.isMe ? 'cashHolders.yourCash' : 'cashHolders.personsCash')
-              : [account.bankName, account.accountNumber].filter(Boolean).join(' · ') || t(`enums:accountType.${account.type}`)}
-          </p>
+          <CardTitle className="truncate">{label}</CardTitle>
+          {/* "Kassa / Kassa" says nothing twice: the type is left out when it is the name. The line keeps
+              its height, so the balances of cards side by side stay level. */}
+          {subtitle.trim().toLowerCase() !== label.trim().toLowerCase() ? (
+            <p className="truncate text-sm text-muted-foreground">{subtitle}</p>
+          ) : (
+            <p className="text-sm" aria-hidden>
+              {' '}
+            </p>
+          )}
         </div>
         <Icon className="size-5 shrink-0 text-muted-foreground" aria-hidden />
       </CardHeader>
@@ -222,15 +230,23 @@ function AccountsTab() {
   if (accounts.error) return <ErrorCard error={accounts.error} onRetry={() => void accounts.refetch()} />;
 
   const rows = accounts.data ?? [];
-  const total = rows.reduce((sum, row) => sum + row.balanceBase, 0);
-  const cash = rows.filter((row) => row.type === 'cash').reduce((sum, row) => sum + row.balanceBase, 0);
+  const sum = (list: AccountBalance[]) => list.reduce((total, row) => total + row.balanceBase, 0);
+  const total = sum(rows);
+  // A person's cash is a cash account too, but it is not in the cash desk: it has its own tile, so the
+  // tiles add up to the total and each matches the cards below.
+  const holders = rows.filter((row) => row.holder);
+  const cash = sum(rows.filter((row) => row.type === 'cash' && !row.holder));
+  const withHolders = sum(holders);
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className={holders.length > 0 ? 'grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4' : 'grid grid-cols-1 gap-3 sm:grid-cols-3'}>
         <StatCard label={t('accounts.total')} value={formatMoney(total)} loading={accounts.isLoading} />
         <StatCard label={t('accounts.inCash')} value={formatMoney(cash)} loading={accounts.isLoading} />
-        <StatCard label={t('accounts.inBank')} value={formatMoney(total - cash)} loading={accounts.isLoading} />
+        <StatCard label={t('accounts.inBank')} value={formatMoney(total - cash - withHolders)} loading={accounts.isLoading} />
+        {holders.length > 0 && (
+          <StatCard label={t('accounts.withHolders')} value={formatMoney(withHolders)} loading={accounts.isLoading} />
+        )}
       </div>
       {(canCreate || canUpdate) && (
         <div className="flex flex-wrap justify-end gap-2">

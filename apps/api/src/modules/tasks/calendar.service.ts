@@ -122,8 +122,8 @@ const SOURCES: { kind: CalendarKind; allowed: () => boolean; load: (r: Range) =>
     // Only the latest record of each series counts: an already repeated dose is not still due.
     load: async ({ farmId, from, to }) =>
       (
-        await rows<{ date: string; name: string | null; type: string; n: string }>(sql`
-          select h.next_due_date::text as date, coalesce(p.name, i.name) as name, h.type, count(*) as n
+        await rows<{ date: string; name: string | null; from_plan: boolean; type: string; n: string }>(sql`
+          select h.next_due_date::text as date, coalesce(p.name, i.name) as name, p.name is not null as from_plan, h.type, count(*) as n
           from health_records h
           left join vaccination_plans p on p.id = h.vaccination_plan_id
           left join items i on i.id = h.item_id
@@ -136,14 +136,15 @@ const SOURCES: { kind: CalendarKind; allowed: () => boolean; load: (r: Range) =>
                 and later.animal_id is not distinct from h.animal_id
                 and later.herd_id is not distinct from h.herd_id
             )
-          group by h.next_due_date, coalesce(p.name, i.name), h.type`)
+          group by h.next_due_date, coalesce(p.name, i.name), p.name is not null, h.type`)
       ).map((r) => ({
         ...blank,
-        id: `vaccination:${r.date}:${r.name ?? r.type}`,
+        id: `vaccination:${r.date}:${r.type}:${r.from_plan ? 'plan' : 'item'}:${r.name ?? ''}`,
         kind: 'vaccination' as const,
         date: r.date,
-        // A record need not name a plan or a drug; the UI then falls back to its type.
-        params: { name: r.name, type: r.type, count: Number(r.n) },
+        // A record need not name a plan or a drug; the UI then falls back to its type. A plan's name
+        // already says what is done ("Gijjaga qarshi ishlov"), so the UI shows it without a prefix.
+        params: { name: r.name, fromPlan: r.from_plan, type: r.type, count: Number(r.n) },
         link: '/livestock/health',
         division: 'livestock',
       })),
@@ -204,7 +205,8 @@ const SOURCES: { kind: CalendarKind; allowed: () => boolean; load: (r: Range) =>
         kind: 'contract' as const,
         date: r.date,
         params: { number: r.number, counterparty: r.counterparty },
-        link: '/sales',
+        // The bare sales page opens on the orders tab.
+        link: '/sales?tab=contracts',
         division: 'admin',
       })),
   },
@@ -264,7 +266,7 @@ const SOURCES: { kind: CalendarKind; allowed: () => boolean; load: (r: Range) =>
         kind: 'state_report' as const,
         date: r.date,
         params: { name: r.title, authority: r.authority },
-        link: '/sales',
+        link: '/sales?tab=grants',
         division: 'admin',
       })),
   },

@@ -262,11 +262,17 @@ export function DataTableView<T>({
                       )}
                     </div>
                     {detailColumns.length > 0 && (
-                      <dl className="mt-2 grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] gap-x-4 gap-y-1 text-sm">
+                      // Labels take what they need up to 55 %, and wrap beyond it, so a long Russian label
+                      // never squeezes its value down to a few letters per line.
+                      <dl className="mt-2 grid grid-cols-[fit-content(55%)_minmax(0,1fr)] gap-x-4 gap-y-1 text-sm">
                         {detailColumns.map((column) => (
                           <div key={column.key} className="col-span-2 grid grid-cols-subgrid">
                             <dt className="text-muted-foreground">{column.header}</dt>
-                            <dd className="min-w-0 text-right break-words">{column.cell(row)}</dd>
+                            {/* Values sit right, flex cells too: a row packs its items right, a column aligns them
+                                right. Zero specificity, so a cell's own justify-* or items-* still wins. */}
+                            <dd className="min-w-0 text-right break-words [:where(&)_:where(.flex)]:justify-end [:where(&)_:where(.flex-col)]:items-end">
+                              {column.cell(row)}
+                            </dd>
                           </div>
                         ))}
                       </dl>
@@ -372,9 +378,11 @@ export function DataTable<T>({
   return (
     <div className={cn('flex flex-col gap-3', className)}>
       {(searchable || filters) && (
-        <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
+        // Bottoms line up: a filter with a visible label above it sits level with the search box.
+        <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-end">
           {searchable && (
-            <div className="relative md:w-72">
+            // At least 18rem, as before, and wider when the row has room, so placeholders show whole.
+            <div className="relative md:max-w-96 md:min-w-72 md:flex-1">
               <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
               <Input
                 type="search"
@@ -382,7 +390,7 @@ export function DataTable<T>({
                 onChange={(e) => setSearchText(e.target.value)}
                 placeholder={searchPlaceholder ?? t('common:table.searchPlaceholder')}
                 aria-label={searchPlaceholder ?? t('common:table.searchPlaceholder')}
-                className="pr-10 pl-9 [&::-webkit-search-cancel-button]:hidden"
+                className={cn('pl-9 [&::-webkit-search-cancel-button]:hidden', searchText ? 'pr-10' : 'pr-3')}
               />
               {searchText && (
                 <button
@@ -396,7 +404,7 @@ export function DataTable<T>({
               )}
             </div>
           )}
-          {filters && <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">{filters}</div>}
+          {filters && <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">{filters}</div>}
         </div>
       )}
       <div className={cn('transition-opacity', query.isFetching && !query.isLoading && 'opacity-70')}>

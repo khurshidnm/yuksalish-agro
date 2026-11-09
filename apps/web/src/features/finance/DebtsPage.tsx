@@ -3,6 +3,7 @@ import { HandCoins, TriangleAlert } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
 import { z } from 'zod';
 import {
   type Column,
@@ -63,6 +64,13 @@ function SettleFields({
     if (foreign && form.getValues('amount') === owed) form.setValue('amount', null as unknown as number);
   }, [foreign, form, owed]);
 
+  // The accounts may arrive after the dialog opened, when its defaults were already set without one.
+  useEffect(() => {
+    if (form.getValues('accountId')) return;
+    const preferred = accounts.find((a) => a.currency === baseCurrency);
+    if (preferred) form.setValue('accountId', preferred.id);
+  }, [accounts, baseCurrency, form]);
+
   return (
     <>
       <FormGrid>
@@ -119,6 +127,7 @@ function SettleDialog({ debt, onClose }: { debt: CounterpartyDebt | null; onClos
 
 function DebtSheet({ debt, onClose, onSettle }: { debt: CounterpartyDebt | null; onClose: () => void; onSettle?: () => void }) {
   const { t } = useTranslation('finance');
+  const canSeePayroll = usePermission('payroll.view');
   return (
     <Sheet open={debt !== null} onOpenChange={(open) => !open && onClose()}>
       <SheetContent className="w-full max-w-lg overflow-y-auto p-5">
@@ -175,11 +184,24 @@ function DebtSheet({ debt, onClose, onSettle }: { debt: CounterpartyDebt | null;
                 ))}
               </ul>
             </div>
-            {onSettle && payable(debt) > 0 && (
-              <Button onClick={onSettle}>
-                <HandCoins aria-hidden />
-                {debt.direction === 'payable' ? t('debts.pay') : t('debts.receive')}
-              </Button>
+            {/* Wages are paid from the payroll run, which knows each person's share; the API refuses them here. */}
+            {debt.isPayroll ? (
+              <div className="flex flex-col gap-2">
+                <p className="text-sm text-muted-foreground">{t('debts.payrollHint')}</p>
+                {canSeePayroll && (
+                  <Button variant="outline" asChild>
+                    <Link to="/hr/payroll">{t('debts.payrollLink')}</Link>
+                  </Button>
+                )}
+              </div>
+            ) : (
+              onSettle &&
+              payable(debt) > 0 && (
+                <Button onClick={onSettle}>
+                  <HandCoins aria-hidden />
+                  {debt.direction === 'payable' ? t('debts.pay') : t('debts.receive')}
+                </Button>
+              )
             )}
           </div>
         )}
@@ -256,7 +278,7 @@ function DebtList({ direction }: { direction: 'payable' | 'receivable' }) {
         debt={selected}
         onClose={() => setOpenId(null)}
         onSettle={
-          canCreate && selected
+          canCreate && selected && !selected.isPayroll
             ? () => {
                 setSettling(selected);
                 setOpenId(null);
@@ -269,6 +291,12 @@ function DebtList({ direction }: { direction: 'payable' | 'receivable' }) {
   );
 }
 
+function OverdueHint({ amount }: { amount: number }) {
+  const { t } = useTranslation('finance');
+  if (amount <= 0) return <>{t('debts.noneOverdue')}</>;
+  return <span className="text-danger">{t('debts.overdueOf', { amount: formatMoney(amount) })}</span>;
+}
+
 export default function DebtsPage() {
   const { t } = useTranslation('finance');
   const summary = useDetail<DebtSummary>(`${PATH}/summary`);
@@ -278,14 +306,22 @@ export default function DebtsPage() {
   return (
     <>
       <PageHeader title={t('debts.title')} description={t('debts.description')} />
-      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label={t('debts.weOwe')} value={formatMoney(s?.payable)} loading={summary.isLoading} />
-        <StatCard label={t('debts.owedToUs')} value={formatMoney(s?.receivable)} loading={summary.isLoading} />
+      {/* What we pay late and what others pay us late are told apart: their sum means nothing. */}
+      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <StatCard
-          label={t('debts.overdueTotal')}
-          value={formatMoney(s?.overdue)}
-          tone={s && s.overdue > 0 ? 'danger' : 'neutral'}
-          icon={s && s.overdue > 0 ? TriangleAlert : undefined}
+          label={t('debts.weOwe')}
+          value={formatMoney(s?.payable)}
+          hint={s && <OverdueHint amount={s.overduePayable} />}
+          icon={s && s.overduePayable > 0 ? TriangleAlert : undefined}
+          tone={s && s.overduePayable > 0 ? 'danger' : 'neutral'}
+          loading={summary.isLoading}
+        />
+        <StatCard
+          label={t('debts.owedToUs')}
+          value={formatMoney(s?.receivable)}
+          hint={s && <OverdueHint amount={s.overdueReceivable} />}
+          icon={s && s.overdueReceivable > 0 ? TriangleAlert : undefined}
+          tone={s && s.overdueReceivable > 0 ? 'warning' : 'neutral'}
           loading={summary.isLoading}
         />
         <StatCard label={t('debts.loans')} value={formatMoney(s?.loansOutstanding)} hint={t('debts.loansHint')} to="/finance/loans" loading={summary.isLoading} />

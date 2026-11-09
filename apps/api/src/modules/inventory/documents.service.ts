@@ -15,13 +15,17 @@ type Strings = Record<string, string>;
 function strings(lang: LanguageCode) {
   const bundle = resources[lang] as unknown as {
     inventory: { pdf?: Strings; reason?: Strings };
-    enums: { unit?: Strings };
+    enums: { unit?: Strings; currency?: Strings; costCenterType?: Strings };
   };
   const pdf = bundle.inventory.pdf ?? {};
   return {
     t: (key: string) => pdf[key] ?? key,
     unit: (unit: string) => bundle.enums.unit?.[unit] ?? unit,
     reason: (reason: string | null) => (reason ? (bundle.inventory.reason?.[reason] ?? reason) : ''),
+    /** "so'm" or "сум" on paper, as on screen, rather than the ISO code. */
+    currency: (code: string) => bundle.enums.currency?.[code] ?? code,
+    /** The farm-wide center is stored as "General", so it is printed under its translated type. */
+    costCenter: (name: string, type: string | null) => (type === 'general' ? (bundle.enums.costCenterType?.general ?? name) : name),
   };
 }
 
@@ -65,6 +69,7 @@ export async function documentLayout(docNo: string, lang: LanguageCode): Promise
       unit: items.unit,
       warehouseName: warehouses.name,
       costCenterName: costCenters.name,
+      costCenterType: costCenters.type,
       batchNo: stockBatches.batchNo,
       invoiceNo: stockBatches.invoiceNo,
       expiryDate: stockBatches.expiryDate,
@@ -92,7 +97,7 @@ export async function documentLayout(docNo: string, lang: LanguageCode): Promise
     return countLayout(count.id, lang);
   }
 
-  const { t, unit, reason } = strings(lang);
+  const { t, unit, reason, currency, costCenter } = strings(lang);
   const f = formatter(lang);
   const money = canSeeMoney();
   const first = rows[0];
@@ -112,7 +117,7 @@ export async function documentLayout(docNo: string, lang: LanguageCode): Promise
     title = t('issueTitle');
     signatures = [t('signRequested'), t('signIssued')];
     details.push([t('warehouse'), first.warehouseName]);
-    if (first.costCenterName) details.push([t('costCenter'), first.costCenterName]);
+    if (first.costCenterName) details.push([t('costCenter'), costCenter(first.costCenterName, first.costCenterType)]);
     if (first.reason) details.push([t('reason'), reason(first.reason)]);
   } else {
     title = t('transferTitle');
@@ -149,7 +154,7 @@ export async function documentLayout(docNo: string, lang: LanguageCode): Promise
     details,
     table: [header, ...body],
     widths: [20, '*', ...(withBatch ? [90] : []), 40, 60, ...(money ? [65, 75] : [])],
-    footer: money ? [`${t('total')}: ${f.money(total)} ${ctx().currency}`] : [],
+    footer: money ? [`${t('total')}: ${f.money(total)} ${currency(ctx().currency)}`] : [],
     signatures,
   };
 }
@@ -160,7 +165,7 @@ export async function documentPdf(docNo: string, lang: LanguageCode): Promise<Bu
 
 export async function countLayout(id: string, lang: LanguageCode): Promise<DocumentLayout> {
   const count = await counts.get(id);
-  const { t, unit } = strings(lang);
+  const { t, unit, currency } = strings(lang);
   const f = formatter(lang);
   const money = canSeeMoney();
   const totalDiff = count.lines.reduce((sum, line) => sum + (line.diffCost ?? 0), 0);
@@ -199,7 +204,7 @@ export async function countLayout(id: string, lang: LanguageCode): Promise<Docum
       ]),
     ],
     widths: [20, '*', 40, 60, 60, 60, ...(money ? [70] : [])],
-    footer: money ? [`${t('total')}: ${f.money(totalDiff)} ${ctx().currency}`] : [],
+    footer: money ? [`${t('total')}: ${f.money(totalDiff)} ${currency(ctx().currency)}`] : [],
     signatures: [t('signCommission'), t('signStorekeeper')],
   };
 }

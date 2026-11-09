@@ -1,18 +1,19 @@
 import { todayIso } from '@yap/shared';
-import { Fuel, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Fuel, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { type UseFormReturn, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import { type Column, ComboboxField, DataTable, DateField, FormDialog, FormGrid, MoneyText, NumberField, SwitchField, TextField, TextareaField, useConfirm } from '@/components';
-import { Badge, Button } from '@/components/ui';
+import { Badge } from '@/components/ui';
 import { employeeOptions, fieldOptions } from '@/features/crops/options';
 import { api } from '@/lib/api';
 import { useCan, usePermission } from '@/lib/auth';
 import { formatDate, formatNumber, formatPercent, formatQty } from '@/lib/format';
 import { zDate, zOptionalNumber, zOptionalRef, zOptionalText } from '@/lib/forms';
 import { useApiMutation } from '@/lib/query';
-import type { UsageLog } from './types';
+import type { AssetKind } from './assetKinds';
+import type { AssetCard, UsageLog } from './types';
 
 const schema = z.object({
   date: zDate(),
@@ -36,18 +37,32 @@ function FuelOrigin({ form }: { form: UseFormReturn<Values, unknown, Output> }) 
   return <SwitchField form={form} name="skipFuelIssue" label={t('usage.skipFuel')} hint={t('usage.skipFuelHint')} />;
 }
 
+/** What a machine's log asks for. A recorded value always shows, so an edit never hides data. */
+export function shiftInputs(kind: AssetKind, log?: UsageLog | null) {
+  return {
+    operator: !kind.stationary || Boolean(log?.operatorEmployeeId),
+    fieldWork: kind.worksFields || Boolean(log?.fieldId) || log?.volumeHa != null,
+    workType: !kind.stationary || Boolean(log?.workType),
+    engine: kind.hasEngine || log?.motoHours != null || log?.fuelL != null,
+  };
+}
+
 export function ShiftDialog({
   assetId,
+  kind,
   open,
   onOpenChange,
   log,
 }: {
   assetId: string;
+  kind: AssetKind;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   log?: UsageLog | null;
 }) {
   const { t } = useTranslation('assets');
+  // A pump or generator runs for hours on fuel: no field, hectares or operator to ask for.
+  const show = shiftInputs(kind, log);
   const save = useApiMutation<Output>({
     mutationFn: (values) =>
       log ? api.patch(`/assets/${assetId}/usage/${log.id}`, values) : api.postOnce(`/assets/${assetId}/usage`, values),
@@ -70,7 +85,7 @@ export function ShiftDialog({
     <FormDialog
       open={open}
       onOpenChange={onOpenChange}
-      title={log ? t('usage.edit') : t('usage.add')}
+      title={log ? t('usage.edit') : kind.stationary ? t('usage.addHours') : t('usage.add')}
       schema={schema}
       defaultValues={defaults}
       onSubmit={(values) => save.mutateAsync(values)}
@@ -79,15 +94,19 @@ export function ShiftDialog({
       {(form) => (
         <>
           <DateField form={form} name="date" label={t('usage.date')} required />
-          <ComboboxField form={form} name="operatorEmployeeId" label={t('usage.operator')} loadOptions={employeeOptions} selectedLabel={log?.operatorName} clearable />
-          <ComboboxField form={form} name="fieldId" label={t('usage.field')} loadOptions={fieldOptions} selectedLabel={log?.fieldNumber ? `№${log.fieldNumber}` : undefined} clearable />
-          <TextField form={form} name="workType" label={t('usage.workType')} />
+          {show.operator && (
+            <ComboboxField form={form} name="operatorEmployeeId" label={t('usage.operator')} loadOptions={employeeOptions} selectedLabel={log?.operatorName} clearable />
+          )}
+          {show.fieldWork && (
+            <ComboboxField form={form} name="fieldId" label={t('usage.field')} loadOptions={fieldOptions} selectedLabel={log?.fieldNumber ? `№${log.fieldNumber}` : undefined} clearable />
+          )}
+          {show.workType && <TextField form={form} name="workType" label={t('usage.workType')} />}
           <FormGrid>
-            <NumberField form={form} name="motoHours" label={t('usage.hours')} suffix={t('unit.hours')} hint={t('usage.hoursHint')} />
-            <NumberField form={form} name="volumeHa" label={t('usage.hectares')} suffix={t('unit.ha')} />
-            <NumberField form={form} name="fuelL" label={t('usage.fuel')} suffix={t('unit.liters')} />
+            {show.engine && <NumberField form={form} name="motoHours" label={t('usage.hours')} suffix={t('unit.hours')} hint={t('usage.hoursHint')} />}
+            {show.fieldWork && <NumberField form={form} name="volumeHa" label={t('usage.hectares')} suffix={t('unit.ha')} />}
+            {show.engine && <NumberField form={form} name="fuelL" label={t('usage.fuel')} suffix={t('unit.liters')} />}
           </FormGrid>
-          <FuelOrigin form={form} />
+          {show.engine && <FuelOrigin form={form} />}
           <TextareaField form={form} name="notes" label={t('fields.notes')} />
         </>
       )}
@@ -95,15 +114,17 @@ export function ShiftDialog({
   );
 }
 
-export function AssetUsageTab({ assetId }: { assetId: string }) {
+export function AssetUsageTab({ asset, kind }: { asset: AssetCard; kind: AssetKind }) {
   const { t } = useTranslation('assets');
+  const assetId = asset.id;
+  // Columns a machine of this kind never fills stay out, unless some shift has the figure.
+  const showHectares = kind.worksFields || asset.usage.hectares > 0;
+  const showEngine = kind.hasEngine || asset.usage.hours > 0 || asset.usage.fuelL > 0;
   const can = useCan();
   const seesMoney = usePermission('finance.view');
-  const canAdd = can('assets.create') || can('crops.create');
   const canEdit = can('assets.update') || can('crops.update');
   const canDelete = can('assets.delete') || can('crops.delete');
   const confirm = useConfirm();
-  const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<UsageLog | null>(null);
 
   const remove = useApiMutation<string>({
@@ -112,14 +133,7 @@ export function AssetUsageTab({ assetId }: { assetId: string }) {
     successMessage: 'common:toast.deleted',
   });
 
-  const addButton = canAdd && (
-    <Button size="lg" onClick={() => setAdding(true)}>
-      <Plus aria-hidden />
-      {t('usage.add')}
-    </Button>
-  );
-
-  const columns: Column<UsageLog>[] = [
+  const allColumns: (Column<UsageLog> | false)[] = [
     { key: 'date', header: t('usage.date'), sortable: true, mobile: 'title', cell: (row) => formatDate(row.date) },
     {
       key: 'work',
@@ -131,9 +145,9 @@ export function AssetUsageTab({ assetId }: { assetId: string }) {
       },
     },
     { key: 'operator', header: t('usage.operator'), mobile: 'hidden', cell: (row) => row.operatorName ?? '—' },
-    { key: 'motoHours', header: t('usage.hours'), sortable: true, align: 'right', cell: (row) => (row.motoHours === null ? '—' : formatNumber(row.motoHours)) },
-    { key: 'hectares', header: t('usage.hectares'), align: 'right', cell: (row) => (row.volumeHa === null ? '—' : formatNumber(row.volumeHa)) },
-    {
+    showEngine && { key: 'motoHours', header: t('usage.hours'), sortable: true, align: 'right', cell: (row) => (row.motoHours === null ? '—' : formatNumber(row.motoHours)) },
+    showHectares && { key: 'hectares', header: t('usage.hectares'), align: 'right', cell: (row) => (row.volumeHa === null ? '—' : formatNumber(row.volumeHa)) },
+    showEngine && {
       key: 'fuelL',
       header: t('usage.fuel'),
       sortable: true,
@@ -147,21 +161,20 @@ export function AssetUsageTab({ assetId }: { assetId: string }) {
         </span>
       ),
     },
-    ...(seesMoney
-      ? [{ key: 'fuelCost', header: t('usage.fuelCost'), align: 'right' as const, mobile: 'hidden' as const, cell: (row: UsageLog) => <MoneyText value={row.fuelCost} /> }]
-      : []),
+    seesMoney && showEngine && { key: 'fuelCost', header: t('usage.fuelCost'), align: 'right', mobile: 'hidden', cell: (row) => <MoneyText value={row.fuelCost} /> },
   ];
+  const columns = allColumns.filter((column): column is Column<UsageLog> => column !== false);
 
   return (
     <div className="space-y-3">
-      <div className="flex justify-end">{addButton}</div>
       <DataTable<UsageLog>
         path={`/assets/${assetId}/usage`}
         columns={columns}
         defaultSort="-date"
         searchable={false}
         urlPrefix="usage"
-        empty={{ icon: Fuel, title: t('usage.emptyTitle'), description: t('usage.emptyBody') }}
+        // New shifts are logged from the page header, which stays above every tab: a second button here repeated it.
+        empty={{ icon: Fuel, title: t('usage.emptyTitle'), description: kind.stationary ? t('usage.emptyBodyHours') : t('usage.emptyBody') }}
         rowActions={(row) => {
           // A shift made by a field operation changes there, and a billed one is closed.
           const locked = row.operationId !== null || row.billedTransactionId !== null;
@@ -180,17 +193,7 @@ export function AssetUsageTab({ assetId }: { assetId: string }) {
           ];
         }}
       />
-      <ShiftDialog
-        assetId={assetId}
-        open={adding || editing !== null}
-        log={editing}
-        onOpenChange={(open) => {
-          if (!open) {
-            setAdding(false);
-            setEditing(null);
-          }
-        }}
-      />
+      <ShiftDialog assetId={assetId} kind={kind} open={editing !== null} log={editing} onOpenChange={(open) => !open && setEditing(null)} />
     </div>
   );
 }

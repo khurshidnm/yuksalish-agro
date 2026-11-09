@@ -17,11 +17,32 @@ import { FieldPhoto } from './FieldPhoto';
 import { FileAttachField } from './FileAttachField';
 import { SatelliteTab } from './satellite/SatelliteTab';
 import type { FieldCard, RotationRow, SoilAnalysis } from './types';
-import { fieldTitle, formatHa, useLocalName } from './utils';
+import { CROP_STATUS_VARIANT, fieldTitle, formatHa, useLocalName } from './utils';
 import { WaterTab } from './water/WaterAdvice';
 
 const SOIL_METRICS = ['ph', 'humus', 'n', 'p', 'k', 'salinity'] as const;
 type SoilMetric = (typeof SOIL_METRICS)[number];
+
+/**
+ * What the lab measured, as Uzbek agrochemical labs report it: nitrate nitrogen, mobile phosphorus
+ * and exchangeable potassium in mg/kg, humus in %, and salinity as the dry residue of the water
+ * extract in %. Chemical notation reads the same in every script, so it stays out of the
+ * dictionaries, which Cyrillic Uzbek transliterates.
+ */
+const SOIL_FORMULA: Partial<Record<SoilMetric, string>> = { n: 'N-NO₃', p: 'P₂O₅', k: 'K₂O' };
+const SOIL_UNIT: Partial<Record<SoilMetric, 'mgKg' | 'percent'>> = { humus: 'percent', n: 'mgKg', p: 'mgKg', k: 'mgKg', salinity: 'percent' };
+
+/** A soil figure's name and unit, so the table, the chart and the form say the same thing. */
+function useSoilLabels() {
+  const { t } = useTranslation('farm');
+  const name = (metric: SoilMetric) => t(`soil.${metric}`, { formula: SOIL_FORMULA[metric] });
+  const unit = (metric: SoilMetric) => (SOIL_UNIT[metric] ? t(`soil.unit.${SOIL_UNIT[metric]}`) : undefined);
+  const full = (metric: SoilMetric) => {
+    const u = unit(metric);
+    return u ? t('soil.withUnit', { name: name(metric), unit: u }) : name(metric);
+  };
+  return { name, unit, full };
+}
 
 const soilSchema = z.object({
   date: zDate(),
@@ -91,7 +112,7 @@ function OverviewTab({ field }: { field: FieldCard }) {
                 </Detail>
                 <Detail label={t('fields.season')}>{crop.seasonName}</Detail>
                 <Detail label={t('fields.status')}>
-                  <Badge variant={crop.status === 'planned' ? 'outline' : 'success'}>{t(`enums:cropPlanStatus.${crop.status}`)}</Badge>
+                  <Badge variant={CROP_STATUS_VARIANT[crop.status]}>{t(`enums:cropPlanStatus.${crop.status}`)}</Badge>
                 </Detail>
                 <Detail label={t('fields.sownArea')}>{formatHa(crop.areaHa)}</Detail>
                 <Detail label={t('fields.sowingDate')}>{formatDate(crop.sowingDateFact ?? crop.sowingDatePlan)}</Detail>
@@ -131,7 +152,7 @@ function RotationTab({ field }: { field: FieldCard }) {
       mobile: 'subtitle',
     },
     { key: 'area', header: t('fields.area'), cell: (row) => formatHa(row.areaHa), align: 'right' },
-    { key: 'status', header: t('fields.status'), cell: (row) => <Badge>{t(`enums:cropPlanStatus.${row.status}`)}</Badge>, mobile: 'hidden' },
+    { key: 'status', header: t('fields.status'), cell: (row) => <Badge variant={CROP_STATUS_VARIANT[row.status]}>{t(`enums:cropPlanStatus.${row.status}`)}</Badge>, mobile: 'hidden' },
     { key: 'harvest', header: t('fields.harvest'), cell: (row) => formatQty(row.harvestT, 't'), align: 'right' },
     {
       key: 'yield',
@@ -191,15 +212,20 @@ function SoilTab({ field, path }: { field: FieldCard; path: string }) {
     silentError: true,
   });
 
+  const label = useSoilLabels();
   const num = (value: number | null) => formatNumber(value, 3);
+  /** In the table, name over unit, so it keeps its width on a laptop; on a phone's card, one line. */
+  const header = (metric: SoilMetric) => (
+    <>
+      <span className="md:hidden">{label.full(metric)}</span>
+      <span className="hidden md:block">{label.name(metric)}</span>
+      {label.unit(metric) && <span className="hidden font-normal md:block">{label.unit(metric)}</span>}
+    </>
+  );
+  const metricColumn = (metric: SoilMetric): Column<SoilAnalysis> => ({ key: metric, header: header(metric), cell: (row) => num(row[metric]), align: 'right' });
   const columns: Column<SoilAnalysis>[] = [
     { key: 'date', header: t('soil.date'), cell: (row) => formatDate(row.date), mobile: 'title' },
-    { key: 'ph', header: t('soil.ph'), cell: (row) => num(row.ph), align: 'right' },
-    { key: 'humus', header: t('soil.humus'), cell: (row) => num(row.humus), align: 'right' },
-    { key: 'n', header: t('soil.n'), cell: (row) => num(row.n), align: 'right' },
-    { key: 'p', header: t('soil.p'), cell: (row) => num(row.p), align: 'right' },
-    { key: 'k', header: t('soil.k'), cell: (row) => num(row.k), align: 'right' },
-    { key: 'salinity', header: t('soil.salinity'), cell: (row) => num(row.salinity), align: 'right' },
+    ...SOIL_METRICS.map(metricColumn),
     { key: 'lab', header: t('soil.lab'), cell: (row) => row.lab ?? '—', mobile: 'hidden' },
   ];
 
@@ -222,7 +248,7 @@ function SoilTab({ field, path }: { field: FieldCard; path: string }) {
           kind="line"
           data={history}
           xKey="date"
-          series={[{ key: metric, label: t(`soil.${metric}`) }]}
+          series={[{ key: metric, label: label.full(metric) }]}
           formatValue={(value) => formatNumber(value, 3)}
           formatX={(value) => formatDate(value)}
           height={240}
@@ -231,13 +257,14 @@ function SoilTab({ field, path }: { field: FieldCard; path: string }) {
               aria-label={t('soil.metric')}
               value={metric}
               onChange={(e) => setMetric(e.target.value as SoilMetric)}
-              options={SOIL_METRICS.map((value) => ({ value, label: t(`soil.${value}`) }))}
-              className="w-48"
+              options={SOIL_METRICS.map((value) => ({ value, label: label.full(value) }))}
+              className="w-60 sm:w-72"
             />
           }
         />
       )}
-      <div className="flex justify-end empty:hidden">{addButton}</div>
+      {/* With no analyses yet the empty state carries the button. */}
+      {history.length > 0 && <div className="flex justify-end empty:hidden">{addButton}</div>}
       <DataTableView<SoilAnalysis>
         rows={[...history].reverse()}
         columns={columns}
@@ -276,12 +303,9 @@ function SoilTab({ field, path }: { field: FieldCard; path: string }) {
             <FormGrid>
               <DateField form={form} name="date" label={t('soil.date')} required />
               <TextField form={form} name="lab" label={t('soil.lab')} />
-              <NumberField form={form} name="ph" label={t('soil.ph')} maxDigits={2} />
-              <NumberField form={form} name="humus" label={t('soil.humus')} maxDigits={3} />
-              <NumberField form={form} name="n" label={t('soil.n')} maxDigits={3} />
-              <NumberField form={form} name="p" label={t('soil.p')} maxDigits={3} />
-              <NumberField form={form} name="k" label={t('soil.k')} maxDigits={3} />
-              <NumberField form={form} name="salinity" label={t('soil.salinity')} maxDigits={3} />
+              {SOIL_METRICS.map((metric) => (
+                <NumberField key={metric} form={form} name={metric} label={label.name(metric)} suffix={label.unit(metric)} maxDigits={metric === 'ph' ? 2 : 3} />
+              ))}
             </FormGrid>
             <FileAttachField form={form} name="fileId" label={t('soil.file')} />
             <TextareaField form={form} name="notes" label={t('notes')} rows={2} />
@@ -321,6 +345,8 @@ export default function FieldCardPage() {
   }
 
   const field = query.data;
+  // Nothing is sown on a pasture or a yard: the satellite reads its vegetation, and rotation shows only if it was ever cropped.
+  const arable = field.landUse === 'arable';
 
   return (
     <>
@@ -353,11 +379,11 @@ export default function FieldCardPage() {
       <UrlTabs
         tabs={[
           { value: 'overview', label: t('fields.tabOverview'), content: <OverviewTab field={field} /> },
-          { value: 'satellite', label: t('fields.tabSatellite'), content: <SatelliteTab field={field} /> },
-          ...(field.landUse === 'arable'
+          { value: 'satellite', label: arable ? t('fields.tabSatellite') : t('fields.tabVegetation'), content: <SatelliteTab field={field} /> },
+          ...(arable
             ? [{ value: 'water', label: t('fields.tabWater'), content: <WaterTab fieldId={field.id} onEditField={canUpdate && field.status === 'active' ? () => setEditing(true) : undefined} /> }]
             : []),
-          { value: 'rotation', label: t('fields.tabRotation'), content: <RotationTab field={field} /> },
+          ...(arable || field.rotation.length > 0 ? [{ value: 'rotation', label: t('fields.tabRotation'), content: <RotationTab field={field} /> }] : []),
           { value: 'soil', label: t('fields.tabSoil'), content: <SoilTab field={field} path={path} /> },
           { value: 'documents', label: t('fields.tabDocuments'), content: <DocumentsPanel entity={{ type: 'field', id: field.id }} urlPrefix="doc" /> },
         ]}

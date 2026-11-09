@@ -11,12 +11,7 @@ export const CONTACT_TELEGRAM = String(import.meta.env.VITE_CONTACT_TELEGRAM ?? 
 
 export const SITE_NAME = PRODUCT_NAME;
 
-export const LANDING_PATHS: Record<LandingLanguage, string> = {
-  uz: '/',
-  'uz-Cyrl': '/uz-cyrl',
-  ru: '/ru',
-  en: '/en',
-};
+export { LANDING_PATHS, loginHref } from './paths';
 
 export const LANGUAGE_NAMES: Record<LandingLanguage, string> = {
   uz: "O'zbekcha",
@@ -25,7 +20,8 @@ export const LANGUAGE_NAMES: Record<LandingLanguage, string> = {
   en: 'English',
 };
 
-export const LANGUAGE_CODES: Record<LandingLanguage, string> = { uz: 'UZ', 'uz-Cyrl': 'ЎЗ', ru: 'RU', en: 'EN' };
+/** Short labels for the header. Not 'ЎЗ': in the site's font its З reads as the digit 3. */
+export const LANGUAGE_CODES: Record<LandingLanguage, string> = { uz: 'UZ', 'uz-Cyrl': 'Ўзб', ru: 'RU', en: 'EN' };
 
 /** The Open Graph locale of each page. */
 export const OG_LOCALES: Record<LandingLanguage, string> = { uz: 'uz_UZ', 'uz-Cyrl': 'uz_UZ', ru: 'ru_RU', en: 'en_US' };

@@ -68,6 +68,8 @@ let sessionsEnded = 0;
 let signOutPending = false;
 let signingOut: Promise<void> | null = null;
 let refreshInFlight: Promise<RefreshResult | null> | null = null;
+/** Counts the times the server refused the refresh cookie, as opposed to giving no answer at all. */
+let refusals = 0;
 
 export function setAccessToken(token: string | null): void {
   accessToken = token;
@@ -143,7 +145,10 @@ export interface RefreshResult {
  */
 async function callRefresh(): Promise<RefreshResult | null> {
   const res = await fetch(`${BASE}/auth/refresh`, { method: 'POST', credentials: 'include' });
-  if (res.status === 401) return null;
+  if (res.status === 401) {
+    refusals += 1;
+    return null;
+  }
   if (!res.ok) throw new Error(`Refresh answered ${res.status}`);
   const body = (await res.json()) as { data?: Partial<RefreshResult> };
   return body.data?.accessToken ? { accessToken: body.data.accessToken, session: body.data.session } : null;
@@ -189,6 +194,17 @@ function attemptRefresh(): Promise<RefreshResult | null> {
 }
 
 export const refreshSession = (): Promise<RefreshResult | null> => attemptRefresh().catch(() => null);
+
+/**
+ * The refresh on load, which also tells a refusal apart: 'refused' when the server turned the cookie
+ * down (expired, revoked, a new password), null when it could not be heard or nothing was asked.
+ * Only a refusal says the session is over, so only it may end what this browser remembers of it.
+ */
+export async function restoreSession(): Promise<RefreshResult | 'refused' | null> {
+  const before = refusals;
+  const result = await refreshSession();
+  return result ?? (refusals !== before ? 'refused' : null);
+}
 
 const fileTooLarge = () => new ApiError(413, 'FILE_TOO_LARGE', 'This file is too large', { maxMb: MAX_UPLOAD_BYTES / 1024 / 1024 });
 

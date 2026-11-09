@@ -1,6 +1,6 @@
 {
   "page": {
-    "title": "Import from Excel",
+    "title": "Import and export",
     "description": "Load data from Excel files and download your lists.",
     "tabs": {
       "import": "Import",

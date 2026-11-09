@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { Alert, Card, CardContent, CardHeader, CardTitle } from '@/components';
 import { ChartCard } from '@/components/ChartCard';
 import { formatMonth, formatMonthShort, formatNumber, formatPercent, formatQty } from '@/lib/format';
+import { expectedLambsText, signedKg, weightDomain } from '../figures';
 import { dayMonth, FigureRow, type LinkTo, NoData } from '../shared';
 import type { LivestockData } from '../types';
 
@@ -15,6 +16,8 @@ export function LivestockBlock({ data, link }: { data: LivestockData; link: Link
   // Months before the first weighing are not a gap in the record, so the axis starts at the first.
   const firstWeighed = data.weightTrend.findIndex((m) => m.avgKg !== null);
   const trend = firstWeighed < 0 ? [] : data.weightTrend.slice(firstWeighed);
+  const weights = trend.flatMap((m) => (m.avgKg === null ? [] : [m.avgKg]));
+  const hasTrend = weights.length >= MIN_TREND_POINTS;
   const categories = Object.entries(data.byCategory).sort(([, a], [, b]) => b - a);
 
   return (
@@ -27,10 +30,7 @@ export function LivestockBlock({ data, link }: { data: LivestockData; link: Link
           title={t('livestock.lambingByWeek')}
           description={
             lambing.totalEwes > 0
-              ? t('livestock.lambingTotal', {
-                  ewes: formatNumber(lambing.totalEwes, 0),
-                  lambs: lambing.expectedLambs === null ? t('livestock.lambsUnknown') : formatNumber(lambing.expectedLambs, 0),
-                })
+              ? t('livestock.lambingTotal', { ewes: formatNumber(lambing.totalEwes, 0), lambs: expectedLambsText(lambing, t) })
               : undefined
           }
           kind="block-bar"
@@ -79,10 +79,20 @@ export function LivestockBlock({ data, link }: { data: LivestockData; link: Link
       <ChartCard
         className="lg:col-span-3"
         title={t('livestock.weightTrend')}
+        description={
+          hasTrend
+            ? t('livestock.weightChange', {
+                from: formatQty(weights[0], 'kg', 1),
+                to: formatQty(weights[weights.length - 1], 'kg', 1),
+                change: signedKg(weights[weights.length - 1] - weights[0]),
+              })
+            : undefined
+        }
         kind="line"
-        data={trend.filter((m) => m.avgKg !== null).length >= MIN_TREND_POINTS ? trend : []}
+        data={hasTrend ? trend : []}
         xKey="month"
         series={[{ key: 'avgKg', label: t('livestock.avgWeight') }]}
+        yDomain={weightDomain(weights)}
         formatValue={(v) => formatQty(v, 'kg', 1)}
         formatAxis={(v) => formatNumber(v, 0)}
         formatX={(m) => formatMonthShort(m)}

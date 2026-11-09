@@ -77,9 +77,10 @@ const handoverSchema = z
     date: zDate(),
     note: zOptionalText(500),
   })
+  // Run even while the amount is still missing, so one press of Save names every empty field.
   .superRefine((v, ctx) => {
     if (v.source === 'account' && !v.fromAccountId) required(ctx, 'fromAccountId');
-  });
+  }, { when: () => true });
 
 const returnSchema = z
   .object({
@@ -91,7 +92,7 @@ const returnSchema = z
   })
   .superRefine((v, ctx) => {
     if (v.to === 'account' && !v.toAccountId) required(ctx, 'toAccountId');
-  });
+  }, { when: () => true });
 
 const reasonSchema = z.object({ reason: zText(500) });
 
@@ -223,12 +224,13 @@ function ReturnDialog({ holder, onClose }: { holder: CashHolder | null; onClose:
     <FormDialog
       open={holder !== null}
       onOpenChange={(next) => !next && onClose()}
-      title={t('cashHolders.return.title')}
+      // The holder gives his own cash back; whoever handed it out takes it back.
+      title={t(holder?.isMe ? 'cashHolders.return.titleMine' : 'cashHolders.return.title')}
       description={holder ? t('cashHolders.return.description', { name: holderName(holder), amount: formatMoney(holder.expectedCash, { currency: holder.currency }) }) : undefined}
       schema={returnSchema}
       defaultValues={{ to: canOwn ? 'owner' : 'account', toAccountId: null, amount: undefined as unknown as number, date: todayIso(), note: null }}
       onSubmit={(values) => back.mutateAsync(values)}
-      submitLabel={t('cashHolders.return.submit')}
+      submitLabel={t(holder?.isMe ? 'cashHolders.return.submitMine' : 'cashHolders.return.submit')}
       successMessage="finance:cashHolders.toast.returned"
     >
       {(form) => (
@@ -295,6 +297,9 @@ function HolderSheet({ holder, onClose, onReturn }: { holder: CashHolder | null;
   });
   const s = summary.data;
   const currency = holder?.currency ?? 'UZS';
+  // Entries carry a center's stored name only; the summary by center knows its type, which says when
+  // the name is the farm-wide center's English "General".
+  const centerTypeOf = new Map((s?.byCostCenter ?? []).flatMap((row) => (row.name && row.type ? [[row.name, row.type] as const] : [])));
 
   return (
     <Sheet
@@ -348,7 +353,13 @@ function HolderSheet({ holder, onClose, onReturn }: { holder: CashHolder | null;
               <section className="flex flex-col gap-2">
                 <h3 className="text-sm font-semibold">{t('cashHolders.detail.byCategory')}</h3>
                 {s.byCategory.map((row) => (
-                  <Line key={row.categoryId ?? 'none'} label={row.name ? localName(row.name) : '—'} value={row.amount} currency={currency} />
+                  // Spending here is an expense, which always has a category, or a debt paid, which has none.
+                  <Line
+                    key={row.categoryId ?? 'none'}
+                    label={row.name ? localName(row.name) : t('enums:transactionType.debt_payment')}
+                    value={row.amount}
+                    currency={currency}
+                  />
                 ))}
               </section>
             )}
@@ -373,8 +384,14 @@ function HolderSheet({ holder, onClose, onReturn }: { holder: CashHolder | null;
                         <span className="block truncate">
                           {entry.categoryName ? localName(entry.categoryName) : t(`enums:transactionType.${entry.type}`)}
                         </span>
-                        <span className="block truncate text-xs text-muted-foreground">
-                          {[formatDate(entry.date), entry.costCenterName, entry.description].filter(Boolean).join(' · ')}
+                        <span className="line-clamp-2 block text-xs break-words text-muted-foreground">
+                          {[
+                            formatDate(entry.date),
+                            entry.costCenterName && centerName(entry.costCenterName, entry.costCenterType ?? centerTypeOf.get(entry.costCenterName)),
+                            entry.description,
+                          ]
+                            .filter(Boolean)
+                            .join(' · ')}
                         </span>
                       </span>
                       <span className="flex shrink-0 flex-col items-end gap-1">
@@ -391,7 +408,7 @@ function HolderSheet({ holder, onClose, onReturn }: { holder: CashHolder | null;
               {canReturn && holder && s.expectedCash > 0 && (
                 <Button variant="outline" onClick={() => onReturn(holder)}>
                   <Undo2 aria-hidden />
-                  {t('cashHolders.card.takeBack')}
+                  {t(holder.isMe ? 'cashHolders.card.giveBack' : 'cashHolders.card.takeBack')}
                 </Button>
               )}
               {canClose && holder && s.expectedCash === 0 && s.handoversWaiting === 0 && (
@@ -427,6 +444,8 @@ function HolderCard({
   const { t } = useTranslation('finance');
   const holderName = useHolderName();
   const money = (value: number) => formatMoney(value, { currency: holder.currency });
+  const canGiveBack = Boolean(onReturn) && holder.expectedCash > 0;
+  const actions = 1 + (onHandOver ? 1 : 0) + (canGiveBack ? 1 : 0);
   return (
     <Card>
       <CardHeader className="flex-row items-start justify-between gap-2">
@@ -461,20 +480,21 @@ function HolderCard({
             {holder.handoversWaiting > 0 && <Badge variant="info">{t('cashHolders.card.handoversWaiting', { n: holder.handoversWaiting })}</Badge>}
           </div>
         )}
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={onDetails}>
+        {/* One grid of equal buttons, so a third action does not wrap alone under the first two. */}
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="outline" className={actions % 2 === 1 ? 'col-span-2' : undefined} onClick={onDetails}>
             {t('cashHolders.card.details')}
           </Button>
           {onHandOver && (
-            <Button variant="ghost" onClick={onHandOver}>
+            <Button variant="outline" onClick={onHandOver}>
               <ArrowDownLeft aria-hidden />
               {t('cashHolders.card.handOver')}
             </Button>
           )}
-          {onReturn && holder.expectedCash > 0 && (
-            <Button variant="ghost" onClick={onReturn}>
+          {canGiveBack && (
+            <Button variant="outline" onClick={onReturn}>
               <ArrowUpRight aria-hidden />
-              {t('cashHolders.card.takeBack')}
+              {t(holder.isMe ? 'cashHolders.card.giveBack' : 'cashHolders.card.takeBack')}
             </Button>
           )}
         </div>
@@ -556,7 +576,7 @@ function Handovers() {
                       <MoneyText value={row.amount} currency={row.currency} />
                     </p>
                     <p className="truncate text-sm text-muted-foreground">{who}</p>
-                    <p className="truncate text-xs text-muted-foreground">
+                    <p className="line-clamp-2 text-xs break-words text-muted-foreground">
                       {[formatDate(row.date), t(`enums:cashHandoverSource.${row.source}`), row.note].filter(Boolean).join(' · ')}
                     </p>
                     {row.disputeReason && <p className="text-sm text-danger">{row.disputeReason}</p>}
@@ -638,7 +658,12 @@ export default function CashHoldersPage() {
             value={formatMoney(tiles.data?.invested ?? null)}
             loading={tiles.isLoading}
           />
-          <StatCard label={t('cashHolders.stats.waiting')} value={String(waiting)} loading={holders.isLoading} />
+          <StatCard
+            label={t('cashHolders.stats.waiting')}
+            value={t('cashHolders.stats.waitingCount', { count: waiting })}
+            hint={t('cashHolders.stats.waitingHint')}
+            loading={holders.isLoading}
+          />
         </div>
 
         {holders.error ? (

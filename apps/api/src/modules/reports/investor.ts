@@ -62,11 +62,12 @@ export async function investorData(month: string) {
     const [farm] = await tx().select({ name: farms.name }).from(farms).where(eq(farms.id, c.farmId));
 
     const result = await monthToDate(month);
+    // Money and the herd's cost as they stood on the report's date, not today's.
     const accounts = await listWithBalances(asOf);
-    const debts = await debtSummary();
+    const debts = await debtSummary(asOf);
     const budget = await budgetExecution(from, to);
     const forecast = await cashflowForecast(3);
-    const cost = await herdCost();
+    const cost = await herdCost(undefined, asOf);
 
     const movement = await herdMovement(from, asOf);
     const herd = await herdSummary();

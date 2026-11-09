@@ -152,7 +152,7 @@ export function ExitForm({ open, onOpenChange, animal, defaultType }: ExitFormPr
                   loadOptions={apiOptions<LookupRow>('/finance/counterparties/lookup', (c) => ({ value: c.id, label: c.name }))}
                 />
                 <FormGrid>
-                  <NumberField form={form} name="liveWeightKg" label={t('exits.liveWeight')} suffix="kg" maxDigits={2} />
+                  <NumberField form={form} name="liveWeightKg" label={t('exits.liveWeight')} suffix={t('enums:unit.kg')} maxDigits={2} />
                   <NumberField money form={form} name="pricePerKg" label={t('exits.pricePerKg')} />
                 </FormGrid>
                 <NumberField money form={form} name="amount" label={t('exits.amount')} hint={t('exits.amountHint')} />
@@ -176,8 +176,8 @@ export function ExitForm({ open, onOpenChange, animal, defaultType }: ExitFormPr
             {type === 'slaughter' && (
               <>
                 <FormGrid>
-                  <NumberField form={form} name="liveWeightKg" label={t('exits.liveWeight')} suffix="kg" maxDigits={2} required />
-                  <NumberField form={form} name="carcassWeightKg" label={t('exits.carcassWeight')} suffix="kg" maxDigits={2} required />
+                  <NumberField form={form} name="liveWeightKg" label={t('exits.liveWeight')} suffix={t('enums:unit.kg')} maxDigits={2} required />
+                  <NumberField form={form} name="carcassWeightKg" label={t('exits.carcassWeight')} suffix={t('enums:unit.kg')} maxDigits={2} required />
                   <ComboboxField
                     form={form}
                     name="meatItemId"

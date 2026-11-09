@@ -6,7 +6,7 @@ import { type Column, DataTableView, DateField, FormDialog, FormGrid, NumberFiel
 import { Alert, Button, Card, CardContent, CardHeader, CardTitle } from '@/components/ui';
 import { api } from '@/lib/api';
 import { usePermission } from '@/lib/auth';
-import { formatDate, formatNumber } from '@/lib/format';
+import { formatDate, formatNumber, formatPercent } from '@/lib/format';
 import { zDate, zOptionalText, zPositive } from '@/lib/forms';
 import { useApiMutation } from '@/lib/query';
 import { formatHa } from '../utils';
@@ -77,7 +77,7 @@ export function PastureCard({ fieldId, areaHa, pasture }: { fieldId: string; are
         <Alert tone="info">
           {t('pasture.assumptions', {
             intake: formatNumber(pasture.intakeKgDmPerHeadDay, 1),
-            share: formatNumber(pasture.utilisation * 100, 0),
+            share: formatPercent(pasture.utilisation * 100, 0),
           })}
         </Alert>
         {pasture.samples.length > 0 && <div className="flex justify-end empty:hidden">{addButton}</div>}

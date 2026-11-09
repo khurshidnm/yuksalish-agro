@@ -3,7 +3,9 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button, type BadgeVariant } from '@/components/ui';
 import { formatMonth, intlLocale } from '@/lib/format';
+import i18n from '@/lib/i18n';
 import { cn } from '@/lib/utils';
+import { shiftMonth } from './months';
 
 export interface Employee {
   id: string;
@@ -37,13 +39,21 @@ export const EMPLOYEE_STATUS_VARIANT: Record<Employee['status'], BadgeVariant> =
   terminated: 'neutral',
 };
 
+export { shiftMonth };
+
 export const currentMonth = () => monthOf(todayIso());
 
-/** "YYYY-MM" moved by whole months. */
-export function shiftMonth(month: string, delta: number): string {
-  const [year, m] = month.split('-').map(Number);
-  return new Date(Date.UTC(year, m - 1 + delta, 1)).toISOString().slice(0, 7);
+/**
+ * A month inside a sentence: "Расчётный лист за октябрь 2026". Russian and Uzbek write month names in
+ * lower case there; the capital of formatMonth belongs to headings. English keeps its capital.
+ */
+export function monthText(month: string): string {
+  const heading = formatMonth(month);
+  return i18n.language?.startsWith('en') ? heading : heading.toLocaleLowerCase(intlLocale());
 }
+
+/** Both forms, so each language's sentence takes the one it needs: `{{month}}` opens a sentence, `{{monthText}}` sits inside one. */
+export const monthParams = (month: string) => ({ month: formatMonth(month), monthText: monthText(month) });
 
 /** 24-hour clock at the farm, e.g. 08:14. */
 export function formatTime(value: string | Date | null | undefined): string {

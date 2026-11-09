@@ -9,6 +9,7 @@ import {
   expectedLambingDate,
   lambingWindow,
 } from '@yap/shared';
+import { earliestLiveBirth } from '@yap/shared/formulas/livestock';
 import { canBreed, commonAncestors, type ParentLinks } from '@yap/shared/formulas/reproduction';
 import { schema } from '../../db/client';
 import { ctx, today, tx } from '../../core/context';
@@ -471,6 +472,14 @@ export async function recordLambing(i: LambingInput) {
     if (pregnancy.eweId !== i.eweId) throw badRequest('PREGNANCY_MISMATCH', 'This pregnancy belongs to another ewe');
     if (i.date < pregnancy.matingDate) {
       throw badRequest('LAMBING_BEFORE_MATING', 'Lambing cannot be earlier than the mating date');
+    }
+    // Lambs born alive months before term are a slip of the date, or an abortion recorded as a birth.
+    const earliest = earliestLiveBirth(pregnancy.matingDate, (await gestationOf(mother.speciesId)).days);
+    if (earliest && i.date < earliest && i.lambs.some((lamb) => lamb.alive)) {
+      throw badRequest('LAMBING_TOO_EARLY', `Live young cannot be born before ${earliest}; record an abortion instead`, {
+        earliestDate: earliest,
+        expectedDate: pregnancy.expectedDate,
+      });
     }
   }
 

@@ -139,7 +139,19 @@ export function PricesTab() {
     { key: 'date', header: t('prices.fields.date'), cell: (row) => formatDate(row.date), sortable: true, mobile: 'title' },
     { key: 'itemName', header: t('prices.fields.item'), cell: (row) => row.itemName, sortable: true, mobile: 'subtitle' },
     { key: 'kind', header: t('prices.fields.kind'), cell: (row) => <Badge>{t(`prices.kind.${row.kind}`)}</Badge> },
-    { key: 'price', header: t('prices.fields.price'), cell: (row) => <MoneyText value={row.price} />, sortable: true, align: 'right' },
+    {
+      key: 'price',
+      header: t('prices.fields.price'),
+      // A price is per unit: 68 000 for a lamb's live weight is per kg, not per lamb.
+      cell: (row) => (
+        <span className="whitespace-nowrap">
+          <MoneyText value={row.price} />
+          {row.price !== null && row.unit && <span className="text-muted-foreground">{t('prices.perUnit', { unit: t(`enums:unit.${row.unit}`) })}</span>}
+        </span>
+      ),
+      sortable: true,
+      align: 'right',
+    },
     { key: 'source', header: t('prices.fields.source'), cell: (row) => row.source ?? '—', mobile: 'hidden' },
   ];
 

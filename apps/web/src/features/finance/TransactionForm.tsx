@@ -1,4 +1,4 @@
-import { COST_TREATMENTS, CURRENCIES, todayIso } from '@yap/shared';
+import { COST_TREATMENTS, CURRENCIES, EXPENSE_GROUPS, INCOME_GROUPS, todayIso } from '@yap/shared';
 import { Loader2, Paperclip, X } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
@@ -15,6 +15,11 @@ import { FINANCE_PATHS, MONEY_QUERIES, accountLabel, treatmentForCategory, useCe
 import type { AccountOption, CategoryOption, CostCenterOption, Transaction } from './types';
 
 const TYPES = ['expense', 'income', 'transfer', 'contribution', 'withdrawal'] as const;
+/**
+ * Categories the system posts by itself every month. Entered by hand they would count the same cost
+ * twice (depreciation already reaches cost centers from the asset register).
+ */
+const SYSTEM_CATEGORIES = ['depreciation'];
 type EntryType = (typeof TYPES)[number];
 /** The owner's own money in or out: one account, nothing else. Shown only to those with finance.capital. */
 const CAPITAL: readonly EntryType[] = ['contribution', 'withdrawal'];
@@ -55,7 +60,8 @@ const schema = z
     need(v.costCenterId, 'costCenterId');
     if (v.onCredit) need(v.counterpartyId, 'counterpartyId');
     else need(v.accountId, 'accountId');
-  });
+    // Run even while the amount is still missing, so one press of Save names every empty field.
+  }, { when: () => true });
 
 type FormValues = z.input<typeof schema>;
 type FormOutput = z.output<typeof schema>;
@@ -204,13 +210,18 @@ function Fields({
   const categoryOptions = useMemo(
     () =>
       categories
-        .filter((c) => c.kind === type)
+        // An entry being edited keeps its own category, whatever it is.
+        .filter((c) => c.kind === type && (!SYSTEM_CATEGORIES.includes(c.key) || c.id === editing?.categoryId))
         .map((c) => ({
           value: c.id,
           label: localName(c.name),
           hint: t(`enums:${c.kind === 'expense' ? 'expenseGroup' : 'incomeGroup'}.${c.group}`),
-        })),
-    [categories, type, localName, t],
+          // The farm's own groups first (livestock, crops, staff...), then by name in the reader's language.
+          order: (c.kind === 'expense' ? EXPENSE_GROUPS : INCOME_GROUPS).indexOf(c.group as never),
+        }))
+        .sort((a, b) => a.order - b.order || a.label.localeCompare(b.label))
+        .map(({ order: _order, ...option }) => option),
+    [categories, type, localName, t, editing?.categoryId],
   );
 
   return (
@@ -230,7 +241,7 @@ function Fields({
             }}
             className={`focus-ring min-h-11 rounded-md px-2 text-sm leading-tight font-medium transition-colors ${
               isCapital(value) ? 'col-span-3' : 'col-span-2'
-            } ${type === value ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+            } ${type === value ? 'bg-card text-foreground shadow-sm ring-1 ring-primary' : 'text-muted-foreground hover:text-foreground'}`}
           >
             {t(`enums:transactionType.${value}`)}
           </button>

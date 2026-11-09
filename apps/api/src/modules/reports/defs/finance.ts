@@ -4,6 +4,8 @@ import {
   PII_VIEW,
   TRANSACTION_STATUSES,
   TRANSACTION_TYPES,
+  monthOf,
+  monthRange,
   profitabilityPercent,
   round,
 } from '@yap/shared';
@@ -32,6 +34,26 @@ import { col, filter } from './_helpers';
 const { accounts, animals, costCenters, counterparties, financeCategories, loanInstalments, loans, transactions: t } = schema;
 
 const ratio = (a: number, b: number) => (b === 0 ? null : a / b);
+
+/**
+ * The months of a period that have books to show: from the first month with an entry or an
+ * account opening, to this month. Months before bookkeeping began, and months not begun, would
+ * only be rows of zeros.
+ */
+async function bookedMonths(from: string, to: string): Promise<string[]> {
+  const [first] = await tx()
+    .select({
+      entry: sql<string | null>`min(${t.date})`,
+      opening: sql<string | null>`(select min(${accounts.openingDate}) from ${accounts} where ${accounts.farmId} = ${ctx().farmId})`,
+    })
+    .from(t)
+    .where(eq(t.farmId, ctx().farmId));
+  const starts = [first?.entry, first?.opening].filter((d): d is string => !!d).sort();
+  const start = starts[0] ? (starts[0] > from ? starts[0] : from) : from;
+  const thisMonth = monthOf(today());
+  const end = to.slice(0, 7) < thisMonth ? to.slice(0, 7) : thisMonth;
+  return start.slice(0, 7) > end ? [] : monthsBetween(start.slice(0, 7), end);
+}
 const animalCount = sql<number>`count(*)`.mapWith(Number);
 
 /** Cost per kg stays empty until enough of a herd is weighed, which needs saying next to the blank. */
@@ -45,14 +67,17 @@ export const financeReports: ReportDefinition[] = [
     module: 'finance',
     money: true,
     filters: [filter.period('this_year')],
+    // Running cost and purchases of things the farm keeps (stock, machinery, animals) apart: a
+    // bought flock is an asset, and summed into one 'expense' it reads as a loss of billions.
     columns: [
       col.enum('kind', 'categoryKind'),
       col.name('category', { label: 'financeCategory' }),
       col.money('income', { sum: true }),
       col.money('expense', { sum: true }),
+      col.money('purchaseCost', { sum: true }),
     ],
     chart: { kind: 'bar', x: 'category', series: ['income', 'expense'] },
-    compare: { filter: 'period', by: ['kind', 'category'], values: ['income', 'expense'] },
+    compare: { filter: 'period', by: ['kind', 'category'], values: ['income', 'expense', 'purchaseCost'] },
     async run({ from, to }) {
       const { rows } = await incomeExpenseByCategory(from, to);
       return {
@@ -60,8 +85,10 @@ export const financeReports: ReportDefinition[] = [
           kind: r.kind,
           category: r.name,
           income: r.kind === 'income' ? r.amount : null,
-          expense: r.kind === 'expense' ? r.amount : null,
+          expense: r.kind === 'expense' && r.operating !== 0 ? r.operating : null,
+          purchaseCost: r.kind === 'expense' && r.purchases !== 0 ? r.purchases : null,
         })),
+        notes: [{ key: 'net_result_definition' }],
       };
     },
   },
@@ -80,7 +107,7 @@ export const financeReports: ReportDefinition[] = [
     chart: { kind: 'bar', x: 'month', series: ['income', 'operatingExpense'] },
     async run({ from, to }) {
       const rows: Row[] = [];
-      for (const month of monthsBetween(from.slice(0, 7), to.slice(0, 7))) rows.push(await monthToDate(month));
+      for (const month of await bookedMonths(from, to)) rows.push(await monthToDate(month));
       return { rows, notes: [{ key: 'net_result_definition' }] };
     },
   },
@@ -262,7 +289,10 @@ export const financeReports: ReportDefinition[] = [
     ],
     chart: { kind: 'bar', x: 'category', series: ['planned', 'actual'] },
     async run({ from, to }) {
-      const b = await budgetExecution(from, to);
+      // Months not begun have no spending yet: comparing their plan with nothing would read as a
+      // saving. The report stops at this month, as the dashboard's budget card does.
+      const thisMonthEnd = monthRange(monthOf(today())).to;
+      const b = await budgetExecution(from, to > thisMonthEnd ? thisMonthEnd : to);
       return {
         rows: b.rows.map((r) => ({ ...r, category: r.name })),
         totals: { planned: b.planned, actual: b.actual, deviation: b.deviation, percent: b.percent },
@@ -428,10 +458,11 @@ export const financeReports: ReportDefinition[] = [
     money: true,
     filters: [filter.period('this_year')],
     columns: [col.enum('indicator', 'reports:kpi'), col.num('value', 2), col.enum('unit', 'reports:kpiUnit')],
+    // Money in whole so'm, as on every other screen; percents keep their decimals.
     async run({ from, to }) {
       let income = 0;
       let operating = 0;
-      for (const month of monthsBetween(from.slice(0, 7), to.slice(0, 7))) {
+      for (const month of await bookedMonths(from, to)) {
         const m = await monthToDate(month);
         income += m.income;
         operating += m.operatingExpense;
@@ -453,15 +484,17 @@ export const financeReports: ReportDefinition[] = [
       const perEwe = profitPerHead(herds.income, herds.expense, ewes.head);
       const costRatio = ratio(operating, income);
       const value = (v: number | null) => (v === null ? null : round(v, 2));
+      const money = (v: number | null) => (v === null ? null : round(v, 0));
       return {
         rows: [
-          { indicator: 'income', value: value(income), unit: 'money' },
-          { indicator: 'operating_expense', value: value(operating), unit: 'money' },
-          { indicator: 'profitability', value: income > 0 ? value(profitabilityPercent(income, operating)) : null, unit: 'percent' },
-          { indicator: 'profit_per_ewe', value: value(perEwe), unit: 'money' },
+          { indicator: 'income', value: money(income), unit: 'money' },
+          { indicator: 'operating_expense', value: money(operating), unit: 'money' },
+          { indicator: 'profitability', value: value(profitabilityPercent(income, operating)), unit: 'percent' },
+          { indicator: 'profit_per_ewe', value: money(perEwe), unit: 'money' },
           { indicator: 'cost_to_income', value: costRatio === null ? null : value(costRatio * 100), unit: 'percent' },
-          { indicator: 'net_cash_flow', value: value(flow.reduce((sum, m) => sum + m.net, 0)), unit: 'money' },
-          { indicator: 'budget_deviation', value: value(budget.deviation), unit: 'money' },
+          { indicator: 'net_cash_flow', value: money(flow.reduce((sum, m) => sum + m.net, 0)), unit: 'money' },
+          // Spending so far against the plan so far, as on the dashboard: December's plan has not happened yet.
+          { indicator: 'budget_deviation', value: budget.planned > 0 ? money(budget.deviationToDate) : null, unit: 'money' },
         ],
       };
     },

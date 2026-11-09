@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next';
 import { monthRange } from '@yap/shared';
 import { Fragment, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,6 +27,21 @@ interface WorkRow {
   headTreated: number;
   headDays: number;
   operations: number;
+  treatments: number;
+  dailyLogs: number;
+}
+
+/** The measures this person's work shows up in: a shepherd in head-days, a tractor driver in hectares. */
+function workFacts(done: WorkRow | undefined, t: TFunction): [ReactNode, ReactNode][] {
+  if (!done) return [];
+  const facts: [ReactNode, ReactNode][] = [];
+  if (done.hectares) facts.push([t('workDone.fields.hectares'), formatQty(done.hectares, t('units.ha'))]);
+  if (done.tons) facts.push([t('workDone.fields.tons'), formatQty(done.tons, t('units.t'))]);
+  if (done.headTreated) facts.push([t('workDone.fields.headTreated'), formatNumber(done.headTreated, 0)]);
+  if (done.headDays) facts.push([t('workDone.fields.headDays'), formatNumber(done.headDays, 0)]);
+  if (done.operations) facts.push([t('workDone.fields.operations'), formatNumber(done.operations, 0)]);
+  if (done.treatments + done.dailyLogs) facts.push([t('workDone.fields.records'), formatNumber(done.treatments + done.dailyLogs, 0)]);
+  return facts;
 }
 
 function Facts({ items }: { items: [ReactNode, ReactNode][] }) {
@@ -67,7 +83,7 @@ export function EmployeeCard({ employee, onOpenChange }: EmployeeCardProps) {
   const safety = useDetail<SafetyRow[]>(open ? '/hr/safety' : null, { employeeId: employee?.id });
 
   const attendance = grid.data?.employees.find((p) => p.id === employee?.id);
-  const done = work.data?.[0];
+  const done = workFacts(work.data?.[0], t);
   const rates = Object.entries(employee?.pieceRates ?? {});
 
   return (
@@ -123,8 +139,7 @@ export function EmployeeCard({ employee, onOpenChange }: EmployeeCardProps) {
                     [t('card.daysAbsent'), attendance?.totals.absent ?? 0],
                     [t('card.daysSick'), attendance?.totals.sick ?? 0],
                     [t('card.attendance'), formatPercent(attendance?.attendancePercent)],
-                    [t('workDone.fields.hectares'), formatQty(done?.hectares ?? 0, t('units.ha'))],
-                    [t('workDone.fields.headTreated'), formatNumber(done?.headTreated ?? 0, 0)],
+                    ...(done.length > 0 ? done : ([[t('tabs.workDone'), '—']] as [ReactNode, ReactNode][])),
                   ]}
                 />
               )}

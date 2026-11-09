@@ -52,7 +52,7 @@
     "method": {
       "plowing": "Haydash",
       "leveling": "Tekislash",
-      "harrowing": "Mola bosish"
+      "harrowing": "Boronalash"
     },
     "condition": {
       "good": "Yaxshi",
@@ -69,6 +69,7 @@
       "machine": "Texnika",
       "operator": "Mexanizator",
       "responsible": "Mas'ul",
+      "performer": "Ijrochi",
       "area": "Ishlangan maydon",
       "duration": "Davomiyligi",
       "fuel": "Yoqilg'i sarfi",
@@ -150,7 +151,9 @@
     "chooseSeason": "Mavsumni tanlang",
     "searchPlaceholder": "Dala bo'yicha qidirish",
     "generate": "Tadbirlarni kartadan yaratish",
-    "generated": "Rejali tadbirlar yaratildi",
+    "generated": "Rejali tadbirlar yaratildi: {{count}}",
+    "generateStartedTitle": "Kartadan qolgan ishlarni yaratasizmi?",
+    "generateStartedBody": "Bu dalada ish boshlangan. Kartaning bugundan keyingi ishlari qo'shiladi, sanalari haqiqiy ekish sanasidan hisoblanadi. O'tgan ishlar va ekish qayta yaratilmaydi.",
     "noCard": "Kartasiz",
     "lastWork": "Oxirgi ish",
     "overdueWork": "Muddati o'tgan: {{count}}",
@@ -269,6 +272,7 @@
     "INVALID_PERIOD": "Tugash sanasi boshlanishidan oldin bo'lmasin",
     "NOT_PLANNED": "Bu ish allaqachon bajarilgan",
     "PLAN_AREA_EXCEEDS_FIELD": "Bu mavsumda dalada faqat {{freeHa}} ga bo'sh",
+    "PLAN_CLOSED": "Bu reja yig'ib olingan yoki bekor qilingan",
     "PLAN_FIELD_MISMATCH": "Bu reja boshqa dalaga tegishli",
     "PLAN_HAS_NO_TECH_CARD": "Avval rejaga texnologik karta tanlang",
     "PLAN_HAS_WORK": "Rejada bajarilgan ishlar bor: o'chirish o'rniga bekor qiling",

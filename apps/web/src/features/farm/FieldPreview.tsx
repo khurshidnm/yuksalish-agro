@@ -7,7 +7,7 @@ import { Badge, Button, Card, Skeleton } from '@/components/ui';
 import { useDetail } from '@/lib/query';
 import { FieldPhoto } from './FieldPhoto';
 import type { FieldCard } from './types';
-import { fieldTitle, formatHa, useLocalName } from './utils';
+import { CROP_STATUS_VARIANT, fieldTitle, formatHa, useLocalName } from './utils';
 
 function Figure({ label, value }: { label: string; value: string }) {
   return (
@@ -37,7 +37,7 @@ export function FieldPreview({ id }: { id: string }) {
           <h2 className="text-lg leading-tight font-semibold tracking-tight text-heading">{fieldTitle(field)}</h2>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             <Badge>{t(`enums:landUse.${field.landUse}`)}</Badge>
-            {crop && <Badge variant={crop.status === 'planned' ? 'outline' : 'success'}>{t(`enums:cropPlanStatus.${crop.status}`)}</Badge>}
+            {crop && <Badge variant={CROP_STATUS_VARIANT[crop.status]}>{t(`enums:cropPlanStatus.${crop.status}`)}</Badge>}
           </div>
         </div>
         <p className="text-[1.75rem] leading-tight font-semibold tracking-tight">{formatHa(field.areaHa)}</p>

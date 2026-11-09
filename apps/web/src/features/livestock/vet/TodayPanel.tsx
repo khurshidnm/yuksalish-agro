@@ -86,7 +86,7 @@ export function TodayPanel() {
           <h2 className="px-2 pb-1 font-semibold">{t('today.todo', { date: formatDate(data.date) })}</h2>
           <ul>
             {data.sick.reports.map((report) => (
-              <Task key={report.id} icon={HeartPulse} tone="danger" to="?tab=sick" aside={<Badge variant="danger">{t('today.sickBadge')}</Badge>}>
+              <Task key={report.id} icon={HeartPulse} tone="danger" to="?tab=sick" aside={<Badge variant="danger">{t('enums:animalStatus.sick')}</Badge>}>
                 <span className="font-medium">{report.tag}</span>
                 {report.notes && <span className="block truncate text-sm text-muted-foreground">{report.notes}</span>}
               </Task>

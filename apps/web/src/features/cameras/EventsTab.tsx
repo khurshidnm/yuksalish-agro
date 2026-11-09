@@ -3,8 +3,8 @@ import { Activity, ExternalLink } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { type Column, DataTable, useUrlParam } from '@/components';
-import { Badge, type BadgeVariant, DateInput, Select } from '@/components/ui';
-import { formatDateTime } from '@/lib/format';
+import { Badge, type BadgeVariant, DateInput, Label, Select } from '@/components/ui';
+import { formatDateTime, formatNumber, formatPercent } from '@/lib/format';
 import { enumOptions } from '@/lib/i18n';
 
 interface DeviceEvent {
@@ -21,6 +21,14 @@ interface DeviceEvent {
 }
 
 const SEVERITY_VARIANT: Record<string, BadgeVariant> = { info: 'neutral', attention: 'warning', urgent: 'danger' };
+
+/** A sensor's reading, for the payloads the app knows. Anything else is a dash rather than a guess. */
+function reading(data: DeviceEvent['data']): string {
+  const parts: string[] = [];
+  if (typeof data.celsius === 'number') parts.push(`${formatNumber(data.celsius, 1)} °C`);
+  if (typeof data.humidity === 'number') parts.push(formatPercent(data.humidity, 0));
+  return parts.length > 0 ? parts.join(' · ') : '—';
+}
 
 /** Only http(s) links reach the page: the API validates this, and this guards older rows. */
 const safeSnapshot = (url: unknown): string | null => (typeof url === 'string' && /^https?:\/\//i.test(url) ? url : null);
@@ -66,6 +74,7 @@ export function EventsTab() {
       ),
     },
     { key: 'deviceName', header: t('events.device'), cell: (row) => row.deviceName ?? '—', mobile: 'subtitle' },
+    { key: 'value', header: t('events.value'), cell: (row) => <span className="whitespace-nowrap tabular-nums">{reading(row.data)}</span>, align: 'right' },
     { key: 'severity', header: t('events.severity'), cell: (row) => <Badge variant={SEVERITY_VARIANT[row.severity]}>{t(`enums:severity.${row.severity}`)}</Badge> },
     { key: 'occurredAt', header: t('events.time'), cell: (row) => formatDateTime(row.occurredAt) },
     {
@@ -93,8 +102,15 @@ export function EventsTab() {
             placeholder={t('events.allSources')}
             className="md:w-44"
           />
-          <DateInput aria-label={t('events.from')} value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} className="md:w-40" />
-          <DateInput aria-label={t('events.to')} value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} className="md:w-40" />
+          {/* A bare dd/mm/yyyy box does not say whether it starts or ends the range. */}
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="events-from">{t('events.from')}</Label>
+            <DateInput id="events-from" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} className="md:w-40" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="events-to">{t('events.to')}</Label>
+            <DateInput id="events-to" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} className="md:w-40" />
+          </div>
         </>
       }
       empty={{ icon: Activity, title: t('events.emptyTitle'), description: t('events.emptyBody') }}

@@ -44,8 +44,9 @@
     "allStatuses": "All statuses",
     "totalIncome": "Income",
     "totalExpense": "Expense",
-    "totalNet": "Cash result (assets included)",
-    "totalsHint": "Approved transactions only. Animals, machinery and stock bought are included, so this is not the net result.",
+    "cashNet": "Net cash flow",
+    "cashNetHint": "Money into the cash desk and bank less money out: loans and the owner's money count, entries on credit and depreciation do not. The farm's net result is in the Monthly result report.",
+    "totalsHint": "Approved transactions only. Animals, machinery and stock bought, entries on credit and depreciation are included.",
     "emptyTitle": "No transactions found",
     "emptyBody": "Enter the first expense or income, or change the filters.",
     "deleteTitle": "Delete this transaction?",
@@ -106,7 +107,7 @@
     "rejectDone": "Rejected",
     "voidDone": "Voided",
     "emptyTitle": "Nothing is waiting for approval",
-    "emptyBody": "Expenses above the set amount land here.",
+    "emptyBody": "Any transaction at or above the approval threshold lands here.",
     "enteredBy": "Entered by {{name}}",
     "ownEntry": "You entered this one, so someone else has to approve it.",
     "ownVoid": "You entered this one, so someone else has to void it."
@@ -126,6 +127,7 @@
     "total": "Total money",
     "inCash": "In cash",
     "inBank": "In bank and cards",
+    "withHolders": "Held by staff",
     "close": "Close account",
     "closeTitle": "Close this account?",
     "closeBody": "\"{{name}}\" will leave the list. Its history is kept.",
@@ -159,7 +161,10 @@
     "description": "Who owes us, whom we owe, and when it is due.",
     "weOwe": "We owe",
     "owedToUs": "Owed to us",
-    "overdueTotal": "Overdue",
+    "overdueOf": "Overdue: {{amount}}",
+    "noneOverdue": "Nothing overdue",
+    "payrollHint": "Wages are paid from the payroll run under Staff, which knows each person's share.",
+    "payrollLink": "Pay on the payroll page",
     "loans": "Loans outstanding",
     "loansHint": "Tracked on their own schedule.",
     "direction": {
@@ -227,6 +232,8 @@
       "diff": "Variance"
     },
     "allCenters": "All cost centers",
+    "noCenterPlan": "No plan was entered for \"{{name}}\": the plan is kept for the farm as a whole. Only the actuals show here.",
+    "toDateNote": "Difference and execution are measured against the plan of the months that have begun: months still to come are neither a saving nor a shortfall.",
     "category": "Category",
     "percent": "Used",
     "edit": "Edit plan",
@@ -311,7 +318,8 @@
     "centerChartHint": "Fields and herds, after machinery and overhead are shared out.",
     "noData": "No data for this period",
     "noDataBody": "Figures appear once expenses are entered or stock is issued.",
-    "internalNote": "Own produce, such as alfalfa, moves to the herd at an internal price, so the sum of centers can exceed what the farm really paid. For the farm's bottom line, use the Categories tab."
+    "internalNote": "Own produce, such as alfalfa, moves to the herd at an internal price, so the sum of centers can exceed what the farm really paid. The farm's net result (income less the cost of what was used) is in the Monthly result report.",
+    "resultLink": "Open the monthly result"
   },
   "cashflow": {
     "title": "Cash flow",
@@ -358,7 +366,7 @@
     "emptyBody": "Approved transactions appear here by month."
   },
   "loans": {
-    "title": "Loans and leasing",
+    "title": "Loans",
     "description": "Loans, payment schedules, interest and what is still owed.",
     "add": "Add loan",
     "addHint": "The payment schedule is built from the terms automatically.",
@@ -405,7 +413,7 @@
     "notify": {
       "sent": {
         "title": "You were handed {{amount}} in cash",
-        "body": "From {{sender}}, {{date}}. Press Received once it is in your hands."
+        "body": "From {{sender}}, {{date}}."
       },
       "accepted": {
         "title": "{{holder}} received {{amount}}",
@@ -434,7 +442,10 @@
       "withPeople": "Cash with people",
       "invested": "Invested by the owner",
       "investedHint": "The owner's own money put in, less what was taken back",
-      "waiting": "Not yet confirmed"
+      "waiting": "Not yet confirmed",
+      "waitingCount_one": "{{count}} handover",
+      "waitingCount_other": "{{count}} handovers",
+      "waitingHint": "Cash handed over, waiting for the person to press “Received”"
     },
     "card": {
       "inHand": "Should be in hand",
@@ -445,7 +456,8 @@
       "handoversWaiting": "Not yet confirmed: {{n}}",
       "details": "Details",
       "handOver": "Hand over",
-      "takeBack": "Take back"
+      "takeBack": "Take back",
+      "giveBack": "Give back"
     },
     "form": {
       "title": "Hand over cash",
@@ -461,8 +473,10 @@
     },
     "return": {
       "title": "Take cash back",
+      "titleMine": "Give cash back",
       "description": "{{name}}: {{amount}} should be in hand.",
       "submit": "Take back",
+      "submitMine": "Give back",
       "to": "Where it goes",
       "toOwner": "Back to the owner",
       "toAccount": "Into a farm account",
@@ -561,6 +575,7 @@
     "HANDOVER_NOT_ACCEPTED": "Only cash that arrived can be reversed.",
     "HOLDER_ACCOUNT": "This is a person's cash. Close it from Cash holders, which checks that nothing is left with them.",
     "USE_CASH_HANDOVER": "This is a person's cash. Hand it over from Cash holders, so they confirm it arrived.",
-    "DATE_IN_FUTURE": "The date is in the future."
+    "DATE_IN_FUTURE": "The date is in the future.",
+    "SYSTEM_COUNTERPARTY": "The payroll counterparty is kept by the system: it cannot be renamed or archived."
   }
 }

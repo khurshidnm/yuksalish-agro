@@ -26,7 +26,7 @@ import {
 import { schema } from '../../db/client';
 import { ctx, today, tx } from '../../core/context';
 import type { TenantSettings } from '../../core/settings';
-import { daytimeWindows, frostSeverity, localHourOf, sheepHeatStress, sheepThi, sprayWindows } from '@yap/shared/formulas/agro-weather';
+import { frostSeverity, localHourOf, sheepHeatStress, sheepThi, sprayWindows } from '@yap/shared/formulas/agro-weather';
 import { farmWorkChecks } from '../farm/field-health.service';
 import { DUE_SOON_DAYS, waterAdvice } from '../farm/water.service';
 import { hourlyForecast } from '../farm/weather.service';
@@ -378,7 +378,8 @@ export const RULES: Rule[] = [
         dedupKey: `contract_expiring:${row.id}`,
         severity: 'attention' as const,
         params: { number: row.number, counterparty: row.counterparty, date: row.end_date },
-        link: '/sales',
+        // Straight to the contracts tab: the bare page opens on the sales orders.
+        link: '/sales?tab=contracts',
         entityType: 'contract',
         entityId: row.id,
       }));
@@ -547,9 +548,14 @@ export const RULES: Rule[] = [
           and o.date between ${r.today}::date and ${addDays(r.today, 2)}::date
         order by o.date`);
       if (planned.length === 0) return [];
+      // Spraying hours follow the sun at the farm (SPRAY_DAYLIGHT), not fixed clock hours, which
+      // would advise 05:00 in November. Without a location there is no forecast to judge by.
+      const [farm] = await query<{ lat: number | null; lng: number | null }>(sql`select lat, lng from farms where id = ${r.farmId}`);
+      if (farm?.lat == null || farm.lng == null) return [];
+      const site = { latitudeDeg: Number(farm.lat), longitudeDeg: Number(farm.lng) };
       const tz = ctx().timezone;
       const hours = (await hourlyForecast(new Date(Date.now() - 3_600_000), 96)).filter((h) => h.periodHours === 1);
-      const windows = daytimeWindows(sprayWindows(hours, { minHours: 1 }), tz);
+      const windows = sprayWindows(hours, { site });
       const covered = new Set(hours.map((h) => todayIso(tz, new Date(h.time))));
       return planned.flatMap((op) => {
         // Hourly points reach about 2.5 days ahead; past them the forecast cannot judge the day.

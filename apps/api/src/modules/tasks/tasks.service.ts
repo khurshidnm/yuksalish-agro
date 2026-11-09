@@ -1,6 +1,6 @@
-import { and, asc, desc, eq, inArray, isNull, lt, ne, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNull, lt, ne, or, sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
-import { PRIORITIES, RECURRENCES, TASK_STATUSES, diffDays, addDays, type Permission } from '@yap/shared';
+import { PRIORITIES, RECURRENCES, TASK_STATUSES, diffDays, addDays, todayIso, type Permission } from '@yap/shared';
 import { schema } from '../../db/client';
 import { ctx, hasPermission, today, tx } from '../../core/context';
 import { badRequest, conflict, forbidden, notFound } from '../../core/errors';
@@ -13,8 +13,11 @@ const { animals, assets, dailyLogs, fieldOperations, fields, files, healthRecord
 
 type Task = typeof t.$inferSelect;
 
-/** Record types a task can demand before it may be closed (spec 17.2). */
-export const RECORD_TYPES = ['health_record', 'field_operation', 'daily_log', 'weight_record'] as const;
+/**
+ * Record types a task can demand before it may be closed (spec 17.2). `vaccination_record` is a
+ * health record of type vaccination: a routine examination must not close a vaccination task.
+ */
+export const RECORD_TYPES = ['health_record', 'vaccination_record', 'field_operation', 'daily_log', 'weight_record'] as const;
 export type RecordType = (typeof RECORD_TYPES)[number];
 
 export const ENTITY_TYPES = ['field', 'herd', 'animal', 'asset'] as const;
@@ -160,7 +163,7 @@ export async function list(q: z.infer<typeof taskListQuery>) {
       .orderBy(
         ...sortBy(
           q.sort,
-          { dueDate: t.dueDate, priority: t.priority, status: t.status, title: t.title, createdAt: t.createdAt },
+          { dueDate: t.dueDate, priority: t.priority, status: t.status, title: t.title, createdAt: t.createdAt, completedAt: t.completedAt },
           [sql`${t.dueDate} asc nulls last`, desc(t.createdAt)],
           t.id,
         ),
@@ -253,13 +256,29 @@ async function fileBelongsToFarm(fileId: string): Promise<boolean> {
 
 const RECORD_LIMIT = 20;
 
-/** Records of the required type, limited to the task's linked object when it has one. */
+/**
+ * The first day a record can close this task: the business day the task was set. Work recorded
+ * before the task existed is not the work it asks for, so last month's vaccination cannot close
+ * this month's vaccination task. A recurring instance counts from the day it was created.
+ */
+export function recordsFrom(task: Pick<Task, 'createdAt'>, timeZone: string): string {
+  return todayIso(timeZone, task.createdAt);
+}
+
+/**
+ * Records of the required type, dated on or after the day the task was set, and limited to the
+ * task's linked object when it has one. The completion check uses the same query, so the server
+ * accepts exactly what the picker offers.
+ */
 async function findRecords(task: Task, onlyId?: string): Promise<{ id: string; date: string; label: string | null }[]> {
-  const farmId = ctx().farmId;
+  const c = ctx();
+  const farmId = c.farmId;
+  const from = recordsFrom(task, c.timezone);
   const linked = (type: string) => (task.entityType === type && task.entityId ? task.entityId : null);
 
   switch (task.requiresRecord as RecordType) {
-    case 'health_record': {
+    case 'health_record':
+    case 'vaccination_record': {
       const herdId = linked('herd');
       const animalId = linked('animal');
       return tx()
@@ -269,6 +288,8 @@ async function findRecords(task: Task, onlyId?: string): Promise<{ id: string; d
           and(
             eq(healthRecords.farmId, farmId),
             onlyId ? eq(healthRecords.id, onlyId) : undefined,
+            gte(healthRecords.date, from),
+            task.requiresRecord === 'vaccination_record' ? eq(healthRecords.type, 'vaccination') : undefined,
             herdId
               ? or(
                   eq(healthRecords.herdId, herdId),
@@ -290,6 +311,9 @@ async function findRecords(task: Task, onlyId?: string): Promise<{ id: string; d
           and(
             eq(fieldOperations.farmId, farmId),
             onlyId ? eq(fieldOperations.id, onlyId) : undefined,
+            gte(fieldOperations.date, from),
+            // A planned operation is not yet work done.
+            ne(fieldOperations.status, 'planned'),
             fieldId ? eq(fieldOperations.fieldId, fieldId) : undefined,
           ),
         )
@@ -305,6 +329,7 @@ async function findRecords(task: Task, onlyId?: string): Promise<{ id: string; d
           and(
             eq(dailyLogs.farmId, farmId),
             onlyId ? eq(dailyLogs.id, onlyId) : undefined,
+            gte(dailyLogs.date, from),
             herdId ? eq(dailyLogs.herdId, herdId) : undefined,
           ),
         )
@@ -320,6 +345,7 @@ async function findRecords(task: Task, onlyId?: string): Promise<{ id: string; d
           and(
             eq(weightRecords.farmId, farmId),
             onlyId ? eq(weightRecords.id, onlyId) : undefined,
+            gte(weightRecords.date, from),
             animalId ? eq(weightRecords.animalId, animalId) : undefined,
           ),
         )

@@ -1,5 +1,21 @@
 /** Livestock calculations that go beyond the ones listed in spec 25.1. Same conventions as index.ts. */
+import { addDays } from '../dates';
 import { round } from './index';
+
+/**
+ * Young born before this share of the species' gestation cannot live: such a birth is an abortion.
+ * 90 % is 135 days for sheep and goats (lambs survive from about 138), 254 for cattle, 306 for horses.
+ */
+export const VIABLE_GESTATION_SHARE = 0.9;
+
+/**
+ * The first day a live birth is plausible after a mating, or `null` without a gestation length.
+ * A lambing with live lambs before it is a typing mistake or an abortion, never a lambing.
+ */
+export function earliestLiveBirth(matingDate: string, gestationDays: number | null | undefined): string | null {
+  if (!gestationDays || gestationDays <= 0) return null;
+  return addDays(matingDate, Math.floor(gestationDays * VIABLE_GESTATION_SHARE));
+}
 
 /** Yaylov yuklamasi: head per hectare (spec 8.4). */
 export function stockingRate(head: number, areaHa: number): number | null {

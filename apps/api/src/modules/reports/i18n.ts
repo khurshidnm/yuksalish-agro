@@ -54,7 +54,9 @@ export function localizedName(value: unknown, lang: Lang): string {
 const numberLocale = (lang: Lang) => (lang === 'en' ? 'en-US' : 'ru-RU');
 
 export function formatNumber(value: number, digits: number, lang: Lang): string {
-  return new Intl.NumberFormat(numberLocale(lang), { maximumFractionDigits: digits }).format(value);
+  // A rounding remainder such as -0.0001 prints as '-0'; a zero has no sign.
+  const shown = Number(value.toFixed(Math.min(Math.max(digits, 0), 20)));
+  return new Intl.NumberFormat(numberLocale(lang), { maximumFractionDigits: digits }).format(shown === 0 ? 0 : value);
 }
 
 export function formatIsoDate(iso: string): string {

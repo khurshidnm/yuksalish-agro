@@ -739,6 +739,8 @@ export async function holderSummary(holderId: string, q: Period = {}) {
       description: t.description,
       categoryName: cat.name,
       costCenterName: costCenters.name,
+      // The farm-wide center is stored as 'General': the type lets the page show it in the reader's language.
+      costCenterType: costCenters.type,
       incoming: sql<boolean>`(${t.toAccountId} = ${account} or ${t.type} in ('income', 'debt_receipt', 'contribution'))`,
     })
     .from(t)

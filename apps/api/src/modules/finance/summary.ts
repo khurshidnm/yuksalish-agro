@@ -11,7 +11,8 @@
  *      machinery cost of assets, charged to the fields they worked on
  *      overhead  the general center, shared out on the tenant's chosen base
  *    'inventory', 'capex' and 'animal' expenses never reach a center directly. They arrive later
- *    as issues, depreciation and the animal's own purchase price, so nothing is counted twice.
+ *    as issues, depreciation and the herd's acquisition cost (the animals' prices plus transport
+ *    and import costs, see landedExtras), so nothing is counted twice.
  *
  * Moving a cost between centers conserves the total: the sum of `total` over all centers always
  * equals the sum of direct plus materials. Sending machinery to fields is negative on the asset
@@ -23,11 +24,13 @@
  * others. Farm-level results must therefore use question 1, never a sum of centers, and their
  * stock cost leaves out own_harvest batches (see stockCost).
  */
-import { and, asc, desc, eq, gte, inArray, isNotNull, lte, ne, notInArray, sql, type AnyColumn } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNotNull, lte, ne, notInArray, sql, type AnyColumn, type SQL } from 'drizzle-orm';
 import {
   ANIMAL_ON_FARM_STATUSES,
   PII_VIEW,
+  addDays,
   allocateOverhead,
+  budgetExecutionPercent,
   costPerKgLiveWeight,
   costPerTon,
   cropCostTotal,
@@ -39,12 +42,13 @@ import {
   type AllocationTarget,
   type CropCostInput,
 } from '@yap/shared';
+import { OUTLOOK_ASSUMPTIONS, lambsForSale } from '@yap/shared/formulas/outlook';
 import { schema } from '../../db/client';
 import { ctx, hasPermission, today, tx } from '../../core/context';
 import { COST_CREDIT_MOVEMENT_TYPES, COST_MOVEMENT_TYPES } from '../../core/inventory';
 import { sumOf } from '../../core/query';
 import { accountsWithHolders } from './advances.service';
-import { grid, monthsBetween } from './budget.service';
+import { grid, monthsBetween, planDueWeight } from './budget.service';
 import { listDebts } from './debts.service';
 import { addMonths, outstandingTotal } from './loans.service';
 
@@ -120,36 +124,44 @@ async function stockCost(from: string, to: string): Promise<number> {
   return row?.amount ?? 0;
 }
 
+/** Entries that move no money: owed (paid later by a settlement) or booked without cash (depreciation). */
+const NOT_PAID = ['debt', 'non_cash'];
+
 /**
- * Income and expense this month. `expense` is money paid. `operatingExpense` is the cost of running
- * the farm: direct expenses plus stock used, so stock still in the warehouse is not a cost yet, and
- * neither are assets or animals bought (CLAUDE.md rule 3). `net` is the farm's result, income less
- * that cost, and every screen and report takes it from here.
+ * Income and expense this month. `expense` is money paid, assets and stock bought included: what
+ * left the accounts for spending and for debts settled, the cash-flow outflow less the owner's
+ * withdrawals. Wages accrued, goods bought on credit and depreciation have paid nothing yet.
+ * `operatingExpense` is the cost of running the farm: direct expenses plus stock used, so stock
+ * still in the warehouse is not a cost yet, and neither are assets or animals bought (CLAUDE.md
+ * rule 3). `net` is the farm's result, income less that cost, and every screen and report takes
+ * it from here.
  */
 export async function monthToDate(month: string = monthOf(today())) {
   const { from, to } = monthRange(month);
   const rows = await tx()
-    .select({ type: t.type, treatment: t.costTreatment, total: sumOf(t.amountBase) })
+    .select({ type: t.type, treatment: t.costTreatment, paymentMethod: t.paymentMethod, total: sumOf(t.amountBase) })
     .from(t)
     .where(
       and(
         eq(t.farmId, ctx().farmId),
         eq(t.status, 'approved'),
-        inArray(t.type, ['income', 'expense']),
+        inArray(t.type, ['income', 'expense', 'debt_payment']),
         gte(t.date, from),
         lte(t.date, to),
       ),
     )
-    .groupBy(t.type, t.costTreatment);
+    .groupBy(t.type, t.costTreatment, t.paymentMethod);
   const sum = (filter: (row: (typeof rows)[number]) => boolean) =>
     round(rows.filter(filter).reduce((total, row) => total + row.total, 0), 2);
   const income = sum((r) => r.type === 'income');
   const operatingExpense = round(sum((r) => r.type === 'expense' && r.treatment === 'expense') + (await stockCost(from, to)), 2);
-  return { month, income, expense: sum((r) => r.type === 'expense'), operatingExpense, net: round(income - operatingExpense, 2) };
+  const paid = sum((r) => (r.type === 'expense' || r.type === 'debt_payment') && !NOT_PAID.includes(r.paymentMethod));
+  return { month, income, expense: paid, operatingExpense, net: round(income - operatingExpense, 2) };
 }
 
-export async function debtSummary() {
-  const debts = await listDebts();
+/** Debts and loans as they stood at the end of `asOf` (today by default). */
+export async function debtSummary(asOf?: string) {
+  const debts = await listDebts(undefined, asOf);
   const total = (direction: string, field: 'outstanding' | 'overdue') =>
     round(debts.filter((d) => d.direction === direction).reduce((sum, d) => sum + d[field], 0), 2);
   const overduePayable = total('payable', 'overdue');
@@ -160,47 +172,70 @@ export async function debtSummary() {
     overdue: round(overduePayable + overdueReceivable, 2),
     overduePayable,
     overdueReceivable,
-    loansOutstanding: await outstandingTotal(),
+    loansOutstanding: await outstandingTotal(asOf),
   };
 }
 
-/** Expense plan vs fact for dashboards. Accepts months or dates, always covers whole months. */
+/**
+ * Expense plan vs fact for dashboards and reports. Accepts months or dates, always covers whole
+ * months. `planned`, `deviation` and `percent` are the whole period. `plannedToDate` is the plan
+ * due by `to` or today, whichever comes first: a month still running counts for the days gone,
+ * months not begun count nothing (budget.service planDueWeight). `deviationToDate` and
+ * `percentToDate` set spending so far against it, like with like: nine days of spending against a
+ * whole month's plan, or two months against a whole year's, would always look far under budget.
+ */
 export async function budgetExecution(from: string, to: string) {
   const result = await grid({ from: from.slice(0, 7), to: to.slice(0, 7) });
   const { expense, income } = result.totals;
+  const due = planDueWeight(to);
+  const plannedToDate = round(result.months.reduce((sum, m) => sum + (expense.byMonth[m]?.planned ?? 0) * due(m), 0), 2);
   return {
     planned: expense.planned,
+    plannedToDate,
     actual: expense.actual,
     deviation: expense.deviation,
     percent: expense.percent,
+    deviationToDate: round(expense.actual - plannedToDate, 2),
+    percentToDate: budgetExecutionPercent(expense.actual, plannedToDate),
+    dueThrough: result.dueThrough,
     income: { planned: income.planned, actual: income.actual, percent: income.percent },
     rows: result.rows
       .filter((row) => row.kind === 'expense')
-      .map((row) => ({
-        categoryId: row.categoryId,
-        key: row.key,
-        group: row.group,
-        name: row.name,
-        planned: row.planned,
-        actual: row.actual,
-        deviation: row.deviation,
-        percent: row.percent,
-      })),
+      .map((row) => {
+        const rowToDate = round(result.months.reduce((sum, m) => sum + row.cells[m].planned * due(m), 0), 2);
+        return {
+          categoryId: row.categoryId,
+          key: row.key,
+          group: row.group,
+          name: row.name,
+          planned: row.planned,
+          actual: row.actual,
+          deviation: row.deviation,
+          percent: row.percent,
+          plannedToDate: rowToDate,
+          deviationToDate: round(row.actual - rowToDate, 2),
+          percentToDate: budgetExecutionPercent(row.actual, rowToDate),
+        };
+      }),
   };
 }
 
 /**
  * Income and expense by category over a period (spec 10.4). `net` here is money: it counts animals,
  * machinery and stock bought, so the screens label it as cash. The farm's result is monthToDate().
+ * Each expense row also says how much of it was running cost (`operating`, cost treatment
+ * 'expense') and how much bought something the farm keeps (`purchases`: stock, assets, animals),
+ * which is an asset, not a loss (rule 3).
  */
 export async function incomeExpenseByCategory(from?: string, to?: string) {
-  const rows = await tx()
+  const grouped = await tx()
     .select({
       categoryId: cat.id,
       key: cat.key,
       group: cat.group,
       kind: cat.kind,
       name: cat.name,
+      treatment: t.costTreatment,
       amount: sumOf(t.amountBase),
     })
     .from(t)
@@ -214,12 +249,35 @@ export async function incomeExpenseByCategory(from?: string, to?: string) {
         to ? lte(t.date, to) : undefined,
       ),
     )
-    .groupBy(cat.id, cat.key, cat.group, cat.kind, cat.name)
-    .orderBy(desc(sumOf(t.amountBase)));
-  const total = (kind: string) => round(rows.filter((r) => r.kind === kind).reduce((sum, r) => sum + r.amount, 0), 2);
-  const income = total('income');
-  const expense = total('expense');
-  return { rows, income, expense, net: round(income - expense, 2) };
+    .groupBy(cat.id, cat.key, cat.group, cat.kind, cat.name, t.costTreatment);
+  const byCategory = new Map<
+    string,
+    { categoryId: string; key: string; group: string; kind: string; name: (typeof grouped)[number]['name']; amount: number; operating: number; purchases: number }
+  >();
+  for (const { treatment, amount, ...category } of grouped) {
+    const row = byCategory.get(category.categoryId) ?? { ...category, amount: 0, operating: 0, purchases: 0 };
+    row.amount += amount;
+    if (category.kind === 'expense') {
+      if (treatment === 'expense') row.operating += amount;
+      else row.purchases += amount;
+    }
+    byCategory.set(category.categoryId, row);
+  }
+  const rows = [...byCategory.values()]
+    .map((row) => ({ ...row, amount: round(row.amount, 2), operating: round(row.operating, 2), purchases: round(row.purchases, 2) }))
+    .sort((a, b) => b.amount - a.amount);
+  const total = (pick: (row: (typeof rows)[number]) => number, kind: string) =>
+    round(rows.filter((r) => r.kind === kind).reduce((sum, r) => sum + pick(r), 0), 2);
+  const income = total((r) => r.amount, 'income');
+  const expense = total((r) => r.amount, 'expense');
+  return {
+    rows,
+    income,
+    expense,
+    operating: total((r) => r.operating, 'expense'),
+    purchases: total((r) => r.purchases, 'expense'),
+    net: round(income - expense, 2),
+  };
 }
 
 // ─── Cost engine ───────────────────────────────────────────────────────────
@@ -586,8 +644,10 @@ export async function costCenterCosts(from?: string, to?: string) {
         overhead: round(s.overhead, 2),
         total,
         income: round(s.income, 2),
-        profit: round(s.income - total, 2),
-        profitabilityPercent: profitabilityPercent(s.income, total),
+        // A center that sold nothing has no profit to state: a machine, a herd before its first
+        // sale or a field before harvest would otherwise read as a total loss.
+        profit: s.income > 0 ? round(s.income - total, 2) : null,
+        profitabilityPercent: nullableRound(profitabilityPercent(s.income, total)),
       };
     })
     .sort((a, b) => b.total - a.total);
@@ -608,7 +668,10 @@ interface HerdCostRow {
   herdId: string;
   name: string;
   head: number;
+  /** What the animals on the farm cost to acquire: their prices plus their share of transport and import costs. */
   purchaseCost: number;
+  /** The part of purchaseCost beyond the animals' own prices (see landedExtras). */
+  landedExtra: number;
   accumulated: number;
   costPerHead: number | null;
   breakdown: { feed: number; vet: number; labor: number; overhead: number; other: number };
@@ -647,9 +710,92 @@ function costPerKgOf(
   return nullableRound(costPerKgLiveWeight({ feed, vet, labor, overhead, weightGainKg }));
 }
 
-async function herdRows(): Promise<HerdCostRow[]> {
+/**
+ * Acquisition costs beyond the price, per herd: transport, quarantine and import vet work booked
+ * as 'animal' (capitalised into the animals, rule 3). They reach no cost center, so without this
+ * they would be in no herd cost at all. The extra is what the herd's 'animal' entries exceed the
+ * prices of the animals bought into it, shared per bought head, and only the share of those still
+ * on the farm stays in the herd: an animal that left took its share with it.
+ */
+async function landedExtras(animalCenterHerd: Map<string, string>, onFarm: SQL, asOf?: string): Promise<Map<string, number>> {
   const farm = ctx().farmId;
-  const engine = await runEngine();
+  const booked = await tx()
+    .select({ costCenterId: t.costCenterId, amount: sumOf(t.amountBase) })
+    .from(t)
+    .where(
+      and(
+        eq(t.farmId, farm),
+        eq(t.status, 'approved'),
+        eq(t.type, 'expense'),
+        eq(t.costTreatment, 'animal'),
+        isNotNull(t.costCenterId),
+        asOf ? lte(t.date, asOf) : undefined,
+      ),
+    )
+    .groupBy(t.costCenterId);
+  if (!booked.length) return new Map();
+  const centers = await tx()
+    .select({ id: costCenters.id, type: costCenters.type, refId: costCenters.refId })
+    .from(costCenters)
+    .where(inArray(costCenters.id, booked.map((row) => row.costCenterId!)));
+  const herdOfCenter = new Map<string, string>();
+  for (const center of centers) {
+    if (center.type === 'herd' && center.refId) herdOfCenter.set(center.id, center.refId);
+    if (center.type === 'animal' && center.refId && animalCenterHerd.has(center.refId)) {
+      herdOfCenter.set(center.id, animalCenterHerd.get(center.refId)!);
+    }
+  }
+  const bookedByHerd = new Map<string, number>();
+  for (const row of booked) {
+    const herdId = herdOfCenter.get(row.costCenterId!);
+    if (herdId) bookedByHerd.set(herdId, (bookedByHerd.get(herdId) ?? 0) + row.amount);
+  }
+  if (!bookedByHerd.size) return new Map();
+
+  const bought = await tx()
+    .select({
+      herdId: animals.herdId,
+      price: sumOf(animals.purchasePrice),
+      head: sql<number>`count(*)`.mapWith(Number),
+      onFarm: sql<number>`count(*) filter (where ${onFarm})`.mapWith(Number),
+      purchased: sql<number>`count(*) filter (where ${animals.origin} = 'purchased')`.mapWith(Number),
+      purchasedOnFarm: sql<number>`count(*) filter (where ${animals.origin} = 'purchased' and ${onFarm})`.mapWith(Number),
+    })
+    .from(animals)
+    .where(
+      and(
+        eq(animals.farmId, farm),
+        inArray(animals.herdId, [...bookedByHerd.keys()]),
+        asOf ? sql`(${animals.purchaseDate} is null or ${animals.purchaseDate} <= ${asOf})` : undefined,
+      ),
+    )
+    .groupBy(animals.herdId);
+  const result = new Map<string, number>();
+  for (const row of bought) {
+    const extra = (bookedByHerd.get(row.herdId!) ?? 0) - row.price;
+    if (extra <= 0) continue;
+    // Shared per bought head; a herd with no animal marked as bought shares it over all its animals.
+    const [stay, all] = row.purchased > 0 ? [row.purchasedOnFarm, row.purchased] : [row.onFarm, row.head];
+    if (all > 0 && stay > 0) result.set(row.herdId!, round((extra * stay) / all, 2));
+  }
+  return result;
+}
+
+/**
+ * Animals on the farm at the end of `asOf`, or now. Bought or born by then, and not yet gone.
+ */
+function onFarmAt(asOf?: string): SQL {
+  if (!asOf) return sql`${animals.status} in (${ON_FARM})`;
+  return sql`(${animals.purchaseDate} is null or ${animals.purchaseDate} <= ${asOf})
+    and (${animals.birthDate} is null or ${animals.birthDate} <= ${asOf})
+    and (${animals.exitDate} > ${asOf} or (${animals.exitDate} is null and ${animals.status} in (${ON_FARM})))`;
+}
+
+/** Herd costs now, or as they stood at the end of `asOf` (costs, prices and head up to that day). */
+async function herdRows(asOf?: string): Promise<HerdCostRow[]> {
+  const farm = ctx().farmId;
+  const engine = await runEngine(undefined, asOf);
+  const onFarm = onFarmAt(asOf);
   const herdList = await tx()
     .select({ id: schema.herds.id, name: schema.herds.name })
     .from(schema.herds)
@@ -662,7 +808,7 @@ async function herdRows(): Promise<HerdCostRow[]> {
       purchaseCost: sumOf(animals.purchasePrice),
     })
     .from(animals)
-    .where(and(eq(animals.farmId, farm), isNotNull(animals.herdId), sql`${animals.status} in (${ON_FARM})`))
+    .where(and(eq(animals.farmId, farm), isNotNull(animals.herdId), onFarm))
     .groupBy(animals.herdId);
   const herdAnimals = new Map(animalRows.map((row) => [row.herdId!, row]));
 
@@ -678,6 +824,7 @@ async function herdRows(): Promise<HerdCostRow[]> {
   }
 
   const gains = await weightGainByHerd();
+  const extras = await landedExtras(animalHerd, onFarm, asOf);
 
   return herdList.map((herd) => {
     const own = engine.byRef.get(`herd:${herd.id}`);
@@ -693,7 +840,8 @@ async function herdRows(): Promise<HerdCostRow[]> {
     const accumulated = add(centerTotal);
     const animalsHere = herdAnimals.get(herd.id);
     const head = animalsHere?.head ?? 0;
-    const purchaseCost = round(animalsHere?.purchaseCost ?? 0, 2);
+    const landedExtra = head > 0 ? (extras.get(herd.id) ?? 0) : 0;
+    const purchaseCost = round((animalsHere?.purchaseCost ?? 0) + landedExtra, 2);
     const gain = gains.get(herd.id);
     const weightGainKg = round(gain?.kg ?? 0, 2);
     const weighedHead = gain?.animals ?? 0;
@@ -702,6 +850,7 @@ async function herdRows(): Promise<HerdCostRow[]> {
       name: herd.name,
       head,
       purchaseCost,
+      landedExtra,
       accumulated,
       costPerHead: head > 0 ? round((purchaseCost + accumulated) / head, 2) : null,
       breakdown: { feed, vet, labor, overhead, other: round(accumulated - feed - vet - labor - overhead, 2) },
@@ -716,11 +865,14 @@ function nullableRound(value: number | null, digits = 2): number | null {
   return value === null ? null : round(value, digits);
 }
 
-export const herdCosts = herdRows;
+export const herdCosts = (): Promise<HerdCostRow[]> => herdRows();
 
-/** Cost of animals: one herd, or all together. Answers "1 bosh sovliqning joriy tannarxi" (24.1). */
-export async function herdCost(herdId?: string) {
-  return sumHerds((await herdRows()).filter((row) => !herdId || row.herdId === herdId));
+/**
+ * Cost of animals: one herd, or all together. Answers "1 bosh sovliqning joriy tannarxi" (24.1).
+ * With `asOf`, as it stood at the end of that day (a month-end report).
+ */
+export async function herdCost(herdId?: string, asOf?: string) {
+  return sumHerds((await herdRows(asOf)).filter((row) => !herdId || row.herdId === herdId));
 }
 
 /** Add herd rows together into one result. */
@@ -728,6 +880,7 @@ export function sumHerds(rows: HerdCostRow[]) {
   const sum = (pick: (row: HerdCostRow) => number) => round(rows.reduce((total, row) => total + pick(row), 0), 2);
   const head = sum((r) => r.head);
   const purchaseCost = sum((r) => r.purchaseCost);
+  const landedExtra = sum((r) => r.landedExtra);
   const accumulated = sum((r) => r.accumulated);
   const breakdown = {
     feed: sum((r) => r.breakdown.feed),
@@ -741,6 +894,7 @@ export function sumHerds(rows: HerdCostRow[]) {
   return {
     head,
     purchaseCost,
+    landedExtra,
     accumulated,
     costPerHead: head > 0 ? round((purchaseCost + accumulated) / head, 2) : null,
     breakdown,
@@ -785,16 +939,27 @@ export interface FieldCostRow {
   income: number;
   /** Own produce issued to other centers, valued at transfer cost (spec 7.3). */
   internalRevenue: number;
-  profit: number;
+  /** Null until something was sold or used, and while no cost is on record: neither is a profit to state. */
+  profit: number | null;
   profitabilityPercent: number | null;
 }
 
-/** Plan vs fact per crop plan in a season. Defaults to the current season. */
+/**
+ * Plan vs fact per crop plan in a season. Defaults to the current season.
+ *
+ * Seasons overlap: autumn sowing starts before the summer crop is off, and a perennial such as
+ * alfalfa can be planned in both. One bill or one sale must still reach exactly one plan (rule 3):
+ * - a cost belongs to the season whose dates hold it, and where two seasons with a plan on the
+ *   same field overlap, to the later-starting one, which is the crop the work was for;
+ * - income, and own produce issued to other centers, belongs to the plan whose harvest it was:
+ *   the latest harvest on that field on or before the day (a batch's own harvest when known).
+ *   Last season's grain sold this autumn is last season's revenue, not that of the crop just
+ *   sown. With no harvest before it, the date decides, as for a cost.
+ */
 export async function fieldCosts(seasonId?: string): Promise<FieldCostRow[]> {
   const season = await pickSeason(seasonId);
   if (!season) return [];
   const farm = ctx().farmId;
-  const engine = await runEngine(season.startDate, season.endDate);
 
   const plans = await tx()
     .select({
@@ -808,36 +973,117 @@ export async function fieldCosts(seasonId?: string): Promise<FieldCostRow[]> {
     .innerJoin(crops, eq(crops.id, cropPlans.cropId))
     .where(and(eq(cropPlans.farmId, farm), eq(cropPlans.seasonId, season.id), ne(cropPlans.status, 'cancelled')))
     .orderBy(asc(fields.number));
+  if (!plans.length) return [];
+  const fieldIds = [...new Set(plans.map(({ plan }) => plan.fieldId))];
 
-  const harvestRows = await tx()
-    .select({ cropPlanId: harvests.cropPlanId, fieldId: harvests.fieldId, tons: sumOf(harvests.grossT) })
-    .from(harvests)
-    .where(and(eq(harvests.farmId, farm), range(harvests.date, season.startDate, season.endDate)))
-    .groupBy(harvests.cropPlanId, harvests.fieldId);
+  // Every plan on these fields, whatever its season, with that season's dates.
+  const onFields = await tx()
+    .select({ id: cropPlans.id, fieldId: cropPlans.fieldId, seasonId: cropPlans.seasonId, start: seasons.startDate, end: seasons.endDate })
+    .from(cropPlans)
+    .innerJoin(seasons, eq(seasons.id, cropPlans.seasonId))
+    .where(and(eq(cropPlans.farmId, farm), inArray(cropPlans.fieldId, fieldIds), ne(cropPlans.status, 'cancelled')));
 
-  const internal = await tx()
-    .select({ fieldId: stockBatches.fieldId, amount: sumOf(m.totalCost) })
-    .from(m)
-    .innerJoin(stockBatches, eq(stockBatches.id, m.batchId))
-    .where(
-      and(
-        eq(m.farmId, farm),
-        eq(m.type, 'issue'),
-        ne(m.reason, 'sale'),
-        isNotNull(stockBatches.fieldId),
-        range(m.date, season.startDate, season.endDate),
-      ),
-    )
-    .groupBy(stockBatches.fieldId);
-  const internalByField = new Map(internal.map((row) => [row.fieldId!, row.amount]));
+  /** This season's last day on a field: the day before a later season with a plan there begins. */
+  const windowEnd = (fieldId: string) =>
+    onFields
+      .filter((p) => p.fieldId === fieldId && p.start > season.startDate && p.start <= season.endDate)
+      .reduce((end, p) => {
+        const before = addDays(p.start, -1);
+        return before < end ? before : end;
+      }, season.endDate);
+  /** The season a dated entry on a field belongs to by its date: the latest-starting one that holds it. */
+  const seasonOnDate = (fieldId: string, date: string) =>
+    onFields
+      .filter((p) => p.fieldId === fieldId && p.start <= date && date <= p.end)
+      .reduce<{ seasonId: string; start: string } | null>((best, p) => (!best || p.start > best.start ? p : best), null)?.seasonId ?? null;
+
+  // One run of the cost engine per window, so overhead and machinery are shared over the same days.
+  const engines = new Map<string, Engine>();
+  for (const fieldId of fieldIds) {
+    const end = windowEnd(fieldId);
+    if (!engines.has(end)) engines.set(end, await runEngine(season.startDate, end));
+  }
+  const stateOf = (fieldId: string) => engines.get(windowEnd(fieldId))?.byRef.get(`field:${fieldId}`);
 
   // A field split between two crops shares its costs by the planned area of each.
   const areaByField = new Map<string, number>();
   for (const { plan } of plans) areaByField.set(plan.fieldId, (areaByField.get(plan.fieldId) ?? 0) + plan.areaHa);
+  const shareOf = (plan: (typeof plans)[number]['plan']) => plan.areaHa / (areaByField.get(plan.fieldId) || plan.areaHa || 1);
+  const thisSeason = new Map(plans.map(({ plan }) => [plan.id, plan]));
+
+  const harvestList = await tx()
+    .select({ cropPlanId: harvests.cropPlanId, fieldId: harvests.fieldId, date: harvests.date, tons: harvests.grossT })
+    .from(harvests)
+    .where(and(eq(harvests.farmId, farm), inArray(harvests.fieldId, fieldIds)));
+  const known = new Set(onFields.map((p) => p.id));
+  /** The plan whose produce leaves a field on a day: its latest harvest on or before that day. */
+  const producePlan = (fieldId: string, date: string) => {
+    let latest: { date: string; planId: string } | null = null;
+    for (const h of harvestList) {
+      if (h.fieldId !== fieldId || !h.cropPlanId || !known.has(h.cropPlanId) || h.date > date) continue;
+      if (!latest || h.date > latest.date) latest = { date: h.date, planId: h.cropPlanId };
+    }
+    return latest?.planId ?? null;
+  };
+
+  const harvestT = new Map<string, number>();
+  const income = new Map<string, number>();
+  const internalRevenue = new Map<string, number>();
+  const add = (target: Map<string, number>, planId: string, amount: number) => target.set(planId, (target.get(planId) ?? 0) + amount);
+  /** Give a dated amount on a field to this season's plan it belongs to, if any. */
+  const attribute = (target: Map<string, number>, fieldId: string, date: string, amount: number, planId: string | null) => {
+    if (planId && known.has(planId)) {
+      if (thisSeason.has(planId)) add(target, planId, amount);
+      return;
+    }
+    if (seasonOnDate(fieldId, date) !== season.id) return;
+    for (const { plan } of plans) if (plan.fieldId === fieldId) add(target, plan.id, amount * shareOf(plan));
+  };
+
+  for (const h of harvestList) attribute(harvestT, h.fieldId, h.date, h.tons, h.cropPlanId);
+
+  const centers = await tx()
+    .select({ id: costCenters.id, fieldId: costCenters.refId })
+    .from(costCenters)
+    .where(and(eq(costCenters.farmId, farm), eq(costCenters.type, 'field'), inArray(costCenters.refId, fieldIds)));
+  const fieldOfCenter = new Map(centers.map((c) => [c.id, c.fieldId!]));
+  if (centers.length) {
+    const sold = await tx()
+      .select({ costCenterId: t.costCenterId, date: t.date, amount: sumOf(t.amountBase) })
+      .from(t)
+      .where(
+        and(
+          eq(t.farmId, farm),
+          eq(t.status, 'approved'),
+          eq(t.type, 'income'),
+          inArray(t.costCenterId, [...fieldOfCenter.keys()]),
+        ),
+      )
+      .groupBy(t.costCenterId, t.date);
+    for (const row of sold) {
+      const fieldId = fieldOfCenter.get(row.costCenterId!)!;
+      attribute(income, fieldId, row.date, row.amount, producePlan(fieldId, row.date));
+    }
+  }
+
+  const issued = await tx()
+    .select({
+      fieldId: stockBatches.fieldId,
+      date: m.date,
+      amount: sumOf(m.totalCost),
+      harvestPlanId: sql<string | null>`(select ${harvests.cropPlanId} from ${harvests} where ${harvests.batchId} = ${stockBatches.id} and ${harvests.cropPlanId} is not null limit 1)`,
+    })
+    .from(m)
+    .innerJoin(stockBatches, eq(stockBatches.id, m.batchId))
+    .where(and(eq(m.farmId, farm), eq(m.type, 'issue'), ne(m.reason, 'sale'), inArray(stockBatches.fieldId, fieldIds)))
+    .groupBy(stockBatches.fieldId, stockBatches.id, m.date);
+  for (const row of issued) {
+    attribute(internalRevenue, row.fieldId!, row.date, row.amount, row.harvestPlanId ?? producePlan(row.fieldId!, row.date));
+  }
 
   return plans.map(({ plan, number, cropName, cropKey }) => {
-    const state = engine.byRef.get(`field:${plan.fieldId}`);
-    const share = plan.areaHa / (areaByField.get(plan.fieldId) || plan.areaHa || 1);
+    const state = stateOf(plan.fieldId);
+    const share = shareOf(plan);
     const part = (value: number) => round(value * share, 2);
     const b = state?.buckets ?? emptyBuckets();
     const input: CropCostInput = {
@@ -849,16 +1095,12 @@ export async function fieldCosts(seasonId?: string): Promise<FieldCostRow[]> {
       // Formula 25.1 has no line for crop protection or sundries, so they sit in the shared part.
       overheadShare: part((state?.overhead ?? 0) + b.protection + b.other + b.feed + b.vet),
     };
-    const harvestT = round(
-      harvestRows
-        .filter((h) => h.cropPlanId === plan.id || (!h.cropPlanId && h.fieldId === plan.fieldId))
-        .reduce((sum, h) => sum + h.tons, 0),
-      3,
-    );
+    const tons = round(harvestT.get(plan.id) ?? 0, 3);
     const actual = round(cropCostTotal(input), 2);
-    const income = part(state?.income ?? 0);
-    const internalRevenue = part(internalByField.get(plan.fieldId) ?? 0);
-    const revenue = round(income + internalRevenue, 2);
+    const sales = round(income.get(plan.id) ?? 0, 2);
+    const ownUse = round(internalRevenue.get(plan.id) ?? 0, 2);
+    const revenue = round(sales + ownUse, 2);
+    // Nothing recorded is missing data (rule 5): no saving against the plan, no cost per ton, no profit.
     return {
       seasonId: season.id,
       cropPlanId: plan.id,
@@ -869,14 +1111,14 @@ export async function fieldCosts(seasonId?: string): Promise<FieldCostRow[]> {
       cropKey,
       planned: plan.plannedCost,
       actual,
-      deviation: plan.plannedCost === null ? null : round(actual - plan.plannedCost, 2),
-      harvestT,
-      yieldTHa: harvestT > 0 && plan.areaHa > 0 ? round(harvestT / plan.areaHa, 3) : null,
-      costPerTon: nullableRound(costPerTon(input, harvestT)),
+      deviation: plan.plannedCost === null || actual <= 0 ? null : round(actual - plan.plannedCost, 2),
+      harvestT: tons,
+      yieldTHa: tons > 0 && plan.areaHa > 0 ? round(tons / plan.areaHa, 3) : null,
+      costPerTon: nullableRound(costPerTon(input, tons)),
       breakdown: { ...input, protection: part(b.protection), other: part(b.other) },
-      income,
-      internalRevenue,
-      profit: round(revenue - actual, 2),
+      income: sales,
+      internalRevenue: ownUse,
+      profit: revenue > 0 && actual > 0 ? round(revenue - actual, 2) : null,
       profitabilityPercent: nullableRound(profitabilityPercent(revenue, actual)),
     };
   });
@@ -915,8 +1157,13 @@ export async function cashflowActual(from?: string, to?: string) {
   return rows.map((row) => ({ ...row, net: round(row.inflow - row.outflow, 2) }));
 }
 
-/** Stated openly in the response: these drive the lamb income estimate. */
-const LAMB_ASSUMPTIONS = { lambsPerEwe: 1.2, survival: 0.9, monthsToSale: 6 };
+/** Stated openly in the response: these drive the lamb income estimate, as they drive the outlook. */
+const LAMB_ASSUMPTIONS = {
+  lambsPerEwe: OUTLOOK_ASSUMPTIONS.lambsPerEwe,
+  survival: OUTLOOK_ASSUMPTIONS.survival,
+  monthsToSale: OUTLOOK_ASSUMPTIONS.monthsToSale,
+  keepShare: OUTLOOK_ASSUMPTIONS.keepShare,
+};
 /** A moving average needs at least this many months with spending in a category. */
 const MIN_RECURRING_MONTHS = 2;
 const LOOKBACK_MONTHS = 6;
@@ -952,10 +1199,12 @@ function monthAdd(month: string, n: number): string {
 /**
  * Statistical forecast, not a promise (spec 10.3.5, 15.2). For each category and month, the first
  * of these that exists: the budget; the same month last year, once 12 months of history exist;
- * the moving average of recent months, if the category really recurs. Scheduled items are added
- * on top: loan instalments and debts by due date. Expected income from plans (open sales, planned
- * harvest, expected lambs) is used only for months without an income budget, since a budget
- * already contains that income and using both would count it twice.
+ * for spending only, the moving average of recent months, if the category really recurs. Income
+ * is never averaged: a sale needs goods to sell, and an average cannot know whether any are left,
+ * so two harvest sales would come back every month. Scheduled items are added on top: loan
+ * instalments and debts by due date. Expected income from plans (open sales, planned harvest,
+ * expected lambs) is used only for months without an income budget, since a budget already
+ * contains that income and using both would count it twice.
  */
 export async function cashflowForecastDetail(months = 12) {
   const c = ctx();
@@ -1048,6 +1297,7 @@ export async function cashflowForecastDetail(months = 12) {
       const lastYear = values.get(monthAdd(month, -12));
       if (lastYear !== undefined) return { amount: lastYear, source: 'seasonal' };
     }
+    if (kindOf.get(categoryId) === 'income') return null;
     const seen = lookback.filter((m) => (values.get(m) ?? 0) > 0);
     if (seen.length < MIN_RECURRING_MONTHS) return null;
     return { amount: seen.reduce((sum, m) => sum + values.get(m)!, 0) / LOOKBACK_MONTHS, source: 'average' };
@@ -1103,7 +1353,8 @@ export async function cashflowForecastDetail(months = 12) {
 
   for (const debt of await listDebts()) {
     for (const doc of debt.documents) {
-      const month = doc.dueDate ? monthOf(doc.dueDate) : monthAdd(current, 1);
+      // Wages already earned are paid now; other debts with no due date, next month.
+      const month = doc.dueDate ? monthOf(doc.dueDate) : debt.isPayroll ? current : monthAdd(current, 1);
       const row = place(month);
       if (!row) continue;
       if (debt.direction === 'payable') row.parts.payables += doc.outstanding;
@@ -1130,10 +1381,20 @@ export async function cashflowForecastDetail(months = 12) {
   };
 
   const openSales = await tx()
-    .select({ date: sales.date, deliveryDate: sales.deliveryDate, total: sales.totalAmount })
+    .select({
+      date: sales.date,
+      deliveryDate: sales.deliveryDate,
+      dueDate: sales.dueDate,
+      paymentMethod: sales.paymentMethod,
+      total: sales.totalAmount,
+    })
     .from(sales)
     .where(and(eq(sales.farmId, c.farmId), inArray(sales.status, ['draft', 'pending'])));
-  for (const sale of openSales) addPlanned(monthOf(sale.deliveryDate ?? sale.date), 'plannedSales', sale.total);
+  for (const sale of openSales) {
+    // Money for goods sold on credit comes when it is due, not when the goods leave.
+    const paidOn = (sale.paymentMethod === 'debt' ? sale.dueDate : null) ?? sale.deliveryDate ?? sale.date;
+    addPlanned(monthOf(paidOn), 'plannedSales', sale.total);
+  }
 
   const openPlans = await tx()
     .select({
@@ -1165,7 +1426,8 @@ export async function cashflowForecastDetail(months = 12) {
       .where(and(eq(breedingRecords.farmId, c.farmId), eq(breedingRecords.status, 'pregnant')))
       .groupBy(sql`to_char(${breedingRecords.expectedDate}, 'YYYY-MM')`);
     for (const row of expected) {
-      const lambs = row.ewes * LAMB_ASSUMPTIONS.lambsPerEwe * LAMB_ASSUMPTIONS.survival;
+      // The whole lambs the outlook sells that month: the ones kept for the flock bring no money.
+      const lambs = round(lambsForSale(row.ewes), 0);
       addPlanned(monthAdd(row.month, LAMB_ASSUMPTIONS.monthsToSale), 'plannedLambs', lambs * lambPrice.price);
     }
   }

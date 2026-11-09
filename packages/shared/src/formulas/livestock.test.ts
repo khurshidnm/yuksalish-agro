@@ -2,6 +2,17 @@ import { describe, expect, it } from 'vitest';
 import * as f from './livestock';
 
 describe('livestock formulas', () => {
+  it('earliestLiveBirth: 90 % of gestation after the mating', () => {
+    // Sheep, 150 days: 135 days after 10.09.2026 is 23.01.2027.
+    expect(f.earliestLiveBirth('2026-09-10', 150)).toBe('2027-01-23');
+    // Cattle, 283 days: floor(254.7) = 254.
+    expect(f.earliestLiveBirth('2026-01-01', 283)).toBe('2026-09-12');
+    // Horse, 340 days: 306.
+    expect(f.earliestLiveBirth('2026-01-01', 340)).toBe('2026-11-03');
+    expect(f.earliestLiveBirth('2026-09-10', null)).toBeNull();
+    expect(f.earliestLiveBirth('2026-09-10', 0)).toBeNull();
+  });
+
   it('stockingRate', () => {
     expect(f.stockingRate(500, 100)).toBe(5);
     expect(f.stockingRate(500, 0)).toBeNull();

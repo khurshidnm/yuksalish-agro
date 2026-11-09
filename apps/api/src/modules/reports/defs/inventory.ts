@@ -165,18 +165,29 @@ export const feedReports: ReportDefinition[] = [
       col.text('item'),
       col.num('stockQty', 3),
       col.enum('unit', 'unit'),
-      col.num('plannedDaily', 3),
-      col.num('actualDaily', 3),
-      col.num('daysByPlan', 1),
-      col.num('daysByActual', 1),
-      col.num('days', 1),
+      // A daily use to the gram and a stock to a tenth of a day are noise: kg to one decimal, whole days.
+      col.num('plannedDaily', 1),
+      col.num('actualDaily', 1),
+      col.num('daysByPlan', 0),
+      col.num('daysByActual', 0),
+      col.num('days', 0),
       col.enum('basis', 'reports:feedBasis'),
       col.bool('belowMinimum'),
     ],
     chart: { kind: 'bar', x: 'item', series: ['days'] },
     async run() {
       const rows = await feedBalance();
-      return { rows: rows.map((r) => ({ ...r, item: r.name })) };
+      // Days of stock are whole days still covered, so rounded down: 0.6 of a day is not a day of feed.
+      const whole = (days: number | null) => (days === null ? null : Math.floor(days));
+      return {
+        rows: rows.map((r) => ({
+          ...r,
+          item: r.name,
+          daysByPlan: whole(r.daysByPlan),
+          daysByActual: whole(r.daysByActual),
+          days: whole(r.days),
+        })),
+      };
     },
   },
   {

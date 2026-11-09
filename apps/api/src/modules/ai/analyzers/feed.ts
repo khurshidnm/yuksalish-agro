@@ -126,7 +126,11 @@ export async function feedAdvice(): Promise<AnalyzerResult> {
   return { coverage: cover, findings };
 }
 
-/** A cheaper mix for each ration in use (spec 15.1.5). Money, and for the zootechnician to judge. */
+/**
+ * A cheaper mix for each ration in use (spec 15.1.5): roughage for roughage, grain for grain, never the salt
+ * or premix, and only when it saves at least 1% of what the ration costs. Money, and for the zootechnician
+ * to judge.
+ */
 export async function feedSavings(): Promise<AnalyzerResult> {
   const farmId = ctx().farmId;
   const inUse = await tx()
@@ -159,10 +163,12 @@ export async function feedSavings(): Promise<AnalyzerResult> {
       .innerJoin(items, eq(items.id, rationLines.itemId))
       .where(eq(rationLines.rationId, ration.rationId));
     const lines: RationCostLine[] = rows.map((row) => ({ ...row, unitCostPerKg: costPerKg.get(row.itemId) ?? null }));
+    // Readiness counts rations that can be judged. Finding no swap worth making is an answer, not missing data.
+    const fed = lines.filter((line) => line.kgPerHeadDay > 0);
+    if (fed.length >= 2 && fed.every((line) => line.unitCostPerKg !== null && line.dryMatterPct !== null)) priced += 1;
 
     const saving = rationSavingOption(lines, ration.head);
     if (!saving) continue;
-    priced += 1;
     findings.push({
       type: 'feed_cost_saving',
       dedupKey: `feed_cost_saving:${ration.rationId}:${month}`,
@@ -174,6 +180,7 @@ export async function feedSavings(): Promise<AnalyzerResult> {
         from: saving.fromName,
         to: saving.toName,
         savingPerDay: groupDigits(saving.savingPerDay),
+        savingPerHead: groupDigits(saving.savingPerHeadDay),
         head: ration.head,
         currency: ctx().currency,
       },
@@ -181,6 +188,8 @@ export async function feedSavings(): Promise<AnalyzerResult> {
         tables: ['ration_lines', 'items', 'stock_batches', 'animals'],
         head: ration.head,
         lines: lines.length,
+        feedClass: saving.feedClass,
+        savingPercent: saving.savingPercent,
         method: 'dry_matter_swap',
       },
       data: { ...saving },

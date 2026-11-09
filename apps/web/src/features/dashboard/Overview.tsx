@@ -37,14 +37,31 @@ function StatusBanner({ counts, to }: { counts: AlertsData['counts']; to?: strin
   );
 }
 
-const SECTION_LINK: Partial<Record<BlockKey, [string, Parameters<LinkTo>[1]]>> = {
-  finance: ['/finance/transactions', 'finance.view'],
-  livestock: ['/livestock/animals', 'livestock.view'],
-  crops: ['/crops/plans', 'crops.view'],
-  feed: ['/feed/balance', 'feed.view'],
-  alerts: ['/alerts', 'dashboard.view'],
-  cameras: ['/cameras', 'cameras.view'],
+type SectionTarget = [string, Parameters<LinkTo>[1]];
+
+/** Where "Details" goes: the first page of the list the reader can open. */
+const SECTION_LINK: Partial<Record<BlockKey, SectionTarget[]>> = {
+  finance: [['/finance/transactions', 'finance.view']],
+  livestock: [['/livestock/animals', 'livestock.view']],
+  crops: [['/crops/plans', 'crops.view']],
+  feed: [['/feed/balance', 'feed.view']],
+  // The staff block shows what the reader may see of people, tasks and machinery, so it links the same way.
+  staff: [
+    ['/hr/timesheet', 'hr.view'],
+    ['/tasks', 'tasks.view'],
+    ['/assets', 'assets.view'],
+  ],
+  alerts: [['/alerts', 'dashboard.view']],
+  cameras: [['/cameras', 'cameras.view']],
 };
+
+function sectionLink(key: BlockKey, link: LinkTo): string | undefined {
+  for (const [path, permission] of SECTION_LINK[key] ?? []) {
+    const to = link(path, permission);
+    if (to) return to;
+  }
+  return undefined;
+}
 
 function BlockBody({ blockKey, data, link }: { blockKey: BlockKey; data: DashboardData; link: LinkTo }) {
   const { t } = useTranslation('dashboard');
@@ -57,7 +74,7 @@ function BlockBody({ blockKey, data, link }: { blockKey: BlockKey; data: Dashboa
     case 'crops':
       return blocks.crops?.data ? <CropsBlock data={blocks.crops.data} link={link} /> : null;
     case 'feed':
-      return blocks.feed?.data ? <FeedBlock data={blocks.feed.data} link={link} /> : null;
+      return blocks.feed?.data ? <FeedBlock data={blocks.feed.data} asOf={data.asOf} link={link} /> : null;
     case 'staff':
       return <StaffBlock dashboard={data} t={t} link={link} />;
     case 'alerts':
@@ -94,7 +111,7 @@ export function Overview({ data, onRetry }: { data: DashboardData; onRetry: () =
     <div className="flex flex-col gap-5">
       {alerts && <StatusBanner counts={alerts.counts} to={link('/alerts', 'dashboard.view')} />}
 
-      <AssistantBar />
+      <AssistantBar lambingThisWeek={data.blocks.livestock?.data?.lambing.next7Days} />
 
       {tiles.length > 0 && (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -107,10 +124,9 @@ export function Overview({ data, onRetry }: { data: DashboardData; onRetry: () =
       <InsightStrip />
 
       {data.order.map((key) => {
-        const target = SECTION_LINK[key];
         const unavailable = data.blocks[key]?.status === 'unavailable';
         return (
-          <Section key={key} title={t(`sections.${key}`)} to={target ? link(target[0], target[1]) : undefined}>
+          <Section key={key} title={t(`sections.${key}`)} to={sectionLink(key, link)}>
             {unavailable ? <BlockUnavailable onRetry={onRetry} /> : <BlockBody blockKey={key} data={data} link={link} />}
           </Section>
         );

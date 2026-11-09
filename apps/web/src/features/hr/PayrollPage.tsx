@@ -3,16 +3,18 @@ import { todayIso } from '@yap/shared';
 import { Banknote, Gauge, HandCoins, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { z } from 'zod';
 import { type Column, ComboboxField, DataTable, DataTableView, DateField, FormDialog, FormGrid, MoneyText, NumberField, PageHeader, SelectField, SwitchField, TextField, TextareaField, UrlTabs, useConfirm, useUrlParam } from '@/components';
-import { Badge, Button, apiOptions } from '@/components/ui';
-import { api } from '@/lib/api';
+import { Alert, Badge, Button, apiOptions } from '@/components/ui';
+import { ApiError, api } from '@/lib/api';
 import { usePermission } from '@/lib/auth';
 import { currencyLabel, formatDate, formatMonth, formatNumber } from '@/lib/format';
 import { zDate, zEnum, zNonNegative, zOptionalText, zPositive, zRef, zText } from '@/lib/forms';
-import { useApiMutation, useDetail } from '@/lib/query';
+import { useApiMutation, useDetail, useList } from '@/lib/query';
 import { RUN_STATUS_VARIANT, RunDetail, type PayrollRun, type RunStatus } from './RunDetail';
-import { MonthSwitcher, currentMonth, shiftMonth, type EmployeeLookup } from './shared';
+import { payrollMonths } from './months';
+import { MonthSwitcher, currentMonth, monthParams, type EmployeeLookup } from './shared';
 import { accountLabel } from '@/features/finance/lib';
 
 const PATH = '/hr/payroll';
@@ -27,20 +29,16 @@ interface RunRow {
   totalNet: number;
 }
 
-/** The last year of months, newest first. */
-function monthOptions() {
-  const now = currentMonth();
-  return Array.from({ length: 12 }, (_, i) => {
-    const value = shiftMonth(now, -i);
-    return { value, label: formatMonth(value) };
-  });
-}
-
 function RunsTab() {
   const { t } = useTranslation('hr');
   const canCreate = usePermission('payroll.create');
   const [runId, setRunId] = useUrlParam('run');
   const [creating, setCreating] = useState(false);
+  const existing = useList<RunRow>(PATH, { pageSize: 24, sort: '-month' }, { enabled: canCreate });
+  // Months before anyone was hired would give an empty run. Without the right to see staff, the year stays open.
+  const firstHire = useList<{ hireDate: string }>('/hr/employees', { pageSize: 1, sort: 'hireDate' }, { enabled: canCreate, retry: false });
+  const hireDate = firstHire.data?.data[0]?.hireDate;
+  const choice = payrollMonths(currentMonth(), existing.data?.data.map((run) => run.month) ?? [], hireDate ? hireDate.slice(0, 7) : null);
 
   const create = useApiMutation<z.output<typeof runSchema>, PayrollRun>({
     mutationFn: (values) => api.postOnce<PayrollRun>(PATH, values),
@@ -48,6 +46,18 @@ function RunsTab() {
     silentError: true,
     onSuccess: (run) => setRunId(run.id),
   });
+
+  /** Someone else may have run the month meanwhile: open that run rather than show an error. */
+  const submitRun = async (values: z.output<typeof runSchema>) => {
+    try {
+      await create.mutateAsync(values);
+    } catch (error) {
+      const existingId = error instanceof ApiError && error.code === 'ALREADY_EXISTS' ? (error.details as { runId?: unknown } | null)?.runId : null;
+      if (typeof existingId !== 'string') throw error;
+      toast.info(t('payroll.exists', monthParams(values.month)));
+      setRunId(existingId);
+    }
+  };
 
   if (runId) return <RunDetail runId={runId} onBack={() => setRunId('')} />;
 
@@ -65,7 +75,8 @@ function RunsTab() {
   ];
 
   const add = canCreate && (
-    <Button onClick={() => setCreating(true)}>
+    // The suggested month depends on the runs that exist, so the dialog waits for them.
+    <Button loading={existing.isLoading} onClick={() => setCreating(true)}>
       <Plus aria-hidden />
       {t('payroll.add')}
     </Button>
@@ -89,14 +100,24 @@ function RunsTab() {
         title={t('payroll.add')}
         description={t('payroll.addBody')}
         schema={runSchema}
-        defaultValues={{ month: shiftMonth(currentMonth(), -1), notes: '' }}
-        onSubmit={(values) => create.mutateAsync(values)}
+        defaultValues={{ month: choice.suggested ?? '', notes: '' }}
+        onSubmit={submitRun}
         submitLabel={t('payroll.calculate')}
         size="sm"
       >
         {(form) => (
           <>
-            <SelectField form={form} name="month" label={t('payroll.fields.month')} required options={monthOptions()} />
+            {choice.suggested === null && choice.latest && (
+              <Alert tone="info">{t('payroll.upToDate', monthParams(choice.latest))}</Alert>
+            )}
+            <SelectField
+              form={form}
+              name="month"
+              label={t('payroll.fields.month')}
+              required
+              placeholder={t('common:form.selectPlaceholder')}
+              options={choice.months.map((value) => ({ value, label: formatMonth(value) }))}
+            />
             <TextareaField form={form} name="notes" label={t('employees.fields.notes')} rows={2} />
           </>
         )}
@@ -335,13 +356,14 @@ function KpiRulesTab() {
         {(form) => (
           <>
             <TextField form={form} name="name" label={t('kpi.fields.name')} required autoFocus />
+            {/* The metric and reward wordings are long: in half a dialog they were cut off. */}
+            <SelectField form={form} name="metric" label={t('kpi.fields.metric')} required options={metricOptions} />
             <FormGrid>
-              <SelectField form={form} name="metric" label={t('kpi.fields.metric')} required options={metricOptions} />
               <TextField form={form} name="position" label={t('employees.fields.position')} placeholder={t('kpi.everyone')} />
               <NumberField form={form} name="threshold" label={t('kpi.fields.threshold')} required maxDigits={3} />
-              <SelectField form={form} name="rewardType" label={t('kpi.fields.rewardType')} required options={rewardOptions} />
-              <NumberField money form={form} name="amount" label={t('kpi.fields.amount')} suffix={currencyLabel()} required maxDigits={2} />
             </FormGrid>
+            <SelectField form={form} name="rewardType" label={t('kpi.fields.rewardType')} required options={rewardOptions} />
+            <NumberField money form={form} name="amount" label={t('kpi.fields.amount')} suffix={currencyLabel()} required maxDigits={2} />
             <SwitchField form={form} name="active" label={t('kpi.fields.active')} />
           </>
         )}

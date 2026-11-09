@@ -20,11 +20,16 @@ export interface TransferDialogProps {
   fromHerdId?: string;
   /** Shown in the description: how many animals are about to move. */
   count: number;
+  /** The herd they are in now: moving there would move nothing, so it is not offered. */
+  currentHerdId?: string | null;
   onDone?: () => void;
 }
 
-export function TransferDialog({ open, onOpenChange, animalIds, fromHerdId, count, onDone }: TransferDialogProps) {
+export function TransferDialog({ open, onOpenChange, animalIds, fromHerdId, count, currentHerdId, onDone }: TransferDialogProps) {
   const { t } = useTranslation('livestock');
+  const source = currentHerdId ?? fromHerdId;
+  const herds = apiOptions<HerdLookup>('/livestock/herds/lookup', (h) => ({ value: h.id, label: h.name, hint: t('head', { count: h.headCount }) }));
+  const loadTargets = async (search: string) => (await herds(search)).filter((option) => option.value !== source);
   const move = useApiMutation<Values, { moved: number }>({
     mutationFn: (values) => api.post('/livestock/transfers', { ...values, animalIds, fromHerdId }),
     invalidate: ['/livestock/animals', '/livestock/herds', '/livestock/summary'],
@@ -53,7 +58,7 @@ export function TransferDialog({ open, onOpenChange, animalIds, fromHerdId, coun
             name="toHerdId"
             label={t('transfer.toHerd')}
             required
-            loadOptions={apiOptions<HerdLookup>('/livestock/herds/lookup', (h) => ({ value: h.id, label: h.name, hint: t('head', { count: h.headCount }) }))}
+            loadOptions={loadTargets}
           />
           <DateField form={form} name="date" label={t('fields.date')} required max={todayIso()} />
           <TextField form={form} name="reason" label={t('transfer.reason')} hint={t('transfer.reasonHint')} />

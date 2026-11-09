@@ -267,6 +267,9 @@ async function computeLines(month: string): Promise<Map<string, LineValues>> {
       basis: {
         presentDays: c.present,
         paidDays,
+        // The paid days that were not worked, so the slip can say why two people with different attendance get the same.
+        sickDays: c.sick,
+        vacationDays: c.vacation,
         expectedDays,
         employedDays,
         daysInMonth,
@@ -375,6 +378,12 @@ export async function getRun(id: string) {
 export async function createRun(input: z.infer<typeof runInput>) {
   const c = ctx();
   if (input.month > monthOf(today())) throw badRequest('FUTURE_MONTH', 'Payroll cannot be run for a future month');
+  // One run per month (the unique index stays the guard against a race). Naming the run lets the app open it.
+  const [existing] = await tx()
+    .select({ id: runs.id })
+    .from(runs)
+    .where(and(eq(runs.farmId, c.farmId), eq(runs.month, input.month)));
+  if (existing) throw conflict('ALREADY_EXISTS', 'Payroll for this month has already been calculated', { month: input.month, runId: existing.id });
 
   const computed = await computeLines(input.month);
   const [run] = await tx()

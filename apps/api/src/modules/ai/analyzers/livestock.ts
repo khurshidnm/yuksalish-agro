@@ -1,5 +1,6 @@
 import { and, asc, count, eq, gte, min, sql } from 'drizzle-orm';
 import { countSpike, gainSlowdown, lambingWorkload, weekStartOf, type LambingWeek } from '@yap/shared/formulas/ai';
+import { OUTLOOK_ASSUMPTIONS, expectedLambs } from '@yap/shared/formulas/outlook';
 import { ANIMAL_ON_FARM_STATUSES, addDays, diffDays, monthOf, round } from '@yap/shared';
 import { ctx, today, tx } from '../../../core/context';
 import { schema } from '../../../db/client';
@@ -16,9 +17,10 @@ const MIN_WEIGHT_INTERVALS = 3;
 const WEIGHT_LOSS_RATIO = 0.08;
 const MIN_PREGNANT_EWES = 10;
 
-// Assumptions used while the farm has no history of its own. Shown with the forecast.
+// Assumptions used while the farm has no history of its own. Shown with the forecast. Lambs per
+// ewe is the outlook's, so the assistant expects as many lambs as the dashboard does.
 const MIN_OWN_LAMBINGS = 30;
-const ASSUMED_LAMBS_PER_EWE = 1.2;
+const ASSUMED_LAMBS_PER_EWE = OUTLOOK_ASSUMPTIONS.lambsPerEwe;
 const LACTATION_WEEKS = 8;
 const LABOR_HOURS_PER_LAMBING = 1;
 const SHIFT_HOURS = 10;
@@ -178,6 +180,15 @@ export async function weightGain(): Promise<AnalyzerResult> {
   return { coverage: cover, findings };
 }
 
+/**
+ * Tonnes as the text gives them. From 10 t in whole tonnes: an estimate resting on an eight-week
+ * lactation is no finer than that, and a whole number reads the same in every language, where a
+ * fraction would be written 25.8 in English but 25,8 in Uzbek and Russian.
+ */
+function tonsText(kg: number): number {
+  return kg >= 10_000 ? round(kg / 1000, 0) : round(kg / 1000, 1);
+}
+
 async function rationTotals(): Promise<Record<string, number>> {
   const rows = await tx()
     .select({ state: rations.state, kg: sql<number>`sum(${rationLines.kgPerHeadDay})`.mapWith(Number) })
@@ -244,7 +255,8 @@ export async function lambingForecast(): Promise<AnalyzerResult> {
     shiftHours: SHIFT_HOURS,
   });
   const peak = workload.reduce((a, b) => (b.ewes > a.ewes ? b : a));
-  const lambs = round(workload.reduce((sum, w) => sum + w.lambs, 0), 0);
+  // The same count the dashboard and the outlook show for these ewes.
+  const lambs = expectedLambs(pregnant, lambsPerEwe);
   const extraFeedKg =
     extraKgPerEweDay === null ? null : workload.reduce((sum, w) => sum + (w.extraFeedKg ?? 0), 0);
 
@@ -264,7 +276,7 @@ export async function lambingForecast(): Promise<AnalyzerResult> {
           peakWeek: dayText(peak.weekStart),
           peakEwes: peak.ewes,
           workers: Math.max(...workload.map((w) => w.workersNeeded)),
-          extraFeedT: extraFeedKg === null ? 0 : round(extraFeedKg / 1000, 1),
+          extraFeedT: extraFeedKg === null ? 0 : tonsText(extraFeedKg),
         },
         sources: {
           tables: ['breeding_records', 'lambing_records', 'rations', 'ration_lines'],

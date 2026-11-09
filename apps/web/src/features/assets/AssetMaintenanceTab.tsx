@@ -9,7 +9,7 @@ import { Badge, Button, Separator, apiOptions } from '@/components/ui';
 import { itemOptions, warehouseOptions } from '@/features/crops/options';
 import { api } from '@/lib/api';
 import { usePermission } from '@/lib/auth';
-import { formatDate, formatNumber } from '@/lib/format';
+import { currencyLabel, formatDate, formatNumber } from '@/lib/format';
 import { zDate, zEnum, zOptionalDate, zOptionalEnum, zOptionalNumber, zOptionalRef, zOptionalText, zPositive, zRef } from '@/lib/forms';
 import { enumOptions } from '@/lib/i18n';
 import { useApiMutation } from '@/lib/query';
@@ -203,7 +203,7 @@ export function AssetMaintenanceTab({ assetId }: { assetId: string }) {
               <DateField form={form} name="nextDueDate" label={t('maintenance.nextDate')} />
               <NumberField form={form} name="nextDueMotoHours" label={t('maintenance.nextHours')} suffix={t('unit.hours')} />
               <NumberField form={form} name="downtimeHours" label={t('maintenance.downtime')} suffix={t('unit.hours')} />
-              {seesMoney && <NumberField money form={form} name="cost" label={t('maintenance.cost')} />}
+              {seesMoney && <NumberField money form={form} name="cost" label={t('maintenance.cost')} suffix={currencyLabel()} />}
             </FormGrid>
             <Separator />
             <PartsEditor form={form} />

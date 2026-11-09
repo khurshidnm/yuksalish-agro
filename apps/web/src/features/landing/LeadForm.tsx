@@ -181,7 +181,8 @@ export function LeadForm({ copy, language, phone }: { copy: LandingCopy['form'];
         </Field>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      {/* Bottom-aligned, so a label that wraps in one language does not push its control below the other. These two never show an error. */}
+      <div className="grid gap-4 sm:grid-cols-2 sm:items-end">
         <Field id={`${id}-type`} label={copy.farmType} hint={copy.optional}>
           <select id={`${id}-type`} name="farmType" defaultValue="" className={control}>
             <option value="">{copy.farmTypePlaceholder}</option>
@@ -230,9 +231,10 @@ export function LeadForm({ copy, language, phone }: { copy: LandingCopy['form'];
       {failure && (
         <p role="alert" className="rounded-lg bg-danger-soft p-3 text-sm text-danger">
           {failure}
+          {/* Only a build with a published number offers to call. */}
           {phone && (
             <>
-              {' '}
+              {` ${copy.errorCall} `}
               <a href={telHref(phone)} className="font-semibold underline underline-offset-2">
                 {phone}
               </a>

@@ -7,8 +7,8 @@ import { ctx, tx, withPlatform, withTenant } from '../../core/context';
 import { badRequest, notFound } from '../../core/errors';
 import { recordEvent } from '../../core/journal';
 import { listQuery, paged } from '../../core/query';
-import { buttonsFor } from './actions.service';
-import { CHANNELS, EXTERNAL_CHANNELS, type ExternalChannel } from './channels';
+import { actionView } from './actions.service';
+import { CHANNELS, EXTERNAL_CHANNELS, OFFERED_CHANNELS, type ExternalChannel } from './channels';
 import { tr } from './i18n';
 import { DEFAULT_CHANNELS, EVENT_TYPES, notifyUser, wordsFor, type EventType, type NotificationInput } from './notify.service';
 import { escapeHtml, getBotUsername, sendHtml, telegramConfigured } from './telegram';
@@ -59,7 +59,7 @@ export async function list(q: z.infer<typeof notificationListQuery>) {
       rows.map(async ({ texts, action, ...row }) => ({
         ...row,
         ...wordsFor({ ...row, texts }, q.lang),
-        action: action ? { ...action, buttons: await buttonsFor(action) } : null,
+        action: action ? { ...action, ...(await actionView(action)) } : null,
       })),
     );
   });
@@ -97,7 +97,8 @@ export async function getPreferences() {
     .where(and(eq(notificationPrefs.tenantId, c.tenantId), eq(notificationPrefs.userId, c.userId!)));
   const chosen = new Map(rows.map((r) => [r.eventType, r.channels]));
   return {
-    channels: EXTERNAL_CHANNELS.map((key) => ({ key, configured: CHANNELS[key].configured() })),
+    // Only channels that exist: a wall of "not configured" push, SMS and email boxes promises what is not built.
+    channels: OFFERED_CHANNELS().map((key) => ({ key, configured: CHANNELS[key].configured() })),
     events: EVENT_TYPES.map((eventType) => ({
       eventType,
       channels: chosen.get(eventType) ?? DEFAULT_CHANNELS[eventType],

@@ -36,7 +36,8 @@ function buildSchema(t: (key: string) => string) {
       if (l.kind === 'item' && !l.itemId) require('itemId', t('orders.form.pickItem'));
       if (l.kind === 'item' && !l.warehouseId) require('warehouseId', t('orders.form.pickWarehouse'));
       if (l.kind === 'animal' && !l.animalId) require('animalId', t('orders.form.pickAnimal'));
-    });
+      // Run even while the quantity or price is missing, so one press of Save names every empty field.
+    }, { when: () => true });
 
   return z
     .object({
@@ -55,7 +56,7 @@ function buildSchema(t: (key: string) => string) {
       if (v.paymentMethod !== 'debt' && !v.accountId) {
         ctx.addIssue({ code: 'custom', path: ['accountId'], message: t('orders.form.pickAccount') });
       }
-    });
+    }, { when: () => true });
 }
 
 type Schema = ReturnType<typeof buildSchema>;
@@ -102,7 +103,8 @@ function LineEditor({ form, index, onRemove, salePrice }: { form: Form; index: n
     <Card>
       <CardContent className="flex flex-col gap-3 p-3">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-sm font-medium">{t(line?.kind === 'animal' ? 'orders.form.animalLine' : 'orders.form.itemLine')}</p>
+          {/* The line's number: its first field already says "Product" or "Animal". */}
+          <p className="text-sm font-medium">{t('orders.form.lineNumber', { n: index + 1 })}</p>
           {onRemove && (
             <Button variant="ghost" size="icon" aria-label={t('orders.form.removeLine')} onClick={onRemove}>
               <Trash2 aria-hidden />

@@ -6,23 +6,38 @@ import { useCan, useModuleEnabled } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { openAssistant } from './assistant-launch';
 
-/** Ready-made questions. Each stays hidden from people who could not see the answer anyway. */
-const CHIPS = [
-  { key: 'analysis', question: 'chat.suggestions.farmAnalysis', permission: 'ai.view' },
-  { key: 'outlook', question: 'chat.suggestions.outlook', permission: 'ai.view' },
-  { key: 'attention', question: 'chat.suggestions.attention', permission: 'ai.view' },
-  { key: 'lambing', question: 'chat.suggestions.lambingThisWeek', permission: 'livestock.view' },
-  { key: 'feed', question: 'chat.suggestions.feedDays', permission: 'feed.view' },
-] as const;
+interface Chip {
+  key: string;
+  question: string;
+  permission: string;
+}
+
+/**
+ * Ready-made questions. Each stays hidden from people who could not see the answer anyway. "Lambing this
+ * week" is asked only in a week with lambings; the rest of the year the chip asks for the lambing plan.
+ */
+function chips(lambingThisWeek: number | null | undefined): Chip[] {
+  return [
+    { key: 'analysis', question: 'chat.suggestions.farmAnalysis', permission: 'ai.view' },
+    { key: 'outlook', question: 'chat.suggestions.outlook', permission: 'ai.view' },
+    { key: 'attention', question: 'chat.suggestions.attention', permission: 'ai.view' },
+    (lambingThisWeek ?? 0) > 0
+      ? { key: 'lambing', question: 'chat.suggestions.lambingThisWeek', permission: 'livestock.view' }
+      : { key: 'lambingPlan', question: 'chat.suggestions.lambingPlan', permission: 'livestock.view' },
+    { key: 'feed', question: 'chat.suggestions.feedDays', permission: 'feed.view' },
+  ];
+}
 
 export interface AssistantBarProps {
   /** Without the ready-made questions, for tight spots such as over the map. */
   compact?: boolean;
   className?: string;
+  /** Ewes due to lamb in the next 7 days, from the dashboard. Unknown counts as none. */
+  lambingThisWeek?: number | null;
 }
 
 /** The assistant's front door: type a question or a record here, the answer opens in the sheet. */
-export function AssistantBar({ compact, className }: AssistantBarProps) {
+export function AssistantBar({ compact, className, lambingThisWeek }: AssistantBarProps) {
   const { t } = useTranslation('ai');
   const can = useCan();
   const moduleEnabled = useModuleEnabled();
@@ -61,7 +76,7 @@ export function AssistantBar({ compact, className }: AssistantBarProps) {
       </div>
       {!compact && (
         <ul className="mt-1 flex gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {CHIPS.filter((chip) => can(chip.permission)).map((chip) => (
+          {chips(lambingThisWeek).filter((chip) => can(chip.permission)).map((chip) => (
             <li key={chip.key} className="shrink-0">
               <button
                 type="button"

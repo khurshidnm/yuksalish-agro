@@ -42,8 +42,13 @@ import { enumOptions } from '@/lib/i18n';
 import { useApiMutation, useDetail, useList } from '@/lib/query';
 import { HarvestFormDialog } from './HarvestFormDialog';
 import { OperationFormDialog, type OperationMode } from './OperationFormDialog';
-import { AFFECTED_BY_WORK, OPERATIONS } from './options';
+import { AFFECTED_BY_WORK, OPERATIONS, WORK_FIELDS } from './options';
 import type { Operation } from './types';
+
+/** Who did the work: the machine operator for machine work, otherwise the person responsible. */
+function performerLabel(type: string): 'operations.fields.operator' | 'operations.fields.responsible' {
+  return WORK_FIELDS[type]?.machine ? 'operations.fields.operator' : 'operations.fields.responsible';
+}
 
 const TYPE_ICON: Record<string, LucideIcon> = {
   tillage: Tractor,
@@ -153,7 +158,7 @@ function OperationSheet({ id, onClose }: { id: string | null; onClose: () => voi
                   <Fact label={t('operations.fields.plannedDate')}>{formatDate(op.plannedDate)}</Fact>
                 )}
                 {op.assetName && <Fact label={t('operations.fields.machine')}>{op.assetName}</Fact>}
-                {op.employeeName && <Fact label={t('operations.fields.operator')}>{op.employeeName}</Fact>}
+                {op.employeeName && <Fact label={t(performerLabel(op.type))}>{op.employeeName}</Fact>}
                 {op.areaDoneHa !== null && <Fact label={t('operations.fields.area')}>{formatNumber(op.areaDoneHa)} {t('unit.ha')}</Fact>}
                 {op.waterM3 !== null && <Fact label={t('operations.fields.water')}>{formatNumber(op.waterM3)} {t('unit.m3')}</Fact>}
                 {op.durationH !== null && <Fact label={t('operations.fields.duration')}>{formatNumber(op.durationH)} {t('unit.hours')}</Fact>}
@@ -169,9 +174,9 @@ function OperationSheet({ id, onClose }: { id: string | null; onClose: () => voi
                 <p className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-sm">
                   <CloudSun className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                   {t('operations.weather', {
-                    min: formatNumber(op.weather.tempMin ?? null),
-                    max: formatNumber(op.weather.tempMax ?? null),
-                    rain: formatNumber(op.weather.precipitationMm ?? 0),
+                    min: formatNumber(op.weather.tempMin ?? null, 0),
+                    max: formatNumber(op.weather.tempMax ?? null, 0),
+                    rain: formatNumber(op.weather.precipitationMm ?? 0, 1),
                   })}
                 </p>
               )}
@@ -311,15 +316,18 @@ export default function OperationsPage() {
       key: 'volume',
       header: t('operations.fields.volume'),
       align: 'right',
+      // A harvest is measured in tons, the figure that matters, not in hectares.
       cell: (row) =>
-        row.waterM3 !== null
-          ? `${formatNumber(row.waterM3)} ${t('unit.m3')}`
-          : row.areaDoneHa !== null
-            ? `${formatNumber(row.areaDoneHa)} ${t('unit.ha')}`
-            : '—',
+        row.type === 'harvest' && row.details.grossT != null
+          ? formatQty(Number(row.details.grossT), 't')
+          : row.waterM3 !== null
+            ? `${formatNumber(row.waterM3)} ${t('unit.m3')}`
+            : row.areaDoneHa !== null
+              ? `${formatNumber(row.areaDoneHa)} ${t('unit.ha')}`
+              : '—',
     },
     { key: 'machine', header: t('operations.fields.machine'), mobile: 'hidden', cell: (row) => row.assetName ?? '—' },
-    { key: 'operator', header: t('operations.fields.operator'), mobile: 'hidden', cell: (row) => row.employeeName ?? '—' },
+    { key: 'operator', header: t('operations.fields.performer'), mobile: 'hidden', cell: (row) => row.employeeName ?? '—' },
   ];
 
   const isLocked = (row: Operation) => row.type === 'harvest' && row.status === 'done';

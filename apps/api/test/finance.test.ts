@@ -1179,7 +1179,9 @@ describe('loans', () => {
     expect(account.balance).toBe(-first.payment);
 
     const month = await owner.get('/finance/summary/month', { month: '2026-02' });
-    expect(month.data.expense).toBe(120_000);
+    // The interest is the cost; the whole instalment is money paid, as the cash flow shows it.
+    expect(month.data.operatingExpense).toBe(120_000);
+    expect(month.data.expense).toBe(first.payment);
 
     const rows = await w.f.run(() => costCenterCosts('2026-02-01', '2026-02-28'));
     expect(centerOf(rows, w.generalId).direct).toBe(120_000);

@@ -16,7 +16,7 @@ import { monthsBetween } from '../../finance/budget.service';
 import { herdCost } from '../../finance/summary';
 import { lambingCalendar, ramRating, reproductionKpis } from '../../livestock/breeding.summary';
 import { vaccinationDue } from '../../livestock/health.service';
-import { growthKpis, herdMovement, herdSummary, mortality } from '../../livestock/summary';
+import { growthKpis, herdMovement, herdSummary } from '../../livestock/summary';
 import { enumLabel } from '../i18n';
 import type { ReportDefinition, ReportNote, Row } from '../types';
 import { PII, col, filter } from './_helpers';
@@ -427,15 +427,19 @@ export const livestockReports: ReportDefinition[] = [
     async run({ from, to }) {
       const repro = await reproductionKpis(from, to);
       const growth = await growthKpis(from, to);
-      const dead = await mortality(30);
-      const summary = await herdSummary();
+      // Head and mortality belong to the chosen period too, not to today and the last 30 days.
+      // A period running past today ends today: the days to come have neither deaths nor head yet.
+      const now = today();
+      const end = to < now ? to : now;
+      const movement = end < from ? null : await herdMovement(from, end);
+      const deadPercent = movement ? mortalityPercent(movement.dead, movement.averageHead) : null;
       const rows: Row[] = [
-        { indicator: 'head_total', value: summary.total, unit: 'head' },
+        { indicator: 'head_total', value: movement?.closing ?? null, unit: 'head' },
         { indicator: 'lambing_percent', value: repro.lambingPercent, unit: 'percent' },
         { indicator: 'survival_percent', value: repro.survivalPercent, unit: 'percent' },
         { indicator: 'adg', value: growth.adgG, unit: 'grams' },
         { indicator: 'feed_conversion', value: growth.feedConversion === null ? null : round(growth.feedConversion, 2), unit: 'ratio' },
-        { indicator: 'mortality_30d', value: dead.percent === null ? null : round(dead.percent, 2), unit: 'percent' },
+        { indicator: 'mortality', value: deadPercent === null ? null : round(deadPercent, 2), unit: 'percent' },
       ];
       // This figure is money, so the row is withheld, not just the column.
       if (canSeeMoney()) {

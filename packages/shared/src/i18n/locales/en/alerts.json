@@ -204,7 +204,7 @@
     },
     "spray_window": {
       "title": "Spraying field {{field}}: {{date}} is unsuitable",
-      "body": "Wind, rain or heat will spoil the treatment. Best time: {{bestDate}}, {{bestFrom}}–{{bestTo}}."
+      "body": "Wind, rain, heat or cold will spoil the treatment. Best time: {{bestDate}}, {{bestFrom}}–{{bestTo}}."
     },
     "spray_window_none": {
       "title": "Spraying field {{field}}: {{date}} is unsuitable",
@@ -231,7 +231,7 @@
     "feed": "Lowest feed: {{name}}, {{days}} days left",
     "cash": "Cash and bank: {{amount}} UZS",
     "alerts": "Open alerts: {{count}}, urgent: {{urgent}}",
-    "tasks": "Open tasks: {{count}}"
+    "tasks": "Active tasks (open and in progress): {{count}}"
   },
   "bot": {
     "linked": "Your account is linked. {{status}} shows today's status, {{alerts}} shows open alerts, {{help}} shows everything I can do.",
@@ -375,7 +375,9 @@
     "emptyTitle": "No messages",
     "emptyBody": "New messages will appear here.",
     "unread": "Unread",
-    "reason": "Reason"
+    "reason": "Reason",
+    "answered": "Answered",
+    "answeredAt": "{{state}} · {{at}}"
   },
   "settings": {
     "tab": "Settings",

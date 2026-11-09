@@ -1,6 +1,7 @@
 import { ANIMAL_CATEGORIES, todayIso } from '@yap/shared';
 import { CalendarCheck, ListChecks, Pencil, Plus, Syringe, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import { ComboboxField, type Column, DataTableView, DateField, ErrorCard, FormDialog, FormGrid, NumberField, SelectField, SwitchField, TextField, TextareaField, useConfirm } from '@/components';
@@ -8,8 +9,8 @@ import { Badge, type BadgeVariant, Button, Select } from '@/components/ui';
 import { api } from '@/lib/api';
 import { usePermission } from '@/lib/auth';
 import { formatDate, formatNumber } from '@/lib/format';
-import { zDate, zOptionalEnum, zOptionalNumber, zOptionalRef, zOptionalText, zRef, zText } from '@/lib/forms';
-import { enumOptions } from '@/lib/i18n';
+import { zDate, zEnum, zOptionalEnum, zOptionalNumber, zOptionalRef, zOptionalText, zRef, zText } from '@/lib/forms';
+import i18n, { enumOptions } from '@/lib/i18n';
 import { useApiMutation, useDetail } from '@/lib/query';
 import { ANIMALS_PATH, HEALTH_PATH, drugOptions, employeeOptions, herdOptions, warehouseOptions } from './options';
 import type { DueRow, DueState, VaccinationDue, VaccinationPlan } from './types';
@@ -29,28 +30,63 @@ const planSchema = z.object({
   notes: zOptionalText(1000),
 });
 
-const herdSchema = z.object({
-  herdId: zRef(),
-  planId: zOptionalRef(),
-  date: zDate(),
-  itemId: zOptionalRef(),
-  warehouseId: zOptionalRef(),
-  dosePerHead: zOptionalNumber(),
-  headCount: zOptionalNumber(),
-  qtyUsed: zOptionalNumber(),
-  vetEmployeeId: zOptionalRef(),
-  notes: zOptionalText(1000),
-});
+/** What a plan schedules. A dewormer or a blood test is not a vaccination (spec 8.3). */
+const SCHEDULED_TYPES = ['vaccination', 'deworming', 'prophylaxis', 'examination'] as const;
+type ScheduledType = (typeof SCHEDULED_TYPES)[number];
+
+const herdSchema = z
+  .object({
+    herdId: zRef(),
+    planId: zOptionalRef(),
+    type: zEnum(SCHEDULED_TYPES),
+    date: zDate(),
+    itemId: zOptionalRef(),
+    warehouseId: zOptionalRef(),
+    dosePerHead: zOptionalNumber(),
+    headCount: zOptionalNumber(),
+    qtyUsed: zOptionalNumber(),
+    vetEmployeeId: zOptionalRef(),
+    notes: zOptionalText(1000),
+  })
+  .superRefine((value, ctx) => {
+    // A test needs no product; a dose of nothing would answer no plan.
+    if (value.type !== 'examination' && !value.planId && !value.itemId) {
+      ctx.addIssue({ code: 'custom', path: ['itemId'], message: i18n.t('vet:errors.VACCINE_REQUIRED') });
+    }
+  });
 
 interface HerdPreset {
   planId: string | null;
   planName?: string;
   itemId: string | null;
+  itemName?: string | null;
+  type?: ScheduledType;
   herdId: string | null;
   herdName?: string | null;
 }
 
-function HerdVaccinationDialog({ preset, onClose }: { preset: HerdPreset | null; onClose: () => void }) {
+/** What was last done under the plan; else a vaccine is a vaccination and any other drug prevention. */
+function planType(plan: VaccinationPlan | undefined): ScheduledType {
+  const last = SCHEDULED_TYPES.find((type) => type === plan?.lastType);
+  if (last) return last;
+  return plan?.itemCategory && plan.itemCategory !== 'vaccine' ? 'prophylaxis' : 'vaccination';
+}
+
+/** Picking another plan brings that plan's kind of work with it. */
+function PlanTypeSync({ form, plans }: { form: UseFormReturn<z.input<typeof herdSchema>>; plans: VaccinationPlan[] }) {
+  const planId = form.watch('planId');
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    if (planId) form.setValue('type', planType(plans.find((plan) => plan.id === planId)));
+  }, [form, planId, plans]);
+  return null;
+}
+
+function HerdVaccinationDialog({ preset, plans, onClose }: { preset: HerdPreset | null; plans: VaccinationPlan[]; onClose: () => void }) {
   const { t } = useTranslation('vet');
   const vaccinate = useApiMutation<z.output<typeof herdSchema>>({
     mutationFn: (values) => api.postOnce(`${HEALTH_PATH}/vaccinations/herd`, values),
@@ -67,6 +103,7 @@ function HerdVaccinationDialog({ preset, onClose }: { preset: HerdPreset | null;
       defaultValues={{
         herdId: preset?.herdId ?? '',
         planId: preset?.planId ?? null,
+        type: preset?.type ?? 'vaccination',
         date: todayIso(),
         itemId: preset?.itemId ?? null,
         warehouseId: null,
@@ -82,13 +119,18 @@ function HerdVaccinationDialog({ preset, onClose }: { preset: HerdPreset | null;
     >
       {(form) => (
         <>
+          <PlanTypeSync form={form} plans={plans} />
           <ComboboxField form={form} name="herdId" label={t('common.herd')} required loadOptions={herdOptions()} selectedLabel={preset?.herdName} />
+          <FormGrid>
+            <SelectField form={form} name="planId" label={t('vaccinations.plan')} options={plans.map((plan) => ({ value: plan.id, label: plan.name }))} placeholder={t('vaccinations.noPlan')} />
+            <SelectField form={form} name="type" label={t('journal.type')} required options={enumOptions('healthRecordType', SCHEDULED_TYPES)} />
+          </FormGrid>
           <FormGrid>
             <DateField form={form} name="date" label={t('common.date')} required max={todayIso()} />
             <ComboboxField form={form} name="vetEmployeeId" label={t('journal.vet')} loadOptions={employeeOptions()} />
           </FormGrid>
           <FormGrid>
-            <ComboboxField form={form} name="itemId" label={t('vaccinations.vaccine')} loadOptions={drugOptions} hint={t('vaccinations.vaccineHint')} selectedLabel={preset?.planName} />
+            <ComboboxField form={form} name="itemId" label={t('journal.drug')} loadOptions={drugOptions} hint={t('vaccinations.vaccineHint')} selectedLabel={preset?.itemName ?? undefined} />
             <ComboboxField form={form} name="warehouseId" label={t('journal.warehouse')} loadOptions={warehouseOptions()} hint={t('journal.warehouseHint')} />
             <NumberField form={form} name="dosePerHead" label={t('vaccinations.dosePerHead')} />
             <NumberField form={form} name="headCount" label={t('journal.headCount')} hint={t('journal.headCountHint')} maxDigits={0} />
@@ -130,7 +172,7 @@ function PlanDialog({ open, plan, onClose }: { open: boolean; plan: VaccinationP
       {(form) => (
         <>
           <TextField form={form} name="name" label={t('plans.name')} required autoFocus />
-          <ComboboxField form={form} name="itemId" label={t('vaccinations.vaccine')} loadOptions={drugOptions} selectedLabel={plan?.itemName} hint={t('plans.itemHint')} />
+          <ComboboxField form={form} name="itemId" label={t('journal.drug')} loadOptions={drugOptions} selectedLabel={plan?.itemName} hint={t('plans.itemHint')} />
           <SelectField form={form} name="category" label={t('plans.category')} options={enumOptions('animalCategory', ANIMAL_CATEGORIES)} placeholder={t('plans.anyCategory')} />
           <FormGrid>
             <NumberField form={form} name="ageDays" label={t('plans.ageDays')} hint={t('plans.ageHint')} suffix={t('common.days')} maxDigits={0} />
@@ -198,7 +240,7 @@ export function VaccinationsTab() {
         </span>
       ),
     },
-    { key: 'item', header: t('vaccinations.vaccine'), mobile: 'subtitle', cell: (row) => row.itemName ?? '—' },
+    { key: 'item', header: t('journal.drug'), mobile: 'subtitle', cell: (row) => row.itemName ?? '—' },
     { key: 'age', header: t('plans.ageDays'), align: 'right', cell: (row) => (row.ageDays === null ? t('plans.anyAge') : t('common.dayCount', { count: row.ageDays })) },
     { key: 'interval', header: t('plans.intervalDays'), align: 'right', cell: (row) => (row.intervalDays === null ? t('plans.once') : t('common.dayCount', { count: row.intervalDays })) },
   ];
@@ -214,7 +256,7 @@ export function VaccinationsTab() {
               value={horizon}
               onChange={(e) => setHorizon(e.target.value)}
               options={['7', '30', '90', '180'].map((value) => ({ value, label: t('vaccinations.nextDays', { count: Number(value) }) }))}
-              className="md:w-44"
+              className="md:w-56"
             />
             {canWrite && (
               <Button onClick={() => setHerdPreset({ planId: null, itemId: null, herdId: null })}>
@@ -235,7 +277,18 @@ export function VaccinationsTab() {
               label: t('vaccinations.vaccinate'),
               icon: Syringe,
               hidden: !canWrite || !row.herdId,
-              onClick: () => setHerdPreset({ planId: row.planId, planName: row.planName, itemId: row.itemId, herdId: row.herdId, herdName: row.herdName }),
+              onClick: () => {
+                const plan = plans.data?.find((p) => p.id === row.planId);
+                setHerdPreset({
+                  planId: row.planId,
+                  planName: row.planName,
+                  itemId: row.itemId,
+                  itemName: plan?.itemName ?? null,
+                  type: planType(plan),
+                  herdId: row.herdId,
+                  herdName: row.herdName,
+                });
+              },
             },
           ]}
         />
@@ -289,7 +342,7 @@ export function VaccinationsTab() {
         />
       </section>
 
-      <HerdVaccinationDialog preset={herdPreset} onClose={() => setHerdPreset(null)} />
+      <HerdVaccinationDialog preset={herdPreset} plans={plans.data ?? []} onClose={() => setHerdPreset(null)} />
       <PlanDialog
         open={planOpen}
         plan={planEditing}

@@ -11,6 +11,7 @@ import { formatDate, formatNumber } from '@/lib/format';
 import { enumOptions } from '@/lib/i18n';
 import { useApiMutation, useDetail, useList } from '@/lib/query';
 import { AssetFormDialog } from './AssetFormDialog';
+import { assetKind } from './assetKinds';
 import { DepreciationResultAlert, DepreciationRunButton } from './DepreciationRun';
 import type { Asset, DepreciationRun, MaintenanceDue } from './types';
 
@@ -84,7 +85,14 @@ export default function AssetsPage() {
       sortable: true,
       cell: (row) => <Badge variant={STATUS_VARIANT[row.status] ?? 'neutral'}>{t(`enums:assetStatus.${row.status}`)}</Badge>,
     },
-    { key: 'motoHours', header: t('fields.motoHours'), sortable: true, align: 'right', cell: (row) => formatNumber(row.motoHours) },
+    {
+      key: 'motoHours',
+      header: t('fields.motoHours'),
+      sortable: true,
+      align: 'right',
+      // A plough or a scale has no engine: a dash, not "0".
+      cell: (row) => (assetKind(row.type).hasEngine || row.motoHours > 0 ? formatNumber(row.motoHours) : '—'),
+    },
     { key: 'purchaseDate', header: t('fields.purchaseDate'), sortable: true, mobile: 'hidden', cell: (row) => formatDate(row.purchaseDate) },
     ...(seesMoney
       ? [{ key: 'purchasePrice', header: t('fields.purchasePrice'), align: 'right' as const, mobile: 'hidden' as const, cell: (row: Asset) => <MoneyText value={row.purchasePrice} compact /> }]

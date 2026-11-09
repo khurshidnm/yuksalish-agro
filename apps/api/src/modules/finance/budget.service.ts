@@ -1,8 +1,8 @@
-import { and, asc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, lte, ne, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { budgetExecutionPercent, monthRange, round } from '@yap/shared';
 import { schema } from '../../db/client';
-import { ctx, tx } from '../../core/context';
+import { ctx, today, tx } from '../../core/context';
 import { badRequest, notFound } from '../../core/errors';
 import { recordEvent } from '../../core/journal';
 import { isoMonth, sumOf } from '../../core/query';
@@ -46,6 +46,21 @@ export function monthsBetween(from: string, to: string): string[] {
   return months;
 }
 
+/**
+ * How much of each month's plan was due by `until` (a date or a month; today when later): months
+ * gone count whole, the month still running counts for the days gone, months not begun count
+ * nothing. Spending so far must be set against the plan so far, or a year two months old always
+ * looks far under budget and its lambs, sold only in summer, look like a failed sale.
+ */
+export function planDueWeight(until?: string): (month: string) => number {
+  const end = !until ? today() : until.length === 7 ? monthRange(until).to : until;
+  const cutoff = end < today() ? end : today();
+  const cutoffMonth = cutoff.slice(0, 7);
+  const monthEnd = monthRange(cutoffMonth).to;
+  const runningShare = cutoff === monthEnd ? 1 : Number(cutoff.slice(8, 10)) / Number(monthEnd.slice(8, 10));
+  return (month) => (month < cutoffMonth ? 1 : month === cutoffMonth ? runningShare : 0);
+}
+
 export interface BudgetCell {
   planned: number;
   actual: number;
@@ -62,12 +77,18 @@ export interface BudgetRow {
   actual: number;
   deviation: number;
   percent: number | null;
+  /** The plan due so far (see planDueWeight), and the fact against it: like with like. */
+  plannedToDate: number;
+  deviationToDate: number;
+  percentToDate: number | null;
 }
 
 /**
  * Plan vs fact by category and month. The fact is the money side of the journal: every approved
  * transaction of that kind in that category, whatever its cost treatment, because a budget
  * controls spending. A feed purchase counts here when bought, and in cost reports when issued.
+ * Entries that move no money (depreciation) are not spending, so they are no fact here: the
+ * budget stays a money plan, and the cash forecast that reads it stays one too.
  */
 export async function grid(q: z.infer<typeof budgetQuery>) {
   if (q.from > q.to) throw badRequest('INVALID_PERIOD', 'The start of the period is after its end');
@@ -105,6 +126,7 @@ export async function grid(q: z.infer<typeof budgetQuery>) {
         eq(t.farmId, c.farmId),
         eq(t.status, 'approved'),
         inArray(t.type, ['expense', 'income']),
+        ne(t.paymentMethod, 'non_cash'),
         gte(t.date, fromDate),
         lte(t.date, toDate),
         q.costCenterId ? eq(t.costCenterId, q.costCenterId) : undefined,
@@ -125,6 +147,9 @@ export async function grid(q: z.infer<typeof budgetQuery>) {
       actual: 0,
       deviation: 0,
       percent: null,
+      plannedToDate: 0,
+      deviationToDate: 0,
+      percentToDate: null,
     });
   }
   for (const plan of plans) {
@@ -136,12 +161,16 @@ export async function grid(q: z.infer<typeof budgetQuery>) {
     if (row?.cells[fact.month]) row.cells[fact.month].actual = fact.amount;
   }
 
+  const due = planDueWeight(q.to);
   const result = [...rows.values()]
     .map((row) => {
       row.planned = round(months.reduce((sum, m) => sum + row.cells[m].planned, 0), 2);
       row.actual = round(months.reduce((sum, m) => sum + row.cells[m].actual, 0), 2);
       row.deviation = round(row.actual - row.planned, 2);
       row.percent = budgetExecutionPercent(row.actual, row.planned);
+      row.plannedToDate = round(months.reduce((sum, m) => sum + row.cells[m].planned * due(m), 0), 2);
+      row.deviationToDate = round(row.actual - row.plannedToDate, 2);
+      row.percentToDate = budgetExecutionPercent(row.actual, row.plannedToDate);
       return row;
     })
     .filter((row) => row.planned !== 0 || row.actual !== 0);
@@ -150,6 +179,7 @@ export async function grid(q: z.infer<typeof budgetQuery>) {
     const matching = result.filter((row) => row.kind === kind);
     const planned = round(matching.reduce((sum, row) => sum + row.planned, 0), 2);
     const actual = round(matching.reduce((sum, row) => sum + row.actual, 0), 2);
+    const plannedToDate = round(matching.reduce((sum, row) => sum + row.plannedToDate, 0), 2);
     const byMonth = Object.fromEntries(
       months.map((m) => [
         m,
@@ -159,10 +189,25 @@ export async function grid(q: z.infer<typeof budgetQuery>) {
         },
       ]),
     );
-    return { planned, actual, deviation: round(actual - planned, 2), percent: budgetExecutionPercent(actual, planned), byMonth };
+    return {
+      planned,
+      actual,
+      deviation: round(actual - planned, 2),
+      percent: budgetExecutionPercent(actual, planned),
+      plannedToDate,
+      deviationToDate: round(actual - plannedToDate, 2),
+      percentToDate: budgetExecutionPercent(actual, plannedToDate),
+      byMonth,
+    };
   };
 
-  return { months, rows: result, totals: { expense: total('expense'), income: total('income') } };
+  return {
+    months,
+    /** The last month whose plan is due, wholly or in part. Later months have not happened yet. */
+    dueThrough: months.filter((m) => due(m) > 0).at(-1) ?? null,
+    rows: result,
+    totals: { expense: total('expense'), income: total('income') },
+  };
 }
 
 /** Upsert plan lines in one call. The grid saves everything the user changed at once. */

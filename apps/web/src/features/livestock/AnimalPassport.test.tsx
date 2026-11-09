@@ -174,7 +174,7 @@ afterAll(() => {
 describe('passport tabs', () => {
   it('puts breeding and veterinary right after the overview', () => {
     auth.permissions.add('health.view');
-    expect(tabLabels(page(baseAnimal))).toEqual(['Umumiy', 'Naslchilik', 'Veterinariya', 'Joylashuv va salomatlik', 'Vazn', 'Identifikatorlar', "Ko'chirishlar"]);
+    expect(tabLabels(page(baseAnimal))).toEqual(['Umumiy', 'Naslchilik', 'Veterinariya', 'Treker (GPS, harorat)', 'Vazn', 'Identifikatorlar', "Ko'chirishlar"]);
   });
 
   it('keeps breeding from a male and from poultry, and veterinary from anyone without health.view', () => {
@@ -431,7 +431,8 @@ describe('veterinary tab', () => {
     expect(screen).toContain('Doza —');
     expect(screen).toContain('Veterinar —');
     expect(screen).toContain('Natija —');
-    expect(screen).toContain('Sotish mumkin —');
+    // No withdrawal period: the sale date is left out rather than shown as an empty "can be sold".
+    expect(screen).not.toContain('Sotish mumkin');
     expect(screen).toContain('Keyingi muddat —');
     expect(text(tab())).toContain('Veterinar Karimov Aziz');
   });

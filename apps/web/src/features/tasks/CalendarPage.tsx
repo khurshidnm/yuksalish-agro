@@ -1,7 +1,7 @@
 import { keepPreviousData } from '@tanstack/react-query';
 import { addDays, monthOf, todayIso } from '@yap/shared';
 import { CalendarDays, ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { z } from 'zod';
@@ -15,7 +15,7 @@ import { zEnum, zOptionalDate, zOptionalEnum, zOptionalRef, zOptionalText, zDate
 import { useApiMutation, useDetail } from '@/lib/query';
 import { cn } from '@/lib/utils';
 import { monthGrid, shiftDateByMonth, weekDays } from './calendarDates';
-import { calendarItemTitle } from './calendarTitle';
+import { calendarChipTitle, calendarItemTitle } from './calendarTitle';
 import { memberOptions } from './TaskFormDialog';
 import { CALENDAR_KINDS, DIVISIONS, type CalendarItem, type CalendarKind } from './types';
 
@@ -39,6 +39,10 @@ const KIND_TONE: Record<CalendarKind, BadgeVariant> = {
   manual: 'info',
 };
 
+/**
+ * One colour per group of kinds; the legend lists each colour once with the kinds it stands for. A
+ * task is a ring, so it never reads as the solid green of an event in light mode.
+ */
 const KIND_DOT: Record<CalendarKind, string> = {
   lambing: 'bg-success',
   vaccination: 'bg-info',
@@ -50,9 +54,19 @@ const KIND_DOT: Record<CalendarKind, string> = {
   state_report: 'bg-warning',
   staff_contract: 'bg-warning',
   staff_medical: 'bg-info',
-  task: 'bg-foreground',
+  task: 'border-2 border-foreground bg-transparent',
   manual: 'bg-primary',
 };
+
+/** Kinds on screen grouped by their dot, in CALENDAR_KINDS order: one legend line per colour. */
+function legendGroups(kinds: readonly CalendarKind[]): { dot: string; kinds: CalendarKind[] }[] {
+  const groups = new Map<string, CalendarKind[]>();
+  for (const kind of kinds) groups.set(KIND_DOT[kind], [...(groups.get(KIND_DOT[kind]) ?? []), kind]);
+  return [...groups].map(([dot, members]) => ({ dot, kinds: members }));
+}
+
+/** Below Tailwind's md breakpoint the month grid shows dots and the agenda sits under it. */
+const isPhone = () => typeof window !== 'undefined' && window.matchMedia?.('(max-width: 767px)').matches === true;
 
 const EVENT_KINDS = ['meeting', 'inspection', 'delivery', 'other'] as const;
 
@@ -184,8 +198,8 @@ function MonthGrid({ anchor, items, onPick }: MonthProps) {
               </span>
               <span className="hidden min-w-0 flex-col gap-1 md:flex">
                 {dayItems.slice(0, MAX_CHIPS).map((item) => (
-                  <Badge key={item.id} variant={KIND_TONE[item.kind]} className="block truncate rounded px-1.5">
-                    {calendarItemTitle(item, t)}
+                  <Badge key={item.id} variant={KIND_TONE[item.kind]} className="block truncate rounded px-1.5" title={calendarItemTitle(item, t)}>
+                    {calendarChipTitle(item, t)}
                   </Badge>
                 ))}
                 {dayItems.length > MAX_CHIPS && (
@@ -272,7 +286,7 @@ function EventDialog({
     >
       {(form) => (
         <>
-          <TextField form={form} name="title" label={t('fields.title')} required autoFocus />
+          <TextField form={form} name="title" label={t('calendar.eventTitle')} required autoFocus />
           <FormGrid>
             <SelectField form={form} name="kind" label={t('calendar.eventKind')} options={EVENT_KINDS.map((k) => ({ value: k, label: t(`calendar.eventKinds.${k}`) }))} />
             <SelectField
@@ -320,11 +334,13 @@ export default function CalendarPage() {
 
   const today = todayIso();
   const [view, setView] = useUrlParam('view', 'month');
-  const [date, setDate] = useUrlParam('date', today);
+  // Picking a day must not throw the page back to the top: the agenda under the grid is what it opens.
+  const [date, setDate] = useUrlParam('date', today, { keepScroll: true });
   const [division, setDivision] = useUrlParam('division');
   const [person, setPerson] = useUrlParam('person');
   const [personName, setPersonName] = useUrlParam('personName');
   const [dialog, setDialog] = useState<{ item: CalendarItem | null } | null>(null);
+  const agendaRef = useRef<HTMLDivElement>(null);
 
   const current = (VIEWS as readonly string[]).includes(view) ? (view as View) : 'month';
 
@@ -421,8 +437,16 @@ export default function CalendarPage() {
         <div className={cn('transition-opacity', query.isPlaceholderData && 'opacity-70')}>
           {current === 'month' && (
             <div className="space-y-4">
-              <MonthGrid anchor={date} items={items} onPick={setDate} />
-              <Card>
+              <MonthGrid
+                anchor={date}
+                items={items}
+                onPick={(picked) => {
+                  setDate(picked);
+                  // On a phone the agenda is below the fold, so a tap would seem to do nothing.
+                  if (isPhone()) requestAnimationFrame(() => agendaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+                }}
+              />
+              <Card ref={agendaRef} className="scroll-mt-16">
                 <CardContent className="pt-4 md:pt-5">
                   <h3 className="mb-2 font-semibold first-letter:uppercase">{formatDateLong(date)}</h3>
                   <Agenda items={items.filter((item) => occursOn(item, date))} onEdit={(item) => setDialog({ item })} />
@@ -454,10 +478,10 @@ export default function CalendarPage() {
 
           <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground" aria-label={t('calendar.legend')}>
             {/* Only what is on screen: a shepherd has no business seeing "loan payment" here. */}
-            {CALENDAR_KINDS.filter((kind) => items.some((item) => item.kind === kind)).map((kind) => (
-              <li key={kind} className="flex items-center gap-1.5">
-                <span className={cn('size-2.5 rounded-full', KIND_DOT[kind])} aria-hidden />
-                {t(`calendar.kind.${kind}`)}
+            {legendGroups(CALENDAR_KINDS.filter((kind) => items.some((item) => item.kind === kind))).map((group) => (
+              <li key={group.dot} className="flex items-center gap-1.5">
+                <span className={cn('size-2.5 shrink-0 rounded-full', group.dot)} aria-hidden />
+                {group.kinds.map((kind) => t(`calendar.kind.${kind}`)).join(', ')}
               </li>
             ))}
           </ul>

@@ -67,7 +67,11 @@ export interface LivestockData {
     weeks: { week: string; expected: number }[];
     totalEwes: number;
     overdue: number;
+    /** From the farm's own lambings; null until it has some. */
     expectedLambs: number | null;
+    /** The outlook's stated assumption applied to the same ewes, for while expectedLambs is null. */
+    assumedLambs?: number | null;
+    assumedLambsPerEwe?: number;
     next7Days: number;
     nextDate: string | null;
   };
@@ -97,6 +101,10 @@ export interface FeedItem {
   name: string;
   unit: string;
   stockQty: number;
+  /** Daily use by the rations, in the item's unit. Null when no ration plans it, or its weight is unknown. */
+  plannedDaily: number | null;
+  /** Average issued per day lately. Null when nothing was issued. */
+  actualDaily: number | null;
   days: number | null;
   basis: 'actual' | 'plan' | null;
   minDays: number;

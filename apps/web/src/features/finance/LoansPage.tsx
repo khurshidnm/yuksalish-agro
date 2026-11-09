@@ -28,7 +28,7 @@ import { formatDate, formatMoney, formatPercent } from '@/lib/format';
 import { zDate, zEnum, zOptionalRef, zOptionalText, zPositive, zRef, zText } from '@/lib/forms';
 import { enumOptions } from '@/lib/i18n';
 import { useApiMutation, useDetail } from '@/lib/query';
-import { FINANCE_PATHS, MONEY_QUERIES, accountLabel } from './lib';
+import { FINANCE_PATHS, MONEY_QUERIES, accountLabel, keepTogether } from './lib';
 import type { AccountOption, Instalment, Loan, LoanDetail, UpcomingInstalment } from './types';
 
 const PATH = FINANCE_PATHS.loans;
@@ -146,7 +146,10 @@ function LoanSheet({ loanId, onClose }: { loanId: string | null; onClose: () => 
                         {row.period}. {formatDate(row.dueDate)}
                       </span>
                       <span className="block text-muted-foreground">
-                        {t('loans.split', { principal: formatMoney(row.principal, { compact: true }), interest: formatMoney(row.interest, { compact: true }) })}
+                        {t('loans.split', {
+                          principal: keepTogether(formatMoney(row.principal, { compact: true })),
+                          interest: keepTogether(formatMoney(row.interest, { compact: true })),
+                        })}
                       </span>
                     </span>
                     <span className="flex shrink-0 flex-col items-end gap-1">

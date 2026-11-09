@@ -304,27 +304,39 @@ export async function remove(id: string) {
 }
 
 /**
- * Turn the tech card into planned operations in the journal, dated from the planned sowing date.
+ * Turn the tech card into planned operations in the journal, dated from sowing.
  * Safe to repeat: a card line already in the journal for this plan is skipped.
+ *
+ * Once work on the plan has started, the journal already holds what was done before today, so
+ * only the card's lines from today on are added, dated from the actual sowing, and never a
+ * second sowing. Otherwise a sown field would get its ploughing, sowing and first watering again,
+ * all at once overdue.
  */
 export async function generateOperations(id: string) {
   const plan = await getPlanRow(id);
   if (!plan.techCardId) throw conflict('PLAN_HAS_NO_TECH_CARD', 'Choose a tech card for this plan first');
   if (!plan.sowingDatePlan) throw conflict('SOWING_DATE_REQUIRED', 'Set the planned sowing date first');
+  if (plan.status === 'harvested' || plan.status === 'cancelled') {
+    throw conflict('PLAN_CLOSED', 'This plan is harvested or cancelled');
+  }
   const card = await techCards.getRow(plan.techCardId);
   const c = ctx();
+  const now = today();
 
   const existing = await tx()
-    .select({ details: fieldOperations.details })
+    .select({ type: fieldOperations.type, status: fieldOperations.status, details: fieldOperations.details })
     .from(fieldOperations)
-    .where(eq(fieldOperations.cropPlanId, id));
+    .where(and(eq(fieldOperations.cropPlanId, id), eq(fieldOperations.farmId, c.farmId)));
   const done = new Set(existing.map((e) => (e.details as { cardLine?: string }).cardLine));
+  const doneTypes = new Set(existing.filter((e) => e.status === 'done').map((e) => e.type));
+  const started = plan.status !== 'planned' || doneTypes.size > 0;
+  const anchor = plan.sowingDateFact ?? plan.sowingDatePlan;
 
   const rows = card.lines
-    .map((line, index) => ({ line, cardLine: `${card.id}:${index}` }))
+    .map((line, index) => ({ line, cardLine: `${card.id}:${index}`, date: addDays(anchor, line.offsetDays) }))
     .filter(({ cardLine }) => !done.has(cardLine))
-    .map(({ line, cardLine }) => {
-      const date = addDays(plan.sowingDatePlan!, line.offsetDays);
+    .filter(({ line, date }) => !started || (date >= now && !(line.type === 'sowing' && doneTypes.has('sowing'))))
+    .map(({ line, cardLine, date }) => {
       return {
         tenantId: c.tenantId,
         farmId: c.farmId,

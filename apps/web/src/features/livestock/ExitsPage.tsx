@@ -114,8 +114,15 @@ export default function ExitsPage() {
               placeholder={t('exits.allTypes')}
               className="md:w-44"
             />
-            <DateInput aria-label={t('filters.from')} value={from} onChange={(e) => setFrom(e.target.value)} className="md:w-44" />
-            <DateInput aria-label={t('filters.to')} value={to} onChange={(e) => setTo(e.target.value)} className="md:w-44" />
+            {/* Two equal date boxes need words: which one is "from" and which "to". */}
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span className="w-20 shrink-0 md:w-auto">{t('filters.from')}</span>
+              <DateInput value={from} onChange={(e) => setFrom(e.target.value)} className="min-w-0 flex-1 md:w-44 md:flex-none" />
+            </label>
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span className="w-20 shrink-0 md:w-auto">{t('filters.to')}</span>
+              <DateInput value={to} onChange={(e) => setTo(e.target.value)} className="min-w-0 flex-1 md:w-44 md:flex-none" />
+            </label>
           </>
         }
         rowActions={(row) => [

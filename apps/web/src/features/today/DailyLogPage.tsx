@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { Alert, Badge, Button, Select, Textarea } from '@/components/ui';
 import { EmptyState } from '@/components';
 import { useCan, useSession } from '@/lib/auth';
-import { formatDate, formatNumber, formatQty } from '@/lib/format';
+import { formatDate, formatQty } from '@/lib/format';
 import { canEdit, outbox, useOutbox, uuidv7, type OutboxRecord } from '@/lib/outbox';
 import { useTodayData, type TodayData, type TodayHerd } from './data';
 import { ChoiceButtons, FieldLabel, FieldScreen, FieldSkeleton, PhotoCapture, SaveBar, Stepper, type LocalPhoto } from './field-ui';
@@ -121,7 +121,7 @@ function DailyLogForm({ herd, data, queued, date }: { herd: TodayHerd; data: Tod
             step={stepFor(line.plannedQty || line.actualQty || 1)}
             unit={t(`enums:unit.${line.unit}`)}
             invalid={showErrors && line.actualQty === null}
-            hint={line.plannedQty > 0 ? t('log.norm', { qty: formatNumber(line.plannedQty) }) : undefined}
+            hint={line.plannedQty > 0 ? t('log.norm', { qty: formatQty(line.plannedQty, line.unit) }) : undefined}
           >
             {showErrors && line.actualQty === null && <p className="mt-2 text-base font-medium text-danger">{t('log.qtyRequired')}</p>}
             {deviation !== null && (

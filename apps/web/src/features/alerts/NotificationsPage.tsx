@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { useOpenableLink } from '@/app/canOpen';
 import { EmptyState, ErrorCard, FormDialog, PageHeader, TextareaField, UrlTabs, useUrlParam } from '@/components';
-import { Button, Card, Pagination, Skeleton, Switch } from '@/components/ui';
+import { Badge, type BadgeVariant, Button, Card, Pagination, Skeleton, Switch } from '@/components/ui';
 import { api } from '@/lib/api';
 import { formatDateTime } from '@/lib/format';
 import { zText } from '@/lib/forms';
@@ -14,7 +14,7 @@ import i18n from '@/lib/i18n';
 import { errorMessage, useApiMutation, useList } from '@/lib/query';
 import { cn } from '@/lib/utils';
 import { NotificationSettings } from './NotificationSettings';
-import type { NotificationButton, NotificationRow } from './types';
+import type { NotificationActionState, NotificationButton, NotificationRow } from './types';
 
 const PATH = '/notifications';
 const PAGE_SIZE = 25;
@@ -29,6 +29,17 @@ interface Pressed {
 }
 
 const reasonSchema = z.object({ reason: zText(500) });
+
+const STATE_TONE: Record<NonNullable<NotificationActionState['tone']>, BadgeVariant> = { success: 'success', danger: 'danger', neutral: 'neutral' };
+
+/**
+ * What became of a message's decision once no button is left, so "press Received" does not read as
+ * still waiting. The server says it; a server that does not yet only leaves the buttons out.
+ */
+function decidedState(row: NotificationRow): NotificationActionState | null {
+  if (!row.action || row.action.buttons.length > 0) return null;
+  return row.action.state ?? { label: 'alerts:inbox.answered', tone: 'neutral' };
+}
 
 /**
  * The decisions a message offers, e.g. "Received" on cash handed over. Pressing one asks the server,
@@ -119,6 +130,7 @@ function Inbox() {
           {rows.map((row) => {
             const Icon = SEVERITY_ICON[row.severity];
             const buttons = row.action?.buttons ?? [];
+            const state = decidedState(row);
             return (
               <div key={row.id} className={cn(!row.readAt && 'bg-secondary/50')}>
                 <button
@@ -134,6 +146,13 @@ function Inbox() {
                   </span>
                   {!row.readAt && <span className="mt-2 size-2.5 shrink-0 rounded-full bg-primary" aria-label={t('inbox.unread')} />}
                 </button>
+                {state && (
+                  <div className="px-3 pb-3 pl-11">
+                    <Badge variant={STATE_TONE[state.tone ?? 'neutral']}>
+                      {state.at ? t('inbox.answeredAt', { state: t(state.label), at: formatDateTime(state.at) }) : t(state.label)}
+                    </Badge>
+                  </div>
+                )}
                 {buttons.length > 0 && (
                   <div className="flex flex-wrap gap-2 px-3 pb-3 pl-11">
                     {buttons.map((button) => (

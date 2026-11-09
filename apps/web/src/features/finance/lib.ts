@@ -68,6 +68,9 @@ export function treatmentForCategory<T extends string>(group: string | undefined
   return current === 'capex' ? 'expense' : current;
 }
 
+/** "56,3 mln so'm" inside a sentence: a line break between the number and its unit misreads the amount. */
+export const keepTogether = (text: string): string => text.replace(/ /g, '\u00a0');
+
 export const FINANCE_PATHS = {
   transactions: '/finance/transactions',
   accounts: '/finance/accounts',

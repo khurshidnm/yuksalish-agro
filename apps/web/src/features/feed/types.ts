@@ -4,6 +4,8 @@ export interface RationLine {
   itemName: string;
   unit: string;
   kgPerHeadDay: number;
+  dryMatterPct?: number | null;
+  dryMatterKg?: number | null;
   unitCostPerKg: number | null;
   costPerHeadDay: number | null;
 }
@@ -15,6 +17,8 @@ export interface Ration {
   notes: string | null;
   lines: RationLine[];
   totalKgPerHeadDay: number;
+  /** Null when a feed has no dry matter percent. */
+  totalDryMatterKg?: number | null;
   costPerHeadDay: number | null;
   costPerSeason: number | null;
   seasonDays: number;
@@ -42,6 +46,8 @@ export interface FeedPlan {
     herdName: string;
     state: string;
     head: number;
+    /** Suckling lambs in the herd, left out of its adult ration. */
+    lambs?: number;
     rationId: string;
     rationName: string | null;
     lines: { itemId: string; itemName: string; unit: string; kgPerHeadDay: number; dailyKg: number }[];

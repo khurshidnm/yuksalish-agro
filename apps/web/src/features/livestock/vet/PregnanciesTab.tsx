@@ -222,7 +222,7 @@ export function PregnanciesTab() {
       <FormDialog
         open={bulk}
         onOpenChange={setBulk}
-        title={t('pregnancies.bulkAdd')}
+        title={t('pregnancies.bulkTitle')}
         description={t('pregnancies.bulkHint')}
         schema={bulkSchema}
         defaultValues={{ herdId: '', ramId: null, matingDate: '', source: 'mating', notes: '' }}

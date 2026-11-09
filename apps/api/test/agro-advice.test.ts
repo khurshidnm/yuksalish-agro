@@ -243,14 +243,18 @@ describe('weather alerts', () => {
     const field = await plant(f, 'cotton', -30);
     const calm = { tempC: 18, rhPct: 55, windMs: 2 };
     const windy = { tempC: 18, rhPct: 55, windMs: 8 };
-    await hourly(f, thisHour(), 64, (time) => (localDate(time) === day(2) && localHour(time) >= 5 && localHour(time) < 11 ? calm : windy));
+    // Calm 05:00 to 08:00 and 10:00 to 14:00. The early hours are before or just after sunrise at the
+    // fixture farm (39.5°N, 64.8°E) in any season, at most one hour of them lies in the spraying day,
+    // so the advice is 10:00 to 14:00 all year. Clock hours from 05:00 advised the dawn.
+    const calmAt = (time: Date) => localDate(time) === day(2) && ((localHour(time) >= 5 && localHour(time) < 8) || (localHour(time) >= 10 && localHour(time) < 14));
+    await hourly(f, thisHour(), 64, (time) => (calmAt(time) ? calm : windy));
     const [op] = await f.run(() =>
       tx().insert(schema.fieldOperations).values({ ...base(), type: 'protection', status: 'planned', date: day(1), fieldId: field.fieldId }).returning(),
     );
     await f.run(() => evaluateRules());
     const [alert] = await alertsOf(f, 'spray_window');
     expect(alert).toMatchObject({ dedupKey: `spray_window:${op.id}`, entityId: op.id });
-    expect(alert.data).toMatchObject({ field: field.number, date: day(1), bestDate: day(2), bestFrom: '05:00', bestTo: '11:00' });
+    expect(alert.data).toMatchObject({ field: field.number, date: day(1), bestDate: day(2), bestFrom: '10:00', bestTo: '14:00' });
   });
 
   it('stays quiet when the planned day has good hours', async () => {

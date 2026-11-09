@@ -49,9 +49,9 @@ export function harvestSplit(totalT: number, ownUsePct: number): { ownUseT: numb
   return { ownUseT, saleT: totalT - ownUseT };
 }
 
-/** Suv sarfi (m³/t). */
-export function waterPerTon(waterM3: number, harvestT: number): number | null {
-  if (harvestT <= 0) return null;
+/** Suv sarfi (m³/t). No watering recorded is missing data, so null, never 0 m³ a ton (rule 5). */
+export function waterPerTon(waterM3: number | null, harvestT: number): number | null {
+  if (waterM3 === null || harvestT <= 0 || !(waterM3 > 0)) return null;
   return waterM3 / harvestT;
 }
 

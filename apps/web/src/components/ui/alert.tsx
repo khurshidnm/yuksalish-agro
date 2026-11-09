@@ -1,5 +1,5 @@
 import { type VariantProps, cva } from 'class-variance-authority';
-import { CheckCircle2, Info, OctagonAlert, TriangleAlert } from 'lucide-react';
+import { CheckCircle2, Info, type LucideIcon, OctagonAlert, TriangleAlert } from 'lucide-react';
 import type { ComponentProps, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -19,10 +19,12 @@ const ICONS = { info: Info, success: CheckCircle2, warning: TriangleAlert, dange
 
 export interface AlertProps extends Omit<ComponentProps<'div'>, 'title'>, VariantProps<typeof alertVariants> {
   title?: ReactNode;
+  /** Replaces the tone's own icon, e.g. a padlock for a closed month. One icon per alert. */
+  icon?: LucideIcon;
 }
 
-export function Alert({ tone, title, children, className, ...props }: AlertProps) {
-  const Icon = ICONS[tone ?? 'info'];
+export function Alert({ tone, title, icon, children, className, ...props }: AlertProps) {
+  const Icon = icon ?? ICONS[tone ?? 'info'];
   return (
     <div role={tone === 'danger' ? 'alert' : 'status'} className={cn(alertVariants({ tone }), className)} {...props}>
       <Icon className="mt-0.5 size-5 shrink-0" aria-hidden />

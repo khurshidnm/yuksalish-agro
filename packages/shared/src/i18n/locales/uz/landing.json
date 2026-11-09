@@ -26,7 +26,7 @@
     "points": [
       "Telefonda ishlaydi",
       "Dalada internetsiz qayd",
-      "O'zbek va rus tilida"
+      "O'zbek, rus va ingliz tilida"
     ],
     "imageAlt": "AgroPanel: kassa, xarajat, poda soni va ozuqa zaxirasi bir ekranda",
     "phoneAlt": "Telefondagi Bugun ekrani: chorvador uchun kunlik qayd va tezkor amallar"
@@ -141,7 +141,7 @@
         "points": [
           "Kassa, bank va kontragentlar",
           "Qarzlar, kreditlar va to'lov grafigi",
-          "Budjet ijrosi",
+          "Byudjet ijrosi",
           "Pul oqimi prognozi va ikki bosqichli tasdiq"
         ]
       },
@@ -321,7 +321,7 @@
       {
         "key": "accountant",
         "title": "Hisobchi",
-        "body": "Operatsiyalar, qarzlar, budjet va hisobotlar."
+        "body": "Operatsiyalar, qarzlar, byudjet va hisobotlar."
       },
       {
         "key": "shepherd",
@@ -369,7 +369,7 @@
       {
         "key": "ai",
         "title": "AI o'zi yozmaydi",
-        "body": "Yordamchi faqat taklif beradi. Ma'lumotni siz tasdiqlaganingizdan keyingina saqlanadi."
+        "body": "Yordamchi faqat taklif beradi. Ma'lumot siz tasdiqlaganingizdan keyingina saqlanadi."
       }
     ]
   },
@@ -381,7 +381,7 @@
     "items": [
       {
         "title": "Ariza qoldiring",
-        "body": "Formani to'ldiring yoki qo'ng'iroq qiling. Biz siz bilan bog'lanamiz."
+        "body": "Formani to'ldiring. Biz siz bilan bog'lanamiz."
       },
       {
         "title": "Demo ko'ring",
@@ -490,7 +490,7 @@
     "farmType": "Xo'jalik yo'nalishi",
     "farmTypePlaceholder": "Tanlang",
     "size": "Xo'jalik hajmi",
-    "sizePlaceholder": "Masalan: 50 ga, 300 bosh chorva",
+    "sizePlaceholder": "Masalan: 50 ga, 300 bosh",
     "region": "Hudud",
     "regionPlaceholder": "Viloyat yoki tuman",
     "message": "Xabar",
@@ -504,7 +504,8 @@
     "errorName": "Ismingizni kiriting",
     "errorPhone": "Telefon raqamini to'g'ri kiriting",
     "errorConsent": "Davom etish uchun roziligingiz kerak",
-    "errorGeneric": "Yuborib bo'lmadi. Qayta urinib ko'ring yoki bizga qo'ng'iroq qiling.",
+    "errorGeneric": "Yuborib bo'lmadi. Qayta urinib ko'ring.",
+    "errorCall": "Yoki qo'ng'iroq qiling:",
     "errorRate": "Ko'p urinish bo'ldi. Bir ozdan keyin qayta urinib ko'ring.",
     "optional": "ixtiyoriy",
     "types": {

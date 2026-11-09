@@ -1,4 +1,4 @@
-import { SEXES, todayIso } from '@yap/shared';
+import { SEXES, addDays, todayIso } from '@yap/shared';
 import { Check, Search, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -27,6 +27,8 @@ interface PickedEwe {
   tag: string;
   breedingId?: string;
   expectedDate?: string;
+  /** The start of the lambing window: a date well before it is a slip or an abortion. */
+  expectedEarliest?: string;
 }
 
 /** Thick, thumb-sized choice. Fits a phone held in one hand with a torch in the other. */
@@ -72,7 +74,7 @@ function EwePicker({ onPick }: { onPick: (ewe: PickedEwe) => void }) {
           <li key={row.id}>
             <button
               type="button"
-              onClick={() => onPick({ id: row.eweId, tag: row.eweTag, breedingId: row.id, expectedDate: row.expectedDate })}
+              onClick={() => onPick({ id: row.eweId, tag: row.eweTag, breedingId: row.id, expectedDate: row.expectedDate, expectedEarliest: row.expectedEarliest })}
               className="focus-ring flex min-h-14 w-full items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 text-left hover:border-input"
             >
               <span className="text-lg font-semibold">{row.eweTag}</span>
@@ -248,6 +250,10 @@ export function LambingForm({ presetEwe, onDone }: { presetEwe?: PickedEwe | nul
         />
       </div>
 
+      {/* The server refuses live lambs this early; say so before the form is filled in. */}
+      {ewe?.expectedEarliest && date < addDays(ewe.expectedEarliest, -7) && (
+        <Alert tone="warning">{t('lambing.tooEarly', { date: formatDate(ewe.expectedEarliest) })}</Alert>
+      )}
       {problem && <Alert tone="danger">{problem}</Alert>}
 
       <Button size="lg" className="h-16 w-full text-lg" loading={submit.isPending} onClick={save}>

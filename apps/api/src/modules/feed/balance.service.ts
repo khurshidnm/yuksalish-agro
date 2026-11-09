@@ -5,7 +5,7 @@
  */
 import { addDays, feedDays, feedDaysByActual, hectaresForShortage, round, winterFeedBalance, ANIMAL_ON_FARM_STATUSES } from '@yap/shared';
 import { ACTUAL_CONSUMPTION_WINDOW_DAYS, averageDailyConsumption, kgPerUnit } from '@yap/shared/formulas/feed';
-import { and, asc, count, desc, eq, gte, inArray, isNotNull, lte, notInArray } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, inArray, isNotNull, lte, notInArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { schema } from '../../db/client';
 import { ctx, today, tx } from '../../core/context';
@@ -16,10 +16,24 @@ import { unitCostsPerKg } from './rations.service';
 
 const { animals, cropPlans, crops, herds, items, rationLines, rations, seasons, stockBatches, stockMovements } = schema;
 
-/** Animals on the farm per herd today. */
-async function headByHerd(): Promise<Map<string, number>> {
+const LAMB_CATEGORIES = ['lamb_male', 'lamb_female'];
+/** Rations meant for young stock. Every other ration is for grown sheep. */
+const YOUNG_STOCK_RATIONS = ['lamb', 'fattening'];
+
+interface HerdHead {
+  /** Every animal of the herd on the farm today. */
+  all: number;
+  lambs: number;
+}
+
+/** Animals on the farm per herd today, and the lambs among them. */
+async function headByHerd(): Promise<Map<string, HerdHead>> {
   const rows = await tx()
-    .select({ herdId: animals.herdId, head: count() })
+    .select({
+      herdId: animals.herdId,
+      head: count(),
+      lambs: sql<number>`count(*) filter (where ${inArray(animals.category, LAMB_CATEGORIES)})`.mapWith(Number),
+    })
     .from(animals)
     .where(
       and(
@@ -29,7 +43,17 @@ async function headByHerd(): Promise<Map<string, number>> {
       ),
     )
     .groupBy(animals.herdId);
-  return new Map(rows.map((r) => [r.herdId!, r.head]));
+  return new Map(rows.map((r) => [r.herdId!, { all: r.head, lambs: r.lambs }]));
+}
+
+/**
+ * Head that eat a herd's ration. Lambs born into a ewes' herd suckle their mothers, so an adult ration
+ * is not fed to them; once weaned they belong in a lamb or fattening herd, whose ration counts everyone.
+ */
+function eatersOf(herd: { rationState: string | null }, head: HerdHead | undefined): { eating: number; lambsLeftOut: number } {
+  if (!head) return { eating: 0, lambsLeftOut: 0 };
+  if (herd.rationState !== null && YOUNG_STOCK_RATIONS.includes(herd.rationState)) return { eating: head.all, lambsLeftOut: 0 };
+  return { eating: head.all - head.lambs, lambsLeftOut: head.lambs };
 }
 
 async function activeHerds() {
@@ -40,6 +64,7 @@ async function activeHerds() {
       state: herds.state,
       rationId: herds.rationId,
       rationName: rations.name,
+      rationState: rations.state,
     })
     .from(herds)
     .leftJoin(rations, eq(rations.id, herds.rationId))
@@ -73,7 +98,7 @@ export async function feedingPlan() {
   const plan = herdRows
     .filter((h) => h.rationId)
     .map((herd) => {
-      const headCount = head.get(herd.herdId) ?? 0;
+      const { eating: headCount, lambsLeftOut } = eatersOf(herd, head.get(herd.herdId));
       const own = lines
         .filter((l) => l.rationId === herd.rationId)
         .map(({ rationId: _rationId, ...line }) => ({ ...line, dailyKg: round(line.kgPerHeadDay * headCount, 3) }));
@@ -83,6 +108,8 @@ export async function feedingPlan() {
         herdName: herd.herdName,
         state: herd.state,
         head: headCount,
+        /** Suckling lambs in the herd, not fed its ration. */
+        lambs: lambsLeftOut,
         rationId: herd.rationId!,
         rationName: herd.rationName,
         lines: own,
@@ -95,8 +122,8 @@ export async function feedingPlan() {
     herds: hideMoney(plan, ['costPerDay'], 'feed.approve'),
     // Without a ration a herd is invisible to every "days left" figure, so name it.
     withoutRation: herdRows
-      .filter((h) => !h.rationId && (head.get(h.herdId) ?? 0) > 0)
-      .map((h) => ({ herdId: h.herdId, herdName: h.herdName, head: head.get(h.herdId) ?? 0 })),
+      .filter((h) => !h.rationId && (head.get(h.herdId)?.all ?? 0) > 0)
+      .map((h) => ({ herdId: h.herdId, herdName: h.herdName, head: head.get(h.herdId)?.all ?? 0 })),
   };
 }
 
@@ -108,13 +135,13 @@ export interface FeedConsumer {
 /** Everyone eating each item today, from herds' rations. */
 async function consumersByItem(): Promise<Map<string, FeedConsumer[]>> {
   const [herdRows, head] = [await activeHerds(), await headByHerd()];
-  const assigned = herdRows.filter((h) => h.rationId && (head.get(h.herdId) ?? 0) > 0);
+  const assigned = herdRows.filter((h) => h.rationId && eatersOf(h, head.get(h.herdId)).eating > 0);
   const lines = await rationLinesFor([...new Set(assigned.map((h) => h.rationId!))]);
   const result = new Map<string, FeedConsumer[]>();
   for (const herd of assigned) {
     for (const line of lines.filter((l) => l.rationId === herd.rationId)) {
       const list = result.get(line.itemId) ?? [];
-      list.push({ kgPerHeadPerDay: line.kgPerHeadDay, head: head.get(herd.herdId) ?? 0 });
+      list.push({ kgPerHeadPerDay: line.kgPerHeadDay, head: eatersOf(herd, head.get(herd.herdId)).eating });
       result.set(line.itemId, list);
     }
   }
@@ -333,7 +360,7 @@ export async function winterPlan(q: z.infer<typeof winterPlanQuery>) {
     consumers = await consumersByItem();
     const head = await headByHerd();
     const herdRows = await activeHerds();
-    totalHead = herdRows.filter((h) => h.rationId).reduce((sum, h) => sum + (head.get(h.herdId) ?? 0), 0);
+    totalHead = herdRows.filter((h) => h.rationId).reduce((sum, h) => sum + eatersOf(h, head.get(h.herdId)).eating, 0);
   }
 
   const itemIds = [...consumers.keys()];

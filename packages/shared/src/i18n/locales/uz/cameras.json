@@ -24,7 +24,10 @@
     "emptyTitle": "Kameralar yo'q",
     "emptyBody": "«Qurilmalar» bo'limida kamera qo'shing.",
     "gatewayTitle": "Jonli ko'rish hali ulanmagan",
-    "gatewayBody": "Brauzer RTSP oqimini to'g'ridan-to'g'ri ko'rsata olmaydi. Fermada strim shlyuzi (masalan, MediaMTX) ishga tushirilgach, uning manzilini har bir kamera kartochkasiga kiriting."
+    "gatewayBody": "Brauzer RTSP oqimini to'g'ridan-to'g'ri ko'rsata olmaydi. Fermada strim shlyuzi (masalan, MediaMTX) ishga tushirilgach, uning manzilini har bir kamera kartochkasiga kiriting.",
+    "plannedTitle": "Kameralar hali o'rnatilmagan",
+    "plannedBody": "Reyestrdagi {{count}} ta kameraning hammasi hali rejada. O'rnatilib, strim shlyuzi ulangach, tasvir shu yerda chiqadi.",
+    "morePlanned": "Yana {{count}} ta kamera rejada, hali o'rnatilmagan."
   },
   "plan": {
     "summary": "Reja: {{range}} ta kamera, hozir ishlayapti: {{online}} ta",
@@ -84,6 +87,7 @@
     "allSources": "Kamera va datchik",
     "from": "Boshlanish sanasi",
     "to": "Tugash sanasi",
+    "value": "Ko'rsatkich",
     "emptyTitle": "Hodisalar yo'q",
     "emptyBody": "Qurilmalar ulangach, hodisalar shu yerda ko'rinadi."
   },

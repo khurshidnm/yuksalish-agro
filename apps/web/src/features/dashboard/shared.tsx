@@ -1,4 +1,4 @@
-import type { Permission } from '@yap/shared';
+import { monthRange, type Permission } from '@yap/shared';
 import { latinToCyrillic } from '@yap/shared/i18n';
 import { ChevronRight, RotateCcw } from 'lucide-react';
 import type { ReactNode } from 'react';
@@ -20,6 +20,15 @@ export function useLinkTo() {
 }
 
 export type LinkTo = ReturnType<typeof useLinkTo>;
+
+/**
+ * The journal for one month. A "this month" figure opens on the same month, so the journal's cards
+ * show the figure that was clicked, not the totals of all time.
+ */
+export function journalOfMonth(month: string): string {
+  const { from, to } = monthRange(month);
+  return `/finance/transactions?from=${from}&to=${to}`;
+}
 
 export function localName(name: LocalizedName): string {
   if (i18n.language === 'uz-Cyrl') return latinToCyrillic(name.uz);
@@ -95,21 +104,24 @@ interface FigureRowProps {
   to?: string;
 }
 
-/** A label and its figure. Linked rows are full tap targets. */
+/**
+ * A label and its figure. Linked rows are full tap targets. In a narrow card the figure moves under
+ * the label instead of squeezing it, so a word is never cut in two (a laptop or projector at 1024 px).
+ */
 export function FigureRow({ label, value, hint, to }: FigureRowProps) {
   const body = (
     <>
-      <span className="min-w-0">
+      <span className="min-w-32 flex-1">
         <span className="block break-words">{label}</span>
         {hint && <span className="block text-sm text-muted-foreground">{hint}</span>}
       </span>
-      <span className="flex shrink-0 items-center gap-1 text-right font-medium tabular-nums">
+      <span className="ml-auto flex shrink-0 items-center gap-1 text-right font-medium tabular-nums">
         {value}
         {to && <ChevronRight className="size-4 text-muted-foreground" aria-hidden />}
       </span>
     </>
   );
-  const row = 'flex min-h-11 items-center justify-between gap-3 py-1.5';
+  const row = 'flex min-h-11 flex-wrap items-center justify-between gap-x-3 gap-y-0.5 py-1.5';
   const divider = 'border-b border-dashed border-border last:border-0';
   if (to) {
     return (

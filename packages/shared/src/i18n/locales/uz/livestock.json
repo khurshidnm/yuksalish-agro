@@ -61,9 +61,13 @@
     "allCategories": "Barcha toifalar",
     "emptyTitle": "Hayvonlar topilmadi",
     "emptyBody": "Birinchi hayvonni qo'shing yoki filtrlarni o'zgartiring.",
+    "emptyArchivedTitle": "Arxivda hayvon yo'q",
+    "emptyFilteredTitle": "Filtrlarga mos hayvon yo'q",
+    "emptyFilteredBody": "Filtrlarni o'zgartiring yoki tozalang.",
     "stats": {
       "total": "Jami bosh",
       "pregnant": "Bo'g'oz",
+      "pregnantHint": "Kasal va karantindagi bo'g'ozlar ham kiradi",
       "sick": "Kasal",
       "quarantine": "Karantinda"
     }
@@ -100,6 +104,7 @@
     "transfers": "Podadan podaga ko'chirishlar",
     "noTransfers": "Hayvon hali ko'chirilmagan.",
     "weighedOn": "{{date}} kuni",
+    "grams": "{{value}} g",
     "deleteTitle": "Hayvon o'chirilsinmi?",
     "deleteBody": "{{tag}} xato bilan qo'shilgan bo'lsagina o'chiring. Fermadan chiqqan hayvon uchun chiqim qayd eting.",
     "withdrawalTitle": "Kutish muddati",
@@ -262,6 +267,7 @@
   },
   "weighing": {
     "start": "Vazn o'lchashni boshlash",
+    "resume": "Vazn o'lchashni davom ettirish",
     "begin": "Boshlash",
     "back": "Ro'yxatga qaytish",
     "defaultName": "Nazorat tortishi",

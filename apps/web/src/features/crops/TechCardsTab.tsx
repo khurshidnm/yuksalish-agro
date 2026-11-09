@@ -131,7 +131,7 @@ export function TechCardsTab() {
       {cards?.length === 0 && <EmptyState icon={ClipboardList} title={t('techCards.emptyTitle')} description={t('techCards.emptyBody')} action={addButton} />}
       {cards?.map((card) => (
         <Card key={card.id}>
-          <CardContent className="space-y-3 pt-4">
+          <CardContent className="space-y-3 pt-4 md:pt-5">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
                 <h3 className="font-semibold">{card.name}</h3>
@@ -164,8 +164,8 @@ export function TechCardsTab() {
             <ol className="space-y-1 text-sm">
               {card.lines.map((line, index) => (
                 <li key={index} className="flex items-baseline justify-between gap-3 border-b border-border py-1.5 last:border-0">
-                  <span>
-                    <Badge variant="outline" className="mr-2 tabular-nums">
+                  <span className="flex min-w-0 items-baseline">
+                    <Badge variant="outline" className="mr-2 min-w-12 shrink-0 justify-center tabular-nums">
                       {line.offsetDays > 0 ? '+' : ''}
                       {line.offsetDays}
                     </Badge>

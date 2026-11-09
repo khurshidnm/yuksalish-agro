@@ -3,8 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { useOpenableLink } from '@/app/canOpen';
 import { Badge, Button, Card, CardContent, Meter } from '@/components/ui';
-import { formatDateTime, formatPercent } from '@/lib/format';
+import { formatDateTime, formatNumber, formatPercent } from '@/lib/format';
 import { RichText } from './RichText';
+import { insightText } from './insightText';
 import type { Insight } from './types';
 
 const SEVERITY_VARIANT = { info: 'info', attention: 'warning', urgent: 'danger' } as const;
@@ -17,18 +18,22 @@ const SIMPLE_SOURCE_KEYS = (sources: Record<string, unknown>) =>
 
 function Evidence({ insight }: { insight: Insight }) {
   const { t } = useTranslation('ai');
-  // Sources hold numbers and stable codes. Codes are translated here, numbers pass through.
-  const valueText = (value: unknown) => t(`sourceValues.${String(value)}`, { defaultValue: String(value) });
+  // Sources hold numbers and stable codes. Codes are translated here, and a fraction is written the reader's way.
+  const valueText = (value: unknown) =>
+    typeof value === 'number' && !Number.isInteger(value)
+      ? formatNumber(value, 3)
+      : t(`sourceValues.${String(value)}`, { defaultValue: String(value) });
   const tables = (insight.sources.tables as string[] | undefined) ?? [];
   const assumptions = insight.sources.assumptions as Record<string, unknown> | undefined;
   return (
     <details className="text-sm text-muted-foreground">
       <summary className="min-h-11 cursor-pointer content-center">{t('insights.evidence')}</summary>
-      <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 pb-1">
+      {/* Labels take at most half the row, so on a phone a long label cannot squeeze its value out of the card. */}
+      <dl className="grid grid-cols-[fit-content(50%)_minmax(0,1fr)] gap-x-3 gap-y-1 pb-1">
         {tables.length > 0 && (
           <>
             <dt>{t('insights.tables')}</dt>
-            <dd>{tables.map((table) => t(`tables.${table}`, { defaultValue: table })).join(', ')}</dd>
+            <dd className="break-words">{tables.map((table) => t(`tables.${table}`, { defaultValue: table })).join(', ')}</dd>
           </>
         )}
         {SIMPLE_SOURCE_KEYS(insight.sources).map(([key, value]) => (
@@ -60,14 +65,8 @@ export interface InsightCardProps {
 
 /** Stored text is in the farm's language. This re-renders it from the values for a viewer who reads another. */
 export function useInsightText() {
-  const { i18n, t } = useTranslation('ai');
-  return (insight: Insight): { title: string; body: string } => {
-    const key = `insight.${insight.data.textKey ?? insight.type}`;
-    const translated = insight.data.i18n && i18n.exists(`ai:${key}.title`);
-    return translated
-      ? { title: t(`${key}.title`, insight.data.i18n), body: t(`${key}.body`, insight.data.i18n) }
-      : { title: insight.title, body: insight.body };
-  };
+  const { i18n } = useTranslation('ai');
+  return (insight: Insight): { title: string; body: string } => insightText(insight, i18n);
 }
 
 export function InsightCard({ canDecide, insight, onDecide, onOutcome }: InsightCardProps) {

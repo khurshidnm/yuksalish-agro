@@ -61,13 +61,13 @@ export default function AnimalsPage() {
           },
         ]
       : []),
-    { key: 'tag', header: t('fields.tag'), cell: (row) => <span className="font-semibold tabular-nums">{row.tag}</span>, sortable: true, mobile: 'title' },
+    { key: 'tag', header: t('fields.tag'), cell: (row) => <span className="font-semibold whitespace-nowrap tabular-nums">{row.tag}</span>, sortable: true, mobile: 'title' },
     { key: 'status', header: t('fields.status'), cell: (row) => <StatusBadge status={row.status} />, sortable: true, mobile: 'subtitle' },
     { key: 'category', header: t('fields.category'), cell: (row) => t(`enums:animalCategory.${row.category}`), sortable: true },
     { key: 'breed', header: t('fields.breed'), cell: (row) => localName(row.breedName), mobile: 'hidden' },
     { key: 'herd', header: t('fields.herd'), cell: (row) => row.herdName ?? '—' },
     { key: 'birthDate', header: t('fields.age'), cell: (row) => ageText(row.birthDate, row.exitDate ?? today), sortable: true, mobile: 'hidden' },
-    { key: 'currentWeightKg', header: t('fields.weight'), cell: (row) => formatQty(row.currentWeightKg, 'kg', 1), sortable: true, align: 'right' },
+    { key: 'currentWeightKg', header: t('fields.weight'), cell: (row) => <span className="whitespace-nowrap">{formatQty(row.currentWeightKg, 'kg', 1)}</span>, sortable: true, align: 'right' },
     { key: 'lastWeighedOn', header: t('fields.lastWeighed'), cell: (row) => formatDate(row.lastWeighedOn), sortable: true, mobile: 'hidden' },
     ...(canSeeMoney
       ? [{ key: 'price', header: t('fields.purchasePrice'), cell: (row: Animal) => <MoneyText value={row.purchasePrice} />, align: 'right' as const, mobile: 'hidden' as const }]
@@ -99,7 +99,15 @@ export default function AnimalsPage() {
 
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label={t('animals.stats.total')} value={formatNumber(summary?.total)} icon={PawPrint} loading={isLoading} />
-        <StatCard label={t('animals.stats.pregnant')} value={formatNumber(summary?.pregnant)} icon={Baby} tone="info" loading={isLoading} />
+        {/* The tile counts open pregnancies, sick and quarantined ewes too; the status filter and the herd card count by status. */}
+        <StatCard
+          label={t('animals.stats.pregnant')}
+          value={formatNumber(summary?.pregnant)}
+          hint={summary && (summary.sick > 0 || summary.quarantine > 0) ? t('animals.stats.pregnantHint') : undefined}
+          icon={Baby}
+          tone="info"
+          loading={isLoading}
+        />
         <StatCard label={t('animals.stats.sick')} value={formatNumber(summary?.sick)} icon={Thermometer} tone={summary?.sick ? 'danger' : 'neutral'} loading={isLoading} />
         <StatCard label={t('animals.stats.quarantine')} value={formatNumber(summary?.quarantine)} icon={ShieldAlert} tone={summary?.quarantine ? 'warning' : 'neutral'} loading={isLoading} />
       </div>
@@ -170,17 +178,24 @@ export default function AnimalsPage() {
             />
           </div>
         }
-        empty={{
-          icon: PawPrint,
-          title: t('animals.emptyTitle'),
-          description: t('animals.emptyBody'),
-          action: canManage && (
-            <Button onClick={() => setAdding(true)}>
-              <Plus aria-hidden />
-              {t('animals.add')}
-            </Button>
-          ),
-        }}
+        empty={
+          // A filter that finds nothing is not an empty farm: no "add your first animal" there.
+          scope === 'archived'
+            ? { icon: PawPrint, title: t('animals.emptyArchivedTitle') }
+            : herdId || status || category
+              ? { icon: PawPrint, title: t('animals.emptyFilteredTitle'), description: t('animals.emptyFilteredBody') }
+              : {
+                  icon: PawPrint,
+                  title: t('animals.emptyTitle'),
+                  description: t('animals.emptyBody'),
+                  action: canManage && (
+                    <Button onClick={() => setAdding(true)}>
+                      <Plus aria-hidden />
+                      {t('animals.add')}
+                    </Button>
+                  ),
+                }
+        }
       />
 
       <AnimalForm open={adding} onOpenChange={setAdding} herdId={herdId || undefined} />

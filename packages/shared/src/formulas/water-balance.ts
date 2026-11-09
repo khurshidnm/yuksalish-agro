@@ -146,9 +146,10 @@ export const CROP_WATER_PRESETS: Record<CropWaterKey, CropWaterPreset> = {
     depletionFraction: 0.2,
     flooded: true,
   },
-  // Lucerne as one averaged season, from spring regrowth in March to the last cut in
-  // October-November (220 days). Table 11 gives only cutting cycles (first cycle 10/20/20/10),
-  // so the stages here stand for the whole season of cuts.
+  // Lucerne as one averaged season, from spring regrowth on 1 March through the last cut in
+  // October and the regrowth after it, until the frosts of mid-November stop it (255 days, to
+  // 11 November). Bukhara lucerne is cut 4-5 times and watered into November. Table 11 gives only
+  // cutting cycles (first cycle 10/20/20/10), so the stages here stand for the whole season of cuts.
   // Table 12, alfalfa hay, averaged cutting effects: Kc ini 0.40, Kc mid 0.95, Kc end 0.90.
   // Table 22, alfalfa for hay: Zr 1.0-2.0 m, p 0.55.
   alfalfa: {
@@ -157,8 +158,8 @@ export const CROP_WATER_PRESETS: Record<CropWaterKey, CropWaterPreset> = {
     kcEnd: 0.9,
     lIni: 10,
     lDev: 30,
-    lMid: 160,
-    lLate: 20,
+    lMid: 190,
+    lLate: 25,
     rootDepthM: 1.0,
     depletionFraction: 0.55,
     // Alfalfa wakes in early March in the Bukhara oasis.

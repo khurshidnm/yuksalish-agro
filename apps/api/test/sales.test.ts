@@ -1507,6 +1507,8 @@ describe('counterparty settlement', () => {
     const { data } = await accountant.get(`/sales/counterparties/${w.buyerId}/settlement`);
     expect(data.counterparty.name).toBe('Xaridor MChJ');
     expect(data.totals).toMatchObject({ sold: 1_000_000, received: 400_000, bought: 340_000, balance: 350_000, receivable: 350_000, payable: 0 });
+    // Paid counts the 90 000 paid on the spot too: bought 340 000 − paid 90 000 = the 250 000 still owed on credit.
+    expect(data.totals.paid).toBe(90_000);
     expect(data.sales.map((s: any) => s.number)).toEqual([sale.data.number]);
     expect(data.transactions).toHaveLength(5);
   });

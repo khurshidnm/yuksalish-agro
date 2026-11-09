@@ -193,6 +193,8 @@ export interface Insight {
     link?: string;
     /** Values for the dictionary text, so an insight reads in the viewer's language. */
     i18n?: Record<string, string | number>;
+    /** Values that differ by language, such as crop names, given in each. They replace the same key in `i18n`. */
+    localized?: Record<string, I18nName>;
     /** Dictionary entry when it differs from the type. */
     textKey?: string;
   } & Record<string, unknown>;
@@ -218,6 +220,8 @@ export interface Coverage {
 export interface AnalysisReport {
   created: number;
   refreshed: number;
+  /** Pending advice the run no longer gave, taken off the list. */
+  retired: number;
   alertsRaised: number;
   coverage: Coverage[];
   failed: string[];

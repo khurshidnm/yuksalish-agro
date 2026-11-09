@@ -3,6 +3,9 @@ import i18n from './i18n';
 
 const DASH = '—';
 
+/** No-break space: a number never wraps away from its unit or currency ("56,3 mln / so'm"). */
+const NBSP = ' ';
+
 /**
  * Do not format with an `uz` locale. Browsers report it as supported but ship almost no data for it:
  * real Chrome turns 2100000.5 into "2,100,000.5", billions into "2.1G" and November into "M11".
@@ -81,7 +84,7 @@ export function formatMoney(value: Num, opts: MoneyOptions = {}): string {
   const number = opts.compact
     ? formatCompact(n, 1)
     : new Intl.NumberFormat(intlLocale(), { maximumFractionDigits: digits, minimumFractionDigits: digits }).format(n);
-  return opts.plain ? number : `${number} ${currencyLabel(currency)}`;
+  return opts.plain ? number : `${number}${NBSP}${currencyLabel(currency)}`;
 }
 
 /** Quantity with its unit label: formatQty(1200, 'kg') → "1 200 kg". */
@@ -90,7 +93,7 @@ export function formatQty(value: Num, unit?: string | null, maxDigits = 3): stri
   if (n === null) return DASH;
   const number = new Intl.NumberFormat(intlLocale(), { maximumFractionDigits: maxDigits }).format(n);
   if (!unit) return number;
-  return `${number} ${i18n.t(`enums:unit.${unit}`, { defaultValue: unit })}`;
+  return `${number}${NBSP}${i18n.t(`enums:unit.${unit}`, { defaultValue: unit })}`;
 }
 
 /** `value` is already a percentage: 124 → "124%". */

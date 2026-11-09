@@ -1,5 +1,5 @@
 import { DEFAULT_TIMEZONE, todayIso } from '@yap/shared';
-import { daytimeWindows, localHourOf, sprayWindows } from '@yap/shared/formulas/agro-weather';
+import { type GeoSite, localHourOf, sprayIssuesInDaylight, sprayWindows } from '@yap/shared/formulas/agro-weather';
 import { Cloud, CloudDrizzle, CloudFog, CloudLightning, CloudRain, CloudSnow, CloudSun, RefreshCw, Snowflake, SprayCan, Sun, type LucideIcon } from 'lucide-react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -27,19 +27,27 @@ function iconFor(code: number | null): LucideIcon {
 
 const hhmm = (iso: string) => `${String(localHourOf(iso, DEFAULT_TIMEZONE)).padStart(2, '0')}:00`;
 
-/** The next daytime hours fit for spraying: light wind, no rain, not too hot or dry (shared rules). */
-function SprayHint() {
+/**
+ * The next daylight hours fit for spraying at the farm: from an hour after sunrise to an hour before
+ * sunset, light wind, no rain, neither too hot, too cold nor too dry (shared rules). With none, says why.
+ */
+function SprayHint({ latitudeDeg, longitudeDeg }: GeoSite) {
   const { t } = useTranslation('farm');
   const query = useDetail<WeatherHour[]>('/farm/weather/hourly', { hours: 72 });
-  const next = useMemo(() => {
+  const { next, issues } = useMemo(() => {
+    const site = { latitudeDeg, longitudeDeg };
     const hourly = (query.data ?? []).filter((h) => h.periodHours === 1);
-    const now = new Date().toISOString();
-    return daytimeWindows(sprayWindows(hourly, { minHours: 1 }), DEFAULT_TIMEZONE).find((w) => w.end > now) ?? null;
-  }, [query.data]);
+    const now = Date.now();
+    const upcoming = sprayWindows(hourly, { site }).find((w) => Date.parse(w.end) > now) ?? null;
+    const ahead = hourly.filter((h) => Date.parse(h.time) + 3_600_000 > now);
+    return { next: upcoming, issues: upcoming ? [] : sprayIssuesInDaylight(ahead, site) };
+  }, [query.data, latitudeDeg, longitudeDeg]);
   if (!query.data?.some((h) => h.periodHours === 1)) return null;
   const now = new Date().toISOString();
   const text = !next
-    ? t('weather.sprayNone')
+    ? issues.length > 0
+      ? t('weather.sprayNoneBecause', { reasons: issues.map((issue) => t(`weather.sprayIssue.${issue}`)).join(', ') })
+      : t('weather.sprayNone')
     : next.start <= now
       ? t('weather.sprayNow', { to: hhmm(next.end) })
       : t('weather.spray', { date: todayIso(DEFAULT_TIMEZONE, new Date(next.start)) === todayIso() ? t('weather.today') : formatDate(todayIso(DEFAULT_TIMEZONE, new Date(next.start))), from: hhmm(next.start), to: hhmm(next.end) });
@@ -56,8 +64,8 @@ interface RefreshResult {
   unavailable: boolean;
 }
 
-/** Seven days ahead for the farm's coordinates. */
-export function WeatherCard() {
+/** Seven days ahead for the farm's coordinates. Spraying hours need them too, to know when the sun is up. */
+export function WeatherCard({ site }: { site: GeoSite | null }) {
   const { t } = useTranslation('farm');
   const canRefresh = usePermission('farm.update');
   const query = useDetail<WeatherDay[]>('/farm/weather/forecast', { days: 7 });
@@ -113,7 +121,7 @@ export function WeatherCard() {
             })}
           </ul>
         )}
-        {query.data && query.data.length > 0 && <SprayHint />}
+        {query.data && query.data.length > 0 && site && <SprayHint {...site} />}
         <p className="mt-2 text-xs text-muted-foreground">{t('weather.credit')}</p>
       </CardContent>
     </Card>

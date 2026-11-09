@@ -7,11 +7,13 @@ import { Alert, Badge, Button, Card, CardContent, Skeleton } from '@/components/
 import { useCan, usePermission } from '@/lib/auth';
 import { formatDate, formatMoney, formatNumber } from '@/lib/format';
 import { useDetail } from '@/lib/query';
+import { cn } from '@/lib/utils';
 import { AssetCostsTab } from './AssetCostsTab';
 import { AssetFormDialog } from './AssetFormDialog';
 import { AssetMaintenanceTab } from './AssetMaintenanceTab';
 import { AssetUsageTab, ShiftDialog } from './AssetUsageTab';
 import { STATUS_VARIANT } from './AssetsPage';
+import { type AssetKind, assetKind } from './assetKinds';
 import { depreciationGaps } from './depreciationGaps';
 import type { AssetCard } from './types';
 
@@ -24,11 +26,21 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
   );
 }
 
-function Overview({ asset }: { asset: AssetCard }) {
+function Overview({ asset, kind }: { asset: AssetCard; kind: AssetKind }) {
   const { t } = useTranslation('assets');
   const seesMoney = usePermission('finance.view');
   const due = asset.maintenanceDue;
   const gaps = depreciationGaps(asset);
+  // A generator works no field and a plough has no engine: their tiles would only ever read 0.
+  // A figure that was recorded still shows, whatever the type.
+  const engine = kind.hasEngine || asset.motoHours > 0 || asset.usage.fuelL > 0;
+  const fields = kind.worksFields || asset.usage.hectares > 0;
+  const stats = [
+    engine && <StatCard key="hours" label={t('fields.motoHours')} value={formatNumber(asset.motoHours)} />,
+    (kind.logsWork || asset.usage.shifts > 0) && <StatCard key="shifts" label={t('overview.shifts')} value={formatNumber(asset.usage.shifts)} />,
+    fields && <StatCard key="ha" label={t('overview.hectares')} value={`${formatNumber(asset.usage.hectares)} ${t('unit.ha')}`} />,
+    engine && <StatCard key="fuel" icon={Fuel} label={t('overview.fuel')} value={`${formatNumber(asset.usage.fuelL)} ${t('unit.liters')}`} />,
+  ].filter(Boolean);
   return (
     <div className="space-y-4">
       {gaps.length > 0 && (
@@ -46,12 +58,7 @@ function Overview({ asset }: { asset: AssetCard }) {
         </Alert>
       )}
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label={t('fields.motoHours')} value={formatNumber(asset.motoHours)} />
-        <StatCard label={t('overview.shifts')} value={formatNumber(asset.usage.shifts)} />
-        <StatCard label={t('overview.hectares')} value={`${formatNumber(asset.usage.hectares)} ${t('unit.ha')}`} />
-        <StatCard icon={Fuel} label={t('overview.fuel')} value={`${formatNumber(asset.usage.fuelL)} ${t('unit.liters')}`} />
-      </div>
+      {stats.length > 0 && <div className={cn('grid grid-cols-2 gap-3', stats.length === 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-4')}>{stats}</div>}
 
       <Card>
         <CardContent className="pt-4">
@@ -82,8 +89,12 @@ function Overview({ asset }: { asset: AssetCard }) {
             </>
           )}
           {!asset.rented && <Fact label={t('fields.depreciationMethod')}>{t(`enums:depreciationMethod.${asset.depreciationMethod}`)}</Fact>}
-          <Fact label={t('fields.fuelNormHour')}>{asset.fuelNormLPerHour === null ? '—' : `${formatNumber(asset.fuelNormLPerHour)} ${t('unit.lPerHour')}`}</Fact>
-          <Fact label={t('fields.fuelNormHa')}>{asset.fuelNormLPerHa === null ? '—' : `${formatNumber(asset.fuelNormLPerHa)} ${t('unit.lPerHa')}`}</Fact>
+          {(kind.hasEngine || asset.fuelNormLPerHour !== null) && (
+            <Fact label={t('fields.fuelNormHour')}>{asset.fuelNormLPerHour === null ? '—' : `${formatNumber(asset.fuelNormLPerHour)} ${t('unit.lPerHour')}`}</Fact>
+          )}
+          {((kind.worksFields && kind.hasEngine) || asset.fuelNormLPerHa !== null) && (
+            <Fact label={t('fields.fuelNormHa')}>{asset.fuelNormLPerHa === null ? '—' : `${formatNumber(asset.fuelNormLPerHa)} ${t('unit.lPerHa')}`}</Fact>
+          )}
           {asset.rented && seesMoney && asset.rentalUnit && (
             <Fact label={t('fields.rentalPrice')}>
               <MoneyText value={asset.rentalPrice} /> / {t(`rentalUnit.${asset.rentalUnit}`)}
@@ -108,7 +119,6 @@ export default function AssetCardPage() {
   const can = useCan();
   const canEdit = usePermission('assets.update');
   const seesMoney = usePermission('finance.view');
-  const canLog = can('assets.create') || can('crops.create');
   const [editing, setEditing] = useState(false);
   const [logging, setLogging] = useState(false);
 
@@ -116,6 +126,11 @@ export default function AssetCardPage() {
 
   if (error) return <ErrorCard error={error} onRetry={() => void refetch()} />;
   if (isLoading || !asset) return <Skeleton className="h-64 w-full" />;
+
+  const kind = assetKind(asset.type);
+  // A scale or a camera has no hours, fuel or field work, so it has no work log either.
+  const hasLog = kind.logsWork || asset.usage.shifts > 0;
+  const canLog = (can('assets.create') || can('crops.create')) && hasLog;
 
   return (
     <>
@@ -133,7 +148,7 @@ export default function AssetCardPage() {
             {canLog && (
               <Button size="lg" onClick={() => setLogging(true)}>
                 <Plus aria-hidden />
-                {t('usage.add')}
+                {kind.stationary ? t('usage.addHours') : t('usage.add')}
               </Button>
             )}
             {canEdit && (
@@ -148,15 +163,15 @@ export default function AssetCardPage() {
 
       <UrlTabs
         tabs={[
-          { value: 'overview', label: t('tabs.overview'), content: <Overview asset={asset} /> },
-          { value: 'usage', label: t('tabs.usage'), content: <AssetUsageTab assetId={id} /> },
+          { value: 'overview', label: t('tabs.overview'), content: <Overview asset={asset} kind={kind} /> },
+          { value: 'usage', label: t('tabs.usage'), hidden: !hasLog, content: <AssetUsageTab asset={asset} kind={kind} /> },
           { value: 'service', label: t('tabs.maintenance'), content: <AssetMaintenanceTab assetId={id} /> },
-          { value: 'costs', label: t('tabs.costs'), hidden: !seesMoney, content: <AssetCostsTab asset={asset} /> },
+          { value: 'costs', label: t('tabs.costs'), hidden: !seesMoney, content: <AssetCostsTab asset={asset} kind={kind} /> },
         ]}
       />
 
       <AssetFormDialog open={editing} onOpenChange={setEditing} asset={asset} />
-      <ShiftDialog assetId={id} open={logging} onOpenChange={setLogging} />
+      {canLog && <ShiftDialog assetId={id} kind={kind} open={logging} onOpenChange={setLogging} />}
     </>
   );
 }

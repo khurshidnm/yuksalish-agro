@@ -84,6 +84,7 @@
       "pickAccount": "Выберите кассу или банковский счёт",
       "itemLine": "Товар",
       "animalLine": "Животное",
+      "lineNumber": "Строка {{n}}",
       "removeLine": "Удалить строку",
       "animalSearch": "Поиск по номеру бирки",
       "byWeight": "По живому весу (кг)",
@@ -94,6 +95,7 @@
   },
   "prices": {
     "add": "Добавить цену",
+    "perUnit": "/{{unit}}",
     "edit": "Редактирование цены",
     "deleteTitle": "Удалить эту цену?",
     "currentTitle": "Текущие цены",

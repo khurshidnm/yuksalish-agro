@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, gt, inArray, sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 import { PHYSIOLOGICAL_STATES, rationCostPerHeadDay, round } from '@yap/shared';
-import { kgPerUnit } from '@yap/shared/formulas/feed';
+import { dryMatterKg, kgPerUnit, rationDryMatterKg } from '@yap/shared/formulas/feed';
 import { schema } from '../../db/client';
 import { ctx, tx } from '../../core/context';
 import { badRequest, conflict, notFound } from '../../core/errors';
@@ -77,6 +77,7 @@ async function withLines(rows: (typeof t.$inferSelect)[]) {
       itemName: items.name,
       unit: items.unit,
       kgPerHeadDay: lines.kgPerHeadDay,
+      dryMatterPct: items.dryMatterPct,
     })
     .from(lines)
     .innerJoin(items, eq(items.id, lines.itemId))
@@ -91,6 +92,10 @@ async function withLines(rows: (typeof t.$inferSelect)[]) {
       .filter((l) => l.rationId === ration.id)
       .map(({ rationId: _rationId, ...line }) => ({
         ...line,
+        dryMatterKg: (() => {
+          const dm = dryMatterKg(line.kgPerHeadDay, line.dryMatterPct);
+          return dm === null ? null : round(dm, 4);
+        })(),
         unitCostPerKg: costs.get(line.itemId) ?? null,
         costPerHeadDay: costs.has(line.itemId) ? line.kgPerHeadDay * costs.get(line.itemId)! : null,
       }));
@@ -106,6 +111,11 @@ async function withLines(rows: (typeof t.$inferSelect)[]) {
       ...ration,
       lines: hideMoney(own, ['unitCostPerKg', 'costPerHeadDay'], 'feed.approve'),
       totalKgPerHeadDay: round(own.reduce((sum, l) => sum + l.kgPerHeadDay, 0), 4),
+      // As-fed kilos of silage and hay do not add up; an expert checks a ration on dry matter.
+      totalDryMatterKg: (() => {
+        const dm = rationDryMatterKg(own);
+        return dm === null ? null : round(dm, 4);
+      })(),
       costPerHeadDay,
       costPerSeason: costPerHeadDay === null ? null : round(costPerHeadDay * winterDays, 2),
       seasonDays: winterDays,

@@ -204,7 +204,7 @@
     },
     "spray_window": {
       "title": "{{field}}-dalaga ishlov: {{date}} noqulay kun",
-      "body": "Shamol, yomg'ir yoki issiq ishlovni buzadi. Eng qulay vaqt: {{bestDate}}, {{bestFrom}}–{{bestTo}}."
+      "body": "Shamol, yomg'ir, issiq yoki sovuq ishlovni buzadi. Eng qulay vaqt: {{bestDate}}, {{bestFrom}}–{{bestTo}}."
     },
     "spray_window_none": {
       "title": "{{field}}-dalaga ishlov: {{date}} noqulay kun",
@@ -231,7 +231,7 @@
     "feed": "Eng kam ozuqa: {{name}}, {{days}} kunga yetadi",
     "cash": "Kassa va bank: {{amount}} so'm",
     "alerts": "Ochiq ogohlantirishlar: {{count}}, shundan shoshilinch: {{urgent}}",
-    "tasks": "Ochiq vazifalar: {{count}}"
+    "tasks": "Faol vazifalar (ochiq va bajarilmoqda): {{count}}"
   },
   "bot": {
     "linked": "Hisobingiz Telegramga ulandi. {{status}} bugungi holatni, {{alerts}} ochiq ogohlantirishlarni, {{help}} barcha imkoniyatlarni ko'rsatadi.",
@@ -375,7 +375,9 @@
     "emptyTitle": "Xabarlar yo'q",
     "emptyBody": "Yangi xabarlar shu yerda ko'rinadi.",
     "unread": "O'qilmagan",
-    "reason": "Sabab"
+    "reason": "Sabab",
+    "answered": "Javob berilgan",
+    "answeredAt": "{{state}} · {{at}}"
   },
   "settings": {
     "tab": "Sozlamalar",

@@ -85,7 +85,7 @@ export function DocumentsPanel({ entity, defaultType = 'other', header, urlPrefi
       key: 'expiryDate',
       header: t('documents.expiryDate'),
       cell: (row) => (
-        <span className="flex flex-wrap items-center gap-1.5">
+        <span className="flex flex-wrap items-center justify-end gap-1.5 md:justify-start">
           {formatDate(row.expiryDate)}
           {row.expiryState && row.expiryState !== 'valid' && <Badge variant={EXPIRY_BADGE[row.expiryState]}>{t(`documents.state.${row.expiryState}`)}</Badge>}
         </span>
@@ -152,7 +152,8 @@ export function DocumentsPanel({ entity, defaultType = 'other', header, urlPrefi
             />
           </>
         }
-        empty={{ icon: FileText, title: t('documents.emptyTitle'), description: t('documents.emptyBody'), action: addButton }}
+        // The add button already sits above the table, so the empty state does not repeat it.
+        empty={{ icon: FileText, title: t('documents.emptyTitle'), description: t('documents.emptyBody') }}
         rowActions={(row) => [
           { label: t('common:actions.edit'), icon: Pencil, hidden: !canUpdate, onClick: () => setEditing(row) },
           {

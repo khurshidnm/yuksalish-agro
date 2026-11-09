@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { diffDays } from '../dates';
 import {
   CROP_WATER_PRESETS,
   SOIL_TEXTURES,
@@ -64,7 +65,10 @@ describe('crop coefficient curve', () => {
 
   it('CROP_WATER_PRESETS: season lengths calibrated to the Uzbek calendar', () => {
     const lengths = Object.fromEntries(Object.entries(CROP_WATER_PRESETS).map(([k, c]) => [k, seasonLength(c)]));
-    expect(lengths).toEqual({ wheat: 240, barley: 220, rice: 150, alfalfa: 220, corn: 150, cotton: 195 });
+    expect(lengths).toEqual({ wheat: 240, barley: 220, rice: 150, alfalfa: 255, corn: 150, cotton: 195 });
+    // Lucerne from regrowth on 1 March is still growing on 9 November and done by mid-November.
+    expect(growthStage(CROP_WATER_PRESETS.alfalfa, diffDays('2026-03-01', '2026-11-09'))).toBe('late');
+    expect(cropCoefficient(CROP_WATER_PRESETS.alfalfa, diffDays('2026-03-01', '2026-11-20'))).toBeNull();
     expect(CROP_WATER_PRESETS.wheat).toMatchObject(wheat);
     expect(CROP_WATER_PRESETS.cotton).toMatchObject({ kcIni: 0.35, kcMid: 1.15, kcEnd: 0.6, depletionFraction: 0.65 });
     expect(CROP_WATER_PRESETS.rice.flooded).toBe(true);

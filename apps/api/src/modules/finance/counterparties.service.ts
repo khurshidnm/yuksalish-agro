@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { COUNTERPARTY_TYPES } from '@yap/shared';
 import { schema } from '../../db/client';
 import { ctx, tx } from '../../core/context';
-import { notFound } from '../../core/errors';
+import { PAYROLL_COUNTERPARTY } from '../../core/defaults';
+import { conflict, notFound } from '../../core/errors';
 import { recordEvent } from '../../core/journal';
 import { clientId, listQuery, paged, searchAny, sortBy } from '../../core/query';
 
@@ -71,9 +72,22 @@ export async function create(input: CounterpartyInput) {
   return row;
 }
 
+/**
+ * The payroll counterparty is the system's own record: payroll and the debts page find wages by
+ * its name, so renamed or archived it would turn wages into an ordinary debt and the next payroll
+ * run would make a second one.
+ */
+function assertNotSystem(row: { name: string }, change: { name?: string; active?: boolean }) {
+  if (row.name !== PAYROLL_COUNTERPARTY) return;
+  if ((change.name !== undefined && change.name !== row.name) || change.active === false) {
+    throw conflict('SYSTEM_COUNTERPARTY', 'The payroll counterparty is kept by the system and cannot be renamed or archived');
+  }
+}
+
 export async function update(id: string, input: Partial<CounterpartyInput>) {
   const { id: _ignored, ...values } = input;
   if (Object.keys(values).length === 0) return get(id);
+  assertNotSystem(await get(id), values);
   const [row] = await tx()
     .update(t)
     .set(values)
@@ -85,7 +99,7 @@ export async function update(id: string, input: Partial<CounterpartyInput>) {
 
 /** Soft delete: documents keep pointing at the counterparty. */
 export async function remove(id: string) {
-  await get(id);
+  assertNotSystem(await get(id), { active: false });
   await tx()
     .update(t)
     .set({ active: false })

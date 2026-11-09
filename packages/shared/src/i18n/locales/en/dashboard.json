@@ -75,7 +75,8 @@
     "cashWithPeople": "Cash with people",
     "cashWithPeopleHint": "People: {{n}}",
     "invested": "Invested by the owner",
-    "investedHint": "Own money, less what was taken back"
+    "investedHint": "Own money, less what was taken back",
+    "flows": "Money in and out"
   },
   "livestock": {
     "total": "Total herd",
@@ -88,12 +89,14 @@
     "lambingByWeek": "Expected lambing by week",
     "lambingTotal": "{{ewes}} ewes in total, expected lambs: {{lambs}}",
     "lambsUnknown": "known after the first lambing",
+    "lambsAssumed": "about {{value}} (assuming {{perEwe}} lambs per ewe)",
     "ewes": "Ewes",
     "noLambing": "No lambing expected in the coming months",
     "lambingOverdue": "Ewes past their lambing date: {{value}}",
     "composition": "Herd composition",
     "weightTrend": "Average weight trend",
-    "avgWeight": "Average weight"
+    "avgWeight": "Average weight",
+    "weightChange": "{{from}} → {{to}} ({{change}})"
   },
   "crops": {
     "sown": "Fields sown",
@@ -123,14 +126,16 @@
   },
   "feed": {
     "lowestDays": "Lowest stock",
+    "lowestHint": "{{name}} · at the current rate",
     "belowMinimum": "Below minimum",
     "belowMinimumBadge": "Under {{days}} days",
     "nothingLow": "All items are at normal levels",
     "dailyUse": "Daily use",
     "daysTitle": "How long stock will last",
-    "daysNote": "A full bar means {{days}} days",
+    "daysNote": "At the current rate of use. A full bar means {{days}} days",
     "daysOf": "{{item}} stock",
     "stock": "Stock: {{value}}",
+    "notInUse": "Not in use now",
     "basis": {
       "actual": "by actual use",
       "plan": "by ration"
@@ -250,9 +255,9 @@
     "feed": {
       "title": "Feed until the next harvest",
       "line": "{{stock}} t in stock, {{need}} t needed",
-      "harvest": "harvest {{month}}",
+      "harvest": "harvest: {{month}}",
       "enough": "Enough",
-      "until": "Until {{month}}"
+      "runsOut": "Runs out: {{month}}"
     },
     "crops": {
       "title": "Harvest forecast",

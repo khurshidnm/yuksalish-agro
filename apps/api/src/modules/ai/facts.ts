@@ -3,13 +3,14 @@
  * `tx()` is the read-only yap_ai transaction. Money appears only where the name says so, and
  * those functions are reachable only through tools marked `money`.
  */
-import { and, asc, count, desc, eq, gte, inArray, lt, lte, or, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, inArray, lt, lte, ne, or, sql } from 'drizzle-orm';
 import { addDays, round } from '@yap/shared';
 import { canSeeMoney, ctx, today, tx } from '../../core/context';
 import { COST_CREDIT_MOVEMENT_TYPES, COST_MOVEMENT_TYPES } from '../../core/inventory';
 import { searchAny, sumOf } from '../../core/query';
 import { schema } from '../../db/client';
 import { mortality } from '../livestock/summary';
+import { SUPERSEDED } from './insights.service';
 
 const {
   aiInsights,
@@ -289,7 +290,14 @@ export async function recentInsights(limit = 20) {
       createdAt: aiInsights.createdAt,
     })
     .from(aiInsights)
-    .where(and(eq(aiInsights.farmId, farmId()), canSeeMoney() ? undefined : eq(aiInsights.containsMoney, false)))
+    .where(
+      and(
+        eq(aiInsights.farmId, farmId()),
+        // A retired finding was replaced by a later analysis: the assistant must not repeat it.
+        ne(aiInsights.decision, SUPERSEDED),
+        canSeeMoney() ? undefined : eq(aiInsights.containsMoney, false),
+      ),
+    )
     .orderBy(desc(aiInsights.createdAt))
     .limit(limit);
 }

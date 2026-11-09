@@ -48,10 +48,13 @@ export function FieldSkeleton() {
   );
 }
 
-/** Sits above the bottom navigation, so saving never needs a scroll to the end. */
+/**
+ * Sits above the bottom navigation, so saving never needs a scroll to the end. Opaque, because the
+ * disabled button is see-through and the form scrolls under it.
+ */
 export function SaveBar({ label, onClick, disabled, busy }: { label: string; onClick: () => void; disabled?: boolean; busy?: boolean }) {
   return (
-    <div className="sticky bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-10 -mx-1 rounded-2xl bg-background/95 p-1 lg:bottom-4">
+    <div className="sticky bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-10 -mx-1 rounded-2xl bg-background p-1 lg:bottom-4">
       <Button size="lg" className="min-h-16 w-full rounded-xl text-lg" onClick={onClick} disabled={disabled} loading={busy}>
         <Check aria-hidden className="size-6!" />
         {label}

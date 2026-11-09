@@ -102,7 +102,7 @@
   "language": { "label": "Язык" },
   "toast": { "saved": "Сохранено", "created": "Создано", "updated": "Обновлено", "deleted": "Удалено" },
   "chart": { "showTable": "Показать таблицу", "showChart": "Показать график", "noData": "Нет данных для графика", "period": "Период" },
-  "number": {"thousand": "{{value}} тыс.", "million": "{{value}} млн", "billion": "{{value}} млрд", "trillion": "{{value}} трлн", "readAs": "Прочитано как {{value}}", "readAsNot": "Прочитано как {{value}}, а не {{other}}"},
+  "number": {"thousand": "{{value}} тыс.", "million": "{{value}} млн", "billion": "{{value}} млрд", "trillion": "{{value}} трлн", "readAs": "Прочитано как {{value}}", "readAsNot": "Прочитано как {{value}}, а не {{other}}"},
   "date": {
     "months": ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"],
     "monthsOf": ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"],

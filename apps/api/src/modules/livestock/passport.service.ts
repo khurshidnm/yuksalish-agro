@@ -8,7 +8,7 @@ import { hideMoney, hidePii } from '../../core/privacy';
 import { ewePerformance } from './breeding.summary';
 import { getAnimalOrThrow, isOnFarm } from './refs';
 
-const { animals, breedingRecords: b, employees, healthRecords: h, herdTransfers, herds, items, lambingRecords: l } = schema;
+const { animals, breedingRecords: b, employees, healthRecords: h, herdTransfers, herds, items, lambingRecords: l, vaccinationPlans: plans } = schema;
 const ram = alias(animals, 'ram');
 
 type Lamb = (typeof l.$inferSelect)['lambs'][number];
@@ -113,6 +113,8 @@ function healthRows(animalId: string, herdIds: string[]) {
       animalId: h.animalId,
       herdId: h.herdId,
       itemId: h.itemId,
+      planId: h.vaccinationPlanId,
+      planName: plans.name,
       type: h.type,
       date: h.date,
       herdName: herds.name,
@@ -135,6 +137,7 @@ function healthRows(animalId: string, herdIds: string[]) {
     .leftJoin(herds, eq(herds.id, h.herdId))
     .leftJoin(items, eq(items.id, h.itemId))
     .leftJoin(employees, eq(employees.id, h.vetEmployeeId))
+    .leftJoin(plans, eq(plans.id, h.vaccinationPlanId))
     .where(
       and(
         eq(h.farmId, ctx().farmId),
@@ -149,18 +152,19 @@ type HealthRow = Awaited<ReturnType<typeof healthRows>>[number];
 /**
  * Only the newest record of each item and type speaks: a later dose answers an earlier reminder,
  * even if it set no date of its own. A date that has passed stays: that dose is still owed.
- * A quarantine keeps its planned end after it has ended.
+ * A quarantine keeps its planned end after it has ended. Plans without a product (a blood test)
+ * are told apart by the plan, and each reminder names its plan.
  */
 function nextDue(newestFirst: HealthRow[]) {
   const latest = new Map<string, HealthRow>();
   for (const row of newestFirst) {
-    const key = `${row.type}|${row.itemId}`;
+    const key = !row.itemId && row.planId ? `plan|${row.planId}` : `${row.type}|${row.itemId}`;
     if (!latest.has(key)) latest.set(key, row);
   }
   return [...latest.values()]
     .flatMap((row) =>
       row.nextDueDate && !row.endedOn
-        ? [{ date: row.nextDueDate, type: row.type, itemName: row.itemName }]
+        ? [{ date: row.nextDueDate, type: row.type, itemName: row.itemName, ...(row.planName ? { planName: row.planName } : {}) }]
         : [],
     )
     .sort((x, y) => x.date.localeCompare(y.date));
@@ -180,8 +184,10 @@ export async function animalHealth(id: string) {
   const rows = await healthRows(id, everIn);
   const reached = rows.filter((row) => row.animalId !== null || wasInHerdOn(history, row.herdId!, row.date));
 
-  const records = reached.map(({ animalId, herdId, itemId, totalCost, ...row }) => ({
+  const records = reached.map(({ animalId, herdId, itemId, planId, planName, totalCost, ...row }) => ({
     ...row,
+    // Only a scheduled dose has a plan; the key is left out otherwise.
+    ...(planName ? { planName } : {}),
     scope: animalId === null ? ('herd' as const) : ('animal' as const),
     // A herd row carries the cost of the whole herd, which says nothing about this animal.
     totalCost: animalId === null ? null : totalCost,

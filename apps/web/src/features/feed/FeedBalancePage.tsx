@@ -1,3 +1,4 @@
+import { todayIso } from '@yap/shared';
 import { CalendarClock, ClipboardCheck, Scale, TriangleAlert, Wheat } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
@@ -14,28 +15,41 @@ function tone(row: FeedBalanceRow): 'danger' | 'warning' | 'success' {
   return row.days !== null && row.days < row.minDays * 2 ? 'warning' : 'success';
 }
 
-function FeedRow({ row, horizonDays }: { row: FeedBalanceRow; horizonDays: number }) {
+/** Daily use to one decimal: three would be false precision beside a plan of whole kilos. */
+const formatDaily = (qty: number, unit: string) => formatQty(qty, unit, unit === 't' ? 3 : 1);
+
+/**
+ * One feed. `unused` is a feed no herd's ration contains and nobody drew this week: it is not short of
+ * data, it is simply not being fed, and says so.
+ */
+function FeedRow({ row, horizonDays, unused }: { row: FeedBalanceRow; horizonDays: number; unused: boolean }) {
   const { t } = useTranslation('feed');
   const percent = row.days === null ? null : (row.days / horizonDays) * 100;
   return (
     <li className="flex flex-col gap-2 py-3">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3">
         <p className="min-w-0 font-medium break-words">{row.name}</p>
-        <p className="text-lg font-semibold tabular-nums">
-          {row.days === null ? t('balance.noData') : t('balance.days', { days: formatNumber(Math.floor(row.days), 0) })}
+        <p className={unused ? 'text-sm text-muted-foreground' : 'text-lg font-semibold tabular-nums'}>
+          {row.days !== null
+            ? t('balance.days', { days: formatNumber(Math.floor(row.days), 0) })
+            : unused
+              ? t('balance.notPlanned')
+              : t('balance.noData')}
         </p>
       </div>
-      <Meter value={percent} tone={tone(row)} label={t('balance.daysLabel', { name: row.name })} />
+      {!unused && <Meter value={percent} tone={tone(row)} label={t('balance.daysLabel', { name: row.name })} />}
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm text-muted-foreground">
         <span>{t('balance.stock', { qty: formatQty(row.stockQty, row.unit) })}</span>
         {row.basis && <span>{t(row.basis === 'actual' ? 'balance.byActual' : 'balance.byPlan')}</span>}
       </div>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-        <span>{t('balance.planned', { qty: formatQty(row.plannedDaily, row.unit) })}</span>
-        <span>{t('balance.actual', { qty: formatQty(row.actualDaily, row.unit) })}</span>
-        {row.actualDaysCovered !== null && <span className="text-muted-foreground">{t('balance.covered', { days: row.actualDaysCovered })}</span>}
-        {row.belowMinimum && <Badge variant="danger">{t('balance.belowMinimum', { days: formatNumber(row.minDays, 0) })}</Badge>}
-      </div>
+      {(row.plannedDaily !== null || row.actualDaily !== null || row.belowMinimum) && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+          {row.plannedDaily !== null && <span>{t('balance.planned', { qty: formatDaily(row.plannedDaily, row.unit) })}</span>}
+          {row.actualDaily !== null && <span>{t('balance.actual', { qty: formatDaily(row.actualDaily, row.unit) })}</span>}
+          {row.actualDaysCovered !== null && <span className="text-muted-foreground">{t('balance.covered', { days: row.actualDaysCovered })}</span>}
+          {row.belowMinimum && <Badge variant="danger">{t('balance.belowMinimum', { days: formatNumber(row.minDays, 0) })}</Badge>}
+        </div>
+      )}
     </li>
   );
 }
@@ -51,7 +65,10 @@ function PlanSection({ plan, canSeeMoney }: { plan: FeedPlan; canSeeMoney: boole
           <Card key={herd.herdId}>
             <CardHeader>
               <CardTitle className="break-words">{herd.herdName}</CardTitle>
-              <CardDescription>{t('plan.summary', { head: formatNumber(herd.head, 0), ration: herd.rationName ?? '—' })}</CardDescription>
+              <CardDescription>
+                {t('plan.summary', { head: formatNumber(herd.head, 0), ration: herd.rationName ?? '—' })}
+                {herd.lambs ? <span className="block">{t('plan.lambsLeftOut', { count: herd.lambs, lambs: formatNumber(herd.lambs, 0) })}</span> : null}
+              </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
               <ul className="flex flex-col gap-1.5">
@@ -96,6 +113,11 @@ export default function FeedBalancePage() {
   const shortest = known.reduce<FeedBalanceRow | null>((min, row) => (min === null || row.days! < min.days! ? row : min), null);
   const below = rows.filter((row) => row.belowMinimum);
   const plannedKg = plan.data?.herds.reduce((sum, herd) => sum + herd.dailyKg, 0) ?? null;
+  // Feeds in the ration of a herd with animals: the same herds the balance counts as eaters.
+  const rationed = new Set(plan.data?.herds.filter((herd) => herd.head > 0).flatMap((herd) => herd.lines.map((line) => line.itemId)) ?? []);
+  const isUnused = (row: FeedBalanceRow) => plan.data !== undefined && !rationed.has(row.itemId) && row.actualDaily === null;
+  // Today is open until the evening's feeding is entered, so an empty today is not a day without feed.
+  const consumptionRows = (consumption.data ?? []).filter((point, index, all) => !(index === all.length - 1 && point.date === todayIso() && point.qty === 0));
 
   return (
     <>
@@ -105,7 +127,7 @@ export default function FeedBalancePage() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <StatCard
             label={t('balance.shortest')}
-            value={shortest ? t('balance.days', { days: formatNumber(shortest.days, 0) }) : '—'}
+            value={shortest ? t('balance.days', { days: formatNumber(Math.floor(shortest.days!), 0) }) : '—'}
             hint={shortest?.name}
             icon={CalendarClock}
             tone={shortest && shortest.belowMinimum ? 'danger' : 'neutral'}
@@ -150,7 +172,7 @@ export default function FeedBalancePage() {
                 {[...rows]
                   .sort((a, b) => (a.days ?? Number.POSITIVE_INFINITY) - (b.days ?? Number.POSITIVE_INFINITY))
                   .map((row) => (
-                    <FeedRow key={row.itemId} row={row} horizonDays={horizonDays} />
+                    <FeedRow key={row.itemId} row={row} horizonDays={horizonDays} unused={isUnused(row)} />
                   ))}
               </ul>
             </CardContent>
@@ -163,7 +185,7 @@ export default function FeedBalancePage() {
           title={t('consumption.title')}
           description={t('consumption.description')}
           kind="bar"
-          data={consumption.data ?? []}
+          data={consumptionRows}
           xKey="date"
           series={[{ key: 'qty', label: t('consumption.series') }]}
           formatValue={(value) => formatQty(value, 'kg')}

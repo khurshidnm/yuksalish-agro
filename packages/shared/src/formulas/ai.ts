@@ -7,6 +7,7 @@
  */
 import { addDays } from '../dates';
 import { round } from './index';
+import { APOSTROPHES, fold, wordSet } from './units';
 
 export function mean(values: readonly number[]): number | null {
   if (values.length === 0) return null;
@@ -196,8 +197,17 @@ export interface LambingWorkloadRow extends LambingWeek {
   workersNeeded: number;
 }
 
-/** Spring feed and labour load per week (spec 15.3 scenario 1). `weeks` is oldest first. */
-export function lambingWorkload(weeks: readonly LambingWeek[], o: LambingWorkloadOptions): LambingWorkloadRow[] {
+/**
+ * Spring feed and labour load per week (spec 15.3 scenario 1). `weeks` is oldest first, one per week. The
+ * table runs on past the last lambing until the last ewe's lactation ends, with no new lambings, so the
+ * extra feed covers every ewe's whole lactation: ewes × lactation weeks × 7 days × extra kg in all.
+ */
+export function lambingWorkload(lambingWeeks: readonly LambingWeek[], o: LambingWorkloadOptions): LambingWorkloadRow[] {
+  const last = lambingWeeks.at(-1);
+  const tail = last
+    ? Array.from({ length: Math.max(0, o.lactationWeeks - 1) }, (_, i) => ({ weekStart: addDays(last.weekStart, 7 * (i + 1)), ewes: 0 }))
+    : [];
+  const weeks = [...lambingWeeks, ...tail];
   return weeks.map((week, i) => {
     const lactatingEwes = weeks
       .slice(Math.max(0, i + 1 - o.lactationWeeks), i + 1)
@@ -281,12 +291,76 @@ export function costPerKgDryMatter(unitCostPerKg: number, dryMatterPct: number):
   return unitCostPerKg / (dryMatterPct / 100);
 }
 
+/**
+ * The groups a zootechnician compares feeds within: roughage (dag'al), succulent (shirali), energy and
+ * protein concentrates, and mineral supplements. Moving dry matter from one group to another changes what
+ * the animal eats, not only what the ration costs, so a cost swap stays inside one group.
+ */
+export const FEED_CLASSES = ['roughage', 'succulent', 'concentrate', 'protein', 'mineral'] as const;
+export type FeedClass = (typeof FEED_CLASSES)[number];
+
+/** Wetter than this, a feed is succulent whatever it is called: silage, haylage, roots, green fodder. */
+const SUCCULENT_MAX_DRY_MATTER_PCT = 45;
+
+/** Words of feed names in Uzbek, Russian and English, folded so Latin and Cyrillic spellings meet. */
+const FEED_WORDS: Record<FeedClass, Set<string>> = {
+  mineral: wordSet(
+    "tuz*, yalama*, premiks*, mineral*, vitamin*, bo'r, ohak*, fosfat*, suyak*, " +
+      'соль, соли, лизунец, лизунца, премикс, премикса, премиксы, минералы, минеральная, минеральный, минеральные, ' +
+      'минеральной, витамины, витаминный, витаминная, витаминов, мел, мела, фосфаты, монокальцийфосфат, ' +
+      'дикальцийфосфат, трикальцийфосфат, костная, ' +
+      'salt, salts, lick, licks, premix, premixes, minerals, vitamins, chalk, limestone, phosphate, phosphates, bone',
+  ),
+  succulent: wordSet(
+    "silos*, senaj*, lavlagi*, sabzi*, ildizmeva*, kartoshka*, qovoq*, oshqovoq*, " +
+      'силос, силоса, силосная, сенаж, сенажа, свекла, свёкла, свеклы, свёклы, морковь, моркови, корнеплод, ' +
+      'корнеплоды, картофель, тыква, тыквы, ' +
+      'silage, haylage, beet, beets, beetroot, carrot, carrots, root, roots, potato, potatoes, pumpkin, pumpkins',
+  ),
+  roughage: wordSet(
+    "pichan*, somon*, xashak*, poxol*, to'pon*, poya*, beda*, qamish*, " +
+      'сено, сена, сенная, солома, соломы, соломенная, мякина, мякины, стебли, люцерна, люцерны, люцерновое, ' +
+      'люцерновая, ' +
+      'hay, straw, chaff, stover, stalks, alfalfa, lucerne',
+  ),
+  protein: wordSet(
+    "kunjara*, shrot*, soya*, no'xat*, mosh*, " +
+      'жмых, жмыха, жмыхи, шрот, шрота, соя, сои, соевый, соевая, соевого, горох, гороха, ' +
+      'cake, oilcake, meal, soybean, soybeans, peas, pea',
+  ),
+  concentrate: wordSet(
+    "arpa*, bug'doy*, makkajo'xori*, jo'xori*, suli*, tariq*, sholi*, kepak*, yem*, omuxta*, don*, yorma*, " +
+      'ячмень, ячменя, ячменная, пшеница, пшеницы, пшеничная, кукуруза, кукурузы, кукурузная, овёс, овес, овса, ' +
+      'просо, проса, отруби, отрубей, комбикорм, комбикорма, зерно, зерна, дерть, дерти, ' +
+      'barley, wheat, corn, maize, oats, oat, millet, sorghum, bran, grain, grains, concentrate, concentrates, pellets',
+  ),
+};
+
+const NAME_WORD = new RegExp(`[\\p{L}\\p{M}${APOSTROPHES}]+`, 'gu');
+
+/**
+ * The group of a feed from its name and dry matter, or null when neither tells. Supplements are recognised
+ * first, then wet feeds, then roughage, then protein, then grain: "Bug'doy somoni" is straw rather than wheat,
+ * "Makkajo'xori silosi" is silage, and "Mineral qo'shimcha" is a supplement.
+ */
+export function feedClassOf(name: string, dryMatterPct: number | null = null): FeedClass | null {
+  const keys = (name.match(NAME_WORD) ?? []).map(fold);
+  const named = (feedClass: FeedClass) => keys.some((key) => FEED_WORDS[feedClass].has(key));
+  if (named('mineral')) return 'mineral';
+  if (named('succulent') || (dryMatterPct !== null && dryMatterPct > 0 && dryMatterPct < SUCCULENT_MAX_DRY_MATTER_PCT)) {
+    return 'succulent';
+  }
+  return (['roughage', 'protein', 'concentrate'] as const).find(named) ?? null;
+}
+
 export interface RationCostLine {
   itemId: string;
   name: string;
   kgPerHeadDay: number;
   unitCostPerKg: number | null;
   dryMatterPct: number | null;
+  /** Read from the name and dry matter when not given. Null: unknown, and the line is not compared. */
+  feedClass?: FeedClass | null;
 }
 
 export interface RationSaving {
@@ -294,41 +368,74 @@ export interface RationSaving {
   fromName: string;
   toItemId: string;
   toName: string;
+  /** Both feeds belong to it. */
+  feedClass: FeedClass;
   shiftKgDmPerHeadDay: number;
   savingPerHeadDay: number;
   savingPerDay: number;
+  /** What the whole ration costs per head per day before the swap. */
+  rationCostPerHeadDay: number;
+  /** The saving as a percent of that. */
+  savingPercent: number;
 }
 
+/** A feed under this share of the ration's dry matter is a supplement, such as salt or premix: never swapped. */
+export const MIN_SWAP_DRY_MATTER_SHARE = 0.02;
+/** A swap that saves less than this share of the ration's daily cost is not worth changing a ration for. */
+export const MIN_RATION_SAVING_SHARE = 0.01;
+
 /**
- * Cheapening option for a ration (spec 15.1.5): move a share of the dry matter from the most
- * expensive component to the cheapest. A cost figure only. Whether the swap suits the animals
- * nutritionally is the zootechnician's decision, which is why it stays a recommendation.
+ * Cheapening option for a ration (spec 15.1.5): within one feed group, move a share of the dry matter from
+ * the component that costs most per kg of dry matter to the one that costs least, and keep the group whose
+ * swap saves most. Supplements, unrecognised feeds and lines under 2% of the dry matter are left alone, and a
+ * saving under 1% of the ration's cost is no option. The whole ration must be priced with its dry matter,
+ * or neither its cost nor its shares are known. A cost figure only: whether the swap suits the animals is
+ * the zootechnician's decision, which is why it stays a recommendation.
  */
 export function rationSavingOption(
   lines: readonly RationCostLine[],
   head: number,
   shiftShare = 0.1,
 ): RationSaving | null {
-  const priced = lines
-    .filter((l) => l.unitCostPerKg !== null && l.dryMatterPct !== null && l.kgPerHeadDay > 0)
-    .map((l) => ({ ...l, costDm: costPerKgDryMatter(l.unitCostPerKg!, l.dryMatterPct!) }))
-    .filter((l): l is typeof l & { costDm: number } => l.costDm !== null);
-  if (priced.length < 2 || head <= 0) return null;
+  const fed = lines.filter((l) => l.kgPerHeadDay > 0);
+  if (head <= 0 || fed.length < 2) return null;
+  if (fed.some((l) => l.unitCostPerKg === null || l.dryMatterPct === null || l.dryMatterPct <= 0)) return null;
 
-  const dearest = priced.reduce((a, b) => (b.costDm > a.costDm ? b : a));
-  const cheapest = priced.reduce((a, b) => (b.costDm < a.costDm ? b : a));
-  if (dearest.costDm <= cheapest.costDm) return null;
+  const known = fed.map((l) => ({
+    ...l,
+    dmKg: l.kgPerHeadDay * (l.dryMatterPct! / 100),
+    costDm: costPerKgDryMatter(l.unitCostPerKg!, l.dryMatterPct!)!,
+    group: l.feedClass === undefined ? feedClassOf(l.name, l.dryMatterPct) : l.feedClass,
+  }));
+  const totalDm = known.reduce((sum, l) => sum + l.dmKg, 0);
+  const rationCost = known.reduce((sum, l) => sum + l.kgPerHeadDay * l.unitCostPerKg!, 0);
+  if (rationCost <= 0) return null;
 
-  const shiftKgDm = dearest.kgPerHeadDay * (dearest.dryMatterPct! / 100) * shiftShare;
-  const savingPerHeadDay = shiftKgDm * (dearest.costDm - cheapest.costDm);
+  let best: { feedClass: FeedClass; from: (typeof known)[number]; to: (typeof known)[number]; shiftKgDm: number; saving: number } | null = null;
+  for (const feedClass of FEED_CLASSES) {
+    if (feedClass === 'mineral') continue;
+    const group = known.filter((l) => l.group === feedClass && l.dmKg >= totalDm * MIN_SWAP_DRY_MATTER_SHARE);
+    if (group.length < 2) continue;
+    const from = group.reduce((a, b) => (b.costDm > a.costDm ? b : a));
+    const to = group.reduce((a, b) => (b.costDm < a.costDm ? b : a));
+    if (from.costDm <= to.costDm) continue;
+    const shiftKgDm = from.dmKg * shiftShare;
+    const saving = shiftKgDm * (from.costDm - to.costDm);
+    if (!best || saving > best.saving) best = { feedClass, from, to, shiftKgDm, saving };
+  }
+  if (!best || best.saving < rationCost * MIN_RATION_SAVING_SHARE) return null;
+
   return {
-    fromItemId: dearest.itemId,
-    fromName: dearest.name,
-    toItemId: cheapest.itemId,
-    toName: cheapest.name,
-    shiftKgDmPerHeadDay: round(shiftKgDm, 3),
-    savingPerHeadDay: round(savingPerHeadDay, 2),
-    savingPerDay: round(savingPerHeadDay * head, 2),
+    fromItemId: best.from.itemId,
+    fromName: best.from.name,
+    toItemId: best.to.itemId,
+    toName: best.to.name,
+    feedClass: best.feedClass,
+    shiftKgDmPerHeadDay: round(best.shiftKgDm, 3),
+    savingPerHeadDay: round(best.saving, 2),
+    savingPerDay: round(best.saving * head, 2),
+    rationCostPerHeadDay: round(rationCost, 2),
+    savingPercent: round((best.saving / rationCost) * 100, 1),
   };
 }
 
@@ -354,10 +461,13 @@ export interface RankedCrop {
 const ROTATION_PENALTY = 0.25;
 const FEED_BONUS = 0.15;
 
+/** Yield, price and cost are all known, so the margin is. */
+const priced = (o: CropOption) => o.yieldTHa !== null && o.pricePerT !== null && o.costPerHa !== null;
+
 /** Rank next-season crops by expected margin, adjusted for rotation and feed need. */
 export function rankCropOptions(options: readonly CropOption[]): RankedCrop[] {
   return options
-    .filter((o) => o.yieldTHa !== null && o.pricePerT !== null && o.costPerHa !== null)
+    .filter(priced)
     .map((o) => {
       const margin = o.yieldTHa! * o.pricePerT! - o.costPerHa!;
       const reasons: RankedCrop['reasons'] = [];
@@ -373,4 +483,133 @@ export function rankCropOptions(options: readonly CropOption[]): RankedCrop[] {
       return { key: o.key, marginPerHa: round(margin, 2), score: round(score, 2), reasons };
     })
     .sort((a, b) => b.score - a.score);
+}
+
+/** No crop takes more of the arable land than this, so one bad price or one disease cannot take the farm. */
+export const MAX_CROP_SHARE = 0.4;
+
+export interface CropField {
+  id: string;
+  areaHa: number;
+  /** The crop the field carries now, or carried last. Repeating it costs the rotation penalty. */
+  lastCropKey: string | null;
+}
+
+export interface CropAllocationRules {
+  /** Hectares that stay under a crop whatever is suggested: perennial stands and fields already planned. */
+  committedHa?: Readonly<Record<string, number>>;
+  /** Hectares of each crop the herd's feed needs. */
+  feedNeedHa?: Readonly<Record<string, number>>;
+  /** Largest share of the arable land one crop may take, 0..1. Two priced crops may take half each. */
+  maxShare?: number;
+}
+
+export type CropReason = RankedCrop['reasons'][number] | 'feed_need' | 'share_limit';
+
+export interface CropAssignment {
+  fieldId: string;
+  key: string;
+  marginPerHa: number;
+  reasons: CropReason[];
+  /** The field's own ranking, best first, before the farm-wide limits. */
+  ranked: RankedCrop[];
+}
+
+export interface CropAllocation {
+  /** In the order the fields were given. */
+  assignments: CropAssignment[];
+  /** Hectares under each crop once the suggestion is followed, committed area included. */
+  areaHa: Record<string, number>;
+  /** All the arable land: the fields to plan and the committed area. */
+  totalHa: number;
+  /** The most one crop may take. A crop's first field is allowed even when larger. */
+  capHa: number;
+  /** Feed crops whose need the plan does not cover. */
+  feedShort: string[];
+}
+
+const EPS = 1e-6;
+
+/**
+ * Next crop for each free field, chosen for the whole farm (spec 15.1.6). Ranked field by field, every field
+ * gets the same best-paying crop. Here the herd's winter feed goes first, onto the fields where it gives up
+ * the least margin, and then each remaining field takes the best score per hectare that keeps every crop
+ * within its share of the land. When every crop is at its share, the field goes to the smallest one.
+ */
+export function allocateCrops(
+  fields: readonly CropField[],
+  options: readonly CropOption[],
+  rules: CropAllocationRules = {},
+): CropAllocation {
+  const area = new Map<string, number>(Object.entries(rules.committedHa ?? {}).filter(([, ha]) => ha > 0));
+  const held = (key: string) => area.get(key) ?? 0;
+  const totalHa = fields.reduce((sum, f) => sum + f.areaHa, 0) + [...area.values()].reduce((sum, ha) => sum + ha, 0);
+  const keys = [...new Set(options.filter(priced).map((o) => o.key))];
+  const capHa = keys.length === 0 ? 0 : Math.max(rules.maxShare ?? MAX_CROP_SHARE, 1 / keys.length) * totalHa;
+  const fits = (key: string, field: CropField) => held(key) === 0 || held(key) + field.areaHa <= capHa + EPS;
+
+  const ranking = new Map(
+    fields.map((f) => [f.id, rankCropOptions(options.map((o) => ({ ...o, grownLastSeason: o.key === f.lastCropKey })))]),
+  );
+  const ranked = (field: CropField) => ranking.get(field.id)!;
+  const scoreOf = (field: CropField, key: string) => ranked(field).find((r) => r.key === key)!.score;
+
+  const open = fields.filter((f) => f.areaHa > 0 && ranked(f).length > 0);
+  const chosen = new Map<string, { key: string; reasons: CropReason[] }>();
+  const take = (field: CropField, key: string, reason?: CropReason) => {
+    const own = ranked(field).find((r) => r.key === key)!;
+    chosen.set(field.id, { key, reasons: reason ? [...own.reasons, reason] : [...own.reasons] });
+    area.set(key, held(key) + field.areaHa);
+    open.splice(open.indexOf(field), 1);
+  };
+
+  // The herd's winter feed first, the largest gap first, on the fields where it costs the least.
+  const needs = Object.entries(rules.feedNeedHa ?? {})
+    .filter(([key, ha]) => keys.includes(key) && ha > held(key) + EPS)
+    .sort(([a, x], [b, y]) => y - held(b) - (x - held(a)) || a.localeCompare(b));
+  for (const [key, needHa] of needs) {
+    while (held(key) < needHa - EPS) {
+      const candidates = open.filter((f) => fits(key, f));
+      if (candidates.length === 0) break;
+      const loss = (f: CropField) => ranked(f)[0].score - scoreOf(f, key);
+      const field = candidates.reduce((a, b) =>
+        loss(b) < loss(a) - EPS || (Math.abs(loss(b) - loss(a)) <= EPS && b.areaHa < a.areaHa) ? b : a,
+      );
+      take(field, key, 'feed_need');
+    }
+  }
+
+  // Then the best score per hectare anywhere. On a tie the larger field goes first, while there is room.
+  while (open.length > 0) {
+    let best: { field: CropField; key: string; score: number } | null = null;
+    for (const field of open) {
+      const option = ranked(field).find((r) => fits(r.key, field));
+      if (!option) continue;
+      if (!best || option.score > best.score + EPS || (Math.abs(option.score - best.score) <= EPS && field.areaHa > best.field.areaHa)) {
+        best = { field, key: option.key, score: option.score };
+      }
+    }
+    if (best) {
+      take(best.field, best.key, best.key === ranked(best.field)[0].key ? undefined : 'share_limit');
+      continue;
+    }
+    const field = open.reduce((a, b) => (b.areaHa > a.areaHa ? b : a));
+    take(field, ranked(field).reduce((a, b) => (held(b.key) < held(a.key) - EPS ? b : a)).key, 'share_limit');
+  }
+
+  return {
+    assignments: fields.flatMap((field) => {
+      const pick = chosen.get(field.id);
+      if (!pick) return [];
+      const own = ranked(field).find((r) => r.key === pick.key)!;
+      return [{ fieldId: field.id, key: pick.key, marginPerHa: own.marginPerHa, reasons: pick.reasons, ranked: ranked(field) }];
+    }),
+    areaHa: Object.fromEntries([...area].map(([key, ha]) => [key, round(ha, 4)])),
+    totalHa: round(totalHa, 4),
+    capHa: round(capHa, 4),
+    feedShort: Object.entries(rules.feedNeedHa ?? {})
+      .filter(([key, ha]) => ha > held(key) + EPS)
+      .map(([key]) => key)
+      .sort(),
+  };
 }

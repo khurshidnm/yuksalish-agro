@@ -13,13 +13,13 @@ import { useApiMutation } from '@/lib/query';
 import { FACILITY_PATHS, FacilityFormDialog } from './FacilityFormDialog';
 import { IrrigationPanel } from './IrrigationPanel';
 import type { Facility } from './types';
-import { formatHa } from './utils';
+import { formatCapacity, formatHa } from './utils';
 
 const PATH = '/farm/facilities';
 
 function Occupancy({ row }: { row: Facility }) {
   const { t } = useTranslation('farm');
-  if (row.type !== 'barn') return <>{row.capacity == null ? '—' : t('facilities.capacityValue', { value: formatNumber(row.capacity, 0), unit: row.capacityUnit ?? '' })}</>;
+  if (row.type !== 'barn') return <>{formatCapacity(row.capacity, row.capacityUnit)}</>;
   const full = (row.capacityUsePercent ?? 0) > 100;
   return (
     <div className="flex min-w-40 flex-col gap-1">
@@ -102,7 +102,7 @@ function FacilitiesTable() {
             className="md:w-56"
           />
         }
-        empty={{ icon: Warehouse, title: t('facilities.emptyTitle'), description: t('facilities.emptyBody'), action: addButton }}
+        empty={{ icon: Warehouse, title: t('facilities.emptyTitle'), description: t('facilities.emptyBody') }}
         rowActions={(row) => [
           { label: t('common:actions.edit'), icon: Pencil, hidden: !canUpdate, onClick: () => setEditing(row) },
           {

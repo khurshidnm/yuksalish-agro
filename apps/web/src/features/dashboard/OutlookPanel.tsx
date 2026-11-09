@@ -5,6 +5,7 @@ import { ChartCard } from '@/components/ChartCard';
 import { useLocalName } from '@/features/finance/lib';
 import { formatCompact, formatDate, formatMoney, formatMonth, formatMonthShort, formatNumber } from '@/lib/format';
 import { useDetail } from '@/lib/query';
+import { monthInText } from './figures';
 import type { OutlookData, OutlookFeedRow } from './types';
 
 const tons = (kg: number) => formatNumber(kg / 1000, 1);
@@ -33,14 +34,14 @@ function Conclusions({ data }: { data: OutlookData }) {
         : t('outlook.conclusions.feedShort', { names: short.map((row) => row.name).join(', ') }),
     );
     const toBuy = feed.filter((row) => !row.ownCrop && row.runsOutMonth).sort((a, b) => a.runsOutMonth!.localeCompare(b.runsOutMonth!));
-    if (toBuy.length > 0) lines.push(t('outlook.conclusions.feedBuy', { name: toBuy[0].name, month: formatMonth(toBuy[0].runsOutMonth!) }));
+    if (toBuy.length > 0) lines.push(t('outlook.conclusions.feedBuy', { name: toBuy[0].name, month: monthInText(toBuy[0].runsOutMonth!) }));
   }
   if (money) {
     if (money.lambIncome !== null && herd) {
       lines.push(t('outlook.conclusions.lambIncome', { amount: formatMoney(money.lambIncome), head: formatNumber(herd.lambsSold, 0) }));
     }
-    if (money.firstNegativeMonth) lines.push(t('outlook.conclusions.cashShort', { month: formatMonth(money.firstNegativeMonth) }));
-    else if (money.lowest) lines.push(t('outlook.conclusions.cashOk', { amount: formatMoney(money.lowest.closing), month: formatMonth(money.lowest.month) }));
+    if (money.firstNegativeMonth) lines.push(t('outlook.conclusions.cashShort', { month: monthInText(money.firstNegativeMonth) }));
+    else if (money.lowest) lines.push(t('outlook.conclusions.cashOk', { amount: formatMoney(money.lowest.closing), month: monthInText(money.lowest.month) }));
   }
   return (
     <Card>
@@ -61,7 +62,7 @@ function Conclusions({ data }: { data: OutlookData }) {
 function FeedStatus({ row }: { row: OutlookFeedRow }) {
   const { t } = useTranslation('dashboard');
   if (!row.runsOutMonth) return <Badge variant="success">{t('outlook.feed.enough')}</Badge>;
-  return <Badge variant={row.ownCrop ? 'danger' : 'warning'}>{t('outlook.feed.until', { month: formatMonthShort(row.runsOutMonth) })}</Badge>;
+  return <Badge variant={row.ownCrop ? 'danger' : 'warning'}>{t('outlook.feed.runsOut', { month: monthInText(row.runsOutMonth, false) })}</Badge>;
 }
 
 function FeedCard({ rows }: { rows: OutlookFeedRow[] }) {
@@ -79,7 +80,7 @@ function FeedCard({ rows }: { rows: OutlookFeedRow[] }) {
                 <span className="block text-sm font-medium break-words">{row.name}</span>
                 <span className="block text-xs text-muted-foreground">
                   {t('outlook.feed.line', { stock: tons(row.stockKg), need: tons(row.needKg) })}
-                  {row.nextHarvest ? ` · ${t('outlook.feed.harvest', { month: formatMonthShort(row.nextHarvest) })}` : ''}
+                  {row.nextHarvest ? ` · ${t('outlook.feed.harvest', { month: monthInText(row.nextHarvest, false) })}` : ''}
                 </span>
               </span>
               <FeedStatus row={row} />

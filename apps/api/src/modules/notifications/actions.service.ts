@@ -20,9 +20,23 @@ export interface ActionButton {
   needsReason?: boolean;
 }
 
+/** What became of it, for a message whose buttons are gone: "Accepted · 09.11 04:29". */
+export interface ActionState {
+  /** "namespace:key" in i18n, like a button label. */
+  label: string;
+  tone?: 'success' | 'danger' | 'neutral';
+  /** When it was decided, as an ISO instant, if known. */
+  at?: string | null;
+}
+
 export interface ActionHandler {
   /** The buttons this reader may press now. None once it is decided, or when it is not theirs to decide. */
   buttons(id: string): Promise<ActionButton[]>;
+  /**
+   * What was decided, once nothing is left to press. Without it, a message with no buttons left reads
+   * "answered": so a handler whose reader may have no buttons while it is still open must say otherwise.
+   */
+  state?(id: string): Promise<ActionState | null>;
   /** Runs as the person who pressed, inside their farm. Returns what happened, as an i18n "namespace:key". */
   run(id: string, button: string, input: { reason?: string }): Promise<{ message: string; params?: Record<string, unknown> }>;
 }
@@ -42,6 +56,21 @@ export async function buttonsFor(action: NotificationAction | null | undefined):
   if (!action) return [];
   const handler = handlers.get(action.kind);
   return handler ? handler.buttons(action.id) : [];
+}
+
+/** The fallback state of a message whose buttons are gone. */
+export const ANSWERED: ActionState = { label: 'alerts:inbox.answered', tone: 'neutral' };
+
+/**
+ * The buttons a reader may press now, and, once there are none, what became of it. Without the state
+ * a message keeps asking for a press ("press Received") that can no longer happen.
+ */
+export async function actionView(action: NotificationAction): Promise<{ buttons: ActionButton[]; state: ActionState | null }> {
+  const handler = handlers.get(action.kind);
+  if (!handler) return { buttons: [], state: null };
+  const buttons = await handler.buttons(action.id);
+  if (buttons.length > 0) return { buttons, state: null };
+  return { buttons, state: handler.state ? await handler.state(action.id) : ANSWERED };
 }
 
 export async function runAction(action: NotificationAction, button: string, input: { reason?: string } = {}) {

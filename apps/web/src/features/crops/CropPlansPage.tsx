@@ -1,9 +1,10 @@
 import { CalendarPlus, Droplets, Pencil, Plus, Sprout, Trash2, TriangleAlert, Wheat } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { type Column, DataTable, MoneyText, PageHeader, StatCard, UrlTabs, useConfirm, useUrlParam } from '@/components';
 import { Badge, Button, Select } from '@/components/ui';
-import { useLocalName } from '@/features/farm/utils';
+import { CROP_STATUS_VARIANT, useLocalName } from '@/features/farm/utils';
 import { api } from '@/lib/api';
 import { usePermission, useSeesCost } from '@/lib/auth';
 import { formatDate, formatNumber, formatQty } from '@/lib/format';
@@ -15,13 +16,8 @@ import { SeasonsTab } from './SeasonsTab';
 import { TechCardsTab } from './TechCardsTab';
 import type { CropPlan, CropsSummary, Season } from './types';
 
-const STATUS_VARIANT: Record<CropPlan['status'], 'neutral' | 'info' | 'success' | 'warning' | 'danger'> = {
-  planned: 'neutral',
-  sown: 'info',
-  growing: 'success',
-  harvested: 'warning',
-  cancelled: 'danger',
-};
+/** Tabs that show one season: the season select and its figures belong to these only. */
+const SEASON_TABS = ['plans', 'fact'];
 
 function PlansTab({ seasonId, onAdd }: { seasonId: string; onAdd: () => void }) {
   const { t } = useTranslation('crops');
@@ -41,7 +37,7 @@ function PlansTab({ seasonId, onAdd }: { seasonId: string; onAdd: () => void }) 
   const generate = useApiMutation<string, { created: number }>({
     mutationFn: (id) => api.post<{ created: number }>(`${PLANS}/${id}/generate-operations`),
     invalidate: [OPERATIONS, PLANS, SUMMARY],
-    successMessage: 'crops:plans.generated',
+    onSuccess: (result) => toast.success(t('plans.generated', { count: result.created })),
   });
 
   const columns: Column<CropPlan>[] = [
@@ -63,7 +59,7 @@ function PlansTab({ seasonId, onAdd }: { seasonId: string; onAdd: () => void }) 
       mobile: 'subtitle',
       cell: (p) => (
         <span className="flex flex-wrap items-center gap-1">
-          <Badge variant={STATUS_VARIANT[p.status]}>{t(`enums:cropPlanStatus.${p.status}`)}</Badge>
+          <Badge variant={CROP_STATUS_VARIANT[p.status]}>{t(`enums:cropPlanStatus.${p.status}`)}</Badge>
           {p.operationsOverdue > 0 && <Badge variant="danger">{t('plans.overdueWork', { count: p.operationsOverdue })}</Badge>}
         </span>
       ),
@@ -97,8 +93,16 @@ function PlansTab({ seasonId, onAdd }: { seasonId: string; onAdd: () => void }) 
           {
             label: t('plans.generate'),
             icon: CalendarPlus,
-            hidden: !canCreate || !plan.techCardId || !plan.sowingDatePlan,
-            onClick: () => generate.mutate(plan.id),
+            // A harvested or cancelled plan has nothing left to plan.
+            hidden: !canCreate || !plan.techCardId || !plan.sowingDatePlan || plan.status === 'harvested' || plan.status === 'cancelled',
+            onClick: async () => {
+              // Work has started: say that only the card's work from today on is added.
+              if (plan.status !== 'planned') {
+                const ok = await confirm({ title: t('plans.generateStartedTitle'), description: t('plans.generateStartedBody') });
+                if (!ok) return;
+              }
+              generate.mutate(plan.id);
+            },
           },
           { label: t('common:actions.edit'), icon: Pencil, hidden: !canUpdate, onClick: () => setEditing(plan) },
           {
@@ -126,6 +130,8 @@ export default function CropPlansPage() {
   const { t } = useTranslation('crops');
   const canCreate = usePermission('crops.create');
   const [season, setSeason] = useUrlParam('season');
+  const [tab] = useUrlParam('tab', 'plans');
+  const seasonal = SEASON_TABS.includes(tab);
   const [creating, setCreating] = useState(false);
 
   const { data: seasons } = useDetail<Season[]>(SEASONS);
@@ -143,38 +149,43 @@ export default function CropPlansPage() {
         title={t('plans.title')}
         description={t('plans.description')}
         actions={
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Select
-              aria-label={t('plans.fields.season')}
-              value={season}
-              onChange={(e) => setSeason(e.target.value)}
-              options={(seasons ?? []).map((s) => ({ value: s.id, label: s.name }))}
-              placeholder={t('plans.chooseSeason')}
-              className="sm:w-52"
-            />
-            {canCreate && (
-              <Button onClick={() => setCreating(true)}>
-                <Plus aria-hidden />
-                {t('plans.add')}
-              </Button>
-            )}
-          </div>
+          seasonal && (
+            <div className="grid w-full grid-cols-1 gap-2 min-[400px]:grid-cols-2 sm:flex sm:w-auto">
+              <Select
+                aria-label={t('plans.fields.season')}
+                value={season}
+                onChange={(e) => setSeason(e.target.value)}
+                options={(seasons ?? []).map((s) => ({ value: s.id, label: s.name }))}
+                placeholder={t('plans.chooseSeason')}
+                className="w-full sm:w-52"
+              />
+              {canCreate && (
+                <Button onClick={() => setCreating(true)} className="w-full sm:w-auto">
+                  <Plus aria-hidden />
+                  {t('plans.add')}
+                </Button>
+              )}
+            </div>
+          )
         }
       />
 
-      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard icon={Sprout} label={t('plans.stats.sown')} value={fields ? `${fields.sown} / ${fields.total}` : '—'} loading={isLoading} />
-        <StatCard icon={Droplets} label={t('plans.stats.irrigated')} value={fields ? `${fields.irrigated} / ${fields.total}` : '—'} loading={isLoading} />
-        <StatCard icon={Wheat} label={t('plans.stats.harvested')} value={fields ? `${fields.harvested} / ${fields.total}` : '—'} loading={isLoading} />
-        <StatCard
-          icon={TriangleAlert}
-          label={t('plans.stats.overdue')}
-          value={summary?.overdue.length ?? '—'}
-          tone={summary?.overdue.length ? 'danger' : 'neutral'}
-          to="/crops/operations?view=overdue"
-          loading={isLoading}
-        />
-      </div>
+      {/* The season's figures; tech cards and the season list are not about one season. */}
+      {seasonal && (
+        <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatCard icon={Sprout} label={t('plans.stats.sown')} value={fields ? `${fields.sown} / ${fields.total}` : '—'} loading={isLoading} />
+          <StatCard icon={Droplets} label={t('plans.stats.irrigated')} value={fields ? `${fields.irrigated} / ${fields.total}` : '—'} loading={isLoading} />
+          <StatCard icon={Wheat} label={t('plans.stats.harvested')} value={fields ? `${fields.harvested} / ${fields.total}` : '—'} loading={isLoading} />
+          <StatCard
+            icon={TriangleAlert}
+            label={t('plans.stats.overdue')}
+            value={summary?.overdue.length ?? '—'}
+            tone={summary?.overdue.length ? 'danger' : 'neutral'}
+            to="/crops/operations?view=overdue"
+            loading={isLoading}
+          />
+        </div>
+      )}
 
       <UrlTabs
         tabs={[

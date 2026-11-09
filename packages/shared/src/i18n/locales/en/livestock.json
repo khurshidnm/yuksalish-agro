@@ -61,9 +61,13 @@
     "allCategories": "All categories",
     "emptyTitle": "No animals found",
     "emptyBody": "Add the first animal or change the filters.",
+    "emptyArchivedTitle": "No animals in the archive",
+    "emptyFilteredTitle": "No animals match these filters",
+    "emptyFilteredBody": "Change or clear the filters.",
     "stats": {
       "total": "Total head",
       "pregnant": "Pregnant",
+      "pregnantHint": "Includes sick and quarantined ewes",
       "sick": "Sick",
       "quarantine": "In quarantine"
     }
@@ -100,6 +104,7 @@
     "transfers": "Moves between herds",
     "noTransfers": "This animal has not been moved.",
     "weighedOn": "on {{date}}",
+    "grams": "{{value}} g",
     "deleteTitle": "Delete this animal?",
     "deleteBody": "Delete {{tag}} only if it was added by mistake. For an animal that left the farm, record an exit.",
     "withdrawalTitle": "Withdrawal period",
@@ -268,6 +273,7 @@
   },
   "weighing": {
     "start": "Start weighing",
+    "resume": "Continue weighing",
     "begin": "Start",
     "back": "Back to the list",
     "defaultName": "Check weighing",

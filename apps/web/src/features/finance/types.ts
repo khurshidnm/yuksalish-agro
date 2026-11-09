@@ -366,6 +366,8 @@ export interface CashHolderSummary {
     description: string | null;
     categoryName: I18nName | null;
     costCenterName: string | null;
+    /** Sent once the API selects it; until then the type comes from byCostCenter. */
+    costCenterType?: string | null;
     incoming: boolean;
   }[];
 }

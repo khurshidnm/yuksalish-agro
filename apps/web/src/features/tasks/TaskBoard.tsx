@@ -143,11 +143,14 @@ function TaskCard({ task, onComplete, onEdit }: TaskCardProps) {
 function Column({
   title,
   tasks,
+  total,
   tone,
   ...actions
 }: {
   title: string;
   tasks: Task[];
+  /** All of them, when the column shows only the latest few. */
+  total?: number;
   tone: 'neutral' | 'info' | 'success';
 } & Omit<TaskCardProps, 'task'>) {
   const { t } = useTranslation('tasks');
@@ -156,7 +159,7 @@ function Column({
       <header className="flex items-center justify-between gap-2 px-1.5 pt-1 pb-3">
         <h3 className="font-semibold text-heading">{title}</h3>
         <Badge variant={tone} className={tone === 'neutral' ? 'bg-card' : undefined}>
-          {tasks.length}
+          {total ?? tasks.length}
         </Badge>
       </header>
       <div className="space-y-3">
@@ -173,7 +176,8 @@ function Column({
 export function TaskBoard(props: Omit<TaskCardProps, 'task'>) {
   const { t } = useTranslation('tasks');
   const active = useList<Task>('/tasks', { active: true, pageSize: 200 });
-  const done = useList<Task>('/tasks', { status: 'done', pageSize: 10, sort: '-dueDate' });
+  // The latest ten closed, by when they were closed: a task done today with an old due date is among them.
+  const done = useList<Task>('/tasks', { status: 'done', pageSize: 10, sort: '-completedAt' });
 
   if (active.isLoading) {
     return (
@@ -196,7 +200,7 @@ export function TaskBoard(props: Omit<TaskCardProps, 'task'>) {
     <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
       <Column title={t('board.open')} tone="neutral" tasks={tasks.filter((task) => task.status === 'open')} {...props} />
       <Column title={t('board.inProgress')} tone="info" tasks={tasks.filter((task) => task.status === 'in_progress')} {...props} />
-      <Column title={t('board.done')} tone="success" tasks={closed} {...props} />
+      <Column title={t('board.done')} tone="success" tasks={closed} total={done.data?.meta.total} {...props} />
     </div>
   );
 }

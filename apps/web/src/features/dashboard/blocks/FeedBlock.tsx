@@ -4,6 +4,7 @@ import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, Meter
 import { ChartCard } from '@/components/ChartCard';
 import { useSession } from '@/lib/auth';
 import { formatNumber, formatQty } from '@/lib/format';
+import { consumptionToChart, feedNotInUse } from '../figures';
 import { dayMonth, daysNumber, FigureRow, type LinkTo, NoData } from '../shared';
 import type { FeedData, FeedItem } from '../types';
 
@@ -13,10 +14,14 @@ function FeedMeter({ item, horizon, to }: { item: FeedItem; horizon: number; to?
   const body = (
     <>
       <div className="mb-1 flex items-baseline justify-between gap-2">
-        <span className="min-w-0 truncate">{item.name}</span>
+        <span className="min-w-0 break-words">{item.name}</span>
         <span className="shrink-0 font-semibold tabular-nums">{item.days === null ? '—' : t('days', { value: daysNumber(item.days) })}</span>
       </div>
-      {item.days === null ? (
+      {feedNotInUse(item) ? (
+        <p className="text-sm text-muted-foreground">
+          {t('feed.notInUse')} · {t('feed.stock', { value: formatQty(item.stockQty, item.unit, 0) })}
+        </p>
+      ) : item.days === null ? (
         <NoData />
       ) : (
         <>
@@ -43,7 +48,7 @@ function FeedMeter({ item, horizon, to }: { item: FeedItem; horizon: number; to?
   );
 }
 
-export function FeedBlock({ data, link }: { data: FeedData; link: LinkTo }) {
+export function FeedBlock({ data, asOf, link }: { data: FeedData; asOf: string; link: LinkTo }) {
   const { t } = useTranslation('dashboard');
   const session = useSession();
   const winterDays = (session.settings as { feed?: { winterDays?: number } }).feed?.winterDays ?? 120;
@@ -52,10 +57,12 @@ export function FeedBlock({ data, link }: { data: FeedData; link: LinkTo }) {
   const horizon = Math.max(winterDays, longest);
   const balance = link('/feed/balance', 'feed.view') ?? link('/inventory/stock', 'inventory.view');
   const stock = link('/inventory/stock', 'inventory.view') ?? balance;
+  const consumption = consumptionToChart(data.consumption, asOf);
 
   return (
-    <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-      <Card className="lg:col-span-2">
+    // Side by side only from 1280 px: beside the menu at 1024 px the feed names would be cut.
+    <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
+      <Card className="xl:col-span-2">
         <CardHeader>
           <CardTitle>{t('feed.daysTitle')}</CardTitle>
           <CardDescription>{t('feed.daysNote', { days: formatNumber(horizon, 0) })}</CardDescription>
@@ -97,11 +104,11 @@ export function FeedBlock({ data, link }: { data: FeedData; link: LinkTo }) {
       </Card>
 
       <ChartCard
-        className="lg:col-span-3"
+        className="xl:col-span-3"
         title={t('feed.consumption')}
         description={data.avgDailyKg === null ? undefined : t('feed.averagePerDay', { value: formatQty(data.avgDailyKg, 'kg', 0) })}
         kind="block-bar"
-        data={data.consumption.some((day) => day.qty > 0) ? data.consumption : []}
+        data={consumption.some((day) => day.qty > 0) ? consumption : []}
         xKey="date"
         series={[{ key: 'qty', label: t('feed.fed') }]}
         formatValue={(v) => formatQty(v, 'kg', 0)}

@@ -84,6 +84,7 @@
   },
   "usage": {
     "add": "Smena hisoboti",
+    "addHours": "Ish soatini yozish",
     "edit": "Smenani tahrirlash",
     "date": "Sana",
     "operator": "Mexanizator",
@@ -99,7 +100,8 @@
     "deleteTitle": "Smenani o'chirasizmi?",
     "deleteBody": "Moto-soat ayriladi, yoqilg'i omborga qaytariladi.",
     "emptyTitle": "Hali smenalar yo'q",
-    "emptyBody": "Har smena moto-soat, bajarilgan hajm va yoqilg'ini kiriting."
+    "emptyBody": "Har smena moto-soat, bajarilgan hajm va yoqilg'ini kiriting.",
+    "emptyBodyHours": "Har safar ishlagan soat va sarflangan yoqilg'ini kiriting."
   },
   "maintenance": {
     "add": "Xizmatni qayd etish",
@@ -144,7 +146,8 @@
     "month": "Oy",
     "amount": "Summa",
     "noDepreciation": "Hali amortizatsiya hisoblanmagan",
-    "noDepreciationBody": "Har oyning boshida avtomatik hisoblanadi."
+    "noDepreciationBody": "Har oyning boshida avtomatik hisoblanadi.",
+    "rentedNote": "Ijara haqi bu yerga kirmaydi: u bajarilgan ish akti orqali dalalar xarajatiga yoziladi."
   },
   "depreciation": {
     "run": "Amortizatsiyani hisoblash",

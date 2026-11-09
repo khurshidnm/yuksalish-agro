@@ -10,6 +10,8 @@ import { usePermission } from '@/lib/auth';
 import { formatMonth, formatNumber } from '@/lib/format';
 import { zDate } from '@/lib/forms';
 import { useApiMutation, useDetail } from '@/lib/query';
+import { cn } from '@/lib/utils';
+import type { AssetKind } from './assetKinds';
 import type { AssetCard, AssetCosts, DepreciationEntry } from './types';
 
 const actSchema = z.object({ from: zDate(), to: zDate() });
@@ -72,7 +74,7 @@ function RentalActButton({ asset }: { asset: AssetCard }) {
   );
 }
 
-export function AssetCostsTab({ asset }: { asset: AssetCard }) {
+export function AssetCostsTab({ asset, kind }: { asset: AssetCard; kind: AssetKind }) {
   const { t } = useTranslation('assets');
   const canInvoice = usePermission('finance.create');
   const [from, setFrom] = useUrlParam('from');
@@ -87,8 +89,13 @@ export function AssetCostsTab({ asset }: { asset: AssetCard }) {
     [t('costs.fuel'), data?.fuel],
     [t('costs.labor'), data?.labor],
     [t('costs.repairs'), data?.repairs],
-    [t('costs.depreciation'), data?.depreciation],
+    // A hired machine is not ours to depreciate: its cost is the rent, which the act charges to the fields.
+    ...(asset.rented ? [] : ([[t('costs.depreciation'), data?.depreciation]] as [string, number | undefined][])),
   ];
+  // Cost per hectare means nothing for a generator, and cost per hour nothing for a plough.
+  const perHour = kind.hasEngine || Boolean(data?.hours);
+  const perHectare = kind.worksFields || Boolean(data?.hectares);
+  const tiles = 1 + Number(perHour) + Number(perHectare);
 
   const depreciationColumns: Column<DepreciationEntry>[] = [
     { key: 'month', header: t('costs.month'), mobile: 'title', cell: (row) => formatMonth(row.month) },
@@ -108,9 +115,13 @@ export function AssetCostsTab({ asset }: { asset: AssetCard }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <StatCard icon={Clock} label={t('costs.perHour')} value={<MoneyText value={data?.costPerHour ?? null} />} hint={t('costs.overHours', { hours: formatNumber(data?.hours ?? 0) })} loading={isLoading} />
-        <StatCard icon={Tractor} label={t('costs.perHectare')} value={<MoneyText value={data?.costPerHectare ?? null} />} hint={t('costs.overHectares', { hectares: formatNumber(data?.hectares ?? 0) })} loading={isLoading} />
+      <div className={cn('grid grid-cols-1 gap-3', tiles === 3 ? 'sm:grid-cols-3' : tiles === 2 ? 'sm:grid-cols-2' : 'sm:max-w-xs')}>
+        {perHour && (
+          <StatCard icon={Clock} label={t('costs.perHour')} value={<MoneyText value={data?.costPerHour ?? null} />} hint={t('costs.overHours', { hours: formatNumber(data?.hours ?? 0) })} loading={isLoading} />
+        )}
+        {perHectare && (
+          <StatCard icon={Tractor} label={t('costs.perHectare')} value={<MoneyText value={data?.costPerHectare ?? null} />} hint={t('costs.overHectares', { hectares: formatNumber(data?.hectares ?? 0) })} loading={isLoading} />
+        )}
         <StatCard label={t('costs.total')} value={<MoneyText value={data?.total ?? null} compact />} loading={isLoading} />
       </div>
 
@@ -123,6 +134,7 @@ export function AssetCostsTab({ asset }: { asset: AssetCard }) {
               <MoneyText value={value ?? null} />
             </div>
           ))}
+          {asset.rented && <p className="pt-2 text-sm text-muted-foreground">{t('costs.rentedNote')}</p>}
         </CardContent>
       </Card>
 

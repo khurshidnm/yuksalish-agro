@@ -1,32 +1,38 @@
-import { and, desc, eq, inArray, ne, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, ne, or, sql } from 'drizzle-orm';
 import { yieldPerHectare } from '@yap/shared';
 import { onTimePercent, waterPerTon } from '@yap/shared/formulas/crops';
 import { schema } from '../../db/client';
 import { ctx, tx } from '../../core/context';
 import { overdue } from './operations.service';
 import { planFact } from './plan-fact.service';
-import { currentSeason } from './seasons.service';
+import { currentSeason, getSeason } from './seasons.service';
 
 const { cropPlans, fieldOperations, fields, harvests, seasons } = schema;
 
-/** Fields sown, irrigated and harvested in the current season (spec 14.1). */
-export async function fieldStatus() {
+/**
+ * Fields sown, irrigated and harvested in a season, the current one unless another is named
+ * (spec 14.1). Watering counts for the season of the crop it was given to: seasons overlap here,
+ * autumn sowing starts before the summer crops are off, so a date window alone would count
+ * September's watering in both. Watering with no crop plan falls back to the season's dates.
+ */
+export async function fieldStatus(seasonId?: string) {
   const farmId = ctx().farmId;
   const [{ total }] = await tx()
     .select({ total: sql<number>`count(*)`.mapWith(Number) })
     .from(fields)
     .where(and(eq(fields.farmId, farmId), eq(fields.landUse, 'arable'), eq(fields.status, 'active')));
 
-  const season = await currentSeason();
+  const season = seasonId ? await getSeason(seasonId) : await currentSeason();
   if (!season) return { sown: 0, irrigated: 0, harvested: 0, total };
 
+  const inSeason = and(eq(cropPlans.farmId, farmId), eq(cropPlans.seasonId, season.id), ne(cropPlans.status, 'cancelled'));
   const [plans] = await tx()
     .select({
       sown: sql<number>`count(distinct ${cropPlans.fieldId}) filter (where ${cropPlans.status} in ('sown', 'growing', 'harvested'))`.mapWith(Number),
       harvested: sql<number>`count(distinct ${cropPlans.fieldId}) filter (where ${cropPlans.status} = 'harvested')`.mapWith(Number),
     })
     .from(cropPlans)
-    .where(and(eq(cropPlans.seasonId, season.id), ne(cropPlans.status, 'cancelled')));
+    .where(inSeason);
 
   const [{ irrigated }] = await tx()
     .select({ irrigated: sql<number>`count(distinct ${fieldOperations.fieldId})`.mapWith(Number) })
@@ -36,7 +42,13 @@ export async function fieldStatus() {
         eq(fieldOperations.farmId, farmId),
         eq(fieldOperations.type, 'irrigation'),
         eq(fieldOperations.status, 'done'),
-        sql`${fieldOperations.date} between ${season.startDate} and ${season.endDate}`,
+        or(
+          inArray(fieldOperations.cropPlanId, tx().select({ id: cropPlans.id }).from(cropPlans).where(inSeason)),
+          and(
+            isNull(fieldOperations.cropPlanId),
+            sql`${fieldOperations.date} between ${season.startDate} and ${season.endDate}`,
+          ),
+        ),
       ),
     );
   return { sown: plans.sown, irrigated, harvested: plans.harvested, total };
@@ -70,6 +82,11 @@ export async function lastHarvestedSeason() {
 
 /** Dehqonchilik KPIs (spec 14.3). Cost per ton comes from finance fieldCosts. */
 export async function cropKpis(seasonId?: string) {
+  return (await cropFigures(seasonId)).kpis;
+}
+
+/** The KPIs and each crop's own yield, from one plan-fact pass. */
+export async function cropFigures(seasonId?: string) {
   const { rows, totals } = await planFact(seasonId);
   const planIds = rows.map((r) => r.planId);
   const [work] =
@@ -86,8 +103,30 @@ export async function cropKpis(seasonId?: string) {
   const harvested = rows.filter((r) => r.harvestedT > 0);
   const harvestedArea = harvested.reduce((sum, r) => sum + r.areaHa, 0);
   return {
-    yieldTHa: yieldPerHectare(totals?.harvestedT ?? 0, harvestedArea),
-    onTimePercent: onTimePercent(work.onTime, work.planned),
-    waterM3PerTon: waterPerTon(totals?.waterM3 ?? 0, totals?.harvestedT ?? 0),
+    kpis: {
+      yieldTHa: yieldPerHectare(totals?.harvestedT ?? 0, harvestedArea),
+      onTimePercent: onTimePercent(work.onTime, work.planned),
+      waterM3PerTon: waterPerTon(totals?.waterM3 ?? null, totals?.harvestedT ?? 0),
+    },
+    yields: yieldByCrop(harvested),
   };
+}
+
+type PlanFactRow = Awaited<ReturnType<typeof planFact>>['rows'][number];
+
+/**
+ * Yield crop by crop, largest harvest first. Tons of hay, silage green mass and grain do not add
+ * up to one meaningful t/ha, so a page that shows several crops shows each on its own.
+ */
+function yieldByCrop(harvested: PlanFactRow[]) {
+  const byCrop = new Map<string, { cropKey: string; cropName: unknown; areaHa: number; harvestedT: number }>();
+  for (const row of harvested) {
+    const entry = byCrop.get(row.cropKey) ?? { cropKey: row.cropKey, cropName: row.cropName, areaHa: 0, harvestedT: 0 };
+    entry.areaHa += row.areaHa;
+    entry.harvestedT += row.harvestedT;
+    byCrop.set(row.cropKey, entry);
+  }
+  return [...byCrop.values()]
+    .map((c) => ({ ...c, yieldTHa: yieldPerHectare(c.harvestedT, c.areaHa) }))
+    .sort((a, b) => b.harvestedT - a.harvestedT);
 }

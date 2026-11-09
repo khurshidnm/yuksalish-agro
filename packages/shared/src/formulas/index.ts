@@ -206,10 +206,15 @@ export function cropCostTotal(i: CropCostInput): number {
   return i.seed + i.fertilizer + i.water + i.machinery + i.labor + i.overheadShare;
 }
 
-/** Tannarx(1 t) = (urug' + o'g'it + suv + texnika + mehnat + umumiy ulush) / hosil */
+/**
+ * Tannarx(1 t) = (urug' + o'g'it + suv + texnika + mehnat + umumiy ulush) / hosil.
+ * No cost recorded is missing data, not a free crop: null, never 0 so'm a ton (rule 5).
+ */
 export function costPerTon(i: CropCostInput, harvestTons: number): number | null {
   if (harvestTons <= 0) return null;
-  return ratio(cropCostTotal(i), harvestTons);
+  const total = cropCostTotal(i);
+  if (!(total > 0)) return null;
+  return ratio(total, harvestTons);
 }
 
 /** Hosildorlik (t/ga) */
@@ -219,10 +224,25 @@ export function yieldPerHectare(harvestTons: number, areaHa: number): number | n
 
 // ─── Finance (25.1, 10.3) ───────────────────────────────────────────────────
 
-/** Rentabellik (%) = (daromad − xarajat) / xarajat × 100 */
+/**
+ * Rentabellik (%) = (daromad − xarajat) / xarajat × 100.
+ * Before the first sale there is no return to measure: no income gives null, not −100 %, so a
+ * machine, a crop not yet harvested or a herd before its first sale never reads as a total loss.
+ */
 export function profitabilityPercent(revenue: number, cost: number): number | null {
-  if (cost <= 0) return null;
+  if (cost <= 0 || !(revenue > 0)) return null;
   return percent(revenue - cost, cost);
+}
+
+/** The budget year runs from October to September: the 2026/27 farming season starts in autumn. */
+export function budgetYearOf(date: string): number {
+  const year = Number(date.slice(0, 4));
+  return Number(date.slice(5, 7)) >= 10 ? year : year - 1;
+}
+
+/** First and last month of a budget year, as YYYY-MM. */
+export function budgetYearMonths(year: number): { from: string; to: string } {
+  return { from: `${year}-10`, to: `${year + 1}-09` };
 }
 
 /** Budget utilisation (ijro, %). */

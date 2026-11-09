@@ -289,10 +289,18 @@ export async function upcoming(days: number) {
     .orderBy(asc(i.dueDate));
 }
 
-export async function outstandingTotal(): Promise<number> {
+/** Principal still owed. With `asOf`, as it stood that day: loans received by then, less instalments paid by then. */
+export async function outstandingTotal(asOf?: string): Promise<number> {
   const [row] = await tx()
     .select({ total: sumOf(i.principal) })
     .from(i)
-    .where(and(eq(i.farmId, ctx().farmId), isNull(i.paidDate)));
+    .where(
+      and(
+        eq(i.farmId, ctx().farmId),
+        asOf
+          ? sql`(${i.paidDate} is null or ${i.paidDate} > ${asOf}) and exists (select 1 from ${l} where ${l.id} = ${i.loanId} and ${l.startDate} <= ${asOf})`
+          : isNull(i.paidDate),
+      ),
+    );
   return row.total;
 }

@@ -44,8 +44,9 @@
     "allStatuses": "Barcha holatlar",
     "totalIncome": "Daromad",
     "totalExpense": "Xarajat",
-    "totalNet": "Pul natijasi (aktivlar bilan)",
-    "totalsHint": "Faqat tasdiqlangan operatsiyalar. Hayvon, texnika va ombor xaridlari ham kiradi, shuning uchun bu sof natija emas.",
+    "cashNet": "Sof pul oqimi",
+    "cashNetHint": "Kassa va bankka kirgan pul minus chiqqan pul: kredit va egasining puli ham kiradi, qarzga yozilganlar va amortizatsiya kirmaydi. Fermaning sof natijasi Hisobotlardagi \"Oylik natija\"da.",
+    "totalsHint": "Faqat tasdiqlangan operatsiyalar. Hayvon, texnika va ombor xaridlari, qarzga yozilganlar va amortizatsiya ham kiradi.",
     "emptyTitle": "Operatsiyalar topilmadi",
     "emptyBody": "Birinchi xarajat yoki daromadni kiriting, yoki filtrlarni o'zgartiring.",
     "deleteTitle": "Operatsiyani o'chirasizmi?",
@@ -106,7 +107,7 @@
     "rejectDone": "Rad etildi",
     "voidDone": "Bekor qilindi",
     "emptyTitle": "Tasdiqlash kutayotgan operatsiya yo'q",
-    "emptyBody": "Belgilangan summadan katta xarajatlar shu yerga tushadi.",
+    "emptyBody": "Tasdiqlash chegarasidan kam bo'lmagan har qanday operatsiya shu yerga tushadi.",
     "enteredBy": "Kiritgan: {{name}}",
     "ownEntry": "Buni o'zingiz kiritgansiz, shuning uchun boshqa xodim tasdiqlashi kerak.",
     "ownVoid": "Buni o'zingiz kiritgansiz, shuning uchun boshqa xodim bekor qilishi kerak."
@@ -126,6 +127,7 @@
     "total": "Jami pul",
     "inCash": "Kassada",
     "inBank": "Bank va kartada",
+    "withHolders": "Xodimlarda (hisobdor)",
     "close": "Hisobni yopish",
     "closeTitle": "Hisobni yopasizmi?",
     "closeBody": "\"{{name}}\" ro'yxatdan olib tashlanadi. Tarix saqlanib qoladi.",
@@ -159,7 +161,10 @@
     "description": "Kim bizdan, biz kimdan qancha qarzmiz va to'lov muddatlari.",
     "weOwe": "Biz to'lashimiz kerak",
     "owedToUs": "Bizga to'lashlari kerak",
-    "overdueTotal": "Muddati o'tgan",
+    "overdueOf": "Shundan muddati o'tgan: {{amount}}",
+    "noneOverdue": "Muddati o'tgani yo'q",
+    "payrollHint": "Ish haqi Xodimlar bo'limidagi oylik hisob-kitobdan to'lanadi: u har bir xodimning ulushini biladi.",
+    "payrollLink": "Ish haqi sahifasida to'lash",
     "loans": "Kreditlar qoldig'i",
     "loansHint": "Alohida grafik bo'yicha yuritiladi.",
     "direction": {
@@ -227,6 +232,8 @@
       "diff": "Farq"
     },
     "allCenters": "Barcha xarajat markazlari",
+    "noCenterPlan": "\"{{name}}\" bo'yicha reja kiritilmagan: reja butun ferma uchun yuritiladi. Bu yerda faqat fakt ko'rinadi.",
+    "toDateNote": "Farq va ijro boshlangan oylar rejasiga nisbatan hisoblanadi: kelgusi oylar hali tejash ham, kamomad ham emas.",
     "category": "Modda",
     "percent": "Ijro",
     "edit": "Rejani tahrirlash",
@@ -311,7 +318,8 @@
     "centerChartHint": "Dalalar va podalar: texnika va umumiy xarajatlar taqsimlangandan keyin.",
     "noData": "Bu davrda ma'lumot yo'q",
     "noDataBody": "Xarajat kiritilgach yoki ombordan chiqim bo'lgach, hisob-kitob shu yerda ko'rinadi.",
-    "internalNote": "O'z mahsuloti (masalan, beda) podaga ichki narxda o'tadi, shuning uchun markazlar yig'indisi fermaning haqiqiy pul xarajatidan katta bo'lishi mumkin. Ferma bo'yicha yakuniy natijani \"Moddalar\" bo'limidan oling."
+    "internalNote": "O'z mahsuloti (masalan, beda) podaga ichki narxda o'tadi, shuning uchun markazlar yig'indisi fermaning haqiqiy pul xarajatidan katta bo'lishi mumkin. Fermaning sof natijasi (daromad minus ishlatilgan xarajat) \"Oylik natija\" hisobotida.",
+    "resultLink": "Oylik natijani ochish"
   },
   "cashflow": {
     "title": "Pul oqimi",
@@ -358,7 +366,7 @@
     "emptyBody": "Tasdiqlangan operatsiyalar shu yerda oylar bo'yicha ko'rinadi."
   },
   "loans": {
-    "title": "Kredit va lizing",
+    "title": "Kreditlar",
     "description": "Kreditlar, to'lov grafigi, foizlar va qoldiq qarz.",
     "add": "Kredit qo'shish",
     "addHint": "To'lov grafigi shartlar asosida avtomatik tuziladi.",
@@ -405,7 +413,7 @@
     "notify": {
       "sent": {
         "title": "Sizga {{amount}} naqd pul berildi",
-        "body": "Kimdan: {{sender}}, {{date}}. Pul qo'lingizga tekkach, Oldim tugmasini bosing."
+        "body": "Kimdan: {{sender}}, {{date}}."
       },
       "accepted": {
         "title": "{{holder}}: {{amount}} olindi",
@@ -434,7 +442,9 @@
       "withPeople": "Xodimlardagi pul",
       "invested": "Egasi kiritgan",
       "investedHint": "Egasining shaxsiy puli, qaytarib olingani chegirilgan holda",
-      "waiting": "Hali tasdiqlanmagan"
+      "waiting": "Hali tasdiqlanmagan",
+      "waitingCount": "{{count}} ta",
+      "waitingHint": "Berilgan pullar: xodim \"Oldim\" bosishini kutmoqda"
     },
     "card": {
       "inHand": "Qo'lida bo'lishi kerak",
@@ -445,7 +455,8 @@
       "handoversWaiting": "Tasdiqlanmagan: {{n}}",
       "details": "Batafsil",
       "handOver": "Berish",
-      "takeBack": "Qaytarib olish"
+      "takeBack": "Qaytarib olish",
+      "giveBack": "Qaytarish"
     },
     "form": {
       "title": "Naqd pul berish",
@@ -461,8 +472,10 @@
     },
     "return": {
       "title": "Pulni qaytarib olish",
+      "titleMine": "Pulni qaytarish",
       "description": "{{name}}: qo'lida {{amount}} bo'lishi kerak.",
       "submit": "Qaytarib olish",
+      "submitMine": "Qaytarish",
       "to": "Qayerga",
       "toOwner": "Egasiga",
       "toAccount": "Ferma hisobiga",
@@ -561,6 +574,7 @@
     "HANDOVER_NOT_ACCEPTED": "Faqat qabul qilingan pulni bekor qilish mumkin.",
     "HOLDER_ACCOUNT": "Bu xodimning hisobdor puli. Hisobni Hisobdor shaxslar bo'limida yoping: u yerda xodimda hech narsa qolmagani tekshiriladi.",
     "USE_CASH_HANDOVER": "Bu xodimning hisobdor puli. Pulni Hisobdor shaxslar bo'limi orqali bering, shunda u olganini tasdiqlaydi.",
-    "DATE_IN_FUTURE": "Sana hali kelmagan."
+    "DATE_IN_FUTURE": "Sana hali kelmagan.",
+    "SYSTEM_COUNTERPARTY": "Ish haqi kontragentini tizim yuritadi: uni qayta nomlab yoki arxivlab bo'lmaydi."
   }
 }

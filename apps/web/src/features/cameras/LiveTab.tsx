@@ -1,8 +1,9 @@
-import { ExternalLink, VideoOff } from 'lucide-react';
+import { ExternalLink, MapPinned, VideoOff } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
 import { EmptyState, ErrorCard } from '@/components';
-import { Alert, Badge, Card, Skeleton } from '@/components/ui';
+import { Alert, Badge, Button, Card, Skeleton } from '@/components/ui';
 import { useList } from '@/lib/query';
 import { DEVICES, type Device, STATUS_VARIANT } from './types';
 
@@ -92,18 +93,43 @@ export function LiveTab() {
   const cameras = query.data.data;
   if (cameras.length === 0) return <EmptyState icon={VideoOff} title={t('live.emptyTitle')} description={t('live.emptyBody')} />;
 
+  // A camera that is only planned has nothing to show: one line says so, not a wall of dead tiles.
+  const installed = cameras.filter((camera) => camera.status !== 'planned' || camera.liveUrl);
+  const planned = cameras.length - installed.length;
+  const planLink = (
+    <Button variant="outline" asChild>
+      <Link to="?tab=plan">
+        <MapPinned aria-hidden />
+        {t('tabs.plan')}
+      </Link>
+    </Button>
+  );
+  if (installed.length === 0) {
+    return (
+      <Card>
+        <EmptyState icon={VideoOff} title={t('live.plannedTitle')} description={t('live.plannedBody', { count: planned })} action={planLink} />
+      </Card>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-3">
-      {!cameras.some((camera) => camera.liveUrl) && (
+      {!installed.some((camera) => camera.liveUrl) && (
         <Alert tone="info" title={t('live.gatewayTitle')}>
           {t('live.gatewayBody')}
         </Alert>
       )}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {cameras.map((camera) => (
+        {installed.map((camera) => (
           <LiveTile key={camera.id} device={camera} />
         ))}
       </div>
+      {planned > 0 && (
+        <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+          <p>{t('live.morePlanned', { count: planned })}</p>
+          {planLink}
+        </div>
+      )}
     </div>
   );
 }

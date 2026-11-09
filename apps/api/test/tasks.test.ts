@@ -576,7 +576,7 @@ describe('calendar (spec 17.1)', () => {
     );
     const items = (await director.get('/tasks/calendar', { ...range, kinds: 'vaccination' })).data;
     expect(items).toHaveLength(1);
-    expect(items[0].params).toEqual({ name: null, type: 'deworming', count: 1 });
+    expect(items[0].params).toEqual({ name: null, fromPlan: false, type: 'deworming', count: 1 });
   });
 
   it('filters by division, person and kind', async () => {
