@@ -152,6 +152,26 @@ describe('irrigation advice', () => {
     expect((await (await f.as('investor')).get('/farm/water/advice')).status).toBe(403);
   });
 
+  it('refills days kept from the old weather source, which cannot give crop water use', async () => {
+    const f = await createFixture();
+    await plant(f, 'cotton', -40);
+    // Every day since sowing is stored, but as Open-Meteo wrote it: no humidity, no mean wind.
+    await f.run(async () => {
+      const days = [];
+      for (let o = -45; o <= -1; o++) days.push({ ...base(), date: day(o), tempMin: 10, tempMax: 25, precipitationMm: 0, source: 'open-meteo' });
+      await tx().insert(schema.weatherDaily).values(days);
+    });
+    const fetchMock = vi.fn(async (url: URL | string) => {
+      const host = new URL(String(url)).hostname;
+      if (host === 'power.larc.nasa.gov') return new Response(JSON.stringify({ properties: { parameter: {} } }));
+      return new Response('{}', { status: 503 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    await f.run(() => refreshWeather());
+    const power = fetchMock.mock.calls.map(([u]) => new URL(String(u))).find((u) => u.hostname === 'power.larc.nasa.gov')!;
+    expect(power.searchParams.get('start')).toBe(day(-40).replaceAll('-', ''));
+  });
+
   it('fills past weather back to the sowing of a crop still in the field', async () => {
     const f = await createFixture();
     await plant(f, 'cotton', -40);
