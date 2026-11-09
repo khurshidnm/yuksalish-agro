@@ -91,8 +91,11 @@ export function TrackingMap({ animals, track, outlines, selectedId, onSelect, fi
     outlineLayer.current?.remove();
     outlineLayer.current = null;
     if (!outlines?.length) return;
+    const color = token('--card');
     outlineLayer.current = L.geoJSON({ type: 'FeatureCollection', features: outlines.map((geometry) => ({ type: 'Feature', geometry, properties: {} })) } as never, {
-      style: { color: token('--card'), weight: 1.5, opacity: 0.8, fill: false },
+      style: { color, weight: 1.5, opacity: 0.8, fill: false },
+      // A well or a trough drawn as a point. Left to Leaflet it becomes the stock pin, whose image the build does not ship.
+      pointToLayer: (_feature, latlng) => L.circleMarker(latlng, { radius: 5, color, weight: 1.5, opacity: 0.8, fill: false, interactive: false }),
       interactive: false,
     }).addTo(instance);
   }, [outlines, theme]);

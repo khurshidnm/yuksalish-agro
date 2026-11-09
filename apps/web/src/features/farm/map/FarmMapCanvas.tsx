@@ -15,11 +15,14 @@ export type BaseLayer = 'satellite' | 'streets';
 export type ColorBy = 'landUse' | 'crop' | 'health';
 export type DrawShape = 'Polygon' | 'CircleMarker';
 
-export const BASE_LAYERS: Record<BaseLayer, { url: string; attribution: string; maxZoom: number }> = {
+export const BASE_LAYERS: Record<BaseLayer, { url: string; attribution: string; maxZoom: number; maxNativeZoom?: number }> = {
   satellite: {
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     attribution: 'Tiles &copy; Esri',
     maxZoom: 19,
+    // Over rural Uzbekistan the imagery stops at 17: closer, Esri serves "Map data not yet available" tiles.
+    // Above it the map enlarges the last real picture instead.
+    maxNativeZoom: 17,
   },
   streets: {
     url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
