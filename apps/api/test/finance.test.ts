@@ -1388,7 +1388,8 @@ describe('cash-flow forecast', () => {
     const w = await world();
     const owner = await w.f.as('owner');
     const res = await owner.get('/finance/cashflow/actual', { from: '2026-10-01', to: '2026-10-31' });
-    expect(res.data).toEqual([{ month: '2026-10', inflow: 0, outflow: 19_900_000, net: -19_900_000 }]);
+    // No owner's money moved, so none of the flow was financing.
+    expect(res.data).toEqual([{ month: '2026-10', inflow: 0, outflow: 19_900_000, financingIn: 0, financingOut: 0, net: -19_900_000 }]);
   });
 });
 
@@ -1449,7 +1450,9 @@ describe('lookups', () => {
     const shepherd = await w.f.as('shepherd');
     const accountsLookup = await shepherd.get('/finance/accounts/lookup');
     expect(accountsLookup.status).toBe(200);
-    expect(Object.keys(accountsLookup.data[0]).sort()).toEqual(['currency', 'id', 'name', 'type']);
+    // `holder` says whether it is a person's cash (docs/cash-holders.md): a fact, not money.
+    expect(Object.keys(accountsLookup.data[0]).sort()).toEqual(['currency', 'holder', 'id', 'name', 'type']);
+    expect(accountsLookup.data[0].holder).toBeNull();
 
     const centers = await shepherd.get('/finance/cost-centers/lookup', { type: 'herd' });
     expect(centers.data).toEqual([{ id: w.herdCc, name: 'Sovliqlar', type: 'herd', refId: w.herdId }]);

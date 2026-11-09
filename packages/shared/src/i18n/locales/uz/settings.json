@@ -230,6 +230,8 @@
     "piiHint": "Telefon, pasport, ish haqi va xodimlar ismi. Investorlarga bermang.",
     "financeSummary": "Moliya bo'yicha umumiy ko'rsatkichlar",
     "financeSummaryHint": "Dashboard va investor hisobotidagi jamlangan raqamlar. Jurnal va hisoblar ochilmaydi.",
+    "financeCapital": "Egasining o'z mablag'i",
+    "financeCapitalHint": "Egasining o'z pulini fermaga kiritish va qaytarib olish. Bu daromad ham, xarajat ham emas.",
     "cannotGrant": "Sizda bu huquq yo'q, shuning uchun uni bera olmaysiz",
     "system": "Standart",
     "custom": "Maxsus",

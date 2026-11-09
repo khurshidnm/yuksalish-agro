@@ -43,7 +43,7 @@ import { schema } from '../../db/client';
 import { ctx, hasPermission, today, tx } from '../../core/context';
 import { COST_CREDIT_MOVEMENT_TYPES, COST_MOVEMENT_TYPES } from '../../core/inventory';
 import { sumOf } from '../../core/query';
-import { listWithBalances } from './accounts.service';
+import { accountsWithHolders } from './advances.service';
 import { grid, monthsBetween } from './budget.service';
 import { listDebts } from './debts.service';
 import { addMonths, outstandingTotal } from './loans.service';
@@ -75,8 +75,9 @@ const {
 
 // ─── Money position ────────────────────────────────────────────────────────
 
+/** Every account with its balance. A person's cash says so, and is named only to those who may see names. */
 export async function cashPosition() {
-  const accounts = await listWithBalances();
+  const accounts = await accountsWithHolders();
   return {
     accounts: accounts.map((a) => ({
       id: a.id,
@@ -85,6 +86,7 @@ export async function cashPosition() {
       currency: a.currency,
       balance: a.balance,
       balanceBase: a.balanceBase,
+      holder: a.holder ? { isMe: a.holder.isMe } : null,
     })),
     total: round(accounts.reduce((sum, a) => sum + a.balanceBase, 0), 2),
   };
@@ -884,13 +886,19 @@ export async function fieldCosts(seasonId?: string): Promise<FieldCostRow[]> {
 
 const monthExpr = sql<string>`to_char(${t.date}, 'YYYY-MM')`;
 
-/** Actual money in and out per month (spec 10.4). Transfers between own accounts are neither. */
+/**
+ * Actual money in and out per month (spec 10.4). Transfers between own accounts are neither. The owner's
+ * own money is real cash in or out, so it counts, and `financingIn`/`financingOut` show how much of the
+ * flow it was: net still equals the change in cash, and profit never sees it.
+ */
 export async function cashflowActual(from?: string, to?: string) {
   const rows = await tx()
     .select({
       month: monthExpr,
-      inflow: sql`coalesce(sum(case when ${t.type} in ('income', 'debt_receipt') then ${t.amountBase} else 0 end), 0)`.mapWith(Number),
-      outflow: sql`coalesce(sum(case when ${t.type} in ('expense', 'debt_payment') then ${t.amountBase} else 0 end), 0)`.mapWith(Number),
+      inflow: sql`coalesce(sum(case when ${t.type} in ('income', 'debt_receipt', 'contribution') then ${t.amountBase} else 0 end), 0)`.mapWith(Number),
+      outflow: sql`coalesce(sum(case when ${t.type} in ('expense', 'debt_payment', 'withdrawal') then ${t.amountBase} else 0 end), 0)`.mapWith(Number),
+      financingIn: sql`coalesce(sum(case when ${t.type} = 'contribution' then ${t.amountBase} else 0 end), 0)`.mapWith(Number),
+      financingOut: sql`coalesce(sum(case when ${t.type} = 'withdrawal' then ${t.amountBase} else 0 end), 0)`.mapWith(Number),
     })
     .from(t)
     .where(

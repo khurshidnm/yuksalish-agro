@@ -71,7 +71,11 @@
     "closing": "Month-end balance",
     "lowConfidence": "Little history, so this is a rough estimate",
     "shortfall": "Cash shortfall expected: {{month}}",
-    "negative": "Cash shortfall"
+    "negative": "Cash shortfall",
+    "cashWithPeople": "Cash with people",
+    "cashWithPeopleHint": "People: {{n}}",
+    "invested": "Invested by the owner",
+    "investedHint": "Own money, less what was taken back"
   },
   "livestock": {
     "total": "Total herd",

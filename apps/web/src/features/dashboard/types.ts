@@ -14,9 +14,20 @@ export interface LocalizedName {
 export interface FinanceData {
   month: { month: string; income: number; expense: number; operatingExpense: number };
   cash: {
-    accounts: { id: string; name: string; type: string; currency: string; balance: number; balanceBase: number }[];
+    accounts: {
+      id: string;
+      /** Null for another person's cash when the reader may not see names. */
+      name: string | null;
+      type: string;
+      currency: string;
+      balance: number;
+      balanceBase: number;
+      holder: { isMe: boolean } | null;
+    }[];
     total: number;
   };
+  /** The owner's own money put in, and cash in people's hands. Null without finance.view. */
+  capital: { invested: number; contributed: number; withdrawn: number; cashWithPeople: number; holders: number } | null;
   debts: {
     receivable: number;
     payable: number;

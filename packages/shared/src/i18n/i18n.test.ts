@@ -68,6 +68,8 @@ describe('enum labels', () => {
     costingMethod: enums.COSTING_METHODS,
     costCenterType: enums.COST_CENTER_TYPES,
     transactionType: enums.TRANSACTION_TYPES,
+    cashHandoverStatus: enums.CASH_HANDOVER_STATUSES,
+    cashHandoverSource: enums.CASH_HANDOVER_SOURCES,
     costTreatment: enums.COST_TREATMENTS,
     transactionStatus: enums.TRANSACTION_STATUSES,
     paymentMethod: enums.PAYMENT_METHODS,

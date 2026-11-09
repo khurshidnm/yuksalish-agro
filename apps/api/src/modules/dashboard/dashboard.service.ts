@@ -25,6 +25,7 @@ import { assetStatus, fuelUsage } from '../assets/summary';
 import { fieldStatus, harvestPlanFact, overdueOperations } from '../crops/summary';
 import { eventFeed } from '../devices/devices.service';
 import { forecast } from '../farm/weather.service';
+import { capitalTiles } from '../finance/advances.service';
 import { budgetExecution, cashPosition, cashflowForecastDetail, debtSummary, monthToDate } from '../finance/summary';
 import { attendanceToday } from '../hr/summary';
 import { feedBalance, feedConsumption, lowStock } from '../inventory/summary';
@@ -61,6 +62,8 @@ async function loadFinance() {
     month: income,
     // finance.summary is aggregated figures: the total, not the accounts behind it (rule 7).
     cash: hasPermission('finance.view') ? cash : { total: cash.total, accounts: [] },
+    // The owner's own money put in, and cash in people's hands (docs/cash-holders.md).
+    capital: hasPermission('finance.view') ? await capitalTiles() : null,
     debts,
     budget: {
       month: totals(budgetMonth),

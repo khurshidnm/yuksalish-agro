@@ -7,15 +7,18 @@ import { z } from 'zod';
 import { ComboboxField, DateField, FormDialog, FormField, FormGrid, NumberField, SelectField, TextField } from '@/components';
 import { Button, Label, Switch, apiOptions } from '@/components/ui';
 import { api } from '@/lib/api';
-import { useSession } from '@/lib/auth';
+import { usePermission, useSession } from '@/lib/auth';
 import { zDate, zEnum, zOptionalDate, zOptionalNumber, zOptionalRef, zOptionalText, zPositive } from '@/lib/forms';
 import i18n, { enumOptions } from '@/lib/i18n';
 import { errorMessage, useApiMutation, useDetail } from '@/lib/query';
-import { FINANCE_PATHS, MONEY_QUERIES, treatmentForCategory, useCenterName, useLocalName } from './lib';
+import { FINANCE_PATHS, MONEY_QUERIES, accountLabel, treatmentForCategory, useCenterName, useLocalName } from './lib';
 import type { AccountOption, CategoryOption, CostCenterOption, Transaction } from './types';
 
-const TYPES = ['expense', 'income', 'transfer'] as const;
+const TYPES = ['expense', 'income', 'transfer', 'contribution', 'withdrawal'] as const;
 type EntryType = (typeof TYPES)[number];
+/** The owner's own money in or out: one account, nothing else. Shown only to those with finance.capital. */
+const CAPITAL: readonly EntryType[] = ['contribution', 'withdrawal'];
+const isCapital = (type: EntryType) => CAPITAL.includes(type);
 
 const schema = z
   .object({
@@ -42,6 +45,10 @@ const schema = z
     if (v.type === 'transfer') {
       need(v.accountId, 'accountId');
       need(v.toAccountId, 'toAccountId');
+      return;
+    }
+    if (isCapital(v.type)) {
+      need(v.accountId, 'accountId');
       return;
     }
     need(v.categoryId, 'categoryId');
@@ -87,6 +94,9 @@ function toPayload(values: FormOutput, accounts: AccountOption[]) {
   const method = account?.type ?? 'cash';
   if (values.type === 'transfer') {
     return { ...rest, paymentMethod: method, categoryId: null, costCenterId: null, counterpartyId: null, dueDate: null };
+  }
+  if (isCapital(values.type)) {
+    return { ...rest, paymentMethod: method, toAccountId: null, categoryId: null, costCenterId: null, counterpartyId: null, dueDate: null };
   }
   return onCredit
     ? { ...rest, paymentMethod: 'debt', accountId: null, toAccountId: null }
@@ -167,12 +177,27 @@ function Fields({
   const currency = form.watch('currency');
   const treatment = form.watch('costTreatment');
   const isTransfer = type === 'transfer';
+  const canCapital = usePermission('finance.capital');
+  const choices = TYPES.filter((value) => !isCapital(value) || canCapital || editing?.type === value);
 
+  // Money reaches a person's cash only when they confirm it, so their cash is not a place to put it by hand.
+  const intoOptions = useMemo(
+    () =>
+      accounts
+        .filter((a) => !a.holder || a.holder.isMe)
+        .map((a) => {
+          const kind = t(`enums:accountType.${a.type}`);
+          const name = accountLabel(a);
+          return { value: a.id, label: name === kind ? name : `${name} (${kind})` };
+        }),
+    [accounts, t],
+  );
   const accountOptions = useMemo(
     () =>
       accounts.map((a) => {
         const kind = t(`enums:accountType.${a.type}`);
-        return { value: a.id, label: a.name === kind ? a.name : `${a.name} (${kind})` };
+        const name = accountLabel(a);
+        return { value: a.id, label: name === kind ? name : `${name} (${kind})` };
       }),
     [accounts, t],
   );
@@ -190,8 +215,8 @@ function Fields({
 
   return (
     <>
-      <div role="radiogroup" aria-label={t('journal.fields.type')} className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
-        {TYPES.map((value) => (
+      <div role="radiogroup" aria-label={t('journal.fields.type')} className="grid grid-cols-6 gap-1 rounded-lg bg-muted p-1">
+        {choices.map((value) => (
           <button
             key={value}
             type="button"
@@ -203,9 +228,9 @@ function Fields({
               form.setValue('categoryId', null);
               form.setValue('costTreatment', 'expense');
             }}
-            className={`focus-ring min-h-11 rounded-md px-2 text-sm font-medium transition-colors ${
-              type === value ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-            }`}
+            className={`focus-ring min-h-11 rounded-md px-2 text-sm leading-tight font-medium transition-colors ${
+              isCapital(value) ? 'col-span-3' : 'col-span-2'
+            } ${type === value ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
           >
             {t(`enums:transactionType.${value}`)}
           </button>
@@ -227,8 +252,18 @@ function Fields({
       {isTransfer ? (
         <FormGrid>
           <SelectField form={form} name="accountId" label={t('journal.fields.fromAccount')} required options={accountOptions} placeholder={t('journal.chooseAccount')} />
-          <SelectField form={form} name="toAccountId" label={t('journal.fields.toAccount')} required options={accountOptions} placeholder={t('journal.chooseAccount')} />
+          <SelectField form={form} name="toAccountId" label={t('journal.fields.toAccount')} required options={intoOptions} placeholder={t('journal.chooseAccount')} />
         </FormGrid>
+      ) : isCapital(type) ? (
+        <SelectField
+          form={form}
+          name="accountId"
+          label={t(type === 'contribution' ? 'journal.fields.intoAccount' : 'journal.fields.fromAccount')}
+          hint={t(`journal.capitalHint.${type}`)}
+          required
+          options={type === 'contribution' ? intoOptions : accountOptions}
+          placeholder={t('journal.chooseAccount')}
+        />
       ) : (
         <>
           <ComboboxField

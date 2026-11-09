@@ -71,6 +71,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
   expense('labor', 'payroll_tax', 'Soliqlar', 'Налоги', 'Payroll taxes'),
   expense('labor', 'meals', 'Ovqatlanish', 'Питание', 'Meals'),
   expense('labor', 'clothing', 'Kiyim', 'Спецодежда', 'Workwear'),
+  expense('labor', 'casual_labour', 'Kunlik ishchilar haqi', 'Оплата подённых работников', 'Day labour'),
   expense('machinery', 'fuel', "Yoqilg'i", 'Топливо', 'Fuel'),
   expense('machinery', 'repair', "Ta'mirlash", 'Ремонт', 'Repairs'),
   expense('machinery', 'spare_parts', 'Ehtiyot qismlar', 'Запчасти', 'Spare parts'),
@@ -89,6 +90,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
   expense('financial', 'loan_interest', 'Kredit foizlari', 'Проценты по кредиту', 'Loan interest'),
   expense('financial', 'insurance', "Sug'urta", 'Страхование', 'Insurance'),
   expense('financial', 'leasing', "Lizing to'lovlari", 'Лизинговые платежи', 'Leasing payments'),
+  expense('financial', 'cash_shortage', 'Kassa kamomadi', 'Недостача в кассе', 'Cash shortage'),
   expense('investment', 'barn_construction', 'Molxona qurilishi', 'Строительство кошары', 'Barn construction'),
   expense('investment', 'machinery_purchase', 'Texnika xaridi', 'Покупка техники', 'Machinery purchase'),
   expense('investment', 'camera_system', 'Kamera tizimi', 'Система камер', 'Camera system'),
@@ -106,4 +108,5 @@ export const DEFAULT_CATEGORIES: Category[] = [
   income('other_income', 'services_income', "Xizmat ko'rsatish", 'Услуги', 'Services'),
   income('other_income', 'rent_income', 'Ijara daromadi', 'Доход от аренды', 'Rental income'),
   income('other_income', 'other', 'Boshqa daromadlar', 'Прочие доходы', 'Other income'),
+  income('other_income', 'cash_surplus', 'Kassa ortiqchasi', 'Излишек в кассе', 'Cash surplus'),
 ];

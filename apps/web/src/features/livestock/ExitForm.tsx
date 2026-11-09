@@ -11,6 +11,7 @@ import { enumOptions } from '@/lib/i18n';
 import { useApiMutation } from '@/lib/query';
 import { PhotoPicker } from './PhotoPicker';
 import { type AnimalLookup, type LookupRow, newClientId } from './shared';
+import { accountLabel } from '@/features/finance/lib';
 
 type ExitType = (typeof ANIMAL_EXIT_TYPES)[number];
 
@@ -165,7 +166,7 @@ export function ExitForm({ open, onOpenChange, animal, defaultType }: ExitFormPr
                       name="accountId"
                       label={t('exits.account')}
                       required
-                      loadOptions={apiOptions<LookupRow>('/finance/accounts/lookup', (a) => ({ value: a.id, label: a.name }))}
+                      loadOptions={apiOptions<LookupRow>('/finance/accounts/lookup', (a) => ({ value: a.id, label: accountLabel(a) }))}
                     />
                   )}
                 </FormGrid>

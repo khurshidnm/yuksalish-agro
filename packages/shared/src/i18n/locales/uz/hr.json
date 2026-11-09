@@ -269,6 +269,7 @@
     "PAYROLL_EMPTY": "Bu hisob-kitobda xodimlar yo'q",
     "PAYROLL_ADVANCES_WAITING": "Shu oy uchun avans hali tasdiqlanishini kutmoqda. Avval uni tasdiqlang yoki rad eting",
     "PAYROLL_ADVANCES_CHANGED": "Ish haqi hisoblangandan keyin avans berilgan. Avval qayta hisoblang",
-    "SAME_MAKER_CHECKER": "Tayyorlagan xodim o'zi tasdiqlay olmaydi"
+    "SAME_MAKER_CHECKER": "Tayyorlagan xodim o'zi tasdiqlay olmaydi",
+    "EMPLOYEE_HOLDS_CASH": "Xodimda hali ferma puli bor. Avval uni qaytarib oling va hisobdor hisobini yoping."
   }
 }

@@ -7,6 +7,7 @@ import { ctx, tx, withPlatform, withTenant } from '../../core/context';
 import { badRequest, notFound } from '../../core/errors';
 import { recordEvent } from '../../core/journal';
 import { listQuery, paged } from '../../core/query';
+import { buttonsFor } from './actions.service';
 import { CHANNELS, EXTERNAL_CHANNELS, type ExternalChannel } from './channels';
 import { tr } from './i18n';
 import { DEFAULT_CHANNELS, EVENT_TYPES, notifyUser, wordsFor, type EventType, type NotificationInput } from './notify.service';
@@ -44,6 +45,7 @@ export async function list(q: z.infer<typeof notificationListQuery>) {
         body: notifications.body,
         texts: notifications.texts,
         link: notifications.link,
+        action: notifications.action,
         readAt: notifications.readAt,
         createdAt: notifications.createdAt,
       })
@@ -52,7 +54,14 @@ export async function list(q: z.infer<typeof notificationListQuery>) {
       .orderBy(desc(notifications.createdAt), desc(notifications.id))
       .limit(limit)
       .offset(offset);
-    return rows.map(({ texts, ...row }) => ({ ...row, ...wordsFor({ ...row, texts }, q.lang) }));
+    // Asked live: a handover accepted in Telegram has no buttons left here.
+    return Promise.all(
+      rows.map(async ({ texts, action, ...row }) => ({
+        ...row,
+        ...wordsFor({ ...row, texts }, q.lang),
+        action: action ? { ...action, buttons: await buttonsFor(action) } : null,
+      })),
+    );
   });
 }
 

@@ -80,13 +80,18 @@
       "counterparty": "Kontragent",
       "description": "Izoh",
       "file": "Hujjat (chek, hisob-faktura)",
-      "status": "Holati"
+      "status": "Holati",
+      "intoAccount": "Qaysi hisobga"
     },
     "treatmentHint": {
       "expense": "Darhol tanlangan xarajat markazining tannarxiga yoziladi.",
       "inventory": "Omborga olinadi. Tannarxga faqat ombordan chiqarilganda o'tadi, shunda xarajat ikki marta sanalmaydi.",
       "capex": "Asosiy vosita. Tannarxga amortizatsiya orqali asta-sekin o'tadi.",
       "animal": "Hayvonning o'z qiymatiga qo'shiladi, poda xarajatiga yozilmaydi."
+    },
+    "capitalHint": {
+      "contribution": "Egasining fermaga kiritgan shaxsiy puli. Bu daromad ham, foyda ham emas.",
+      "withdrawal": "Egasining fermadan olgan puli. Bu xarajat emas."
     }
   },
   "approval": {
@@ -395,6 +400,112 @@
       "terms": "Shartlar"
     }
   },
+  "cashHolders": {
+    "someonesCash": "Xodimning naqd puli",
+    "notify": {
+      "sent": {
+        "title": "Sizga {{amount}} naqd pul berildi",
+        "body": "Kimdan: {{sender}}, {{date}}. Pul qo'lingizga tekkach, Oldim tugmasini bosing."
+      },
+      "accepted": {
+        "title": "{{holder}}: {{amount}} olindi",
+        "pending": "Summa tasdiqlash chegarasidan kam emas, shuning uchun tasdiqlangach hisobga olinadi."
+      },
+      "disputed": {
+        "title": "{{holder}}: {{amount}} kelmadi"
+      }
+    },
+    "actions": {
+      "accept": "Oldim",
+      "dispute": "Olmadim",
+      "accepted": "Tayyor: pul hisobingizga tushdi",
+      "acceptedPending": "Yozildi. Tasdiqlangach hisobga olinadi",
+      "disputed": "Yuboruvchiga sababi yetkazildi"
+    },
+    "title": "Hisobdor shaxslar",
+    "description": "Ferma xarajatlari uchun xodimlarga berilgan naqd pul: har biri qancha oldi, qancha sarfladi va qo'lida qancha qolishi kerak.",
+    "handOver": "Naqd pul berish",
+    "emptyTitle": "Hozircha hech kimda hisobdor pul yo'q",
+    "emptyBody": "Ferma boshqaruvchisiga yoki ferma uchun xarid qiladigan xodimga naqd pul bering. U olganini tasdiqlagach, pul hisobga olinadi.",
+    "yourCash": "Sizdagi naqd pul",
+    "personsCash": "Xodimdagi hisobdor pul",
+    "open": "Hisobdor shaxslar",
+    "stats": {
+      "withPeople": "Xodimlardagi pul",
+      "invested": "Egasi kiritgan",
+      "investedHint": "Egasining shaxsiy puli, qaytarib olingani chegirilgan holda",
+      "waiting": "Hali tasdiqlanmagan"
+    },
+    "card": {
+      "inHand": "Qo'lida bo'lishi kerak",
+      "counted": "Tasdiqlangan: {{amount}}",
+      "received": "Shu hafta olindi",
+      "spent": "Shu hafta sarflandi",
+      "pendingApproval": "Tasdiq kutmoqda: {{n}}",
+      "handoversWaiting": "Tasdiqlanmagan: {{n}}",
+      "details": "Batafsil",
+      "handOver": "Berish",
+      "takeBack": "Qaytarib olish"
+    },
+    "form": {
+      "title": "Naqd pul berish",
+      "description": "Xodim pulni olganini tasdiqlamaguncha hech narsa o'tkazilmaydi.",
+      "submit": "Berish",
+      "person": "Kimga",
+      "choosePerson": "Xodimni tanlang",
+      "source": "Pul qayerdan",
+      "fromAccount": "Qaysi hisobdan",
+      "amount": "Summa",
+      "date": "Sana",
+      "note": "Nima uchun"
+    },
+    "return": {
+      "title": "Pulni qaytarib olish",
+      "description": "{{name}}: qo'lida {{amount}} bo'lishi kerak.",
+      "submit": "Qaytarib olish",
+      "to": "Qayerga",
+      "toOwner": "Egasiga",
+      "toAccount": "Ferma hisobiga",
+      "account": "Hisob"
+    },
+    "detail": {
+      "description": "Davr davomida nima kirdi, nima chiqdi va hozir qo'lda qancha bo'lishi kerak.",
+      "opening": "Boshida",
+      "received": "Olindi",
+      "spent": "Sarflandi",
+      "returned": "Qaytarildi",
+      "closing": "Oxirida",
+      "counted": "Tasdiqlangan qoldiq",
+      "pending": "Tasdiq kutmoqda: {{n}}",
+      "expected": "Qo'lda bo'lishi kerak",
+      "byCategory": "Moddalar bo'yicha",
+      "byCostCenter": "Texnika, dala va podalar bo'yicha",
+      "entries": "Yozuvlar",
+      "noEntries": "Bu davrda hech narsa yo'q",
+      "close": "Hisobdor hisobni yopish",
+      "closeTitle": "Hisobdor hisob yopilsinmi?",
+      "closeBody": "Qo'lda hech narsa qolmagan. Yozuvlar jurnalda qoladi."
+    },
+    "handovers": {
+      "title": "Berilgan pullar",
+      "empty": "Hozircha pul berilmagan",
+      "toYou": "Sizga, kimdan: {{name}}",
+      "to": "Kimga: {{name}}",
+      "someone": "ferma xodimi",
+      "cancel": "Bekor qilish",
+      "reverse": "Berishni bekor qilish",
+      "dispute": "Olmadim",
+      "disputeTitle": "Nima noto'g'ri?",
+      "reverseTitle": "Bu berish bekor qilinsinmi?"
+    },
+    "toast": {
+      "sent": "Yuborildi. Tasdiqlangach hisobga olinadi",
+      "returned": "Yozildi",
+      "closed": "Yopildi",
+      "cancelled": "Bekor qilindi",
+      "reversed": "Berish bekor qilindi"
+    }
+  },
   "errors": {
     "WAGES_PAID_FROM_PAYROLL": "Ish haqi Xodimlar bo'limidagi oylik hisob-kitobdan to'lanadi, bu yerdan emas.",
     "TRANSACTION_CHANGED": "Bu yozuv siz ochganingizdan keyin o'zgartirildi. Hozir unda {{amount}} {{currency}}. Hech narsa saqlanmadi: qayta o'qib, keyin qaror qiling.",
@@ -428,6 +539,28 @@
     "TRANSACTION_APPROVED": "Tasdiqlangan operatsiyani o'zgartirib bo'lmaydi. Uni bekor qiling.",
     "TRANSACTION_HAS_SOURCE": "Bu yozuv boshqa moduldan kelgan. Uni o'sha yerda o'zgartiring.",
     "TRANSACTION_REJECTED": "Rad etilgan yoki bekor qilingan operatsiya jurnalda qoladi. Yangisini kiriting.",
-    "ACCOUNT_CURRENCY_LOCKED": "Bu hisobda pul harakati bor, valyutasini o'zgartirib bo'lmaydi."
+    "ACCOUNT_CURRENCY_LOCKED": "Bu hisobda pul harakati bor, valyutasini o'zgartirib bo'lmaydi.",
+    "INVALID_CAPITAL_ENTRY": "Egasining shaxsiy puli bitta hisob orqali o'tadi: moddasiz, xarajat markazisiz va kontragentsiz.",
+    "APPROVER_NOT_ALLOWED": "Ko'rsatilgan shaxs bu fermada to'lovlarni tasdiqlay olmaydi.",
+    "HOLDER_CANNOT_APPROVE": "Bu pul qo'lida bo'lgan shaxs uning harakatini tasdiqlay yoki bekor qila olmaydi.",
+    "CAPITAL_NOT_ALLOWED": "Egasining shaxsiy pulini faqat egasi kiritadi.",
+    "FROM_ACCOUNT_NOT_EXPECTED": "Shaxsiy pul ferma hisobidan olinmaydi. Pul hisobdan bo'lsa, manba sifatida ferma hisobini tanlang.",
+    "FROM_ACCOUNT_REQUIRED": "Pul qaysi hisobdan olinishini tanlang.",
+    "HANDOVER_TO_SELF": "O'zingizga pul berib bo'lmaydi. Uni jurnalga o'tkazma yoki egasining hissasi sifatida kiriting.",
+    "HOLDER_NEEDS_LOGIN": "Avval xodimni login bilan bog'lang, shunda u pulni olganini tasdiqlay oladi.",
+    "HOLDER_NEEDS_FINANCE": "Bu xodim hozircha xarajat kirita olmaydi. Avval uning roliga moliya yozuvlarini ko'rish va yaratish huquqini bering.",
+    "HOLDER_CLOSED": "Bu hisobdor hisob yopilgan.",
+    "HANDOVER_OPEN": "Berilgan pul hali bu shaxs tasdig'ini kutmoqda.",
+    "HOLDER_HAS_CASH": "Bu shaxsda hali pul bor. Yopishdan oldin uni qaytarib oling.",
+    "HOLDER_CASH_SPENT": "Bu pulning bir qismi sarflangan. Berilganini qoldiring va qolganini qaytarib oling.",
+    "HOLDER_CASH_SHORT": "Bu shaxs qo'lidagi puldan ko'p.",
+    "HANDOVER_DECIDED": "Bu pulga allaqachon javob berilgan.",
+    "NOT_THE_HOLDER": "Faqat pulni olgan shaxs javob bera oladi.",
+    "NOT_THE_SENDER": "Faqat pulni bergan shaxs bekor qila oladi.",
+    "SENDER_NO_LONGER_ALLOWED": "Yuboruvchi endi bu pulni bera olmaydi.",
+    "HANDOVER_NOT_ACCEPTED": "Faqat qabul qilingan pulni bekor qilish mumkin.",
+    "HOLDER_ACCOUNT": "Bu xodimning hisobdor puli. Hisobni Hisobdor shaxslar bo'limida yoping: u yerda xodimda hech narsa qolmagani tekshiriladi.",
+    "USE_CASH_HANDOVER": "Bu xodimning hisobdor puli. Pulni Hisobdor shaxslar bo'limi orqali bering, shunda u olganini tasdiqlaydi.",
+    "DATE_IN_FUTURE": "Sana hali kelmagan."
   }
 }

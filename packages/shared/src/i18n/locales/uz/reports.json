@@ -391,6 +391,8 @@
     "index": "Indeks",
     "indicator": "Ko'rsatkich",
     "inflow": "Kirim",
+    "financingIn": "Egasidan kirim",
+    "financingOut": "Egasiga chiqim",
     "interest": "Foiz",
     "inventoryNo": "Inventar raqami",
     "item": "Nomenklatura",

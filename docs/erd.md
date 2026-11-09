@@ -1,7 +1,7 @@
 # Data model
 
 Generated from `apps/api/src/db/schema` by `apps/api/src/db/erd.ts`. Do not edit by hand; run
-`pnpm --filter @yap/api exec tsx src/db/erd.ts` after a schema change. 109 tables.
+`pnpm --filter @yap/api exec tsx src/db/erd.ts` after a schema change. 111 tables.
 
 Links to `tenants`, `farms` and `users` (`tenant_id`, `farm_id`, `created_by`) are on almost every
 table and are left out of the lines to keep the diagrams readable. A table from another domain appears
@@ -1243,6 +1243,54 @@ erDiagram
   transactions ||--o{ loan_instalments : "transaction_id"
 ```
 
+## Cash held by people
+
+```mermaid
+erDiagram
+  cash_handovers {
+    uuid id PK
+    uuid tenant_id FK
+    uuid farm_id FK
+    uuid created_by FK
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+    uuid holder_account_id FK
+    uuid employee_id FK
+    numeric amount
+    text currency
+    numeric fx_rate
+    date date
+    text source
+    uuid from_account_id FK
+    text note
+    text status
+    uuid decided_by FK
+    timestamp_with_time_zone decided_at
+    text dispute_reason
+    uuid transaction_id FK
+    uuid reversed_by FK
+    timestamp_with_time_zone reversed_at
+    text reversed_reason
+  }
+  cash_holders {
+    uuid id PK
+    uuid tenant_id FK
+    uuid farm_id FK
+    uuid created_by FK
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+    uuid account_id FK
+    uuid employee_id FK
+    boolean active
+  }
+  accounts ||--o{ cash_handovers : "from_account_id"
+  accounts ||--o{ cash_handovers : "holder_account_id"
+  accounts ||--o{ cash_holders : "account_id"
+  employees ||--o{ cash_handovers : "employee_id"
+  employees ||--o{ cash_holders : "employee_id"
+  transactions ||--o{ cash_handovers : "transaction_id"
+```
+
 ## HR and payroll
 
 ```mermaid
@@ -1694,6 +1742,7 @@ erDiagram
     text link
     uuid alert_id
     text permission
+    jsonb action
     jsonb deliveries
     timestamp_with_time_zone read_at
     timestamp_with_time_zone created_at

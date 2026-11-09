@@ -8,6 +8,7 @@ import { badRequest, conflict, forbidden, notFound } from '../../core/errors';
 import { recordEvent } from '../../core/journal';
 import { hidePii } from '../../core/privacy';
 import { clientId, isoDate, listQuery, paged, searchAny, sortBy } from '../../core/query';
+import { holdsCash } from '../finance/advances.service';
 import { blockMember, unblockMember } from '../settings/users.service';
 import { loginForPhone } from './login-link.service';
 
@@ -188,6 +189,10 @@ export async function updateEmployee(id: string, input: EmployeePatch) {
   assertSeasonal(input.payType ?? existing.payType, input.contractEndDate === undefined ? existing.contractEndDate : input.contractEndDate);
   assertMayChangeRates(input);
   await assertLinks(input);
+  // Their cash is answered for through their login: another login would take it over.
+  if (input.userId !== undefined && (input.userId ?? null) !== existing.userId && (await holdsCash(id))) {
+    throw conflict('EMPLOYEE_HOLDS_CASH', 'This person holds farm cash: take it back and close their cash account before changing their login');
+  }
   // Clearing a link on purpose stays cleared: only a record that has none picks one up.
   const found = !existing.userId && !input.userId && input.phone ? await loginForPhone(input.phone) : null;
   const [row] = await tx()
@@ -222,6 +227,10 @@ export async function terminate(id: string, input: z.infer<typeof terminateInput
   // Blocking is immediate, so a future date would cut access too early.
   if (input.date > today()) throw badRequest('TERMINATION_IN_FUTURE', 'Enter the termination on the last working day');
   await assertLinks({ userId: input.userId });
+  // Their login ends with them, so cash still in their hands could no longer be accounted for.
+  if (await holdsCash(id)) {
+    throw conflict('EMPLOYEE_HOLDS_CASH', 'This person still holds farm cash: take it back and close their cash account first');
+  }
 
   const userId = employee.userId ?? input.userId ?? (await loginForPhone(employee.phone));
   const [row] = await tx()

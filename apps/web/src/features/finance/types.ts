@@ -7,7 +7,7 @@ export interface I18nName {
 export interface Transaction {
   id: string;
   date: string;
-  type: 'expense' | 'income' | 'transfer' | 'debt_payment' | 'debt_receipt';
+  type: 'expense' | 'income' | 'transfer' | 'debt_payment' | 'debt_receipt' | 'contribution' | 'withdrawal';
   status: 'draft' | 'pending' | 'approved' | 'rejected';
   amount: number;
   currency: string;
@@ -64,9 +64,12 @@ export interface Totals {
 
 export interface AccountOption {
   id: string;
-  name: string;
+  /** Null for another person's cash when the reader may not see personal data: see accountLabel(). */
+  name: string | null;
   type: string;
   currency: string;
+  /** Set when the account is a person's cash (docs/cash-holders.md). */
+  holder?: { id: string; employeeId?: string; isMe: boolean } | null;
 }
 
 export interface AccountBalance extends AccountOption {
@@ -320,4 +323,80 @@ export interface FxRate {
   date: string;
   currency: string;
   rate: number;
+}
+
+/** A person holding farm cash, with this week (GET /finance/cash-holders). */
+export interface CashHolder {
+  id: string;
+  employeeId: string;
+  /** Null without pii.view, unless it is the reader's own. */
+  name: string | null;
+  accountId: string;
+  currency: string;
+  isMe: boolean;
+  balance: number;
+  /** The balance with what waits for approval but already moved: the cash they should have in hand. */
+  expectedCash: number;
+  week: { from: string; to: string; received: number; spent: number };
+  pendingApproval: number;
+  handoversWaiting: number;
+}
+
+export interface CashHolderSummary {
+  holder: { id: string; employeeId: string; name: string | null; accountId: string; currency: string; active: boolean; isMe: boolean };
+  from: string;
+  to: string;
+  opening: number;
+  received: number;
+  spent: number;
+  returned: number;
+  closing: number;
+  balance: number;
+  pending: { count: number; in: number; out: number };
+  expectedCash: number;
+  handoversWaiting: number;
+  byCategory: { categoryId: string | null; key: string | null; name: I18nName | null; amount: number }[];
+  byCostCenter: { costCenterId: string | null; type: string | null; name: string | null; amount: number }[];
+  entries: {
+    id: string;
+    date: string;
+    type: Transaction['type'];
+    amount: number;
+    status: Transaction['status'];
+    description: string | null;
+    categoryName: I18nName | null;
+    costCenterName: string | null;
+    incoming: boolean;
+  }[];
+}
+
+export interface CashHandover {
+  id: string;
+  holderId: string | null;
+  holderAccountId: string;
+  employeeId: string;
+  holderName: string | null;
+  sentByName: string | null;
+  toMe: boolean;
+  byMe: boolean;
+  amount: number;
+  currency: string;
+  date: string;
+  source: 'own_funds' | 'account';
+  fromAccountId: string | null;
+  note: string | null;
+  status: 'sent' | 'accepted' | 'disputed' | 'cancelled' | 'reversed';
+  disputeReason: string | null;
+  reversedReason: string | null;
+  transactionId: string | null;
+  createdAt: string;
+}
+
+export interface CapitalTiles {
+  /** The owner's own money put in, less what was taken back. */
+  invested: number;
+  contributed: number;
+  withdrawn: number;
+  cashWithPeople: number;
+  holders: number;
 }

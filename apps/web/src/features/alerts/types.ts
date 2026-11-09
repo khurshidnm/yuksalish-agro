@@ -30,6 +30,15 @@ export interface EvaluationResult {
   failedRules: string[];
 }
 
+/** A decision the reader can take from the message. The server says which still apply, and decides again. */
+export interface NotificationButton {
+  key: string;
+  /** "namespace:key" in the dictionaries. */
+  label: string;
+  tone?: 'primary' | 'danger';
+  needsReason?: boolean;
+}
+
 export interface NotificationRow {
   id: string;
   eventType: string | null;
@@ -37,6 +46,7 @@ export interface NotificationRow {
   title: string;
   body: string | null;
   link: string | null;
+  action: { kind: string; id: string; buttons: NotificationButton[] } | null;
   readAt: string | null;
   createdAt: string;
 }

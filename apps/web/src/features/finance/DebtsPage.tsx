@@ -24,7 +24,7 @@ import { usePermission, useSession } from '@/lib/auth';
 import { currencyLabel, formatDate, formatMoney } from '@/lib/format';
 import { zDate, zOptionalText, zPositive, zRef } from '@/lib/forms';
 import { useApiMutation, useDetail, useList } from '@/lib/query';
-import { FINANCE_PATHS, MONEY_QUERIES } from './lib';
+import { FINANCE_PATHS, MONEY_QUERIES, accountLabel } from './lib';
 import type { AccountOption, Aging, CounterpartyDebt, DebtSummary, UnpaidReceipt } from './types';
 import { UnpaidReceiptList } from './UnpaidReceipts';
 
@@ -81,7 +81,7 @@ function SettleFields({
         name="accountId"
         label={t('journal.fields.account')}
         required
-        options={accounts.map((a) => ({ value: a.id, label: `${a.name} (${currencyLabel(a.currency)})` }))}
+        options={accounts.map((a) => ({ value: a.id, label: `${accountLabel(a)} (${currencyLabel(a.currency)})` }))}
         placeholder={t('journal.chooseAccount')}
       />
       <TextField form={form} name="description" label={t('journal.fields.description')} />

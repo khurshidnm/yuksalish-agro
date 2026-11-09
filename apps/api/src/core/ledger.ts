@@ -10,8 +10,9 @@ import { ctx, hasPermission, tx } from './context';
 import { badRequest, conflict, forbidden, notFound } from './errors';
 import { receiptOfBatch, removeEmptyBatches, reverseMovements, reverseStockDocument, STOCK_DOC_REF } from './inventory';
 import { recordEvent } from './journal';
+import { memberHolds } from './members';
 
-const { accounts, animalExits, assetUsageLogs, costCenters, fxRates, maintenanceRecords, purchaseRequests, transactions } = schema;
+const { accounts, animalExits, assetUsageLogs, cashHandovers, cashHolders, costCenters, employees, fxRates, maintenanceRecords, purchaseRequests, transactions } = schema;
 
 type Transaction = typeof transactions.$inferSelect;
 
@@ -61,6 +62,11 @@ export interface PostTransactionInput {
   sourceId?: string | null;
   /** System postings already approved elsewhere, e.g. depreciation or an approved payroll run. */
   autoApprove?: boolean;
+  /**
+   * Approved by this person, who is not the one entering it: cash a sender authorised and its holder
+   * received. They must hold finance.approve on this farm now; the row names them.
+   */
+  approvedBy?: string | null;
   /** Base amount of the whole document when it posts several rows, so splitting it cannot dodge approval. */
   documentBase?: number;
 }
@@ -134,8 +140,22 @@ export async function assertCostCenterOpen(id: string): Promise<void> {
   if (!row.active) throw conflict('COST_CENTER_CLOSED', 'This cost center is closed. Choose another one');
 }
 
+/** The owner's own money in or out: one real account, and nothing a cost or a debt would carry. */
+const CAPITAL_TYPES = new Set<TransactionType>(['contribution', 'withdrawal']);
+
 function validate(i: PostTransactionInput): void {
   if (!(i.amount > 0)) throw badRequest('INVALID_AMOUNT', 'Amount must be greater than zero');
+
+  if (CAPITAL_TYPES.has(i.type)) {
+    if (!i.accountId) throw badRequest('ACCOUNT_REQUIRED', 'Choose a cash or bank account');
+    if (i.toAccountId || i.categoryId || i.costCenterId || i.counterpartyId) {
+      throw badRequest('INVALID_CAPITAL_ENTRY', "The owner's own money moves through one account, with no category, cost center or counterparty");
+    }
+    if (i.paymentMethod !== 'cash' && i.paymentMethod !== 'bank' && i.paymentMethod !== 'card') {
+      throw badRequest('INVALID_PAYMENT_METHOD', "The owner's own money must move real money");
+    }
+    return;
+  }
 
   if (i.type === 'transfer') {
     if (!i.accountId || !i.toAccountId) {
@@ -176,8 +196,10 @@ export async function postTransaction(i: PostTransactionInput): Promise<Transact
   await assertAccounts(i, currency);
   const fxRate = await resolveFxRate(currency, i.date, i.fxRate);
   const amountBase = toBaseAmount(i.amount, fxRate);
+  if (i.approvedBy) await assertApprover(i.approvedBy);
 
   const needsApproval =
+    !i.approvedBy &&
     !i.autoApprove &&
     c.settings.finance.makerChecker &&
     Math.max(amountBase, i.documentBase ?? 0) >= c.settings.finance.approvalThreshold;
@@ -208,6 +230,7 @@ export async function postTransaction(i: PostTransactionInput): Promise<Transact
       fileId: i.fileId,
       sourceType: i.sourceType,
       sourceId: i.sourceId,
+      ...(i.approvedBy ? { approvedBy: i.approvedBy, approvedAt: new Date() } : {}),
     })
     .returning();
 
@@ -232,17 +255,35 @@ async function getPendingForUpdate(id: string): Promise<Transaction> {
   return row;
 }
 
-function assertCanDecide(row: Transaction): void {
+/** The one named as having approved an entry someone else enters: another person, allowed to approve. */
+async function assertApprover(userId: string): Promise<void> {
+  if (userId === ctx().userId) throw forbidden('The person who entered a transaction cannot approve it', 'SAME_MAKER_CHECKER');
+  if (!(await memberHolds(userId, 'finance.approve'))) {
+    throw forbidden('The approver may not approve payments on this farm', 'APPROVER_NOT_ALLOWED');
+  }
+}
+
+async function assertCanDecide(row: Transaction): Promise<void> {
   const c = ctx();
   if (!hasPermission('finance.approve')) throw forbidden();
   if (c.settings.finance.makerChecker && row.createdBy === c.userId) {
     throw forbidden('The person who entered a transaction cannot approve it', 'SAME_MAKER_CHECKER');
   }
+  // Whoever holds cash for the farm cannot pass judgement on what moves through it.
+  const ids = [row.accountId, row.toAccountId].filter((id): id is string => !!id);
+  if (ids.length === 0 || !c.userId) return;
+  const [own] = await tx()
+    .select({ id: cashHolders.id })
+    .from(cashHolders)
+    .innerJoin(employees, eq(employees.id, cashHolders.employeeId))
+    .where(and(inArray(cashHolders.accountId, ids), eq(employees.userId, c.userId)))
+    .limit(1);
+  if (own) throw forbidden('Someone holding this cash cannot approve what moves through it', 'HOLDER_CANNOT_APPROVE');
 }
 
 export async function approveTransaction(id: string): Promise<Transaction> {
   const row = await getPendingForUpdate(id);
-  assertCanDecide(row);
+  await assertCanDecide(row);
   // Approval is when the money moves, and the account may have closed while it waited.
   await assertAccounts(row, row.currency);
   const c = ctx();
@@ -346,6 +387,12 @@ async function releaseSource(row: Transaction): Promise<void> {
     await reopenPurchaseRequest(row);
   } else if (row.sourceType === STOCK_DOC_REF) {
     await releaseReceiptMoney(row);
+  } else if (row.sourceType === 'cash_handover') {
+    // The cash no longer counts as handed over, whoever refused its money: the handover says so, and why.
+    await tx()
+      .update(cashHandovers)
+      .set({ status: 'reversed', reversedBy: ctx().userId, reversedAt: new Date(), reversedReason: row.rejectedReason })
+      .where(and(eq(cashHandovers.transactionId, row.id), eq(cashHandovers.status, 'accepted')));
   }
 }
 
@@ -364,7 +411,7 @@ async function rejectPending(id: string, reason: string): Promise<Transaction> {
 /** Refuse money waiting for approval. A stock purchase goes whole: see cancelStockPurchase. */
 export async function rejectTransaction(id: string, reason: string): Promise<Transaction> {
   const row = await getPendingForUpdate(id);
-  assertCanDecide(row);
+  await assertCanDecide(row);
   if (row.sourceType !== 'stock_batch') return rejectPending(id, reason);
   const cancelled = await cancelStockPurchase(row.sourceId!, reason);
   return cancelled.find((entry) => entry.id === id)!;

@@ -230,6 +230,8 @@
     "piiHint": "Phones, passports, salaries and employee names. Do not give this to investors.",
     "financeSummary": "Finance summary",
     "financeSummaryHint": "Aggregated figures on the dashboard and investor report. The journal and accounts stay closed.",
+    "financeCapital": "Owner's own money",
+    "financeCapitalHint": "Put the owner's own money into the farm and take it back out. Neither is income or expense.",
     "cannotGrant": "You do not have this right, so you cannot grant it",
     "system": "Standard",
     "custom": "Custom",

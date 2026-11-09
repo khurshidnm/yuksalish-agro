@@ -71,7 +71,11 @@
     "closing": "Oy oxiridagi qoldiq",
     "lowConfidence": "Tarixiy ma'lumot kam, baho taxminiy",
     "shortfall": "Pul yetishmasligi kutilmoqda: {{month}}",
-    "negative": "Pul yetishmaydi"
+    "negative": "Pul yetishmaydi",
+    "cashWithPeople": "Xodimlardagi pul",
+    "cashWithPeopleHint": "{{n}} kishi",
+    "invested": "Egasi kiritgan",
+    "investedHint": "Shaxsiy pul, olingani chegirilgan"
   },
   "livestock": {
     "total": "Jami poda",

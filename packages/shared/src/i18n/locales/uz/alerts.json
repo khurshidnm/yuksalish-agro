@@ -336,7 +336,9 @@
     "ALERT_NOT_YOURS": "Bu shoshilinch ogohlantirishni faqat mas'ullar, egasi yoki direktor to'xtata oladi",
     "TELEGRAM_NOT_CONFIGURED": "Telegram bot hali sozlanmagan. Administratorga murojaat qiling.",
     "AI_AUDIO_NOT_SUPPORTED": "Hozirgi AI provayder ovozli xabarni o'qiy olmaydi. Iltimos, matn bilan yozing.",
-    "AI_TRANSCRIPTION_FAILED": "Ovozli xabarni o'qib bo'lmadi. Qayta ayting yoki yozib yuboring."
+    "AI_TRANSCRIPTION_FAILED": "Ovozli xabarni o'qib bo'lmadi. Qayta ayting yoki yozib yuboring.",
+    "ACTION_NOT_AVAILABLE": "Bu allaqachon hal qilingan yoki uni hal qilish sizga tegishli emas.",
+    "REASON_REQUIRED": "Sababini qisqacha yozing."
   },
   "title": "Ogohlantirishlar",
   "description": "Qoidalar va AI aniqlagan og'ishlar bir ro'yxatda, muhimlik darajasi bilan.",
@@ -372,7 +374,8 @@
     "markAll": "Hammasini o'qilgan deb belgilash",
     "emptyTitle": "Xabarlar yo'q",
     "emptyBody": "Yangi xabarlar shu yerda ko'rinadi.",
-    "unread": "O'qilmagan"
+    "unread": "O'qilmagan",
+    "reason": "Sabab"
   },
   "settings": {
     "tab": "Sozlamalar",
@@ -389,7 +392,8 @@
       "alert_info": "Ma'lumot uchun xabarlar",
       "task_assigned": "Menga biriktirilgan vazifalar",
       "daily_summary": "Kunlik xulosa",
-      "assistant_recap": "Yordamchining kechki xulosasi"
+      "assistant_recap": "Yordamchining kechki xulosasi",
+      "cash_handover": "Menga berilgan yoki men bergan naqd pul"
     }
   },
   "testAlert": {

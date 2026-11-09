@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { z } from 'zod';
-import { COST_TREATMENTS, CURRENCIES, PAYMENT_METHODS, TRANSACTION_STATUSES, TRANSACTION_TYPES } from '@yap/shared';
+import { COST_TREATMENTS, CURRENCIES, FINANCE_CAPITAL, PAYMENT_METHODS, TRANSACTION_STATUSES, TRANSACTION_TYPES } from '@yap/shared';
 import { schema } from '../../db/client';
 import { ctx, hasPermission, tx } from '../../core/context';
 import { badRequest, conflict, forbidden, notFound } from '../../core/errors';
@@ -20,6 +20,7 @@ import {
 } from '../../core/ledger';
 import { hidePii } from '../../core/privacy';
 import { clientId, isoDate, listQuery, searchAny, sortBy, sumOf } from '../../core/query';
+import { assertHandoverMoneyRemovable, heldByAnother } from './advances.service';
 
 const { accounts, costCenters, counterparties, financeCategories: cat, transactions: t, users } = schema;
 
@@ -32,8 +33,8 @@ const amount = z.number().positive().max(1e14);
 export const transactionInput = z.object({
   id: clientId,
   date: isoDate,
-  /** Debt settlements and loan payments have their own endpoints. */
-  type: z.enum(['expense', 'income', 'transfer']),
+  /** Debt settlements and loan payments have their own endpoints. The owner's own money takes finance.capital. */
+  type: z.enum(['expense', 'income', 'transfer', 'contribution', 'withdrawal']),
   amount,
   categoryId: z.uuid().nullish(),
   currency: z.enum(CURRENCIES).optional(),
@@ -216,6 +217,15 @@ async function assertBelongsToFarm(input: Partial<TransactionInput>) {
 async function validate(input: TransactionInput) {
   await assertBelongsToFarm(input);
 
+  if ((input.type === 'contribution' || input.type === 'withdrawal') && !hasPermission(FINANCE_CAPITAL)) {
+    throw forbidden("Only the owner records the owner's own money", 'CAPITAL_NOT_ALLOWED');
+  }
+  // Cash reaches a person only when they say it arrived, so it goes through a handover.
+  const into = input.type === 'transfer' ? input.toAccountId : input.type === 'contribution' ? input.accountId : null;
+  if (into && (await heldByAnother(into))) {
+    throw conflict('USE_CASH_HANDOVER', "This is a person's cash: hand it over from Cash holders, so they confirm it arrived");
+  }
+
   if (input.categoryId) {
     const [category] = await tx().select({ kind: cat.kind }).from(cat).where(eq(cat.id, input.categoryId));
     if (!category) throw notFound('Category');
@@ -281,7 +291,10 @@ export async function approve(id: string, baseUpdatedAt?: string) {
 }
 
 export async function reject(id: string, reason: string, baseUpdatedAt?: string) {
-  await assertAsRead(await lockRow(id), baseUpdatedAt);
+  const row = await lockRow(id);
+  await assertAsRead(row, baseUpdatedAt);
+  // Cash handed over and partly spent stays: refusing it would leave spending from money never there.
+  if (row.sourceType === 'cash_handover') await assertHandoverMoneyRemovable(id);
   return rejectTransaction(id, reason);
 }
 

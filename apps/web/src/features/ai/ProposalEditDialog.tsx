@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import { ComboboxField, DateField, FormDialog, FormGrid, NumberField, SelectField, TextField } from '@/components';
 import { apiOptions } from '@/components/ui';
-import { useCenterName, useLocalName } from '@/features/finance/lib';
+import { accountLabel, useCenterName, useLocalName } from '@/features/finance/lib';
 import type { AccountOption, CategoryOption, CostCenterOption } from '@/features/finance/types';
 import { itemOptions, useWarehouseOptions } from '@/features/inventory/shared';
 import { useSession } from '@/lib/auth';
@@ -84,7 +84,8 @@ function Fields({ form, proposal }: { form: UseFormReturn<ProposalFormValues, un
   const accountOptions = useMemo(() => {
     const options = accounts.map((a) => {
       const type = t(`enums:accountType.${a.type}`);
-      return { value: a.id, label: a.name === type ? a.name : `${a.name} (${type})` };
+      const name = accountLabel(a);
+      return { value: a.id, label: name === type ? name : `${name} (${type})` };
     });
     return options.length > 0 ? options : [fields.account, fields.toAccount].flatMap((a) => (a ? [{ value: a.id, label: a.name }] : []));
   }, [accounts, fields.account, fields.toAccount, t]);

@@ -6,6 +6,7 @@ export * from './livestock';
 export * from './inventory';
 export * from './finance';
 export * from './hr';
+export * from './cash';
 export * from './assets';
 export * from './sales';
 export * from './tasks';

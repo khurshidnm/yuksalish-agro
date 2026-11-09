@@ -269,6 +269,7 @@
     "PAYROLL_EMPTY": "This payroll has no employees",
     "PAYROLL_ADVANCES_WAITING": "An advance for this month is still waiting for approval. Approve or reject it first",
     "PAYROLL_ADVANCES_CHANGED": "An advance was paid after this payroll was worked out. Recalculate it first",
-    "SAME_MAKER_CHECKER": "The person who prepared it cannot approve it"
+    "SAME_MAKER_CHECKER": "The person who prepared it cannot approve it",
+    "EMPLOYEE_HOLDS_CASH": "This person still holds farm cash. Take it back and close their cash account first."
   }
 }

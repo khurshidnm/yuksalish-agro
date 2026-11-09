@@ -10,6 +10,7 @@ import { routes } from '../../core/http';
 import { clientId, idParam, isoDate, isoMonth, listQuery, searchAny } from '../../core/query';
 import { receiptMoneyInput, recordReceiptMoney, unpaidReceipts } from '../inventory/stock.service';
 import * as accounts from './accounts.service';
+import * as advances from './advances.service';
 import * as budget from './budget.service';
 import * as debts from './debts.service';
 import { budgetToXlsx, toCsv, toXlsx } from './export';
@@ -134,14 +135,15 @@ export function registerFinance(app: FastifyInstance) {
     access: 'authenticated',
     summary: 'Accounts for dropdowns, without balances',
     query: searchQuery,
-    handler: (req) => accounts.lookup(req.query.search),
+    // Another person's cash is left out or unnamed, as the caller's rights say.
+    handler: (req) => advances.lookupAccounts(req.query.search),
   });
 
   r.get('/accounts', {
     access: 'finance.view',
     summary: 'Accounts with balances',
     query: z.object({ until: isoDate.optional() }),
-    handler: (req) => accounts.listWithBalances(req.query.until),
+    handler: (req) => advances.accountsWithHolders(req.query.until),
   });
 
   r.post('/accounts', {

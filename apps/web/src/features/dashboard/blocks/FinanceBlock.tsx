@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { Alert, Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, Meter, MoneyText } from '@/components';
 import { ChartCard } from '@/components/ChartCard';
 import { formatCompact, formatMoney, formatMonth, formatMonthShort, formatPercent } from '@/lib/format';
+import { accountLabel } from '@/features/finance/lib';
 import { FigureRow, type LinkTo, localName, NoData } from '../shared';
 import type { BudgetTotals, FinanceData } from '../types';
 
@@ -47,15 +48,34 @@ export function FinanceBlock({ data, link }: { data: FinanceData; link: LinkTo }
           {cash.accounts.length === 0 && !cash.total && <NoData />}
           <ul>
             {cash.accounts.length === 0 && !!cash.total && <FigureRow label={t('finance.cashTotal')} value={<MoneyText value={cash.total} compact />} />}
-            {cash.accounts.map((account) => (
+            {/* People's cash is one line below, so the list stays the farm's own accounts. */}
+            {cash.accounts
+              .filter((account) => !account.holder)
+              .map((account) => (
+                <FigureRow
+                  key={account.id}
+                  label={accountLabel(account)}
+                  hint={t(`enums:accountType.${account.type}`)}
+                  value={<MoneyText value={account.balance} currency={account.currency} compact />}
+                  to={link('/finance/accounts', 'finance.view')}
+                />
+              ))}
+            {data.capital && data.capital.holders > 0 && (
               <FigureRow
-                key={account.id}
-                label={account.name}
-                hint={t(`enums:accountType.${account.type}`)}
-                value={<MoneyText value={account.balance} currency={account.currency} compact />}
-                to={link('/finance/accounts', 'finance.view')}
+                label={t('finance.cashWithPeople')}
+                hint={t('finance.cashWithPeopleHint', { n: data.capital.holders })}
+                value={<MoneyText value={data.capital.cashWithPeople} compact />}
+                to={link('/finance/cash-holders', 'finance.view')}
               />
-            ))}
+            )}
+            {data.capital && data.capital.contributed > 0 && (
+              <FigureRow
+                label={t('finance.invested')}
+                hint={t('finance.investedHint')}
+                value={<MoneyText value={data.capital.invested} compact />}
+                to={link('/finance/cash-holders', 'finance.view')}
+              />
+            )}
             <FigureRow label={t('finance.monthIncome')} value={<MoneyText value={data.month.income} compact />} to={transactions} />
             <FigureRow label={t('finance.monthExpense')} value={<MoneyText value={data.month.expense} compact />} to={transactions} />
           </ul>

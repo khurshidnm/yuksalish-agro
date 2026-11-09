@@ -10,6 +10,7 @@ import { usePermission, useSession } from '@/lib/auth';
 import { currencyLabel, formatDateTime, formatMoney, formatMonth, formatNumber } from '@/lib/format';
 import { zDate, zNonNegative, zRef, zText } from '@/lib/forms';
 import { useApiMutation, useDetail } from '@/lib/query';
+import { accountLabel } from '@/features/finance/lib';
 
 export interface KpiResult {
   name: string;
@@ -268,7 +269,7 @@ export function RunDetail({ runId, onBack }: { runId: string; onBack: () => void
   const [returning, setReturning] = useState(false);
   const [paying, setPaying] = useState(false);
 
-  const accounts = useDetail<{ id: string; name: string }[]>(paying ? '/finance/accounts/lookup' : null);
+  const accounts = useDetail<{ id: string; name: string | null }[]>(paying ? '/finance/accounts/lookup' : null);
 
   const action = (path: string, successMessage: string) => ({
     mutationFn: () => api.post<PayrollRun>(`${url}/${path}`),
@@ -462,7 +463,7 @@ export function RunDetail({ runId, onBack }: { runId: string; onBack: () => void
               name="accountId"
               label={t('payroll.account')}
               required
-              options={(accounts.data ?? []).map((a) => ({ value: a.id, label: a.name }))}
+              options={(accounts.data ?? []).map((a) => ({ value: a.id, label: accountLabel(a) }))}
             />
             <DateField form={form} name="date" label={t('payroll.payDate')} required />
           </>

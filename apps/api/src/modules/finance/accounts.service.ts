@@ -8,7 +8,7 @@ import { recordEvent } from '../../core/journal';
 import { resolveFxRate } from '../../core/ledger';
 import { clientId, isoDate, searchAny } from '../../core/query';
 
-const { accounts: a, fxRates, transactions: t } = schema;
+const { accounts: a, cashHolders, fxRates, transactions: t } = schema;
 
 export const accountInput = z.object({
   id: clientId,
@@ -28,7 +28,8 @@ const movesMoney = sql`${t.status} = 'approved' and ${t.paymentMethod} not in ('
 const afterOpening = sql`${t.date} >= coalesce(${a.openingDate}, ${t.date})`;
 /** A transaction in another currency hits a base-currency account at its base amount. */
 const nativeAmount = sql`case when ${t.currency} = ${a.currency} then ${t.amount} else ${t.amountBase} end`;
-const outSign = sql`case when ${t.type} in ('income', 'debt_receipt') then 1 else -1 end`;
+/** Money in: income, a debt collected, and the owner's own money put in. Everything else on an account is out. */
+const outSign = sql`case when ${t.type} in ('income', 'debt_receipt', 'contribution') then 1 else -1 end`;
 
 interface Flow {
   native: number;
@@ -193,6 +194,11 @@ export async function update(id: string, input: Partial<AccountInput>) {
 export async function remove(id: string) {
   // The lock waits for money on its way in, which then counts in this balance.
   await get(id, { lock: true });
+  const [held] = await tx()
+    .select({ id: cashHolders.id })
+    .from(cashHolders)
+    .where(and(eq(cashHolders.accountId, id), eq(cashHolders.active, true)));
+  if (held) throw conflict('HOLDER_ACCOUNT', "This is a person's cash: close it from Cash holders, which checks nothing is still with them");
   const [account] = (await listWithBalances()).filter((row) => row.id === id);
   if (account && account.balance !== 0) {
     throw conflict('ACCOUNT_NOT_EMPTY', 'Move the balance out before closing this account', {
@@ -225,10 +231,10 @@ export async function dailyBalance(id: string, from: string, to: string) {
       date: t.date,
       inflow: sql`coalesce(sum(case
         when ${t.toAccountId} = ${id} then ${nativeAmount}
-        when ${t.type} in ('income', 'debt_receipt') then ${nativeAmount}
+        when ${t.type} in ('income', 'debt_receipt', 'contribution') then ${nativeAmount}
         else 0 end), 0)`.mapWith(Number),
       outflow: sql`coalesce(sum(case
-        when ${t.type} in ('expense', 'debt_payment') then ${nativeAmount}
+        when ${t.type} in ('expense', 'debt_payment', 'withdrawal') then ${nativeAmount}
         when ${t.type} = 'transfer' and ${t.accountId} = ${id} then ${nativeAmount}
         else 0 end), 0)`.mapWith(Number),
     })

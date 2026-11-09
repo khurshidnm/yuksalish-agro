@@ -13,6 +13,7 @@ import { zDate, zEnum, zNonNegative, zOptionalText, zPositive, zRef, zText } fro
 import { useApiMutation, useDetail } from '@/lib/query';
 import { RUN_STATUS_VARIANT, RunDetail, type PayrollRun, type RunStatus } from './RunDetail';
 import { MonthSwitcher, currentMonth, shiftMonth, type EmployeeLookup } from './shared';
+import { accountLabel } from '@/features/finance/lib';
 
 const PATH = '/hr/payroll';
 
@@ -130,7 +131,7 @@ function AdvancesTab() {
   const [month, setMonth] = useUrlParam('advMonth', currentMonth());
   const [creating, setCreating] = useState(false);
   const advances = useDetail<AdvanceRow[]>('/hr/advances', { month });
-  const accounts = useDetail<{ id: string; name: string }[]>(creating ? '/finance/accounts/lookup' : null);
+  const accounts = useDetail<{ id: string; name: string | null }[]>(creating ? '/finance/accounts/lookup' : null);
 
   const save = useApiMutation<z.output<typeof advanceSchema>>({
     mutationFn: (values) => api.postOnce('/hr/advances', values),
@@ -204,7 +205,7 @@ function AdvancesTab() {
               name="accountId"
               label={t('payroll.account')}
               required
-              options={(accounts.data ?? []).map((a) => ({ value: a.id, label: a.name }))}
+              options={(accounts.data ?? []).map((a) => ({ value: a.id, label: accountLabel(a) }))}
             />
             <TextareaField form={form} name="notes" label={t('employees.fields.notes')} rows={2} />
           </>

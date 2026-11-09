@@ -336,7 +336,9 @@
     "ALERT_NOT_YOURS": "Only the people responsible, the owner or the director can stop this urgent alert",
     "TELEGRAM_NOT_CONFIGURED": "The Telegram bot is not set up yet. Contact your administrator.",
     "AI_AUDIO_NOT_SUPPORTED": "The current AI provider cannot read voice notes. Please type your message.",
-    "AI_TRANSCRIPTION_FAILED": "The voice note could not be read. Please say it again or type it."
+    "AI_TRANSCRIPTION_FAILED": "The voice note could not be read. Please say it again or type it.",
+    "ACTION_NOT_AVAILABLE": "This has already been decided, or it is not yours to decide.",
+    "REASON_REQUIRED": "Say why in a few words."
   },
   "title": "Alerts",
   "description": "Problems found by rules and AI, in one list, by severity.",
@@ -372,7 +374,8 @@
     "markAll": "Mark all as read",
     "emptyTitle": "No messages",
     "emptyBody": "New messages will appear here.",
-    "unread": "Unread"
+    "unread": "Unread",
+    "reason": "Reason"
   },
   "settings": {
     "tab": "Settings",
@@ -389,7 +392,8 @@
       "alert_info": "Information only",
       "task_assigned": "Tasks assigned to me",
       "daily_summary": "Daily summary",
-      "assistant_recap": "Assistant evening recap"
+      "assistant_recap": "Assistant evening recap",
+      "cash_handover": "Cash handed over to me or by me"
     }
   },
   "testAlert": {

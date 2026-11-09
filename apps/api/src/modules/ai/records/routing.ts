@@ -15,7 +15,7 @@ export interface CategoryRule {
   alwaysAsk?: boolean;
   treatment?: CostTreatment;
   /** Owned by another module. Recording it here would count it twice. */
-  ownedBy?: 'payroll' | 'loans' | 'depreciation' | 'sales';
+  ownedBy?: 'payroll' | 'loans' | 'depreciation' | 'sales' | 'cash_reports';
 }
 
 const general: CategoryRule = { targets: [], generalAllowed: true };
@@ -38,6 +38,8 @@ export const CATEGORY_RULES: Record<string, CategoryRule> = {
   spare_parts: { goods: true, targets: ['asset'] },
   repair: { targets: ['asset', 'field'], generalAllowed: true },
   equipment_rent: { targets: ['asset', 'field'], generalAllowed: true },
+  // Day workers and drivers paid by the day who are not on the payroll. Staff go through payroll advances.
+  casual_labour: { targets: ['asset', 'field', 'herd'], generalAllowed: true },
   // Shared costs
   electricity: general,
   gas: general,
@@ -64,6 +66,9 @@ export const CATEGORY_RULES: Record<string, CategoryRule> = {
   loan_interest: { targets: [], ownedBy: 'loans' },
   leasing: { targets: [], ownedBy: 'loans' },
   depreciation: { targets: [], ownedBy: 'depreciation' },
+  // Booked only when a weekly cash report is approved, from the counted difference.
+  cash_shortage: { targets: [], ownedBy: 'cash_reports' },
+  cash_surplus: { targets: [], ownedBy: 'cash_reports' },
   // Income from selling what the farm holds goes through Sales, so stock and the herd stay right.
   lamb_sales: { targets: [], ownedBy: 'sales' },
   sheep_sales: { targets: [], ownedBy: 'sales' },

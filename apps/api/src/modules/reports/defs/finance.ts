@@ -94,6 +94,9 @@ export const financeReports: ReportDefinition[] = [
       col.money('inflow', { sum: true }),
       col.money('outflow', { sum: true }),
       col.money('net', { sum: true, label: 'netCashFlow' }),
+      // How much of the flow was the owner's own money: real cash, but never income or expense.
+      col.money('financingIn', { sum: true }),
+      col.money('financingOut', { sum: true }),
     ],
     chart: { kind: 'bar', x: 'month', series: ['inflow', 'outflow'] },
     run: async ({ from, to }) => ({ rows: await cashflowActual(from, to) }),

@@ -14,10 +14,11 @@ import { zDate, zEnum, zOptionalDate, zOptionalEnum, zOptionalNumber, zOptionalR
 import { enumOptions } from '@/lib/i18n';
 import { useApiMutation } from '@/lib/query';
 import type { Maintenance } from './types';
+import { accountLabel } from '@/features/finance/lib';
 
 const PAYMENT_METHODS = ['cash', 'bank', 'card', 'debt'] as const;
 
-const accountOptions = apiOptions<{ id: string; name: string }>('/finance/accounts/lookup', (a) => ({ value: a.id, label: a.name }));
+const accountOptions = apiOptions<{ id: string; name: string | null }>('/finance/accounts/lookup', (a) => ({ value: a.id, label: accountLabel(a) }));
 const counterpartyOptions = apiOptions<{ id: string; name: string }>('/finance/counterparties/lookup', (c) => ({ value: c.id, label: c.name }));
 
 const schema = z.object({

@@ -56,9 +56,9 @@ export function StatusBadge({ status }: { status: Transaction['status'] }) {
   return <Badge variant={STATUS_VARIANT[status]}>{t(`enums:transactionStatus.${status}`)}</Badge>;
 }
 
-/** Money in has a plus, money out a minus. A transfer is neither. */
+/** Money in has a plus, money out a minus. A transfer is neither. The owner's own money is cash in or out too. */
 function signedAmount(row: Transaction): number {
-  if (row.type === 'income' || row.type === 'debt_receipt') return row.amountBase;
+  if (row.type === 'income' || row.type === 'debt_receipt' || row.type === 'contribution') return row.amountBase;
   if (row.type === 'transfer') return 0;
   return -row.amountBase;
 }

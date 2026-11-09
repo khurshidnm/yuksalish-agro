@@ -39,7 +39,16 @@ export const PII_VIEW = 'pii.view';
  */
 export const FINANCE_SUMMARY_VIEW = 'finance.summary';
 
-export type Permission = `${Module}.${Action}` | typeof PII_VIEW | typeof FINANCE_SUMMARY_VIEW;
+/**
+ * The owner's own money: putting it into the farm and taking it back out (`contribution`, `withdrawal`).
+ * Separate from finance.create, because a director spends the farm's money but does not own it.
+ */
+export const FINANCE_CAPITAL = 'finance.capital';
+
+/** Permissions outside the module × action grid. Settings lists them, and roles may hold them. */
+export const STANDALONE_PERMISSIONS = [PII_VIEW, FINANCE_SUMMARY_VIEW, FINANCE_CAPITAL] as const;
+
+export type Permission = `${Module}.${Action}` | (typeof STANDALONE_PERMISSIONS)[number];
 
 export const ROLE_KEYS = [
   'owner',
@@ -85,7 +94,7 @@ const OPERATIONAL: readonly Module[] = [
 ];
 
 export const DEFAULT_ROLE_PERMISSIONS: Record<RoleKey, Permission[]> = {
-  owner: [...grant(MODULES), PII_VIEW],
+  owner: [...grant(MODULES), PII_VIEW, FINANCE_CAPITAL],
   director: [...grant(OPERATIONAL), ...grant(['users', 'settings', 'audit'], VIEW), PII_VIEW],
   accountant: [
     ...grant(['finance', 'payroll']),

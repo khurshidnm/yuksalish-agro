@@ -391,6 +391,8 @@
     "index": "Index",
     "indicator": "Indicator",
     "inflow": "Inflow",
+    "financingIn": "Owner's money in",
+    "financingOut": "Owner's money out",
     "interest": "Interest",
     "inventoryNo": "Inventory no.",
     "item": "Item",
