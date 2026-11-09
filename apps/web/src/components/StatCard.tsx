@@ -1,5 +1,6 @@
 import { ArrowDownRight, ArrowRight, ArrowUpRight, type LucideIcon } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { cn } from '@/lib/utils';
 import { Skeleton } from './ui';
@@ -38,10 +39,13 @@ export interface StatCardProps {
   featured?: boolean;
   /** A picture behind a featured tile, under a deep green wash so the text stays readable. */
   backdrop?: string;
+  /** The picture's source, printed in its corner. Defaults to the aerial imagery the map uses (© Esri). */
+  backdropCredit?: ReactNode;
   className?: string;
 }
 
-export function StatCard({ label, value, delta, hint, tone = 'neutral', icon: Icon, loading, to, featured, backdrop, className }: StatCardProps) {
+export function StatCard({ label, value, delta, hint, tone = 'neutral', icon: Icon, loading, to, featured, backdrop, backdropCredit, className }: StatCardProps) {
+  const { t } = useTranslation();
   const [photoFailed, setPhotoFailed] = useState(false);
   const DeltaIcon = delta?.direction === 'up' ? ArrowUpRight : delta?.direction === 'down' ? ArrowDownRight : ArrowRight;
   const deltaGood = delta && delta.direction !== 'flat' && delta.goodWhen ? delta.direction === delta.goodWhen : null;
@@ -53,21 +57,32 @@ export function StatCard({ label, value, delta, hint, tone = 'neutral', icon: Ic
         <>
           <img src={backdrop} alt="" loading="lazy" decoding="async" onError={() => setPhotoFailed(true)} className="absolute inset-0 size-full object-cover" />
           <span aria-hidden className="absolute inset-0 bg-gradient-to-r from-feature via-feature/85 to-feature/35" />
+          {/* Inside the bottom padding, clear of the text, on a wash of its own over a bright photo. */}
+          <span aria-hidden className="absolute right-4 bottom-1 rounded-sm bg-feature/60 px-1 text-[0.625rem] leading-3 text-feature-foreground">
+            {backdropCredit ?? t('farm:map.imageryCredit')}
+          </span>
         </>
       )}
       <div className="relative">
-        <div className="flex items-start justify-between gap-2">
+        {/* The arrow floats in the corner, so a linked tile's label row is as tall as its neighbours' and
+            the values of a row line up. The label keeps clear of it. */}
+        <div className={cn('flex items-start', to && 'pr-9')}>
           <p className={cn('flex min-w-0 items-start gap-1.5 text-sm leading-snug break-words hyphens-auto', subdued)}>
-            {/* On a phone a linked tile has no room for both, and the label would break mid-word. */}
-            {Icon && <Icon className={cn('mt-px size-4 shrink-0', to && 'max-sm:hidden', !featured && ICON_TONE[tone])} aria-hidden />}
+            {/* Until xl a linked tile is too narrow for icon, label and arrow: the label would break mid-word. */}
+            {Icon && <Icon className={cn('mt-px size-4 shrink-0', to && 'max-xl:hidden', !featured && ICON_TONE[tone])} aria-hidden />}
             <span className="min-w-0">{label}</span>
           </p>
-          {to && (
-            <span className={cn('-mt-1 -mr-1 flex size-8 shrink-0 items-center justify-center rounded-full', featured ? 'bg-feature-foreground text-feature' : 'bg-card text-foreground shadow-card')}>
-              <ArrowUpRight className="size-4" aria-hidden />
-            </span>
-          )}
         </div>
+        {to && (
+          <span
+            className={cn(
+              'absolute -top-1 -right-1 flex size-8 items-center justify-center rounded-full',
+              featured ? 'bg-feature-foreground text-feature' : 'bg-card text-foreground shadow-card',
+            )}
+          >
+            <ArrowUpRight className="size-4" aria-hidden />
+          </span>
+        )}
         {loading ? (
           <Skeleton className="mt-4 h-8 w-2/3" />
         ) : (

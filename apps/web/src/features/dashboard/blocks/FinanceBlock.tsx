@@ -2,7 +2,9 @@ import { useTranslation } from 'react-i18next';
 import { Alert, Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, Meter, MoneyText } from '@/components';
 import { ChartCard } from '@/components/ChartCard';
 import { formatCompact, formatMoney, formatMonth, formatMonthShort, formatPercent } from '@/lib/format';
-import { FigureRow, type LinkTo, localName, NoData } from '../shared';
+import { accountLabel } from '@/features/finance/lib';
+import { monthInText } from '../figures';
+import { FigureRow, journalOfMonth, type LinkTo, localName, NoData } from '../shared';
 import type { BudgetTotals, FinanceData } from '../types';
 
 function BudgetLine({ label, totals }: { label: string; totals: BudgetTotals }) {
@@ -35,29 +37,67 @@ export function FinanceBlock({ data, link }: { data: FinanceData; link: LinkTo }
   const budgetTo = link('/finance/budget', 'finance.view');
   const debtsTo = link('/finance/debts', 'finance.view');
   const cashflowTo = link('/finance/cashflow', 'finance.view');
-  const transactions = link('/finance/transactions', 'finance.view');
+  const transactions = link(journalOfMonth(data.month.month), 'finance.view');
+  const accountsTo = link('/finance/accounts', 'finance.view');
+  // People's cash is one line, so the list stays the farm's own accounts.
+  const accounts = cash.accounts.filter((account) => !account.holder);
+  const withPeople = data.capital && data.capital.holders > 0 ? data.capital : null;
+  const balanceLines = accounts.length + (withPeople ? 1 : 0);
+  // The total under two or more lines; alone when the reader sees only the total (finance.summary).
+  const showTotal = balanceLines >= 2 || (balanceLines === 0 && cash.total !== 0);
 
   return (
-    <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+    // Three cards side by side need the width of 1280 px: beside the menu at 1024 px they would cut words.
+    <div className="grid grid-flow-row-dense grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
       <Card>
         <CardHeader>
           <CardTitle>{t('finance.cash')}</CardTitle>
         </CardHeader>
         <CardContent>
           {cash.accounts.length === 0 && !cash.total && <NoData />}
+          {/* Balances first, adding up to the total; what moved this month is not a balance and stands apart. */}
           <ul>
-            {cash.accounts.length === 0 && !!cash.total && <FigureRow label={t('finance.cashTotal')} value={<MoneyText value={cash.total} compact />} />}
-            {cash.accounts.map((account) => (
+            {accounts.map((account) => {
+              const label = accountLabel(account);
+              const type = t(`enums:accountType.${account.type}`);
+              return (
+                <FigureRow
+                  key={account.id}
+                  label={label}
+                  hint={type.toLocaleLowerCase() === label.toLocaleLowerCase() ? undefined : type}
+                  value={<MoneyText value={account.balance} currency={account.currency} compact />}
+                  to={accountsTo}
+                />
+              );
+            })}
+            {withPeople && (
               <FigureRow
-                key={account.id}
-                label={account.name}
-                hint={t(`enums:accountType.${account.type}`)}
-                value={<MoneyText value={account.balance} currency={account.currency} compact />}
-                to={link('/finance/accounts', 'finance.view')}
+                label={t('finance.cashWithPeople')}
+                hint={t('finance.cashWithPeopleHint', { n: withPeople.holders })}
+                value={<MoneyText value={withPeople.cashWithPeople} compact />}
+                to={link('/finance/cash-holders', 'finance.view')}
               />
-            ))}
+            )}
+            {showTotal && (
+              <FigureRow
+                label={<span className="font-semibold">{t('finance.cashTotal')}</span>}
+                value={<MoneyText value={cash.total} compact className="font-semibold" />}
+                to={accountsTo}
+              />
+            )}
+          </ul>
+          <p className="mt-3 border-t border-border pt-3 text-sm font-medium text-muted-foreground">{t('finance.flows')}</p>
+          <ul>
             <FigureRow label={t('finance.monthIncome')} value={<MoneyText value={data.month.income} compact />} to={transactions} />
             <FigureRow label={t('finance.monthExpense')} value={<MoneyText value={data.month.expense} compact />} to={transactions} />
+            {data.capital && data.capital.contributed > 0 && (
+              <FigureRow
+                label={t('finance.invested')}
+                hint={t('finance.investedHint')}
+                value={<MoneyText value={data.capital.invested} compact />}
+                to={link('/finance/cash-holders', 'finance.view')}
+              />
+            )}
           </ul>
         </CardContent>
       </Card>
@@ -97,7 +137,7 @@ export function FinanceBlock({ data, link }: { data: FinanceData; link: LinkTo }
       </Card>
 
       <ChartCard
-        className="lg:col-span-2"
+        className="md:col-span-2"
         title={t('finance.forecast')}
         description={t('finance.forecastNote')}
         kind="bar"
@@ -120,7 +160,7 @@ export function FinanceBlock({ data, link }: { data: FinanceData; link: LinkTo }
         </CardHeader>
         <CardContent className="flex flex-col gap-2">
           {forecast.firstNegativeMonth && (
-            <Alert tone="danger">{t('finance.shortfall', { month: formatMonth(forecast.firstNegativeMonth) })}</Alert>
+            <Alert tone="danger">{t('finance.shortfall', { month: monthInText(forecast.firstNegativeMonth) })}</Alert>
           )}
           <ul>
             {forecast.months.map((row) => (

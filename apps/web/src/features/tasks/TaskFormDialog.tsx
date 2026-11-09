@@ -107,6 +107,8 @@ export function TaskFormDialog({ open, task, onOpenChange }: TaskFormDialogProps
       {(form) => {
         const entityType = form.watch('entityType');
         const recurrence = form.watch('recurrence');
+        const requiresRecord = form.watch('requiresRecord');
+        const requiresPhoto = form.watch('requiresPhoto');
         return (
           <>
             <TextField form={form} name="title" label={t('fields.title')} required autoFocus />
@@ -174,12 +176,18 @@ export function TaskFormDialog({ open, task, onOpenChange }: TaskFormDialogProps
                 form={form}
                 name="requiresRecord"
                 label={t('fields.requiresRecord')}
-                hint={t('fields.requiresRecordHint')}
+                // The hint describes the rule once there is one: under "Not required" it would say the opposite.
+                hint={requiresRecord ? t('fields.requiresRecordHint') : undefined}
                 placeholder={t('fields.noRecord')}
                 options={RECORD_TYPES.map((r) => ({ value: r, label: t(`record.${r}`) }))}
               />
             </FormGrid>
-            <SwitchField form={form} name="requiresPhoto" label={t('fields.requiresPhoto')} hint={t('fields.requiresPhotoHint')} />
+            <SwitchField
+              form={form}
+              name="requiresPhoto"
+              label={t('fields.requiresPhoto')}
+              hint={requiresPhoto ? t('fields.requiresPhotoHint') : undefined}
+            />
           </>
         );
       }}

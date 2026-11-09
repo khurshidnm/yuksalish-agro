@@ -85,7 +85,7 @@ export function IrrigationPanel() {
       className: 'min-w-52',
       cell: (row) => (
         <div className="flex flex-col gap-1">
-          <span className="flex flex-wrap items-center gap-x-2 text-sm">
+          <span className="flex flex-wrap items-center justify-end gap-x-2 text-sm md:justify-start">
             {m3(row.actualM3)} / {m3(row.limitM3)}
             {row.usedPercent != null && <span className={row.overLimit ? 'font-medium text-danger' : 'text-muted-foreground'}>{formatPercent(row.usedPercent, 0)}</span>}
           </span>
@@ -126,7 +126,7 @@ export function IrrigationPanel() {
             className="md:w-32"
           />
         }
-        empty={{ icon: Droplets, title: t('irrigation.emptyTitle'), description: t('irrigation.emptyBody'), action: addButton }}
+        empty={{ icon: Droplets, title: t('irrigation.emptyTitle'), description: t('irrigation.emptyBody') }}
         rowActions={(row) => [
           { label: t('common:actions.edit'), icon: Pencil, hidden: !canUpdate, onClick: () => setEditing(row) },
           {

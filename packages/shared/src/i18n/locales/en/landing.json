@@ -26,7 +26,7 @@
     "points": [
       "Works on a phone",
       "Field records without internet",
-      "In Uzbek and Russian"
+      "In Uzbek, Russian and English"
     ],
     "imageAlt": "AgroPanel dashboard: cash, expenses, head count and feed reserve on one screen",
     "phoneAlt": "The Today screen on a phone: daily log and quick actions for a herder"
@@ -381,7 +381,7 @@
     "items": [
       {
         "title": "Send a request",
-        "body": "Fill in the form or call us, and we will get in touch."
+        "body": "Fill in the form, and we will get in touch."
       },
       {
         "title": "See a demo",
@@ -504,7 +504,8 @@
     "errorName": "Enter your name",
     "errorPhone": "Enter a valid phone number",
     "errorConsent": "We need your consent to continue",
-    "errorGeneric": "It could not be sent. Please try again or call us.",
+    "errorGeneric": "It could not be sent. Please try again.",
+    "errorCall": "Or call us:",
     "errorRate": "Too many attempts. Please try again a little later.",
     "optional": "optional",
     "types": {

@@ -7,7 +7,7 @@ import * as operations from './operations.service';
 import * as planFact from './plan-fact.service';
 import * as plans from './plans.service';
 import * as seasons from './seasons.service';
-import { cropKpis, fieldStatus, harvestPlanFact, overdueOperations } from './summary';
+import { cropFigures, fieldStatus, harvestPlanFact, overdueOperations } from './summary';
 import * as techCards from './tech-cards.service';
 
 const seasonFilter = z.object({ seasonId: z.uuid().optional() });
@@ -145,12 +145,17 @@ export default async function cropsModule(app: FastifyInstance) {
     access: 'crops.view',
     summary: 'Field status, overdue work, harvest plan and KPIs',
     query: seasonFilter,
-    handler: async (req) => ({
-      fields: await fieldStatus(),
-      overdue: await overdueOperations(),
-      harvest: await harvestPlanFact(req.query.seasonId),
-      kpis: await cropKpis(req.query.seasonId),
-    }),
+    handler: async (req) => {
+      const { kpis, yields } = await cropFigures(req.query.seasonId);
+      return {
+        fields: await fieldStatus(req.query.seasonId),
+        overdue: await overdueOperations(),
+        harvest: await harvestPlanFact(req.query.seasonId),
+        kpis,
+        // Each crop's yield on its own: hay, silage and grain do not average into one t/ha.
+        yields,
+      };
+    },
   });
 
   // ─── Field operations ────────────────────────────────────────────────────

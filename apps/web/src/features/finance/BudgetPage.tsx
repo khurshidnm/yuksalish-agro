@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { EmptyState, ErrorCard, PageHeader, StatCard, useUrlParam } from '@/components';
 import { ChartCard } from '@/components/ChartCard';
 import {
+  Alert,
   Button,
   Card,
   Combobox,
@@ -54,9 +55,13 @@ function executionTone(percent: number | null) {
   return percent <= 100 ? ('warning' as const) : ('danger' as const);
 }
 
-function cellText(view: View, cell: BudgetCell): string {
+/**
+ * A month still to come has no fact yet, so its difference is not a saving or a shortfall: it is left
+ * blank. So is every difference when nothing was planned (a cost center the plan does not cover).
+ */
+function cellText(view: View, cell: BudgetCell, comparable: boolean): string {
   const value = view === 'plan' ? cell.planned : view === 'fact' ? cell.actual : cell.actual - cell.planned;
-  if (view === 'diff') return signed(value);
+  if (view === 'diff') return comparable ? signed(value) : '—';
   return value === 0 ? '—' : formatCompact(value);
 }
 
@@ -68,27 +73,60 @@ interface GridProps {
   editing: boolean;
   edits: Record<string, number | null>;
   onEdit: (key: string, value: number | null) => void;
+  /** The months that have begun: the year's difference compares fact with the plan for these only. */
+  started: (month: string) => boolean;
+  /** False when nothing at all is planned for this view, so there is nothing to compare with. */
+  hasPlan: boolean;
 }
 
-const stickyHead = 'sticky left-0 z-10 bg-card min-w-44 max-w-56';
+// The header cell takes the header's own tint; body cells stay on the card.
+const stickyCell = 'sticky left-0 z-10 min-w-44 max-w-56';
+const stickyHead = `${stickyCell} bg-card`;
 const amountCell = 'text-right tabular-nums whitespace-nowrap';
 
-/** Year totals come first: with twelve months beside them, they would otherwise sit off-screen. */
-function TotalCells({ kind, total }: { kind: BudgetRow['kind']; total: Pick<BudgetRow, 'planned' | 'actual' | 'deviation' | 'percent'> }) {
+/** Plan and fact of the months that have begun, the fair base for a difference within the year. */
+function soFar(cells: Record<string, BudgetCell>, months: string[], started: (month: string) => boolean) {
+  return months.filter(started).reduce(
+    (sum, month) => ({ planned: sum.planned + (cells[month]?.planned ?? 0), actual: sum.actual + (cells[month]?.actual ?? 0) }),
+    { planned: 0, actual: 0 },
+  );
+}
+
+/**
+ * Year totals come first: with twelve months beside them, they would otherwise sit off-screen. Plan and
+ * fact are the whole year's; the difference and the percent set the fact against the plan to date, or
+ * two months in, lambs sold only in summer would read as a shortfall and unspent wages as a saving.
+ */
+function TotalCells({
+  kind,
+  total,
+  toDate,
+  hasPlan,
+}: {
+  kind: BudgetRow['kind'];
+  total: Pick<BudgetRow, 'planned' | 'actual'>;
+  toDate: { planned: number; actual: number };
+  hasPlan: boolean;
+}) {
+  const deviation = toDate.actual - toDate.planned;
+  const percent = hasPlan && toDate.planned > 0 ? (toDate.actual / toDate.planned) * 100 : null;
   return (
     <>
       <Td className={amountCell}>{formatCompact(total.planned)}</Td>
       <Td className={amountCell}>{formatCompact(total.actual)}</Td>
-      <Td className={cn(amountCell, deviationClass(kind, total.deviation))}>{signed(total.deviation)}</Td>
-      <Td className={amountCell}>{formatPercent(total.percent, 0)}</Td>
+      <Td className={cn(amountCell, hasPlan && deviationClass(kind, deviation))}>{hasPlan ? signed(deviation) : '—'}</Td>
+      <Td className={amountCell}>{formatPercent(percent, 0)}</Td>
     </>
   );
 }
 
-function Section({ grid, kind, rows, view, editing, edits, onEdit }: GridProps) {
+function Section({ grid, kind, rows, view, editing, edits, onEdit, started, hasPlan }: GridProps) {
   const { t } = useTranslation('finance');
   const localName = useLocalName();
   const total = kind === 'expense' ? grid.totals.expense : grid.totals.income;
+  const comparable = (month: string) => hasPlan && started(month);
+  // A month still running is shown but not judged: nine days of wages against a month's plan is no saving.
+  const judged = (month: string) => comparable(month) && month !== todayIso().slice(0, 7);
 
   return (
     <>
@@ -100,12 +138,12 @@ function Section({ grid, kind, rows, view, editing, edits, onEdit }: GridProps) 
       {rows.map((row) => (
         <Tr key={row.categoryId}>
           <Td className={cn(stickyHead, 'truncate')}>{localName(row.name)}</Td>
-          <TotalCells kind={kind} total={row} />
+          <TotalCells kind={kind} total={row} toDate={soFar(row.cells, grid.months, started)} hasPlan={hasPlan} />
           {grid.months.map((month) => {
             const cell = row.cells[month] ?? EMPTY_CELL;
             const key = editKey(row.categoryId, month);
             return (
-              <Td key={month} className={cn(amountCell, view === 'diff' && deviationClass(kind, cell.actual - cell.planned))}>
+              <Td key={month} className={cn(amountCell, view === 'diff' && judged(month) && deviationClass(kind, cell.actual - cell.planned))}>
                 {editing ? (
                   <NumberInput
                     money
@@ -124,7 +162,7 @@ function Section({ grid, kind, rows, view, editing, edits, onEdit }: GridProps) 
                     maxDigits={0}
                   />
                 ) : (
-                  cellText(view, cell)
+                  cellText(view, cell, comparable(month))
                 )}
               </Td>
             );
@@ -133,12 +171,12 @@ function Section({ grid, kind, rows, view, editing, edits, onEdit }: GridProps) 
       ))}
       <Tr className="font-semibold">
         <Td className={stickyHead}>{t(`budget.total.${kind}`)}</Td>
-        <TotalCells kind={kind} total={total} />
+        <TotalCells kind={kind} total={total} toDate={soFar(total.byMonth, grid.months, started)} hasPlan={hasPlan} />
         {grid.months.map((month) => {
           const cell = total.byMonth[month] ?? EMPTY_CELL;
           return (
-            <Td key={month} className={cn(amountCell, view === 'diff' && deviationClass(kind, cell.actual - cell.planned))}>
-              {cellText(view, cell)}
+            <Td key={month} className={cn(amountCell, view === 'diff' && judged(month) && deviationClass(kind, cell.actual - cell.planned))}>
+              {cellText(view, cell, comparable(month))}
             </Td>
           );
         })}
@@ -236,6 +274,12 @@ export default function BudgetPage() {
   const expense = data?.totals.expense;
   const income = data?.totals.income;
   const changed = Object.keys(edits).length;
+  const currentMonth = todayIso().slice(0, 7);
+  const started = (month: string) => month <= currentMonth;
+  // The plan is kept for the farm as a whole: a single center usually has none, and full facts against
+  // a plan of 0 would turn every row red.
+  const hasPlan = !data || data.totals.expense.planned > 0 || data.totals.income.planned > 0;
+  const runningYear = data ? data.months.some(started) && data.months.some((month) => !started(month)) : false;
 
   return (
     <>
@@ -372,11 +416,14 @@ export default function BudgetPage() {
           />
         </Card>
       ) : (
+        <div className="flex flex-col gap-2">
+          {!hasPlan && center && <Alert tone="info">{t('budget.noCenterPlan', { name: center.name })}</Alert>}
+          {hasPlan && runningYear && <p className="text-sm text-muted-foreground">{t('budget.toDateNote')}</p>}
         <Card className="overflow-hidden">
           <Table>
             <THead>
               <Tr>
-                <Th className={cn(stickyHead, 'z-20')}>{t('budget.category')}</Th>
+                <Th className={cn(stickyCell, 'z-20 bg-muted')}>{t('budget.category')}</Th>
                 <Th className="text-right">{t('budget.views.plan')}</Th>
                 <Th className="text-right">{t('budget.views.fact')}</Th>
                 <Th className="text-right">{t('budget.views.diff')}</Th>
@@ -402,12 +449,15 @@ export default function BudgetPage() {
                     editing={editing}
                     edits={edits}
                     onEdit={(key, value) => setEdits((current) => ({ ...current, [key]: value }))}
+                    started={started}
+                    hasPlan={hasPlan}
                   />
                 );
               })}
             </TBody>
           </Table>
         </Card>
+        </div>
       )}
 
       {data && rows.length > 0 && (

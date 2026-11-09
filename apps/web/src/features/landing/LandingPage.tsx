@@ -42,7 +42,7 @@ import {
 import { LogoMark } from '@/app/Logo';
 import { cn } from '@/lib/utils';
 import { LeadForm } from './LeadForm';
-import { CONTACT_PHONE, CONTACT_TELEGRAM, LANDING_PATHS, LANGUAGE_CODES, LANGUAGE_NAMES, SITE_NAME, telHref } from './site';
+import { CONTACT_PHONE, CONTACT_TELEGRAM, LANDING_PATHS, LANGUAGE_CODES, LANGUAGE_NAMES, SITE_NAME, loginHref, telHref } from './site';
 
 /** Product pictures in each language. Uzbek Cyrillic shows the Uzbek pictures. */
 const pictures = import.meta.glob('./img/*.webp', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
@@ -192,7 +192,7 @@ function Header({ copy, language }: { copy: LandingCopy; language: LandingLangua
 
         <div className="flex items-center gap-1">
           <div className="hidden xl:block">{languages(true)}</div>
-          <a href="/login" className="focus-ring hidden min-h-11 items-center rounded-lg px-3 text-sm font-medium hover:bg-muted sm:inline-flex">
+          <a href={loginHref(language)} className="focus-ring hidden min-h-11 items-center rounded-lg px-3 text-sm font-medium hover:bg-muted sm:inline-flex">
             {copy.nav.login}
           </a>
           <a href="#contact" className={cn(accentButton, 'hidden min-h-11 text-sm sm:inline-flex')}>
@@ -209,7 +209,7 @@ function Header({ copy, language }: { copy: LandingCopy; language: LandingLangua
                   {label}
                 </a>
               ))}
-              <a href="/login" className="focus-ring flex min-h-11 items-center rounded-lg px-3 text-sm font-medium hover:bg-muted sm:hidden">
+              <a href={loginHref(language)} className="focus-ring flex min-h-11 items-center rounded-lg px-3 text-sm font-medium hover:bg-muted sm:hidden">
                 {copy.nav.login}
               </a>
               <div className="mt-1 border-t border-border pt-1">{languages(false)}</div>
@@ -466,8 +466,9 @@ function Pilot({ copy }: { copy: LandingCopy }) {
           <h2 className="mt-4 max-w-3xl text-3xl leading-tight font-semibold tracking-tight md:text-[2.5rem]">{copy.pilot.title}</h2>
           <p className="mt-3 max-w-2xl text-feature-muted">{copy.pilot.lead}</p>
           <dl className="mt-10 grid grid-cols-2 gap-6 lg:grid-cols-4">
+            {/* justify-end packs a reversed column at the top, so a label that wraps never lifts its figure above the next one. */}
             {copy.pilot.facts.map((fact) => (
-              <div key={fact.label} className="flex flex-col-reverse border-t border-feature-foreground/20 pt-4">
+              <div key={fact.label} className="flex flex-col-reverse justify-end border-t border-feature-foreground/20 pt-4">
                 <dt className="mt-1 text-sm text-feature-muted">{fact.label}</dt>
                 <dd className="text-3xl font-medium tracking-tight md:text-4xl">{fact.value}</dd>
               </div>

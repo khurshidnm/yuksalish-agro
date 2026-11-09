@@ -389,7 +389,9 @@ async function downloadHistory(loc: Location, from: string, to: string, timeoutM
 
 /**
  * Where the past-weather download starts: two weeks back, or earlier when a crop in the field was
- * sown before the farm's stored weather begins, so its water use can be counted from sowing.
+ * sown before the farm's stored weather begins, so its water use can be counted from sowing. A day
+ * counts as missing when it cannot give crop water use: rows kept from Open-Meteo, before the switch,
+ * have temperatures but no humidity or mean wind.
  */
 async function historyStart(on: string): Promise<string> {
   const usual = addDays(on, -HISTORY_DAYS_BACK);
@@ -403,7 +405,10 @@ async function historyStart(on: string): Promise<string> {
     select d::date::text as date
     from generate_series(${from}::date, ${usual}::date, interval '1 day') d
     where not exists (
-      select 1 from weather_daily w where w.farm_id = ${ctx().farmId} and w.date = d::date and not w.is_forecast
+      select 1 from weather_daily w
+      where w.farm_id = ${ctx().farmId} and w.date = d::date and not w.is_forecast
+        and w.temp_min is not null and w.temp_max is not null and w.wind_mean_ms is not null
+        and (w.rh_mean_pct is not null or w.dew_point_c is not null)
     )
     order by d limit 1`);
   return (gap.rows[0] as { date: string } | undefined)?.date ?? usual;

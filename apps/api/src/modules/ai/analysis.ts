@@ -6,9 +6,16 @@ import { recordEvent } from '../../core/journal';
 import { schema } from '../../db/client';
 import { raiseAlert } from '../alerts/alerts.service';
 import { runAnalyzers, type Coverage, type InsightType } from './analyzers';
-import { ALERT_CONFIDENCE, storeFindings } from './insights.service';
+import { ALERT_CONFIDENCE, retireStale, storeFindings } from './insights.service';
 import { asLanguage } from './render';
 import { asAi } from './role';
+
+/**
+ * Advice and forecasts, worked out afresh on every run from what the farm looks like now. Each analysis
+ * has the key of the one type it gives. One it no longer gives no longer stands. Detections are not here:
+ * each records something that happened, and stays until a person decides on it.
+ */
+const STANDING: readonly InsightType[] = ['lambing_workload', 'season_profit', 'feed_shortage', 'feed_cost_saving', 'crop_suggestion'];
 
 /** Who acts on each detection. */
 const ALERT_ROLES: Partial<Record<InsightType, RoleKey[]>> = {
@@ -31,16 +38,26 @@ export async function tenantLanguage() {
 export interface AnalysisReport {
   created: number;
   refreshed: number;
+  /** Pending advice a fresh run no longer gave, taken off the list. */
+  retired: number;
   alertsRaised: number;
   coverage: Coverage[];
   failed: string[];
 }
 
-/** Run every analysis, store what it found, and raise alerts for confident new detections. */
+/**
+ * Run every analysis, store what it found, retire advice it no longer gives, and raise alerts for
+ * confident new detections. An analysis that failed retires nothing: it said nothing either way.
+ */
 export async function runStatistics(): Promise<AnalysisReport> {
   const language = await asAi(tenantLanguage);
   const run = await runAnalyzers();
   const stored = await storeFindings(run.findings, language);
+  const failed = new Set(run.failed.map((f) => f.key));
+  const retired = await retireStale(
+    STANDING.filter((type) => !failed.has(type)),
+    run.findings.map((f) => f.dedupKey),
+  );
 
   let alertsRaised = 0;
   for (const { id, inserted, finding, text } of stored) {
@@ -76,6 +93,7 @@ export async function runStatistics(): Promise<AnalysisReport> {
   return {
     created: stored.filter((s) => s.inserted).length,
     refreshed: stored.filter((s) => !s.inserted).length,
+    retired,
     alertsRaised,
     coverage: run.coverage,
     failed: run.failed.map((f) => f.key),

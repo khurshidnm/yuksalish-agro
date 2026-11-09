@@ -15,7 +15,15 @@ import { tr } from './i18n';
 
 const { alerts, farms, memberships, notificationPrefs, notifications, roles, tenants, users } = schema;
 
-export const EVENT_TYPES = ['alert_urgent', 'alert_attention', 'alert_info', 'task_assigned', 'daily_summary', 'assistant_recap'] as const;
+export const EVENT_TYPES = [
+  'alert_urgent',
+  'alert_attention',
+  'alert_info',
+  'task_assigned',
+  'daily_summary',
+  'assistant_recap',
+  'cash_handover',
+] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
 /** External channels when the user has not chosen. In-app is always on (spec 17.3). */
@@ -26,10 +34,12 @@ export const DEFAULT_CHANNELS: Record<EventType, ExternalChannel[]> = {
   task_assigned: [],
   daily_summary: ['telegram'],
   assistant_recap: ['telegram'],
+  // Cash handed over waits for the holder's answer, so it is worth a message where they are.
+  cash_handover: ['telegram'],
 };
 
 /** What these always show, whoever asked for them, so losing it stops them too (rule 7). */
-const EVENT_PERMISSIONS: Partial<Record<EventType, Permission>> = { assistant_recap: 'finance.view' };
+const EVENT_PERMISSIONS: Partial<Record<EventType, Permission>> = { assistant_recap: 'finance.view', cash_handover: 'finance.view' };
 
 /** Plain text, or a function rendering it in the recipient's language. */
 export type Text = string | ((locale: string) => string);
@@ -47,6 +57,8 @@ export interface NotificationInput {
   account?: boolean;
   /** Told only because those responsible could not be reached, so it stops once someone takes the alert. */
   escalated?: boolean;
+  /** A decision the reader can take from the message, e.g. accepting cash (notifications/actions.service.ts). */
+  action?: { kind: string; id: string };
 }
 
 export interface NotifyOptions {
@@ -117,6 +129,7 @@ async function deliver(userIds: string[], n: NotificationInput, permission?: Per
           texts,
           link: n.link,
           alertId: n.alertId,
+          action: n.action ?? null,
           permission: permission ?? EVENT_PERMISSIONS[eventType],
           deliveries,
         };

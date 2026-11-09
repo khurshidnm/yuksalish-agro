@@ -27,6 +27,8 @@ export class RetryLaterError extends Error {
 
 export interface Channel {
   key: ExternalChannel;
+  /** False for a channel with no provider written yet: settings do not offer it at all. */
+  implemented: boolean;
   configured(): boolean;
   send(to: Recipient, message: OutboundMessage): Promise<void>;
 }
@@ -38,6 +40,7 @@ export type ExternalChannel = (typeof EXTERNAL_CHANNELS)[number];
 function notConfigured(key: ExternalChannel): Channel {
   return {
     key,
+    implemented: false,
     configured: () => false,
     async send(to, message) {
       console.info(`[${key}:not-configured] to ${to.userId}: ${message.title}`);
@@ -53,6 +56,7 @@ function acknowledgeButton(to: Recipient, message: OutboundMessage): ReplyMarkup
 
 const telegram: Channel = {
   key: 'telegram',
+  implemented: true,
   configured: telegramConfigured,
   async send(to, message) {
     if (!telegramConfigured()) {
@@ -71,6 +75,9 @@ const telegram: Channel = {
     }
   },
 };
+
+/** Channels a person can choose today. Push, SMS and email come back here once they have a provider. */
+export const OFFERED_CHANNELS = (): ExternalChannel[] => EXTERNAL_CHANNELS.filter((key) => CHANNELS[key].implemented);
 
 export const CHANNELS: Record<ExternalChannel, Channel> = {
   telegram,

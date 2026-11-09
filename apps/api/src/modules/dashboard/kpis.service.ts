@@ -85,6 +85,7 @@ async function financeKpis(p: Period) {
   const { byCategory } = await herdSummary();
 
   const cashflow = await cashflowActual(p.fromDate, p.toDate);
+  // Spending so far against the plan so far: a month still running counts for the days gone.
   const budget = await budgetExecution(p.fromDate, p.toDate);
 
   return {
@@ -95,8 +96,8 @@ async function financeKpis(p: Period) {
     profitPerEwe: roundOrNull(profitPerHead(herds.income, herds.expense, byCategory.ewe ?? 0), 0),
     operatingRatio: roundOrNull(operatingRatio(operatingExpense, income), 2),
     netCashflow: cashflow.length ? round(cashflow.reduce((sum, m) => sum + m.net, 0), 2) : null,
-    budgetDeviation: budget.planned > 0 ? budget.deviation : null,
-    budgetDeviationPercent: roundOrNull(deviationPercent(budget.actual, budget.planned), 1),
+    budgetDeviation: budget.planned > 0 ? round(budget.actual - budget.plannedToDate, 2) : null,
+    budgetDeviationPercent: roundOrNull(deviationPercent(budget.actual, budget.plannedToDate), 1),
   };
 }
 
@@ -241,27 +242,47 @@ async function machineryCostPerHa(p: Period, assetIds: string[]): Promise<number
   return roundOrNull(machineryUnitCost(costs, hectares), 0);
 }
 
+/**
+ * Motor-hours worked against a working day for each machine, from the day the farm began logging
+ * hours, or the machine arrived if later. Before the first log a machine's time is unknown, not
+ * idle (rule 5): a farm that came onto the system in October is not 1.8 % loaded over January to
+ * September. A machine never logged at all is left out the same way, and with no log, null.
+ */
+async function machineryUtilization(p: Period, machines: { id: string; purchaseDate: string | null }[]): Promise<number | null> {
+  if (machines.length === 0) return null;
+  const logs = await tx()
+    .select({
+      assetId: assetUsageLogs.assetId,
+      first: sql<string>`min(${assetUsageLogs.date})::text`,
+      hours: sql<number>`coalesce(sum(${assetUsageLogs.motoHours}) filter (where ${assetUsageLogs.date} between ${p.fromDate} and ${p.toDate}), 0)`.mapWith(Number),
+    })
+    .from(assetUsageLogs)
+    .where(and(eq(assetUsageLogs.farmId, ctx().farmId), inArray(assetUsageLogs.assetId, machines.map((machine) => machine.id))))
+    .groupBy(assetUsageLogs.assetId);
+  if (logs.length === 0) return null;
+  const loggingSince = logs.map((row) => row.first).sort()[0];
+
+  let hours = 0;
+  let machineDays = 0;
+  for (const log of logs) {
+    const arrived = machines.find((machine) => machine.id === log.assetId)?.purchaseDate ?? null;
+    const start = [p.fromDate, loggingSince, arrived ?? p.fromDate].sort().at(-1)!;
+    if (start > p.toDate) continue;
+    hours += log.hours;
+    machineDays += diffDays(start, p.toDate) + 1;
+  }
+  // Each machine over its own days: machine-days stand in for machines × days.
+  return roundOrNull(machineryUtilizationPercent(hours, machineDays, 1), 1);
+}
+
 async function machineryKpis(p: Period) {
   const farm = ctx().farmId;
   const fleet = await tx()
-    .select({ id: assets.id, type: assets.type, rented: assets.rented })
+    .select({ id: assets.id, type: assets.type, rented: assets.rented, purchaseDate: assets.purchaseDate })
     .from(assets)
     .where(and(eq(assets.farmId, farm), ne(assets.status, 'written_off')));
   // Hired machines are paid for by the job, so idle time on them is not this farm's load.
-  const motorized = fleet.filter((asset) => !asset.rented && MOTOR_TYPES.includes(asset.type)).map((asset) => asset.id);
-
-  const [usage] = motorized.length
-    ? await tx()
-        .select({ hours: sumOf(assetUsageLogs.motoHours) })
-        .from(assetUsageLogs)
-        .where(
-          and(
-            inArray(assetUsageLogs.assetId, motorized),
-            gte(assetUsageLogs.date, p.fromDate),
-            lte(assetUsageLogs.date, p.toDate),
-          ),
-        )
-    : [{ hours: 0 }];
+  const motorized = fleet.filter((asset) => !asset.rented && MOTOR_TYPES.includes(asset.type));
 
   const [stops] = await tx()
     .select({ n: sql<number>`count(*)`.mapWith(Number), hours: sumOf(maintenanceRecords.downtimeHours) })
@@ -275,9 +296,8 @@ async function machineryKpis(p: Period) {
       ),
     );
 
-  const days = diffDays(p.fromDate, p.toDate) + 1;
   return {
-    utilizationPercent: roundOrNull(machineryUtilizationPercent(usage.hours, motorized.length, days), 1),
+    utilizationPercent: await machineryUtilization(p, motorized),
     unplannedStops: stops.n,
     downtimeHours: stops.hours,
     ...(canSeeMoney(FINANCE_SUMMARY_VIEW) ? { costPerHa: await machineryCostPerHa(p, fleet.map((asset) => asset.id)) } : {}),

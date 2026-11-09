@@ -24,7 +24,12 @@
     "emptyTitle": "No cameras",
     "emptyBody": "Add a camera under Devices.",
     "gatewayTitle": "Live view is not connected yet",
-    "gatewayBody": "Browsers cannot play RTSP directly. Once a stream gateway such as MediaMTX runs at the farm, put its address on each camera's card."
+    "gatewayBody": "Browsers cannot play RTSP directly. Once a stream gateway such as MediaMTX runs at the farm, put its address on each camera's card.",
+    "plannedTitle": "No cameras are installed yet",
+    "plannedBody_one": "The {{count}} registered camera is still planned. Once it is installed and a stream gateway is connected, its picture shows here.",
+    "plannedBody_other": "All {{count}} registered cameras are still planned. Once they are installed and a stream gateway is connected, their pictures show here.",
+    "morePlanned_one": "{{count}} more camera is planned and not installed yet.",
+    "morePlanned_other": "{{count}} more cameras are planned and not installed yet."
   },
   "plan": {
     "summary": "Plan: {{range}} cameras, working now: {{online}}",
@@ -84,6 +89,7 @@
     "allSources": "Cameras and sensors",
     "from": "Start date",
     "to": "End date",
+    "value": "Reading",
     "emptyTitle": "No events",
     "emptyBody": "Events appear here once devices are connected."
   },

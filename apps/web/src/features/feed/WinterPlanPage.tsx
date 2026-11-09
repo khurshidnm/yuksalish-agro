@@ -1,4 +1,5 @@
-import { hectaresForShortage, round } from '@yap/shared';
+import { round } from '@yap/shared';
+import { hectaresForCropShortages } from '@yap/shared/formulas/feed';
 import { latinToCyrillic } from '@yap/shared/i18n';
 import { CalendarDays, Coins, PackageX, Scale, Sprout, Wheat } from 'lucide-react';
 import { useState } from 'react';
@@ -26,7 +27,7 @@ import {
   TabsTrigger,
   useUrlParam,
 } from '@/components';
-import { useSeesCost } from '@/lib/auth';
+import { useSeesCost, useSession } from '@/lib/auth';
 import { formatDate, formatMoney, formatNumber } from '@/lib/format';
 import i18n from '@/lib/i18n';
 import { useDetail, useList } from '@/lib/query';
@@ -39,10 +40,18 @@ function cropName(row: WinterRow): string {
   return row.cropName[i18n.language as 'uz' | 'ru' | 'en'] ?? row.cropName.uz;
 }
 
+/** Short feeds grouped by the crop they come from: one wheat field gives both the grain and the straw. */
+function byCrop(rows: WinterRow[]): WinterRow[][] {
+  const groups = new Map<string, WinterRow[]>();
+  for (const row of rows) if (row.cropId) groups.set(row.cropId, [...(groups.get(row.cropId) ?? []), row]);
+  return [...groups.values()];
+}
+
 function SowingCard({ rows }: { rows: WinterRow[] }) {
   const { t } = useTranslation('feed');
   const [yields, setYields] = useState<Record<string, number | null>>({});
-  if (rows.length === 0) return null;
+  const groups = byCrop(rows);
+  if (groups.length === 0) return null;
 
   return (
     <Card>
@@ -52,21 +61,33 @@ function SowingCard({ rows }: { rows: WinterRow[] }) {
       </CardHeader>
       <CardContent>
         <ul className="flex flex-col divide-y divide-border">
-          {rows.map((row) => {
-            const yieldTHa = row.itemId in yields ? yields[row.itemId] : row.yieldTHa;
-            const hectares = yieldTHa ? hectaresForShortage(row.shortageKg ?? 0, yieldTHa) : null;
-            const id = `yield-${row.itemId}`;
+          {groups.map((group) => {
+            const products = group.map((row) => ({ row, yieldTHa: row.itemId in yields ? yields[row.itemId] : row.yieldTHa }));
+            const hectares = hectaresForCropShortages(products.map(({ row, yieldTHa }) => ({ shortageKg: row.shortageKg ?? 0, yieldTHa })));
+            const several = group.length > 1;
             return (
-              <li key={row.itemId} className="grid grid-cols-1 items-center gap-3 py-3 sm:grid-cols-[minmax(0,1fr)_11rem_9rem]">
+              <li key={group[0].cropId} className="grid grid-cols-1 items-center gap-3 py-3 sm:grid-cols-[minmax(0,1fr)_11rem_9rem]">
                 <div className="min-w-0">
-                  <p className="font-medium break-words">{cropName(row)}</p>
-                  <p className="text-sm text-muted-foreground">{t('winter.sowing.short', { name: row.name, qty: formatKg(row.shortageKg) })}</p>
+                  <p className="font-medium break-words">{cropName(group[0])}</p>
+                  {products.map(({ row }) => (
+                    <p key={row.itemId} className="text-sm text-muted-foreground">
+                      {t('winter.sowing.short', { name: row.name, qty: formatKg(row.shortageKg) })}
+                    </p>
+                  ))}
+                  {several && <p className="mt-1 text-xs text-muted-foreground">{t('winter.sowing.together')}</p>}
                 </div>
-                <div className="flex flex-col gap-1">
-                  <Label htmlFor={id} className="text-xs text-muted-foreground">
-                    {t('winter.sowing.yield')}
-                  </Label>
-                  <NumberInput id={id} value={yieldTHa ?? null} onChange={(value) => setYields((prev) => ({ ...prev, [row.itemId]: value }))} suffix={t('winter.sowing.yieldUnit')} />
+                <div className="flex flex-col gap-2">
+                  {products.map(({ row, yieldTHa }) => {
+                    const id = `yield-${row.itemId}`;
+                    return (
+                      <div key={row.itemId} className="flex flex-col gap-1">
+                        <Label htmlFor={id} className="text-xs text-muted-foreground">
+                          {several ? t('winter.sowing.yieldOf', { name: row.name }) : t('winter.sowing.yield')}
+                        </Label>
+                        <NumberInput id={id} value={yieldTHa ?? null} onChange={(value) => setYields((prev) => ({ ...prev, [row.itemId]: value }))} suffix={t('winter.sowing.yieldUnit')} />
+                      </div>
+                    );
+                  })}
                 </div>
                 <p className="text-lg font-semibold tabular-nums sm:text-right">
                   {hectares === null ? t('winter.sowing.enterYield') : t('winter.sowing.hectares', { ha: formatNumber(round(hectares, 2), 2) })}
@@ -101,7 +122,7 @@ function Conclusion({ plan, canSeeMoney }: { plan: WinterPlan; canSeeMoney: bool
   }
   return (
     <Alert tone="warning" title={t('winter.shortTitle', { count: short.length })}>
-      <ul className="mt-1 list-inside list-disc">
+      <ul className="mt-1 list-outside list-disc space-y-1 pl-5">
         {short.map((row) => (
           <li key={row.itemId}>{t('winter.shortLine', { name: row.name, qty: formatKg(row.shortageKg), date: formatDate(row.runsOutOn) })}</li>
         ))}
@@ -114,6 +135,8 @@ function Conclusion({ plan, canSeeMoney }: { plan: WinterPlan; canSeeMoney: bool
 export default function WinterPlanPage() {
   const { t } = useTranslation('feed');
   const canSeeMoney = useSeesCost('feed.approve');
+  const session = useSession();
+  const defaultDays = (session.settings as { feed?: { winterDays?: number } }).feed?.winterDays ?? 120;
   const [mode, setMode] = useUrlParam('mode', 'herds');
   const [daysParam, setDaysParam] = useUrlParam('days');
   const [rationId, setRationId] = useUrlParam('ration');
@@ -172,7 +195,7 @@ export default function WinterPlanPage() {
                 <Label htmlFor="winter-days">{t('winter.days')}</Label>
                 <NumberInput
                   id="winter-days"
-                  value={daysParam ? Number(daysParam) : (plan.data?.days ?? null)}
+                  value={daysParam ? Number(daysParam) : (plan.data?.days ?? defaultDays)}
                   onChange={(value) => setDaysParam(value ? String(Math.round(value)) : '')}
                   suffix={t('winter.daysUnit')}
                   maxDigits={0}
@@ -228,6 +251,7 @@ export default function WinterPlanPage() {
             </div>
 
             <Conclusion plan={plan.data} canSeeMoney={canSeeMoney} />
+            {plan.data.basis === 'herds' && <p className="text-sm text-muted-foreground">{t('winter.basisNote')}</p>}
 
             <DataTableView rows={plan.data.rows} columns={columns} rowKey={(row) => row.itemId} />
 

@@ -239,7 +239,7 @@ export default function FarmPassportPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="flex flex-col gap-4">
           <BalanceCard balance={balance} />
-          <WeatherCard />
+          <WeatherCard site={p.lat != null && p.lng != null ? { latitudeDeg: p.lat, longitudeDeg: p.lng } : null} />
         </div>
         <div className="flex flex-col gap-4">
           <Card>
@@ -252,8 +252,10 @@ export default function FarmPassportPage() {
                 <Row label={t('passport.tin')}>{p.tenant.tin}</Row>
                 <Row label={t('passport.legalForm')}>{p.tenant.legalForm}</Row>
                 <Row label={t('passport.taxRegime')}>{p.tenant.taxRegime}</Row>
+                <Row label={t('passport.bank')}>{[d.bankName, d.bankAccount, d.mfo].filter(Boolean).join(' · ') || null}</Row>
                 <Row label={t('passport.address')}>{p.address}</Row>
-                <Row label={t('passport.coordinates')}>{p.lat != null && p.lng != null ? `${formatNumber(p.lat, 5)}, ${formatNumber(p.lng, 5)}` : null}</Row>
+                {/* Written as GPS apps and map links take them, with a decimal point: a comma would also separate the pair. */}
+                <Row label={t('passport.coordinates')}>{p.lat != null && p.lng != null ? `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}` : null}</Row>
               </dl>
             </CardContent>
           </Card>
@@ -268,7 +270,6 @@ export default function FarmPassportPage() {
                 <Row label={t('passport.leaseContractDate')}>{d.leaseContractDate ? formatDate(d.leaseContractDate) : null}</Row>
                 <Row label={t('passport.leaseValidUntil')}>{d.leaseValidUntil ? formatDate(d.leaseValidUntil) : null}</Row>
                 <Row label={t('passport.cadastre')}>{p.cadastreNumber}</Row>
-                <Row label={t('passport.bank')}>{[d.bankName, d.bankAccount, d.mfo].filter(Boolean).join(' · ') || null}</Row>
               </dl>
             </CardContent>
           </Card>

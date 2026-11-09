@@ -66,7 +66,8 @@
     "platform": "Platforma",
     "leads": "Arizalar",
     "platformUsers": "Barcha foydalanuvchilar",
-    "water": "Sug'orish"
+    "water": "Sug'orish",
+    "cashHolders": "Hisobdor shaxslar"
   },
   "shell": {
     "menu": "Menyu",

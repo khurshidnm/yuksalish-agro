@@ -87,7 +87,7 @@ export function ShearingPanel() {
         title={t('shearing.add')}
         description={t('shearing.hint')}
         schema={schema}
-        defaultValues={{ herdId: null, date: todayIso(), woolKg: 0, quality: '', itemId: '', warehouseId: '' }}
+        defaultValues={{ herdId: null, date: todayIso(), woolKg: undefined, quality: '', itemId: '', warehouseId: '' }}
         onSubmit={(values) => add.mutateAsync(values)}
         successMessage="common:toast.saved"
       >
@@ -102,7 +102,7 @@ export function ShearingPanel() {
             />
             <FormGrid>
               <DateField form={form} name="date" label={t('fields.date')} required max={todayIso()} />
-              <NumberField form={form} name="woolKg" label={t('shearing.wool')} suffix="kg" maxDigits={2} required />
+              <NumberField form={form} name="woolKg" label={t('shearing.wool')} suffix={t('enums:unit.kg')} maxDigits={2} required />
               <TextField form={form} name="quality" label={t('shearing.quality')} />
               <ComboboxField
                 form={form}

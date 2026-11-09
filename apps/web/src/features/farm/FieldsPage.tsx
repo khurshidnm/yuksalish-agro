@@ -16,7 +16,7 @@ import { FieldPreview } from './FieldPreview';
 import { FieldShape } from './FieldShape';
 import { LAND_USE_SLOT } from './map/slots';
 import type { FarmMapData, FieldRow, Passport } from './types';
-import { fieldTitle, formatHa, useLocalName } from './utils';
+import { CROP_STATUS_VARIANT, fieldTitle, formatHa, useLocalName } from './utils';
 
 const PATH = '/farm/fields';
 
@@ -79,9 +79,9 @@ export default function FieldsPage() {
       header: t('fields.currentCrop'),
       cell: (row) =>
         row.currentCrop ? (
-          <span className="flex flex-wrap items-center gap-1.5">
+          <span className="flex flex-wrap items-center justify-end gap-1.5 md:justify-start">
             {localName(row.currentCrop.cropName)}
-            <Badge variant={row.currentCrop.status === 'planned' ? 'outline' : 'success'}>{t(`enums:cropPlanStatus.${row.currentCrop.status}`)}</Badge>
+            <Badge variant={CROP_STATUS_VARIANT[row.currentCrop.status]}>{t(`enums:cropPlanStatus.${row.currentCrop.status}`)}</Badge>
           </span>
         ) : (
           '—'

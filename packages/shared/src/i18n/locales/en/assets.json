@@ -84,6 +84,7 @@
   },
   "usage": {
     "add": "Log a shift",
+    "addHours": "Log run hours",
     "edit": "Edit shift",
     "date": "Date",
     "operator": "Operator",
@@ -99,7 +100,8 @@
     "deleteTitle": "Delete this shift?",
     "deleteBody": "Motor-hours are taken back and the fuel returns to the warehouse.",
     "emptyTitle": "No shifts yet",
-    "emptyBody": "Log motor-hours, area done and fuel for every shift."
+    "emptyBody": "Log motor-hours, area done and fuel for every shift.",
+    "emptyBodyHours": "Log the hours run and the fuel used each time it runs."
   },
   "maintenance": {
     "add": "Record service",
@@ -144,7 +146,8 @@
     "month": "Month",
     "amount": "Amount",
     "noDepreciation": "No depreciation posted yet",
-    "noDepreciationBody": "It is posted automatically at the start of each month."
+    "noDepreciationBody": "It is posted automatically at the start of each month.",
+    "rentedNote": "Rent is not counted here: the work-done act charges it to the fields."
   },
   "depreciation": {
     "run": "Post depreciation",

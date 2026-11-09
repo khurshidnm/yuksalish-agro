@@ -20,6 +20,7 @@ import { AnimalForm } from './AnimalForm';
 import { AnimalHealthTab, HealthCard } from './AnimalHealthTab';
 import { ExitForm } from './ExitForm';
 import { type Animal, type I18nName, StatusBadge, compressImage, isOnFarm, useAgeText, useLocalName } from './shared';
+import { MoreActions } from './MoreActions';
 import { TransferDialog } from './TransferDialog';
 
 const WeightChart = lazyPart(() => import('./WeightChart'));
@@ -142,7 +143,7 @@ export default function AnimalCardPage() {
   const hasBirths = animal.sex === 'female' && animal.speciesKey !== 'poultry';
 
   const overview = (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+    <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
       <Card>
         <CardHeader>
           <CardTitle>{t('card.details')}</CardTitle>
@@ -292,8 +293,8 @@ export default function AnimalCardPage() {
                   {[...animal.weights].reverse().map((row) => (
                     <Tr key={row.id}>
                       <Td className="tabular-nums">{formatDate(row.date)}</Td>
-                      <Td className="text-right tabular-nums">{formatQty(row.weightKg, 'kg', 1)}</Td>
-                      <Td className="text-right tabular-nums">{row.adgG === null ? '—' : `${formatNumber(row.adgG, 0)} g`}</Td>
+                      <Td className="text-right whitespace-nowrap tabular-nums">{formatQty(row.weightKg, 'kg', 1)}</Td>
+                      <Td className="text-right whitespace-nowrap tabular-nums">{row.adgG === null ? '—' : t('card.grams', { value: formatNumber(row.adgG, 0) })}</Td>
                       <Td>{t(`enums:weightMethod.${row.method}`)}</Td>
                       {canManage && (
                         <Td className="text-right">
@@ -409,33 +410,26 @@ export default function AnimalCardPage() {
             {canManage && active && (
               <Button variant="outline" onClick={() => setMoving(true)}>
                 <ArrowRightLeft aria-hidden />
-                {t('transfer.title')}
+                {/* Icon only on a phone, so the actions fit one row above the data. */}
+                <span className="max-sm:sr-only">{t('transfer.title')}</span>
               </Button>
             )}
-            {canManage && active && (
-              <Button variant="outline" onClick={() => setEditing(true)}>
-                <Pencil aria-hidden />
-                {t('common:actions.edit')}
-              </Button>
-            )}
-            {(canExit || canSell) && active && (
-              <Button variant="outline" onClick={() => setExiting(true)}>
-                <CircleMinus aria-hidden />
-                {t('exits.add')}
-              </Button>
-            )}
-            {canDelete && (
-              <Button
-                variant="ghost"
-                onClick={async () => {
-                  const ok = await confirm({ title: t('card.deleteTitle'), description: t('card.deleteBody', { tag: animal.tag }), destructive: true });
-                  if (ok) removeAnimal.mutate();
-                }}
-              >
-                <Trash2 aria-hidden />
-                {t('common:actions.delete')}
-              </Button>
-            )}
+            <MoreActions
+              actions={[
+                { label: t('common:actions.edit'), icon: Pencil, hidden: !(canManage && active), onSelect: () => setEditing(true) },
+                { label: t('exits.add'), icon: CircleMinus, hidden: !((canExit || canSell) && active), onSelect: () => setExiting(true) },
+                {
+                  label: t('common:actions.delete'),
+                  icon: Trash2,
+                  hidden: !canDelete,
+                  destructive: true,
+                  onSelect: async () => {
+                    const ok = await confirm({ title: t('card.deleteTitle'), description: t('card.deleteBody', { tag: animal.tag }), destructive: true });
+                    if (ok) removeAnimal.mutate();
+                  },
+                },
+              ]}
+            />
           </>
         }
       />
@@ -497,7 +491,7 @@ export default function AnimalCardPage() {
         </div>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
           <StatCard label={t('fields.weight')} value={formatQty(animal.currentWeightKg, 'kg', 1)} hint={animal.lastWeighedOn ? t('card.weighedOn', { date: formatDate(animal.lastWeighedOn) }) : undefined} />
-          <StatCard label={t('card.adg')} value={animal.adgG === null ? '—' : `${formatNumber(animal.adgG, 0)} g`} tone={animal.adgG !== null && animal.adgG < 0 ? 'danger' : 'neutral'} />
+          <StatCard label={t('card.adg')} value={animal.adgG === null ? '—' : t('card.grams', { value: formatNumber(animal.adgG, 0) })} tone={animal.adgG !== null && animal.adgG < 0 ? 'danger' : 'neutral'} />
           <StatCard label={t('fields.age')} value={ageText(animal.birthDate, animal.exitDate ?? today)} />
         </div>
       </div>
@@ -533,7 +527,7 @@ export default function AnimalCardPage() {
       />
 
       <AnimalForm open={editing} onOpenChange={setEditing} animal={animal} />
-      <TransferDialog open={moving} onOpenChange={setMoving} animalIds={[animal.id]} count={1} />
+      <TransferDialog open={moving} onOpenChange={setMoving} animalIds={[animal.id]} currentHerdId={animal.herdId} count={1} />
       <ExitForm open={exiting} onOpenChange={setExiting} animal={animal} />
       <FormDialog
         open={weighing}
@@ -546,7 +540,7 @@ export default function AnimalCardPage() {
       >
         {(form) => (
           <FormGrid>
-            <NumberField form={form} name="weightKg" label={t('fields.weight')} suffix="kg" maxDigits={2} required />
+            <NumberField form={form} name="weightKg" label={t('fields.weight')} suffix={t('enums:unit.kg')} maxDigits={2} required />
             <DateField form={form} name="date" label={t('fields.date')} required max={today} />
           </FormGrid>
         )}

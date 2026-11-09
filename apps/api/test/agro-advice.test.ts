@@ -152,6 +152,26 @@ describe('irrigation advice', () => {
     expect((await (await f.as('investor')).get('/farm/water/advice')).status).toBe(403);
   });
 
+  it('refills days kept from the old weather source, which cannot give crop water use', async () => {
+    const f = await createFixture();
+    await plant(f, 'cotton', -40);
+    // Every day since sowing is stored, but as Open-Meteo wrote it: no humidity, no mean wind.
+    await f.run(async () => {
+      const days = [];
+      for (let o = -45; o <= -1; o++) days.push({ ...base(), date: day(o), tempMin: 10, tempMax: 25, precipitationMm: 0, source: 'open-meteo' });
+      await tx().insert(schema.weatherDaily).values(days);
+    });
+    const fetchMock = vi.fn(async (url: URL | string) => {
+      const host = new URL(String(url)).hostname;
+      if (host === 'power.larc.nasa.gov') return new Response(JSON.stringify({ properties: { parameter: {} } }));
+      return new Response('{}', { status: 503 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    await f.run(() => refreshWeather());
+    const power = fetchMock.mock.calls.map(([u]) => new URL(String(u))).find((u) => u.hostname === 'power.larc.nasa.gov')!;
+    expect(power.searchParams.get('start')).toBe(day(-40).replaceAll('-', ''));
+  });
+
   it('fills past weather back to the sowing of a crop still in the field', async () => {
     const f = await createFixture();
     await plant(f, 'cotton', -40);
@@ -223,14 +243,18 @@ describe('weather alerts', () => {
     const field = await plant(f, 'cotton', -30);
     const calm = { tempC: 18, rhPct: 55, windMs: 2 };
     const windy = { tempC: 18, rhPct: 55, windMs: 8 };
-    await hourly(f, thisHour(), 64, (time) => (localDate(time) === day(2) && localHour(time) >= 5 && localHour(time) < 11 ? calm : windy));
+    // Calm 05:00 to 08:00 and 10:00 to 14:00. The early hours are before or just after sunrise at the
+    // fixture farm (39.5°N, 64.8°E) in any season, at most one hour of them lies in the spraying day,
+    // so the advice is 10:00 to 14:00 all year. Clock hours from 05:00 advised the dawn.
+    const calmAt = (time: Date) => localDate(time) === day(2) && ((localHour(time) >= 5 && localHour(time) < 8) || (localHour(time) >= 10 && localHour(time) < 14));
+    await hourly(f, thisHour(), 64, (time) => (calmAt(time) ? calm : windy));
     const [op] = await f.run(() =>
       tx().insert(schema.fieldOperations).values({ ...base(), type: 'protection', status: 'planned', date: day(1), fieldId: field.fieldId }).returning(),
     );
     await f.run(() => evaluateRules());
     const [alert] = await alertsOf(f, 'spray_window');
     expect(alert).toMatchObject({ dedupKey: `spray_window:${op.id}`, entityId: op.id });
-    expect(alert.data).toMatchObject({ field: field.number, date: day(1), bestDate: day(2), bestFrom: '05:00', bestTo: '11:00' });
+    expect(alert.data).toMatchObject({ field: field.number, date: day(1), bestDate: day(2), bestFrom: '10:00', bestTo: '14:00' });
   });
 
   it('stays quiet when the planned day has good hours', async () => {

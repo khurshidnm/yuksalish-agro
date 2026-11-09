@@ -110,7 +110,7 @@ export function FieldFormDialog({ open, onOpenChange, field, boundary, previewAr
             <NumberField
               form={form}
               name="areaHa"
-              label={t('fields.areaHa')}
+              label={t('fields.area')}
               required={!areaFromMap}
               suffix={t('unit.haShort')}
               maxDigits={4}

@@ -16,6 +16,8 @@ interface NextDue {
   date: string;
   type: string;
   itemName: string | null;
+  /** The plan the reminder comes from, when there is one. */
+  planName?: string;
 }
 
 interface AnimalHealthRecord {
@@ -38,6 +40,8 @@ interface AnimalHealthRecord {
   reportStatus: string | null;
   endedOn: string | null;
   notes: string | null;
+  /** Set only for a dose given under a plan. */
+  planName?: string;
   /** Null for a herd record, and for anyone who cannot see money. */
   totalCost: number | null;
 }
@@ -71,7 +75,8 @@ function DueLine({ row }: { row: NextDue }) {
         <span className="tabular-nums">{formatDate(row.date)}</span>
         {row.date < todayIso() && <Badge variant="danger">{t('card.health.overdue')}</Badge>}
       </span>
-      <span className="block text-sm font-normal text-muted-foreground">{[t(`enums:healthRecordType.${row.type}`), row.itemName].filter(Boolean).join(' · ')}</span>
+      {/* The plan says what is owed ("Gijjaga qarshi ishlov"); the type alone would call every plan a vaccination. */}
+      <span className="block text-sm font-normal text-muted-foreground">{[row.planName ?? t(`enums:healthRecordType.${row.type}`), row.itemName].filter(Boolean).join(' · ')}</span>
     </>
   );
 }
@@ -132,13 +137,14 @@ function RecordCard({ row }: { row: AnimalHealthRecord }) {
       <CardContent className="space-y-3 pt-4 md:pt-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="flex min-w-0 flex-wrap items-center gap-2">
-            <Badge variant={TYPE_TONE[row.type]}>{t(`enums:healthRecordType.${row.type}`)}</Badge>
+            {row.reportStatus === null && <Badge variant={TYPE_TONE[row.type]}>{t(`enums:healthRecordType.${row.type}`)}</Badge>}
             {row.reportStatus === 'open' && <Badge variant="danger">{t('card.health.sickOpen')}</Badge>}
             {row.reportStatus === 'resolved' && <Badge>{t('card.health.sickClosed')}</Badge>}
             {isQuarantine && row.endedOn === null && <Badge variant="warning">{t('card.health.quarantineOpen')}</Badge>}
           </span>
           <span className="font-medium tabular-nums">{formatDate(row.date)}</span>
         </div>
+        {row.planName && <p className="font-medium break-words">{row.planName}</p>}
 
         {row.scope === 'herd' && (
           <p className="flex items-start gap-2 rounded-lg bg-info-soft p-3 text-sm text-info">
@@ -161,7 +167,7 @@ function RecordCard({ row }: { row: AnimalHealthRecord }) {
           {row.courseDays !== null && <Detail label={t('vet:journal.courseDays')}>{t('vet:common.dayCount', { count: row.courseDays })}</Detail>}
           <Detail label={t('vet:journal.vet')}>{row.vetName ?? '—'}</Detail>
           <Detail label={t('vet:journal.result')}>{row.result ?? '—'}</Detail>
-          <Detail label={t('vet:journal.withdrawalUntil')}>{formatDate(row.withdrawalUntil)}</Detail>
+          {row.withdrawalUntil && <Detail label={t('vet:journal.withdrawalUntil')}>{formatDate(row.withdrawalUntil)}</Detail>}
           <Detail label={isQuarantine ? t('vet:quarantine.until') : t('vet:journal.nextDue')}>{formatDate(row.nextDueDate)}</Detail>
           {row.endedOn && <Detail label={t('card.health.endedOn')}>{formatDate(row.endedOn)}</Detail>}
           {row.totalCost !== null && (

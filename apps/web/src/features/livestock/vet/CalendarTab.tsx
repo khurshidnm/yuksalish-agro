@@ -50,10 +50,21 @@ export function CalendarTab() {
           icon={Clock4}
           loading={calendar.isLoading}
         />
+        {/* Before the farm's own first lambing, the outlook's stated assumption gives an estimate, marked as one. */}
         <StatCard
           label={t('calendar.expectedLambs')}
-          value={formatNumber(data?.expectedLambs ?? null)}
-          hint={data && data.expectedLambs === null ? t('calendar.expectedLambsHint') : undefined}
+          value={
+            data?.expectedLambs != null
+              ? formatNumber(data.expectedLambs)
+              : data?.assumedLambs != null
+                ? `≈${formatNumber(data.assumedLambs)}`
+                : formatNumber(null)
+          }
+          hint={
+            data && data.expectedLambs === null && data.assumedLambs != null
+              ? t('calendar.expectedLambsHint', { perEwe: formatNumber(data.assumedLambsPerEwe ?? null, 1) })
+              : undefined
+          }
           icon={Sprout}
           loading={calendar.isLoading}
         />
@@ -72,16 +83,19 @@ export function CalendarTab() {
         emptyText={t('calendar.empty')}
       />
 
-      <Select
-        aria-label={t('calendar.viewLabel')}
-        value={view}
-        onChange={(e) => setView(e.target.value)}
-        options={[
-          { value: 'weeks', label: t('calendar.viewWeeks') },
-          { value: 'days', label: t('calendar.viewDays') },
-        ]}
-        className="md:w-48"
-      />
+      {/* In a flex row the select's wrapper shrinks to the box, so its arrow stays inside it. */}
+      <div className="flex flex-col gap-2 md:flex-row">
+        <Select
+          aria-label={t('calendar.viewLabel')}
+          value={view}
+          onChange={(e) => setView(e.target.value)}
+          options={[
+            { value: 'weeks', label: t('calendar.viewWeeks') },
+            { value: 'days', label: t('calendar.viewDays') },
+          ]}
+          className="md:w-48"
+        />
+      </div>
 
       <DataTableView
         rows={rows}

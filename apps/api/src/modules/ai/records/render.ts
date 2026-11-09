@@ -1,11 +1,10 @@
-import { interpolate, localizeValue, lookup } from '../../notifications/i18n';
+import { interpolate, localizeValue, lookup, moneyText } from '../../notifications/i18n';
 import type { ProposalView } from './types';
 
 const number = (value: number, digits = 2) =>
   new Intl.NumberFormat('ru-RU', { maximumFractionDigits: digits }).format(value).replace(/\u00a0/g, ' ');
 
-export const money = (amount: number, currency: string, language?: string) =>
-  `${number(amount)} ${lookup(language, 'enums', `currency.${currency}`) ?? currency}`;
+export const money = (amount: number, currency: string, language?: string) => moneyText(amount, currency, language);
 
 const dayText = (date: string) => date.split('-').reverse().join('.');
 

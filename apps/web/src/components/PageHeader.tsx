@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 export interface PageHeaderProps {
   title: ReactNode;
   description?: ReactNode;
-  /** Buttons; they wrap below the title on phones. */
+  /** Buttons; they wrap below the title on phones, and on wider screens whenever they leave the title too little room. */
   actions?: ReactNode;
   /** Back link for detail pages. */
   back?: { to: string; label: string };
@@ -15,8 +15,10 @@ export interface PageHeaderProps {
 
 export function PageHeader({ title, description, actions, back, className }: PageHeaderProps) {
   return (
-    <header className={cn('mb-4 flex flex-col gap-3 md:mb-6 md:flex-row md:items-start md:justify-between', className)}>
-      <div className="min-w-0">
+    <header className={cn('mb-4 flex flex-col gap-3 md:mb-6 md:flex-row md:flex-wrap md:items-start md:justify-between', className)}>
+      {/* The title always keeps 20rem. When the buttons do not fit beside that, they move under the
+          title instead of squeezing it down to a letter per line. */}
+      <div className="min-w-0 md:min-w-80 md:flex-1">
         {back && (
           <Link
             to={back.to}
@@ -29,7 +31,7 @@ export function PageHeader({ title, description, actions, back, className }: Pag
         <h1 className="text-2xl leading-tight font-semibold tracking-tight break-words text-heading md:text-[1.75rem]">{title}</h1>
         {description && <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{description}</p>}
       </div>
-      {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
+      {actions && <div className="flex min-w-0 flex-wrap items-center gap-2">{actions}</div>}
     </header>
   );
 }

@@ -1,5 +1,5 @@
 import { TIMESHEET_STATUSES, monthRange, todayIso } from '@yap/shared';
-import { CalendarCheck, CalendarDays, ChevronDown, Lock, MapPin, UserCheck, UserX } from 'lucide-react';
+import { CalendarCheck, CalendarDays, ChevronDown, MapPin, UserCheck, UserX } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -186,6 +186,7 @@ function PersonCard({ person, grid, editable, onOpen }: { person: Person; grid: 
   const { t } = useTranslation('hr');
   const [open, setOpen] = useState(false);
   const leadingBlanks = (weekday(grid.days[0]) + 6) % 7;
+  const totalsLabel = t('timesheet.personTotals', { present: person.totals.present, absent: person.totals.absent });
 
   return (
     <Card>
@@ -199,9 +200,17 @@ function PersonCard({ person, grid, editable, onOpen }: { person: Person; grid: 
           <span className="block truncate font-medium">{person.fullName}</span>
           <span className="block truncate text-sm text-muted-foreground">{person.position}</span>
         </span>
-        <span className="flex shrink-0 items-center gap-2 text-sm tabular-nums">
-          <span className="text-success">{person.totals.present}</span>
-          {person.totals.absent > 0 && <span className="text-danger">{person.totals.absent}</span>}
+        {/* The legend's letters say what each number counts; the sentence is for screen readers and a long press. */}
+        <span className="flex shrink-0 items-center gap-2 text-sm tabular-nums" title={totalsLabel}>
+          <span className="sr-only">{totalsLabel}</span>
+          <span aria-hidden className="text-success">
+            {t('timesheet.short.present')} {person.totals.present}
+          </span>
+          {person.totals.absent > 0 && (
+            <span aria-hidden className="text-danger">
+              {t('timesheet.short.absent')} {person.totals.absent}
+            </span>
+          )}
           <ChevronDown className={cn('size-5 text-muted-foreground transition-transform', open && 'rotate-180')} aria-hidden />
         </span>
       </button>
@@ -445,17 +454,21 @@ export default function TimesheetPage() {
 
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label={t('timesheet.stats.attendance')} value={formatPercent(totals?.attendancePercent)} hint={t('timesheet.stats.attendanceHint')} icon={UserCheck} tone="success" loading={grid.isLoading} />
-        <StatCard label={t('timesheet.stats.present')} value={formatNumber(totals?.present ?? 0, 0)} icon={CalendarDays} loading={grid.isLoading} />
+        {/* Summed over everyone, so the unit is person-days: 13 people for 9 days can make 86. */}
+        <StatCard
+          label={t('timesheet.stats.present')}
+          value={formatNumber(totals?.present ?? 0, 0)}
+          hint={grid.data ? t('timesheet.stats.peopleHint', { count: grid.data.employees.length }) : undefined}
+          icon={CalendarDays}
+          loading={grid.isLoading}
+        />
         <StatCard label={t('timesheet.stats.absent')} value={formatNumber(totals?.absent ?? 0, 0)} icon={UserX} tone={totals?.absent ? 'danger' : 'neutral'} loading={grid.isLoading} />
         <StatCard label={t('timesheet.stats.leave')} value={formatNumber((totals?.sick ?? 0) + (totals?.vacation ?? 0), 0)} loading={grid.isLoading} />
       </div>
 
       {grid.data?.closed && (
         <Alert tone="info" className="mb-4">
-          <span className="inline-flex items-center gap-1.5">
-            <Lock className="size-4" aria-hidden />
-            {t('timesheet.closed')}
-          </span>
+          {t('timesheet.closed')}
         </Alert>
       )}
 

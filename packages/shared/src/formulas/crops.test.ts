@@ -50,6 +50,9 @@ describe('harvest', () => {
   it('waterPerTon', () => {
     expect(waterPerTon(90_000, 60)).toBe(1500);
     expect(waterPerTon(90_000, 0)).toBeNull();
+    // No watering recorded is missing data, not a crop grown on 0 m³ (rule 5).
+    expect(waterPerTon(0, 57)).toBeNull();
+    expect(waterPerTon(null, 57)).toBeNull();
   });
 });
 

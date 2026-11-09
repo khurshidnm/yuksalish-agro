@@ -44,8 +44,9 @@
     "allStatuses": "All statuses",
     "totalIncome": "Income",
     "totalExpense": "Expense",
-    "totalNet": "Cash result (assets included)",
-    "totalsHint": "Approved transactions only. Animals, machinery and stock bought are included, so this is not the net result.",
+    "cashNet": "Net cash flow",
+    "cashNetHint": "Money into the cash desk and bank less money out: loans and the owner's money count, entries on credit and depreciation do not. The farm's net result is in the Monthly result report.",
+    "totalsHint": "Approved transactions only. Animals, machinery and stock bought, entries on credit and depreciation are included.",
     "emptyTitle": "No transactions found",
     "emptyBody": "Enter the first expense or income, or change the filters.",
     "deleteTitle": "Delete this transaction?",
@@ -80,13 +81,18 @@
       "counterparty": "Counterparty",
       "description": "Note",
       "file": "Document (receipt, invoice)",
-      "status": "Status"
+      "status": "Status",
+      "intoAccount": "Into account"
     },
     "treatmentHint": {
       "expense": "Charged to the chosen cost center straight away.",
       "inventory": "Goes into stock. It reaches cost only when issued, so it is never counted twice.",
       "capex": "A fixed asset. It reaches cost gradually, through depreciation.",
       "animal": "Added to the animal's own value, not to herd expenses."
+    },
+    "capitalHint": {
+      "contribution": "The owner's own money coming into the farm. It is neither income nor profit.",
+      "withdrawal": "Money the owner takes back from the farm. It is not an expense."
     }
   },
   "approval": {
@@ -101,7 +107,7 @@
     "rejectDone": "Rejected",
     "voidDone": "Voided",
     "emptyTitle": "Nothing is waiting for approval",
-    "emptyBody": "Expenses above the set amount land here.",
+    "emptyBody": "Any transaction at or above the approval threshold lands here.",
     "enteredBy": "Entered by {{name}}",
     "ownEntry": "You entered this one, so someone else has to approve it.",
     "ownVoid": "You entered this one, so someone else has to void it."
@@ -121,6 +127,7 @@
     "total": "Total money",
     "inCash": "In cash",
     "inBank": "In bank and cards",
+    "withHolders": "Held by staff",
     "close": "Close account",
     "closeTitle": "Close this account?",
     "closeBody": "\"{{name}}\" will leave the list. Its history is kept.",
@@ -154,7 +161,10 @@
     "description": "Who owes us, whom we owe, and when it is due.",
     "weOwe": "We owe",
     "owedToUs": "Owed to us",
-    "overdueTotal": "Overdue",
+    "overdueOf": "Overdue: {{amount}}",
+    "noneOverdue": "Nothing overdue",
+    "payrollHint": "Wages are paid from the payroll run under Staff, which knows each person's share.",
+    "payrollLink": "Pay on the payroll page",
     "loans": "Loans outstanding",
     "loansHint": "Tracked on their own schedule.",
     "direction": {
@@ -222,6 +232,8 @@
       "diff": "Variance"
     },
     "allCenters": "All cost centers",
+    "noCenterPlan": "No plan was entered for \"{{name}}\": the plan is kept for the farm as a whole. Only the actuals show here.",
+    "toDateNote": "Difference and execution are measured against the plan of the months that have begun: months still to come are neither a saving nor a shortfall.",
     "category": "Category",
     "percent": "Used",
     "edit": "Edit plan",
@@ -306,7 +318,8 @@
     "centerChartHint": "Fields and herds, after machinery and overhead are shared out.",
     "noData": "No data for this period",
     "noDataBody": "Figures appear once expenses are entered or stock is issued.",
-    "internalNote": "Own produce, such as alfalfa, moves to the herd at an internal price, so the sum of centers can exceed what the farm really paid. For the farm's bottom line, use the Categories tab."
+    "internalNote": "Own produce, such as alfalfa, moves to the herd at an internal price, so the sum of centers can exceed what the farm really paid. The farm's net result (income less the cost of what was used) is in the Monthly result report.",
+    "resultLink": "Open the monthly result"
   },
   "cashflow": {
     "title": "Cash flow",
@@ -353,7 +366,7 @@
     "emptyBody": "Approved transactions appear here by month."
   },
   "loans": {
-    "title": "Loans and leasing",
+    "title": "Loans",
     "description": "Loans, payment schedules, interest and what is still owed.",
     "add": "Add loan",
     "addHint": "The payment schedule is built from the terms automatically.",
@@ -395,6 +408,118 @@
       "terms": "Terms"
     }
   },
+  "cashHolders": {
+    "someonesCash": "A staff member's cash",
+    "notify": {
+      "sent": {
+        "title": "You were handed {{amount}} in cash",
+        "body": "From {{sender}}, {{date}}."
+      },
+      "accepted": {
+        "title": "{{holder}} received {{amount}}",
+        "pending": "It is at or above the approval limit, so it waits for approval before it counts."
+      },
+      "disputed": {
+        "title": "{{holder}} says {{amount}} did not arrive"
+      }
+    },
+    "actions": {
+      "accept": "Received",
+      "dispute": "Not received",
+      "accepted": "Done: the cash is in your account now",
+      "acceptedPending": "Recorded. It counts once it is approved",
+      "disputed": "The sender has been told why"
+    },
+    "title": "Cash holders",
+    "description": "Cash handed to people for farm spending: what each received, spent and should still hold.",
+    "handOver": "Hand over cash",
+    "emptyTitle": "No one holds farm cash yet",
+    "emptyBody": "Hand cash to the farm manager or anyone who buys for the farm. It counts once they confirm it reached them.",
+    "yourCash": "Your cash",
+    "personsCash": "A person's cash for farm spending",
+    "open": "Cash holders",
+    "stats": {
+      "withPeople": "Cash with people",
+      "invested": "Invested by the owner",
+      "investedHint": "The owner's own money put in, less what was taken back",
+      "waiting": "Not yet confirmed",
+      "waitingCount_one": "{{count}} handover",
+      "waitingCount_other": "{{count}} handovers",
+      "waitingHint": "Cash handed over, waiting for the person to press “Received”"
+    },
+    "card": {
+      "inHand": "Should be in hand",
+      "counted": "Approved so far: {{amount}}",
+      "received": "Received this week",
+      "spent": "Spent this week",
+      "pendingApproval": "Waiting for approval: {{n}}",
+      "handoversWaiting": "Not yet confirmed: {{n}}",
+      "details": "Details",
+      "handOver": "Hand over",
+      "takeBack": "Take back",
+      "giveBack": "Give back"
+    },
+    "form": {
+      "title": "Hand over cash",
+      "description": "Nothing moves until the person confirms the cash reached them.",
+      "submit": "Hand over",
+      "person": "To whom",
+      "choosePerson": "Choose a person",
+      "source": "Where the money comes from",
+      "fromAccount": "From account",
+      "amount": "Amount",
+      "date": "Date",
+      "note": "What it is for"
+    },
+    "return": {
+      "title": "Take cash back",
+      "titleMine": "Give cash back",
+      "description": "{{name}}: {{amount}} should be in hand.",
+      "submit": "Take back",
+      "submitMine": "Give back",
+      "to": "Where it goes",
+      "toOwner": "Back to the owner",
+      "toAccount": "Into a farm account",
+      "account": "Account"
+    },
+    "detail": {
+      "description": "What came in and went out over the period, and what should be in hand now.",
+      "opening": "At the start",
+      "received": "Received",
+      "spent": "Spent",
+      "returned": "Given back",
+      "closing": "At the end",
+      "counted": "Approved balance",
+      "pending": "Waiting for approval: {{n}}",
+      "expected": "Should be in hand",
+      "byCategory": "By category",
+      "byCostCenter": "By machine, field or herd",
+      "entries": "Entries",
+      "noEntries": "Nothing in this period",
+      "close": "Close this cash account",
+      "closeTitle": "Close this cash account?",
+      "closeBody": "Nothing is left in hand. The entries stay in the journal."
+    },
+    "handovers": {
+      "title": "Handed over",
+      "empty": "Nothing handed over yet",
+      "toYou": "To you, from {{name}}",
+      "to": "To {{name}}",
+      "someone": "someone at the farm",
+      "cancel": "Cancel",
+      "reverse": "Reverse",
+      "dispute": "Not received",
+      "disputeTitle": "What is wrong?",
+      "reverseTitle": "Reverse this handover?"
+    },
+    "toast": {
+      "sent": "Sent. It counts once they confirm",
+      "returned": "Recorded",
+      "closed": "Closed",
+      "cancelled": "Cancelled",
+      "reversed": "Reversed"
+    }
+  },
   "errors": {
     "WAGES_PAID_FROM_PAYROLL": "Wages are paid from the payroll run under Staff, not from here.",
     "TRANSACTION_CHANGED": "This entry was changed after you opened it. It now reads {{amount}} {{currency}}. Nothing was saved: read it again, then decide.",
@@ -428,6 +553,29 @@
     "TRANSACTION_APPROVED": "An approved transaction cannot be changed. Void it instead.",
     "TRANSACTION_HAS_SOURCE": "This entry came from another module. Change it there.",
     "TRANSACTION_REJECTED": "A rejected or voided transaction stays in the journal. Enter a new one.",
-    "ACCOUNT_CURRENCY_LOCKED": "This account already holds money, so its currency cannot change."
+    "ACCOUNT_CURRENCY_LOCKED": "This account already holds money, so its currency cannot change.",
+    "INVALID_CAPITAL_ENTRY": "The owner's own money moves through one account, without a category, cost center or counterparty.",
+    "APPROVER_NOT_ALLOWED": "The person named as approver cannot approve payments on this farm.",
+    "HOLDER_CANNOT_APPROVE": "Someone holding this cash cannot approve or reverse what moves through it.",
+    "CAPITAL_NOT_ALLOWED": "Only the owner records the owner's own money.",
+    "FROM_ACCOUNT_NOT_EXPECTED": "Own money does not come from a farm account. Choose a farm account as the source instead.",
+    "FROM_ACCOUNT_REQUIRED": "Choose the account the cash comes from.",
+    "HANDOVER_TO_SELF": "You cannot hand cash to yourself. Enter it in the journal as a transfer or an owner contribution.",
+    "HOLDER_NEEDS_LOGIN": "Link this person to a login first, so they can confirm the cash.",
+    "HOLDER_NEEDS_FINANCE": "This person cannot record expenses yet. Give their role the right to view and create finance entries first.",
+    "HOLDER_CLOSED": "This cash account is closed.",
+    "HANDOVER_OPEN": "Cash handed over is still waiting for this person to confirm it.",
+    "HOLDER_HAS_CASH": "This person still holds cash. Take it back before closing.",
+    "HOLDER_CASH_SPENT": "Part of this cash has been spent already. Keep it, and take back what is left instead.",
+    "HOLDER_CASH_SHORT": "This is more than the cash this person holds.",
+    "HANDOVER_DECIDED": "This handover has already been answered.",
+    "NOT_THE_HOLDER": "Only the person who received the cash can answer.",
+    "NOT_THE_SENDER": "Only the person who handed it over can cancel it.",
+    "SENDER_NO_LONGER_ALLOWED": "The person who sent this may no longer hand over this money.",
+    "HANDOVER_NOT_ACCEPTED": "Only cash that arrived can be reversed.",
+    "HOLDER_ACCOUNT": "This is a person's cash. Close it from Cash holders, which checks that nothing is left with them.",
+    "USE_CASH_HANDOVER": "This is a person's cash. Hand it over from Cash holders, so they confirm it arrived.",
+    "DATE_IN_FUTURE": "The date is in the future.",
+    "SYSTEM_COUNTERPARTY": "The payroll counterparty is kept by the system: it cannot be renamed or archived."
   }
 }

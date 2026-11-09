@@ -148,6 +148,12 @@ describe('crops', () => {
     expect(f.costPerTon(costs, 0)).toBeNull();
   });
 
+  it('costPerTon is null, not 0 so\'m, when no cost was recorded (rule 5)', () => {
+    const none = { seed: 0, fertilizer: 0, water: 0, machinery: 0, labor: 0, overheadShare: 0 };
+    expect(f.costPerTon(none, 57)).toBeNull();
+    expect(f.costPerTon({ ...none, fertilizer: 26_600_000 }, 42)).toBeCloseTo(633_333.33, 2);
+  });
+
   it('yieldPerHectare', () => {
     expect(f.yieldPerHectare(60, 12)).toBe(5);
     expect(f.yieldPerHectare(60, 0)).toBeNull();
@@ -159,6 +165,21 @@ describe('finance', () => {
     expect(f.profitabilityPercent(150, 100)).toBe(50);
     expect(f.profitabilityPercent(50, 100)).toBe(-50);
     expect(f.profitabilityPercent(50, 0)).toBeNull();
+  });
+
+  it('profitabilityPercent is null before the first sale, not -100 %', () => {
+    expect(f.profitabilityPercent(0, 34_878_948)).toBeNull();
+    expect(f.profitabilityPercent(0, 0)).toBeNull();
+    // A real loss still shows: 30 sold against 100 spent.
+    expect(f.profitabilityPercent(30, 100)).toBe(-70);
+  });
+
+  it('budget year runs October to September', () => {
+    expect(f.budgetYearOf('2026-11-09')).toBe(2026);
+    expect(f.budgetYearOf('2026-10-01')).toBe(2026);
+    expect(f.budgetYearOf('2026-09-30')).toBe(2025);
+    expect(f.budgetYearOf('2027-01-15')).toBe(2026);
+    expect(f.budgetYearMonths(2026)).toEqual({ from: '2026-10', to: '2027-09' });
   });
 
   it('budgetExecutionPercent', () => {

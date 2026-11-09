@@ -313,6 +313,22 @@
     radial-gradient(90% 120% at 100% 0%, color-mix(in srgb, var(--accent) 24%, transparent) 0%, transparent 62%);
 }
 
+/* A tab strip that scrolls sideways fades out on each side where more tabs are hidden (TabsList). */
+@utility tabs-scroller {
+  &[data-more-before] {
+    -webkit-mask-image: linear-gradient(to right, transparent, black 2rem);
+    mask-image: linear-gradient(to right, transparent, black 2rem);
+  }
+  &[data-more-after] {
+    -webkit-mask-image: linear-gradient(to left, transparent, black 2rem);
+    mask-image: linear-gradient(to left, transparent, black 2rem);
+  }
+  &[data-more-before][data-more-after] {
+    -webkit-mask-image: linear-gradient(to right, transparent, black 2rem, black calc(100% - 2rem), transparent);
+    mask-image: linear-gradient(to right, transparent, black 2rem, black calc(100% - 2rem), transparent);
+  }
+}
+
 /* A meter drawn as fine vertical ticks. The mask cuts both the fill and its track. */
 @utility meter-ticks {
   -webkit-mask-image: repeating-linear-gradient(90deg, black 0 3px, transparent 3px 5px);

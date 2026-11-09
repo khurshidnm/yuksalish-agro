@@ -213,6 +213,8 @@ function recordSelection() {
     itemName: items.name,
     itemUnit: items.unit,
     vetName: employees.fullName,
+    /** The plan a scheduled dose answered, e.g. "Gijjaga qarshi ishlov". */
+    planName: plans.name,
   };
 }
 
@@ -223,7 +225,8 @@ function joinedRecords() {
     .leftJoin(animals, eq(animals.id, h.animalId))
     .leftJoin(herds, eq(herds.id, h.herdId))
     .leftJoin(items, eq(items.id, h.itemId))
-    .leftJoin(employees, eq(employees.id, h.vetEmployeeId));
+    .leftJoin(employees, eq(employees.id, h.vetEmployeeId))
+    .leftJoin(plans, eq(plans.id, h.vaccinationPlanId));
 }
 
 /** Sorting by a hidden number would still reveal which records cost most (CLAUDE.md rule 7). */
@@ -731,10 +734,15 @@ export const vaccinationDueQuery = z.object({
   horizonDays: z.coerce.number().int().min(0).max(366).default(30),
 });
 
+/** What a plan can schedule (spec 8.3): a vaccine, a dewormer, a preventive drug, or a test. */
+export const SCHEDULED_TYPES = ['vaccination', 'deworming', 'prophylaxis', 'examination'] as const;
+
 export const herdVaccinationInput = z.object({
   id: clientId,
   herdId: z.uuid(),
   planId: z.uuid().nullish(),
+  /** A dewormer or a blood test is not a vaccination: the record says what was done. */
+  type: z.enum(SCHEDULED_TYPES).optional(),
   date: isoDate,
   itemId: z.uuid().nullish(),
   warehouseId: z.uuid().nullish(),
@@ -752,7 +760,14 @@ async function assertPlanRefs(i: { itemId?: string | null }) {
 
 export async function listPlans() {
   const rows = await tx()
-    .select({ ...getTableColumns(plans), itemName: items.name, itemUnit: items.unit })
+    .select({
+      ...getTableColumns(plans),
+      itemName: items.name,
+      itemUnit: items.unit,
+      itemCategory: items.category,
+      /** What was last done under this plan: the form offers the same again. */
+      lastType: sql<string | null>`(select hr.type from health_records hr where hr.vaccination_plan_id = ${plans.id} order by hr.date desc, hr.id desc limit 1)`,
+    })
     .from(plans)
     .leftJoin(items, eq(items.id, plans.itemId))
     .where(and(eq(plans.farmId, ctx().farmId), eq(plans.active, true)))
@@ -794,8 +809,6 @@ export async function removePlan(id: string) {
   return row;
 }
 
-/** A plan can schedule deworming and prophylaxis as well as vaccines (spec 8.3). */
-const SCHEDULED_TYPES = ['vaccination', 'deworming', 'prophylaxis'];
 
 type DueState = 'overdue' | 'today' | 'upcoming';
 
@@ -832,7 +845,7 @@ async function computeDue(q: { herdId?: string; planId?: string; horizon: string
   const doses = await tx()
     .select({ animalId: h.animalId, herdId: h.herdId, date: h.date, planId: h.vaccinationPlanId, itemId: h.itemId })
     .from(h)
-    .where(and(eq(h.farmId, c.farmId), inArray(h.type, SCHEDULED_TYPES)))
+    .where(and(eq(h.farmId, c.farmId), inArray(h.type, [...SCHEDULED_TYPES])))
     .orderBy(desc(h.date));
 
   const due: PlanDue[] = [];
@@ -947,9 +960,14 @@ export async function vaccinationDueAnimals(planId: string, q: { herdId?: string
 
 /** Vaccinate a whole herd: head count and doses are worked out, and stock is consumed once. */
 export async function vaccinateHerd(input: z.infer<typeof herdVaccinationInput>) {
+  const type = input.type ?? 'vaccination';
+  // A test needs no product; a dose of nothing would count towards no plan.
+  if (type !== 'examination' && !input.planId && !input.itemId) {
+    throw badRequest('VACCINE_REQUIRED', 'Choose the plan or the product');
+  }
   return createRecord({
     id: input.id,
-    type: 'vaccination',
+    type,
     herdId: input.herdId,
     vaccinationPlanId: input.planId,
     date: input.date,

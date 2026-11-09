@@ -4,6 +4,7 @@
  */
 import { and, count, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 import { addDays, lambingPercent, round, survivalPercent } from '@yap/shared';
+import { OUTLOOK_ASSUMPTIONS, expectedLambs } from '@yap/shared/formulas/outlook';
 import {
   MIN_PROGENY_FOR_RATING,
   WEANING_DAYS,
@@ -78,6 +79,9 @@ export async function calendar(q: { from?: string; to?: string; herdId?: string 
     overdue,
     /** Only from this farm's own history: null until the first lambing is recorded. */
     expectedLambs: perEwe === null ? null : Math.round(totalEwes * perEwe),
+    /** The outlook's estimate for these ewes, from its stated assumption. Null with no ewes due. */
+    assumedLambs: totalEwes > 0 ? expectedLambs(totalEwes) : null,
+    assumedLambsPerEwe: OUTLOOK_ASSUMPTIONS.lambsPerEwe,
   };
 }
 

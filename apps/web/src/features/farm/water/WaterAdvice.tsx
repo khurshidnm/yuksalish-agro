@@ -4,13 +4,19 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { type Column, DataTableView, EmptyState, ErrorCard, PageHeader, StatCard } from '@/components';
 import { Alert, Badge, Button, Card, CardContent, CardHeader, CardTitle, Meter, Skeleton } from '@/components/ui';
-import { formatDate, formatNumber } from '@/lib/format';
+import { formatDate, formatNumber, formatPercent } from '@/lib/format';
 import { useDetail } from '@/lib/query';
 import type { WaterAdvice } from '../satellite/types';
 import { useLocalName } from '../utils';
 
 /** Crop water use in mm over a field, as cubic metres. */
 const m3Of = (mm: number | null, areaHa: number) => (mm === null ? null : Math.round(mm * 10 * areaHa));
+
+/** Why a field has no advice yet, naming the plan statuses exactly as the app shows them. */
+function useEmptyBody(): string {
+  const { t } = useTranslation('farm');
+  return t('water.emptyBody', { sown: t('enums:cropPlanStatus.sown'), growing: t('enums:cropPlanStatus.growing') });
+}
 
 function meterTone(pct: number | null): 'success' | 'warning' | 'danger' {
   if (pct === null || pct < 70) return 'success';
@@ -52,7 +58,7 @@ export function WaterAdviceCard({ advice, onEditField }: { advice: WaterAdvice; 
           <div>
             <div className="mb-1 flex items-baseline justify-between gap-2 text-sm">
               <span className="text-muted-foreground">{t('water.rawUsed')}</span>
-              <span className="font-semibold tabular-nums">{formatNumber(advice.rawUsedPct, 0)}%</span>
+              <span className="font-semibold tabular-nums">{formatPercent(advice.rawUsedPct, 0)}</span>
             </div>
             <Meter value={advice.rawUsedPct} tone={meterTone(advice.rawUsedPct)} label={t('water.rawUsed')} />
             <p className="mt-1 text-xs text-muted-foreground">
@@ -65,7 +71,7 @@ export function WaterAdviceCard({ advice, onEditField }: { advice: WaterAdvice; 
           <StatCard
             label={t('water.refill')}
             value={advice.refillM3 === null ? '—' : t('water.m3', { value: formatNumber(advice.refillM3, 0) })}
-            hint={t('water.efficiency', { value: formatNumber(advice.efficiency * 100, 0) })}
+            hint={t('water.efficiency', { value: formatPercent(advice.efficiency * 100, 0) })}
           />
           <StatCard
             label={t('water.used7')}
@@ -92,6 +98,7 @@ export function WaterAdviceCard({ advice, onEditField }: { advice: WaterAdvice; 
 /** The water tab of a field card. */
 export function WaterTab({ fieldId, onEditField }: { fieldId: string; onEditField?: () => void }) {
   const { t } = useTranslation('farm');
+  const emptyBody = useEmptyBody();
   const query = useDetail<WaterAdvice[]>('/farm/water/advice', { fieldId });
   if (query.error) return <ErrorCard error={query.error} onRetry={() => void query.refetch()} />;
   if (!query.data) return <Skeleton className="h-72" />;
@@ -101,7 +108,7 @@ export function WaterTab({ fieldId, onEditField }: { fieldId: string; onEditFiel
       <EmptyState
         icon={Droplets}
         title={t('water.emptyTitle')}
-        description={t('water.emptyBody')}
+        description={emptyBody}
         action={
           <Button variant="outline" asChild>
             <Link to="/crops/plans">{t('water.toPlans')}</Link>
@@ -117,20 +124,13 @@ export function WaterTab({ fieldId, onEditField }: { fieldId: string; onEditFiel
 export default function WaterPage() {
   const { t } = useTranslation('farm');
   const localName = useLocalName();
+  const emptyBody = useEmptyBody();
   const query = useDetail<WaterAdvice[]>('/farm/water/advice');
   const rows = [...(query.data ?? [])].sort((a, b) => (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999') || (b.rawUsedPct ?? -1) - (a.rawUsedPct ?? -1));
 
   const columns: Column<WaterAdvice>[] = [
-    {
-      key: 'field',
-      header: t('water.field'),
-      cell: (row) => (
-        <Link to={`/farm/fields/${row.fieldId}?tab=water`} className="font-medium text-heading underline-offset-4 hover:underline">
-          №{row.number} · {localName(row.cropName)}
-        </Link>
-      ),
-      mobile: 'title',
-    },
+    // The table links this cell and makes the whole row, or the whole card on a phone, open the field.
+    { key: 'field', header: t('water.field'), cell: (row) => `№${row.number} · ${localName(row.cropName)}`, mobile: 'title' },
     { key: 'stage', header: t('water.stageHeader'), cell: (row) => (row.stage ? t(`water.stage.${row.stage}`) : '—') },
     {
       key: 'used',
@@ -141,7 +141,7 @@ export default function WaterPage() {
         ) : (
           <span className="flex min-w-28 items-center gap-2">
             <Meter value={row.rawUsedPct} tone={meterTone(row.rawUsedPct)} label={t('water.rawUsed')} className="flex-1" />
-            <span className="tabular-nums">{formatNumber(row.rawUsedPct, 0)}%</span>
+            <span className="tabular-nums">{formatPercent(row.rawUsedPct, 0)}</span>
           </span>
         ),
     },
@@ -163,7 +163,8 @@ export default function WaterPage() {
             rows={rows}
             rowKey={(row) => row.fieldId}
             columns={columns}
-            empty={{ icon: Droplets, title: t('water.emptyTitle'), description: t('water.emptyBody') }}
+            rowHref={(row) => `/farm/fields/${row.fieldId}?tab=water`}
+            empty={{ icon: Droplets, title: t('water.emptyTitle'), description: emptyBody }}
           />
           <p className="text-xs text-muted-foreground">{t('water.assumptions')}</p>
         </div>

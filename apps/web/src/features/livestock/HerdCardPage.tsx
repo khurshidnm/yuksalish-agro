@@ -7,8 +7,9 @@ import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Meter, Skeleto
 import { api } from '@/lib/api';
 import { usePermission } from '@/lib/auth';
 import { formatDate, formatNumber, formatQty } from '@/lib/format';
-import { useApiMutation, useDetail } from '@/lib/query';
+import { useApiMutation, useDetail, useList } from '@/lib/query';
 import { HerdForm } from './HerdForm';
+import { MoreActions } from './MoreActions';
 import { type HerdRow, StatusBadge } from './shared';
 import { TransferDialog } from './TransferDialog';
 
@@ -38,6 +39,9 @@ export default function HerdCardPage() {
   const [moving, setMoving] = useState(false);
 
   const { data: herd, error, isLoading, refetch } = useDetail<HerdCard>(`/livestock/herds/${id}`);
+  // A weighing already under way is resumed, not started a second time.
+  const openWeighing = useList<{ id: string }>('/livestock/weighing-campaigns', { herdId: id, status: 'open', pageSize: 1 }, { enabled: canManage && !!id });
+  const openWeighingId = openWeighing.data?.data[0]?.id;
 
   const archive = useApiMutation<void>({
     mutationFn: () => api.delete(`/livestock/herds/${id}`),
@@ -85,41 +89,34 @@ export default function HerdCardPage() {
             <Button variant="outline" asChild>
               <Link to={`/livestock/tracking?herd=${herd.id}`}>
                 <MapPin aria-hidden />
-                {t('tracking:map')}
+                {/* Icon only on a phone, so the actions fit one row above the data. */}
+                <span className="max-sm:sr-only">{t('tracking:map')}</span>
               </Link>
             </Button>
-            {canManage && (
-              <Button variant="outline" asChild>
-                <Link to={`/livestock/herds?tab=weighing&herd=${herd.id}`}>
-                  <Scale aria-hidden />
-                  {t('weighing.start')}
-                </Link>
-              </Button>
-            )}
-            {canManage && herd.headCount > 0 && (
-              <Button variant="outline" onClick={() => setMoving(true)}>
-                <ArrowRightLeft aria-hidden />
-                {t('herds.moveAll')}
-              </Button>
-            )}
-            {canManage && (
-              <Button variant="outline" onClick={() => setEditing(true)}>
-                <Pencil aria-hidden />
-                {t('common:actions.edit')}
-              </Button>
-            )}
-            {canDelete && herd.status === 'active' && (
-              <Button
-                variant="ghost"
-                onClick={async () => {
-                  const ok = await confirm({ title: t('herds.archiveTitle'), description: t('herds.archiveBody'), destructive: true });
-                  if (ok) archive.mutate();
-                }}
-              >
-                <Archive aria-hidden />
-                {t('herds.archive')}
-              </Button>
-            )}
+            <MoreActions
+              actions={[
+                {
+                  label: openWeighingId ? t('weighing.resume') : t('weighing.start'),
+                  icon: Scale,
+                  hidden: !canManage,
+                  onSelect: () =>
+                    navigate(openWeighingId ? `/livestock/herds?tab=weighing&campaign=${openWeighingId}` : `/livestock/herds?tab=weighing&herd=${herd.id}&start=1`),
+                },
+                { label: t('herds.moveAll'), icon: ArrowRightLeft, hidden: !canManage || herd.headCount === 0, onSelect: () => setMoving(true) },
+                { label: t('common:actions.edit'), icon: Pencil, hidden: !canManage, onSelect: () => setEditing(true) },
+                {
+                  label: t('herds.archive'),
+                  icon: Archive,
+                  // The server refuses to archive a herd that still has animals (HERD_NOT_EMPTY).
+                  hidden: !canDelete || herd.status !== 'active' || herd.headCount > 0,
+                  destructive: true,
+                  onSelect: async () => {
+                    const ok = await confirm({ title: t('herds.archiveTitle'), description: t('herds.archiveBody'), destructive: true });
+                    if (ok) archive.mutate();
+                  },
+                },
+              ]}
+            />
           </>
         }
       />
@@ -131,7 +128,7 @@ export default function HerdCardPage() {
         <StatCard label={t('herds.ration')} value={herd.ration?.name ?? '—'} icon={Wheat} tone={herd.ration ? 'neutral' : 'warning'} hint={herd.ration ? undefined : t('herds.noRationHint')} />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>{t('herds.composition')}</CardTitle>

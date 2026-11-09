@@ -4,6 +4,7 @@
  */
 import { and, desc, eq, gte, notInArray, sql } from 'drizzle-orm';
 import { FINANCE_SUMMARY_VIEW, addDays, monthOf, round, type Permission } from '@yap/shared';
+import { feedClassOf, type FeedClass } from '@yap/shared/formulas/ai';
 import { OUTLOOK_ASSUMPTIONS, feedCoverage, projectHerd, type HerdOutlookRow } from '@yap/shared/formulas/outlook';
 import { schema } from '../../db/client';
 import { canSeeMoney, ctx, hasPermission, today, tx } from '../../core/context';
@@ -18,7 +19,11 @@ const HORIZON_MONTHS = 12;
 /** Months the flock grazes, and the share of its forage the pasture then replaces. */
 const GRAZING_MONTHS = ['04', '05', '06', '07', '08', '09', '10'];
 const PASTURE_SHARE = 0.5;
-const FORAGE_CROPS = ['alfalfa', 'corn', 'wheat'];
+/**
+ * Grazing replaces hay, straw and silage, never grain, cake or salt. Told by the feed itself, not its
+ * crop: wheat gives both straw (forage) and feed grain (a concentrate that pasture does not replace).
+ */
+const PASTURE_REPLACES: FeedClass[] = ['roughage', 'succulent'];
 
 function daysInMonth(month: string): number {
   const [year, m] = month.split('-').map(Number);
@@ -104,14 +109,19 @@ async function feedOutlook(rows: HerdOutlookRow[], adults: number, now: string) 
   const balance = await feedBalance();
   const needs = await rationNeeds();
   const harvestsAhead = await nextHarvestByCrop(now);
-  const cropOf = new Map(
-    (
-      await tx()
-        .select({ id: items.id, crop: crops.key })
-        .from(items)
-        .leftJoin(crops, eq(crops.id, items.cropId))
-        .where(eq(items.farmId, ctx().farmId))
-    ).map((row) => [row.id, row.crop]),
+  const itemRows = await tx()
+    .select({ id: items.id, name: items.name, dryMatterPct: items.dryMatterPct, crop: crops.key })
+    .from(items)
+    .leftJoin(crops, eq(crops.id, items.cropId))
+    .where(eq(items.farmId, ctx().farmId));
+  const cropOf = new Map(itemRows.map((row) => [row.id, row.crop]));
+  const forageItems = new Set(
+    itemRows
+      .filter((row) => {
+        const feedClass = feedClassOf(row.name, row.dryMatterPct);
+        return feedClass !== null && PASTURE_REPLACES.includes(feedClass);
+      })
+      .map((row) => row.id),
   );
   const firstMonth = monthOf(now);
   const daysLeft = daysInMonth(firstMonth) - Number(now.slice(8, 10)) + 1;
@@ -121,7 +131,7 @@ async function feedOutlook(rows: HerdOutlookRow[], adults: number, now: string) 
     .filter((feed) => (feed.unit === 'kg' || feed.unit === 't') && needs.some((need) => need.itemId === feed.itemId))
     .map((feed) => {
       const crop = cropOf.get(feed.itemId) ?? null;
-      const item = { itemId: feed.itemId, forage: crop !== null && FORAGE_CROPS.includes(crop) };
+      const item = { itemId: feed.itemId, forage: forageItems.has(feed.itemId) };
       const monthly = rows.map((row) => ({
         month: row.month,
         kg: kgInMonth(item, needs, row, row.month === firstMonth ? daysLeft : daysInMonth(row.month), adults),

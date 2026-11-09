@@ -15,9 +15,37 @@ const STORAGE_KEY = 'yap.language';
 /** Set by a choice made by hand, until the account has it (lib/accountLanguage). */
 export const CHOSEN_LANGUAGE_KEY = 'yap.language.chosen';
 
+const supported = (code: string | null): code is string => code !== null && LANGUAGES.some((l) => l.code === code);
+
+/**
+ * `?lang=` from the public pages (/login?lang=ru): the visitor was reading that language, so sign-in
+ * speaks it too. Taken out of the address once read, so a reload never undoes a language picked later.
+ */
+export function languageAsked(
+  location: Pick<Location, 'href'> | undefined = globalThis.location,
+  history: Pick<History, 'state' | 'replaceState'> | undefined = globalThis.history,
+): string | null {
+  if (!location) return null;
+  try {
+    const url = new URL(location.href);
+    const asked = url.searchParams.get('lang');
+    if (asked === null) return null;
+    url.searchParams.delete('lang');
+    history?.replaceState(history.state, '', `${url.pathname}${url.search}${url.hash}`);
+    return supported(asked) ? asked : null;
+  } catch {
+    return null;
+  }
+}
+
 function initialLanguage(): string {
+  const asked = languageAsked();
+  if (asked) {
+    storageSet(STORAGE_KEY, asked);
+    return asked;
+  }
   const saved = storageGet(STORAGE_KEY);
-  return saved && LANGUAGES.some((l) => l.code === saved) ? saved : 'uz';
+  return supported(saved) ? saved : 'uz';
 }
 
 void i18n.use(initReactI18next).init({

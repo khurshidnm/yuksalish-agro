@@ -42,17 +42,20 @@ function Fields({ form }: { form: UseFormReturn<FormIn, unknown, FormOut> }) {
         onAdd={() => append(EMPTY_LINE)}
         rows={fields.map((field, index) => (
           <LineCard key={field.id} index={index} canRemove={fields.length > 1} onRemove={() => remove(index)}>
-            <ComboboxField
-              form={form}
-              name={`lines.${index}.itemId`}
-              label={t('rations.fields.feed')}
-              required
-              clearable={false}
-              loadOptions={itemOptions({ category: 'feed' })}
-              selectedLabel={lines[index]?.itemName}
-              emptyText={t('rations.noFeeds')}
-            />
-            <NumberField form={form} name={`lines.${index}.kgPerHeadDay`} label={t('rations.fields.amount')} required suffix={t('rations.perHeadDay')} maxDigits={4} />
+            {/* Feed and amount on one row from tablets up, so an eight-feed ration fits without long scrolling. */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_12rem]">
+              <ComboboxField
+                form={form}
+                name={`lines.${index}.itemId`}
+                label={t('rations.fields.feed')}
+                required
+                clearable={false}
+                loadOptions={itemOptions({ category: 'feed' })}
+                selectedLabel={lines[index]?.itemName}
+                emptyText={t('rations.noFeeds')}
+              />
+              <NumberField form={form} name={`lines.${index}.kgPerHeadDay`} label={t('rations.fields.amount')} required suffix={t('rations.perHeadDay')} maxDigits={4} />
+            </div>
           </LineCard>
         ))}
       />

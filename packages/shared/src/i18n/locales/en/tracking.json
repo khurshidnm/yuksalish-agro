@@ -105,7 +105,7 @@
     }
   },
   "passport": {
-    "tab": "Location & health",
+    "tab": "Tracker (GPS, temperature)",
     "noTracker": "No tracker on this animal",
     "noTrackerHint": "Fit a collar or a bolus, and its location, activity and temperature appear here.",
     "toTrackers": "Trackers",

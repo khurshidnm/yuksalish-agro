@@ -38,6 +38,7 @@ import { formatDate, formatMoney, formatNumber } from '@/lib/format';
 import { zText } from '@/lib/forms';
 import { enumOptions } from '@/lib/i18n';
 import { useApiMutation, useDetail, useList } from '@/lib/query';
+import { CashFlowStat } from './CashFlowStat';
 import { FINANCE_PATHS, MONEY_QUERIES, canDeleteEntry, canEditEntry, canVoidEntry, useCenterName, useLocalName } from './lib';
 import { TransactionFormDialog } from './TransactionForm';
 import type { Totals, Transaction } from './types';
@@ -56,9 +57,9 @@ export function StatusBadge({ status }: { status: Transaction['status'] }) {
   return <Badge variant={STATUS_VARIANT[status]}>{t(`enums:transactionStatus.${status}`)}</Badge>;
 }
 
-/** Money in has a plus, money out a minus. A transfer is neither. */
+/** Money in has a plus, money out a minus. A transfer is neither. The owner's own money is cash in or out too. */
 function signedAmount(row: Transaction): number {
-  if (row.type === 'income' || row.type === 'debt_receipt') return row.amountBase;
+  if (row.type === 'income' || row.type === 'debt_receipt' || row.type === 'contribution') return row.amountBase;
   if (row.type === 'transfer') return 0;
   return -row.amountBase;
 }
@@ -221,6 +222,7 @@ function Journal({ onEdit }: { onEdit: (row: Transaction) => void }) {
 
   const params = { from: from || undefined, to: to || undefined, type: type || undefined, status: status || undefined };
   const totals = useDetail<Totals>(`${PATH}/totals`, { ...params, search: search || undefined });
+  const narrowed = Boolean(type || search);
 
   const remove = useApiMutation<string>({
     mutationFn: (id) => api.delete(`${PATH}/${id}`),
@@ -265,10 +267,11 @@ function Journal({ onEdit }: { onEdit: (row: Transaction) => void }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      {/* The cash card follows the period only, so it steps aside while a type or a search narrows the list. */}
+      <div className={narrowed ? 'grid grid-cols-1 gap-3 sm:grid-cols-2' : 'grid grid-cols-1 gap-3 sm:grid-cols-3'}>
         <StatCard label={t('journal.totalIncome')} value={formatMoney(totals.data?.income)} loading={totals.isLoading} />
-        <StatCard label={t('journal.totalExpense')} value={formatMoney(totals.data?.expense)} loading={totals.isLoading} />
-        <StatCard label={t('journal.totalNet')} value={formatMoney(totals.data?.net)} loading={totals.isLoading} hint={t('journal.totalsHint')} />
+        <StatCard label={t('journal.totalExpense')} value={formatMoney(totals.data?.expense)} loading={totals.isLoading} hint={t('journal.totalsHint')} />
+        {!narrowed && <CashFlowStat from={from} to={to} />}
       </div>
       <DataTable<Transaction>
         path={PATH}
@@ -301,7 +304,11 @@ function Journal({ onEdit }: { onEdit: (row: Transaction) => void }) {
               aria-label={t('journal.statusFilter')}
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              options={enumOptions('transactionStatus', TRANSACTION_STATUSES)}
+              // No entry is ever saved as a draft, so that choice could only show an empty list.
+              options={enumOptions(
+                'transactionStatus',
+                TRANSACTION_STATUSES.filter((s) => s !== 'draft'),
+              )}
               placeholder={t('journal.allStatuses')}
             />
           </div>

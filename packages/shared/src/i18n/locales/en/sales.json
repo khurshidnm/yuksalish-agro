@@ -84,6 +84,7 @@
       "pickAccount": "Choose a cash or bank account",
       "itemLine": "Product",
       "animalLine": "Animal",
+      "lineNumber": "Line {{n}}",
       "removeLine": "Remove line",
       "animalSearch": "Search by tag number",
       "byWeight": "By live weight (kg)",
@@ -94,6 +95,7 @@
   },
   "prices": {
     "add": "Add price",
+    "perUnit": "/{{unit}}",
     "edit": "Edit price",
     "deleteTitle": "Delete this price?",
     "currentTitle": "Current prices",

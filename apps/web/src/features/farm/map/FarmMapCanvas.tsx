@@ -88,7 +88,8 @@ export interface FarmMapHandle {
   startEdit(id: string): boolean;
   stopEdit(): void;
   editedGeometry(): Geometry | null;
-  focus(id: string): void;
+  /** Fits the map to a feature. `cover` is how far a panel over the map hides its left or bottom edge, in pixels. */
+  focus(id: string, cover?: { left?: number; bottom?: number }): void;
 }
 
 export interface FarmMapCanvasProps {
@@ -203,6 +204,8 @@ export const FarmMapCanvas = forwardRef<FarmMapHandle, FarmMapCanvasProps>(funct
     tiles.current?.remove();
     const { url, ...options } = BASE_LAYERS[baseLayer];
     tiles.current = L.tileLayer(url, options).addTo(map.current);
+    // Through classList: Leaflet keeps its own classes on this element, which a new className would wipe.
+    container.current?.classList.toggle('farm-map-streets', baseLayer === 'streets');
   }, [ready, baseLayer]);
 
   useEffect(() => {
@@ -327,9 +330,9 @@ export const FarmMapCanvas = forwardRef<FarmMapHandle, FarmMapCanvasProps>(funct
         mode.current = 'edit';
         editing.current = layer;
         layer.pm.enable({ allowSelfIntersection: false, snappable: true, snapDistance: 12 });
+        // Measured only once a point moves: until then the saved PostGIS figure stands, not this rounder estimate.
         const report = () => latest.current.onLiveArea(hectares(layer.toGeoJSON(9).geometry));
         layer.on('pm:markerdrag pm:edit pm:vertexadded pm:vertexremoved', report);
-        report();
         return true;
       },
       stopEdit() {
@@ -346,12 +349,18 @@ export const FarmMapCanvas = forwardRef<FarmMapHandle, FarmMapCanvasProps>(funct
       editedGeometry() {
         return editing.current?.toGeoJSON(9).geometry ?? null;
       },
-      focus(id) {
+      focus(id, cover = {}) {
         const layer = layers.current.get(id);
         const instance = map.current;
         if (!layer || !instance) return;
-        if ('getBounds' in layer) instance.fitBounds((layer as L.Polygon).getBounds(), { padding: [48, 48], maxZoom: 17 });
-        else instance.setView((layer as unknown as L.CircleMarker).getLatLng(), 17);
+        const pad = 48;
+        // Whatever the panel hides, keep at least a 96 px view for the feature itself.
+        const size = instance.getSize();
+        const left = Math.max(0, Math.min(cover.left ?? 0, size.x - 2 * pad - 96));
+        const bottom = Math.max(0, Math.min(cover.bottom ?? 0, size.y - 2 * pad - 96));
+        const point = 'getBounds' in layer ? null : (layer as unknown as L.CircleMarker).getLatLng();
+        const bounds = point ? L.latLngBounds(point, point) : (layer as L.Polygon).getBounds();
+        instance.fitBounds(bounds, { paddingTopLeft: [pad + left, pad], paddingBottomRight: [pad, pad + bottom], maxZoom: 17 });
       },
     }),
     [reportWorking],

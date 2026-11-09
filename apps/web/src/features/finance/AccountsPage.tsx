@@ -1,7 +1,8 @@
 import { ACCOUNT_TYPES, CURRENCIES, todayIso } from '@yap/shared';
-import { ArrowLeftRight, Banknote, Landmark, Pencil, Plus, ScrollText, Trash2, Wallet } from 'lucide-react';
+import { ArrowLeftRight, Banknote, HandCoins, Landmark, Pencil, Plus, ScrollText, Trash2, Wallet } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
 import { z } from 'zod';
 import {
   type Column,
@@ -41,7 +42,7 @@ import { formatDate, formatMoney, formatNumber } from '@/lib/format';
 import { zDate, zEnum, zOptionalDate, zOptionalNumber, zOptionalText, zPositive, zText } from '@/lib/forms';
 import { enumOptions } from '@/lib/i18n';
 import { useApiMutation, useDetail } from '@/lib/query';
-import { FINANCE_PATHS, MONEY_QUERIES } from './lib';
+import { FINANCE_PATHS, MONEY_QUERIES, accountLabel } from './lib';
 import { TransactionFormDialog } from './TransactionForm';
 import type { AccountBalance, FxRate } from './types';
 
@@ -73,16 +74,26 @@ function AccountCard({
 }) {
   const { t } = useTranslation('finance');
   const session = useSession();
-  const Icon = ICONS[account.type as keyof typeof ICONS] ?? Wallet;
+  const Icon = account.holder ? HandCoins : (ICONS[account.type as keyof typeof ICONS] ?? Wallet);
   const foreign = account.currency !== (session.tenant?.currency ?? 'UZS');
+  const label = accountLabel(account);
+  const subtitle = account.holder
+    ? t(account.holder.isMe ? 'cashHolders.yourCash' : 'cashHolders.personsCash')
+    : [account.bankName, account.accountNumber].filter(Boolean).join(' · ') || t(`enums:accountType.${account.type}`);
   return (
     <Card>
       <CardHeader className="flex-row items-start justify-between gap-2">
         <div className="min-w-0">
-          <CardTitle className="truncate">{account.name}</CardTitle>
-          <p className="truncate text-sm text-muted-foreground">
-            {[account.bankName, account.accountNumber].filter(Boolean).join(' · ') || t(`enums:accountType.${account.type}`)}
-          </p>
+          <CardTitle className="truncate">{label}</CardTitle>
+          {/* "Kassa / Kassa" says nothing twice: the type is left out when it is the name. The line keeps
+              its height, so the balances of cards side by side stay level. */}
+          {subtitle.trim().toLowerCase() !== label.trim().toLowerCase() ? (
+            <p className="truncate text-sm text-muted-foreground">{subtitle}</p>
+          ) : (
+            <p className="text-sm" aria-hidden>
+              {' '}
+            </p>
+          )}
         </div>
         <Icon className="size-5 shrink-0 text-muted-foreground" aria-hidden />
       </CardHeader>
@@ -98,6 +109,12 @@ function AccountCard({
             <ScrollText aria-hidden />
             {t('accounts.statement')}
           </Button>
+          {account.holder && (
+            // A person's cash is opened, handed and closed from Cash holders, which knows who answers for it.
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/finance/cash-holders">{t('cashHolders.open')}</Link>
+            </Button>
+          )}
           {onEdit && (
             <Button variant="ghost" size="icon-sm" aria-label={t('common:actions.edit')} onClick={onEdit}>
               <Pencil aria-hidden />
@@ -133,7 +150,7 @@ function StatementSheet({ account, onClose }: { account: AccountBalance | null; 
   return (
     <Sheet open={account !== null} onOpenChange={(open) => !open && onClose()}>
       <SheetContent className="w-full max-w-lg overflow-y-auto p-5">
-        <SheetTitle className="text-lg font-semibold">{account?.name}</SheetTitle>
+        <SheetTitle className="text-lg font-semibold">{account ? accountLabel(account) : ''}</SheetTitle>
         <SheetDescription className="text-sm text-muted-foreground">{t('accounts.statementHint')}</SheetDescription>
         <div className="my-4 grid grid-cols-2 gap-2">
           <div className="flex flex-col gap-1">
@@ -213,15 +230,23 @@ function AccountsTab() {
   if (accounts.error) return <ErrorCard error={accounts.error} onRetry={() => void accounts.refetch()} />;
 
   const rows = accounts.data ?? [];
-  const total = rows.reduce((sum, row) => sum + row.balanceBase, 0);
-  const cash = rows.filter((row) => row.type === 'cash').reduce((sum, row) => sum + row.balanceBase, 0);
+  const sum = (list: AccountBalance[]) => list.reduce((total, row) => total + row.balanceBase, 0);
+  const total = sum(rows);
+  // A person's cash is a cash account too, but it is not in the cash desk: it has its own tile, so the
+  // tiles add up to the total and each matches the cards below.
+  const holders = rows.filter((row) => row.holder);
+  const cash = sum(rows.filter((row) => row.type === 'cash' && !row.holder));
+  const withHolders = sum(holders);
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className={holders.length > 0 ? 'grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4' : 'grid grid-cols-1 gap-3 sm:grid-cols-3'}>
         <StatCard label={t('accounts.total')} value={formatMoney(total)} loading={accounts.isLoading} />
         <StatCard label={t('accounts.inCash')} value={formatMoney(cash)} loading={accounts.isLoading} />
-        <StatCard label={t('accounts.inBank')} value={formatMoney(total - cash)} loading={accounts.isLoading} />
+        <StatCard label={t('accounts.inBank')} value={formatMoney(total - cash - withHolders)} loading={accounts.isLoading} />
+        {holders.length > 0 && (
+          <StatCard label={t('accounts.withHolders')} value={formatMoney(withHolders)} loading={accounts.isLoading} />
+        )}
       </div>
       {(canCreate || canUpdate) && (
         <div className="flex flex-wrap justify-end gap-2">
@@ -252,13 +277,13 @@ function AccountsTab() {
               key={account.id}
               account={account}
               onStatement={() => setStatementFor(account)}
-              onEdit={canUpdate ? () => setEditing(account) : undefined}
+              onEdit={canUpdate && !account.holder ? () => setEditing(account) : undefined}
               onClose={
-                canDelete
+                canDelete && !account.holder
                   ? async () => {
                       const ok = await confirm({
                         title: t('accounts.closeTitle'),
-                        description: t('accounts.closeBody', { name: account.name }),
+                        description: t('accounts.closeBody', { name: accountLabel(account) }),
                         destructive: true,
                       });
                       if (ok) close.mutate(account.id);
@@ -282,7 +307,7 @@ function AccountsTab() {
         schema={accountSchema}
         defaultValues={
           editing
-            ? { ...editing, type: editing.type as 'cash', currency: editing.currency as 'UZS' }
+            ? { ...editing, name: editing.name ?? '', type: editing.type as 'cash', currency: editing.currency as 'UZS' }
             : { name: '', type: 'bank', currency: (session.tenant?.currency ?? 'UZS') as 'UZS', openingBalance: 0, openingDate: todayIso() }
         }
         onSubmit={(values) => save.mutateAsync(values)}

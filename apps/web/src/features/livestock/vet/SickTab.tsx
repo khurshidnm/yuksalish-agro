@@ -47,16 +47,19 @@ export function SickTab() {
 
   return (
     <div className="space-y-3">
-      <Select
-        aria-label={t('sick.statusFilter')}
-        value={status}
-        onChange={(e) => setStatus(e.target.value)}
-        options={[
-          { value: 'open', label: t('sick.open') },
-          { value: 'resolved', label: t('sick.resolved') },
-        ]}
-        className="md:w-48"
-      />
+      {/* In a flex row the select's wrapper shrinks to the box, so its arrow stays inside it. */}
+      <div className="flex flex-col gap-2 md:flex-row">
+        <Select
+          aria-label={t('sick.statusFilter')}
+          value={status}
+          onChange={(e) => setStatus(e.target.value)}
+          options={[
+            { value: 'open', label: t('sick.open') },
+            { value: 'resolved', label: t('sick.resolved') },
+          ]}
+          className="md:w-48"
+        />
+      </div>
 
       {reports.error && <ErrorCard error={reports.error} onRetry={() => void reports.refetch()} />}
       {reports.isLoading && <Skeleton className="h-32 w-full" />}

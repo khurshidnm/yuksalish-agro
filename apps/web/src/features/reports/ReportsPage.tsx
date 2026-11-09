@@ -279,7 +279,7 @@ function InvestorTab() {
               title={label('feed')}
               rows={
                 data.data.feed.length
-                  ? data.data.feed.map((row): [string, string] => [row.name, formatNumber(row.days, 1)])
+                  ? data.data.feed.map((row): [string, string] => [row.name, formatNumber(row.days === null ? null : Math.floor(row.days), 0)])
                   : [[label('noData'), '—']]
               }
             />

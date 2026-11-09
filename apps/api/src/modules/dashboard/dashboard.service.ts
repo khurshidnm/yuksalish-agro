@@ -9,6 +9,8 @@ import type { FastifyBaseLogger } from 'fastify';
 import {
   FINANCE_SUMMARY_VIEW,
   addDays,
+  budgetYearMonths,
+  budgetYearOf,
   monthOf,
   monthRange,
   round,
@@ -25,6 +27,7 @@ import { assetStatus, fuelUsage } from '../assets/summary';
 import { fieldStatus, harvestPlanFact, overdueOperations } from '../crops/summary';
 import { eventFeed } from '../devices/devices.service';
 import { forecast } from '../farm/weather.service';
+import { capitalTiles } from '../finance/advances.service';
 import { budgetExecution, cashPosition, cashflowForecastDetail, debtSummary, monthToDate } from '../finance/summary';
 import { attendanceToday } from '../hr/summary';
 import { feedBalance, feedConsumption, lowStock } from '../inventory/summary';
@@ -53,7 +56,11 @@ async function loadFinance() {
   const cash = await cashPosition();
   const debts = await debtSummary();
   const budgetMonth = await budgetExecution(from, to);
-  const budgetYear = await budgetExecution(`${now.slice(0, 4)}-01-01`, to);
+  // The budget year, as on the budget page (October to September), through this month: the months
+  // begun, against what they spent. A calendar year would set September's barn against a budget
+  // that starts in October, and December's plan against nothing yet.
+  const yearFrom = budgetYearMonths(budgetYearOf(now)).from;
+  const budgetYear = await budgetExecution(yearFrom, to);
   const forecasted = await cashflowForecastDetail(FORECAST_MONTHS);
 
   const totals = ({ planned, actual, deviation, percent }: typeof budgetMonth) => ({ planned, actual, deviation, percent });
@@ -61,10 +68,14 @@ async function loadFinance() {
     month: income,
     // finance.summary is aggregated figures: the total, not the accounts behind it (rule 7).
     cash: hasPermission('finance.view') ? cash : { total: cash.total, accounts: [] },
+    // The owner's own money put in, and cash in people's hands (docs/cash-holders.md).
+    capital: hasPermission('finance.view') ? await capitalTiles() : null,
     debts,
     budget: {
       month: totals(budgetMonth),
       year: totals(budgetYear),
+      /** First month of the budget year in `year`, YYYY-MM. */
+      yearFrom,
       overruns: budgetYear.rows
         .filter((row) => row.deviation > 0)
         .sort((a, b) => b.deviation - a.deviation)
@@ -100,6 +111,9 @@ async function loadLivestock() {
       totalEwes: plan.totalEwes,
       overdue: plan.overdue,
       expectedLambs: plan.expectedLambs,
+      // Until the farm records its own lambings, the outlook's figure, said to be an assumption.
+      assumedLambs: plan.assumedLambs,
+      assumedLambsPerEwe: plan.assumedLambsPerEwe,
       next7Days: plan.days.filter((d) => d.date <= within7Days).reduce((sum, d) => sum + d.expected, 0),
       nextDate: plan.days[0]?.date ?? null,
     },

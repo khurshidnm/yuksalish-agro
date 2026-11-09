@@ -12,6 +12,7 @@ import { zText } from '@/lib/forms';
 import i18n from '@/lib/i18n';
 import { errorMessage } from '@/lib/query';
 import type { LocalizedName, PurchaseStatus, SaleStatus } from './types';
+import { accountLabel } from '@/features/finance/lib';
 
 type BadgeVariant = 'neutral' | 'success' | 'warning' | 'danger' | 'info' | 'outline';
 
@@ -59,7 +60,7 @@ export const counterpartyOptions = apiOptions<Named & { type: string }>(
 
 export const accountOptions = apiOptions<Named & { type: string; currency: string }>(
   '/finance/accounts/lookup',
-  (a) => ({ value: a.id, label: a.name, hint: a.currency }),
+  (a) => ({ value: a.id, label: accountLabel(a), hint: a.currency }),
 );
 
 export const warehouseOptions = apiOptions<Named & { type: string }>(

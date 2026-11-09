@@ -2,7 +2,8 @@ import type { PRIORITIES, RECURRENCES, TASK_STATUSES } from '@yap/shared';
 import type { TFunction } from 'i18next';
 
 export const ENTITY_TYPES = ['field', 'herd', 'animal', 'asset'] as const;
-export const RECORD_TYPES = ['health_record', 'field_operation', 'daily_log', 'weight_record'] as const;
+/** `vaccination_record` is a health record of type vaccination, so an examination cannot close a vaccination task. */
+export const RECORD_TYPES = ['health_record', 'vaccination_record', 'field_operation', 'daily_log', 'weight_record'] as const;
 export const DIVISIONS = ['crops', 'livestock', 'machinery', 'admin'] as const;
 
 /** Red, orange, green: the same three pills everywhere a priority shows. */

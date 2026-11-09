@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EmptyState, ErrorCard, useConfirm } from '@/components';
 import { Button, Skeleton } from '@/components/ui';
-import { useCenterName, useLocalName } from '@/features/finance/lib';
+import { accountLabel, useCenterName, useLocalName } from '@/features/finance/lib';
 import type { CategoryOption, CostCenterOption } from '@/features/finance/types';
 import { api } from '@/lib/api';
 import { usePermission } from '@/lib/auth';
@@ -40,7 +40,8 @@ function useTargetNames(phrases: LearnedPhrase[]): (phrase: LearnedPhrase) => st
     if (!row) return null;
     if (targetType === 'category') return localName((row as unknown as CategoryOption).name);
     if (targetType === 'cost_center') return centerName(row.name as string, (row as unknown as CostCenterOption).type);
-    return row.name as string;
+    // Another person's cash comes unnamed to someone who may not see personal data.
+    return targetType === 'account' ? accountLabel(row as { name: string | null }) : (row.name as string);
   };
 }
 

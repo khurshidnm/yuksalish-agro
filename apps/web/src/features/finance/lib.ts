@@ -2,6 +2,7 @@ import { latinToCyrillic } from '@yap/shared/i18n';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { I18nName, Transaction } from './types';
+import i18n from '@/lib/i18n';
 
 /** Reference data carries its own translations. Uzbek Cyrillic is derived, as in the dictionaries. */
 export function useLocalName(): (name: I18nName | null | undefined) => string {
@@ -16,6 +17,12 @@ export function useLocalName(): (name: I18nName | null | undefined) => string {
     [language],
   );
 }
+
+/**
+ * An account's name for a list. Another person's cash comes without a name to someone who may not see
+ * personal data, so it is called what it is. A plain function, so option loaders outside components use it.
+ */
+export const accountLabel = (account: { name: string | null }): string => account.name ?? i18n.t('finance:cashHolders.someonesCash');
 
 /** The farm-wide center has a stored English name, so it is shown through its translated type. */
 export function useCenterName(): (name: string | null | undefined, type: string | null | undefined) => string {
@@ -61,6 +68,9 @@ export function treatmentForCategory<T extends string>(group: string | undefined
   return current === 'capex' ? 'expense' : current;
 }
 
+/** "56,3 mln so'm" inside a sentence: a line break between the number and its unit misreads the amount. */
+export const keepTogether = (text: string): string => text.replace(/ /g, '\u00a0');
+
 export const FINANCE_PATHS = {
   transactions: '/finance/transactions',
   accounts: '/finance/accounts',
@@ -72,6 +82,9 @@ export const FINANCE_PATHS = {
   cashflow: '/finance/cashflow',
   loans: '/finance/loans',
   fx: '/finance/fx-rates',
+  cashHolders: '/finance/cash-holders',
+  cashHandovers: '/finance/cash-handovers',
+  capital: '/finance/capital',
 };
 
 /** Everything a posted transaction can change. */
@@ -84,4 +97,7 @@ export const MONEY_QUERIES = [
   FINANCE_PATHS.costs,
   FINANCE_PATHS.cashflow,
   FINANCE_PATHS.loans,
+  FINANCE_PATHS.cashHolders,
+  FINANCE_PATHS.cashHandovers,
+  FINANCE_PATHS.capital,
 ];

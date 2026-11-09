@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, lte } from 'drizzle-orm';
 import { z } from 'zod';
 import { CURRENCIES, diffDays, round } from '@yap/shared';
 import { schema } from '../../db/client';
@@ -84,7 +84,7 @@ export function applyFifo(docs: DebtDoc[], paid: number, asOf: string): OpenDocu
   return open;
 }
 
-async function loadDebtRows() {
+async function loadDebtRows(asOf?: string) {
   const farm = ctx().farmId;
   const docs = await tx()
     .select({
@@ -103,6 +103,7 @@ async function loadDebtRows() {
         eq(t.status, 'approved'),
         eq(t.paymentMethod, 'debt'),
         inArray(t.type, ['expense', 'income']),
+        asOf ? lte(t.date, asOf) : undefined,
       ),
     )
     .orderBy(asc(t.dueDate), asc(t.date), asc(t.createdAt));
@@ -115,6 +116,7 @@ async function loadDebtRows() {
         inArray(t.status, ['approved', 'pending']),
         inArray(t.type, ['debt_payment', 'debt_receipt']),
         tradeSettlement,
+        asOf ? lte(t.date, asOf) : undefined,
       ),
     );
   return { docs, settlements };
@@ -137,10 +139,14 @@ export interface CounterpartyDebt {
   documents: OpenDocument[];
 }
 
-/** Open debts per counterparty, one row per direction, with aging by due date. */
-export async function listDebts(direction?: Direction): Promise<CounterpartyDebt[]> {
-  const asOf = today();
-  const { docs, settlements } = await loadDebtRows();
+/**
+ * Open debts per counterparty, one row per direction, with aging by due date. With `until`, only
+ * documents and settlements dated on or before it count, aged as of that day, so a month-end
+ * report shows what was owed at that month's end.
+ */
+export async function listDebts(direction?: Direction, until?: string): Promise<CounterpartyDebt[]> {
+  const asOf = until ?? today();
+  const { docs, settlements } = await loadDebtRows(until);
   const groups = new Map<string, { counterpartyId: string; direction: Direction; docs: DebtDoc[] }>();
   for (const doc of docs) {
     const dir: Direction = doc.type === 'expense' ? 'payable' : 'receivable';

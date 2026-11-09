@@ -54,6 +54,12 @@ export function interpolate(template: string, params: Params, locale?: string | 
   });
 }
 
+/** An amount as messages write it, whatever the reader's language: 12 500 000 so'm. */
+export function moneyText(amount: number, currency: string, locale?: string | null): string {
+  const number = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(amount).replace(/\u00a0/g, ' ');
+  return `${number} ${lookup(locale, 'enums', `currency.${currency}`) ?? currency}`;
+}
+
 /** Server-side translation, for text sent outside the web app. */
 export function tr(locale: string | null | undefined, ns: Namespace, key: string, params: Params = {}): string {
   const template = lookup(locale, ns, key);

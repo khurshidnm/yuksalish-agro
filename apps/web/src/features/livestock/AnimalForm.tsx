@@ -175,7 +175,7 @@ export function AnimalForm({ open, onOpenChange, animal, herdId }: AnimalFormPro
                 )}
               </FormGrid>
             )}
-            {!animal && <NumberField form={form} name="currentWeightKg" label={t('fields.weight')} suffix="kg" maxDigits={2} />}
+            {!animal && <NumberField form={form} name="currentWeightKg" label={t('fields.weight')} suffix={t('enums:unit.kg')} maxDigits={2} />}
             <TextareaField form={form} name="notes" label={t('fields.notes')} />
           </>
         );

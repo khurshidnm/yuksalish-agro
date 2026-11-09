@@ -15,8 +15,9 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { formatCompact, formatNumber } from '@/lib/format';
+import { formatNumber } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { formatAxisValue, formatEndValue, plottedValues, valueAxis } from './chartScale';
 import { EmptyState } from './EmptyState';
 import { ErrorCard } from './ErrorCard';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Skeleton, TBody, THead, Table, Td, Th, Tr, Tooltip } from './ui';
@@ -60,9 +61,9 @@ export interface ChartCardProps<T> {
   series: ChartSeries[];
   /** Full value for tooltip and table: (v) => formatMoney(v). */
   formatValue?: (value: number) => string;
-  /** Short value for the axis. Defaults to compact numbers. */
+  /** Short value for the axis. Defaults to compact numbers with the decimals the tick step needs. */
   formatAxis?: (value: number) => string;
-  /** Value axis range. Defaults to starting at 0; use ['auto', 'auto'] for readings like pH. */
+  /** Value axis range. Defaults to keeping 0 on the axis; use ['auto', 'auto'] for readings like pH. */
   yDomain?: [number | 'auto', number | 'auto'];
   /** Shades a stretch of the x axis, by x value: the months a forecast goes negative. */
   highlight?: { from: string; to: string; tone?: 'neutral' | 'danger' };
@@ -176,14 +177,18 @@ export function ChartLegend({ series }: { series: { label: string; color: string
   );
 }
 
-/** End labels are dropped when two lines finish too close together to read. */
-function canLabelEnds<T>(data: T[], series: ChartSeries[]): boolean {
+/**
+ * End labels are dropped when two lines finish too close together to read. Closeness is measured on the
+ * axis, which usually runs from zero: 68 and 69 thousand are far apart within 62 to 69, but on a 0 to 80
+ * thousand axis their labels print on top of each other.
+ */
+function canLabelEnds<T>(data: T[], series: ChartSeries[], axisSpan: number | null): boolean {
   if (series.length > 4 || data.length === 0) return false;
   const row = data[data.length - 1] as Record<string, unknown>;
   const lastValues = series.map((s) => Number(row[s.key])).filter(Number.isFinite);
   if (lastValues.length !== series.length) return false;
   const all = data.flatMap((d) => series.map((s) => Number((d as Record<string, unknown>)[s.key]))).filter(Number.isFinite);
-  const span = Math.max(...all) - Math.min(...all);
+  const span = Math.max(Math.max(...all) - Math.min(...all), axisSpan ?? 0);
   if (span === 0) return series.length === 1;
   const sorted = [...lastValues].sort((a, b) => a - b);
   return sorted.every((v, i) => i === 0 || v - sorted[i - 1] > span * 0.08);
@@ -229,7 +234,7 @@ export function ChartCard<T>({
   xKey,
   series,
   formatValue = (v) => formatNumber(v),
-  formatAxis = (v) => formatCompact(v),
+  formatAxis,
   formatX = (v) => v,
   formatLabel = formatX,
   yDomain,
@@ -247,23 +252,44 @@ export function ChartCard<T>({
 
   const resolved = useMemo(() => series.map((s, i) => ({ ...s, color: chartColor(s.slot ?? i + 1) })), [series]);
   const lastIndex = data.length - 1;
-  const labelEnds = (kind === 'line' || kind === 'area') && canLabelEnds(data, series);
   const rows = data as Record<string, unknown>[];
+
+  // Round value ticks worked out here, so the default labels carry exactly the decimals the step needs.
+  // Without a yDomain, zero stays on the axis. A formatAxis of fixed decimals gets no 2.5 steps.
+  const [lowBound, highBound] = yDomain ?? [0, 0];
+  const adaptiveLabels = !formatAxis;
+  const scale = useMemo(
+    () => valueAxis(plottedValues(rows, series.map((s) => s.key), kind === 'stacked-bar'), [lowBound, highBound], adaptiveLabels),
+    [rows, series, kind, lowBound, highBound, adaptiveLabels],
+  );
+  const labelEnds = (kind === 'line' || kind === 'area') && canLabelEnds(data, series, scale ? scale.domain[1] - scale.domain[0] : null);
   const margin = { top: 8, right: labelEnds ? 64 : 8, bottom: 0, left: 0 };
+  const axisFormat = formatAxis ?? ((value: number) => formatAxisValue(value, scale?.step ?? null));
+  const endFormat = formatAxis ?? ((value: number) => formatEndValue(value, scale?.step ?? null));
 
   const axes = (
     <>
       {kind !== 'block-bar' && <CartesianGrid vertical={false} stroke="var(--chart-grid)" strokeWidth={1} />}
+      {/* Every nth label, the same n throughout, so months never skip unevenly. */}
       <XAxis
         dataKey={String(xKey)}
         tickFormatter={(v) => formatX(String(v))}
         tick={{ fill: 'var(--chart-text)', fontSize: 12 }}
         tickLine={false}
         axisLine={{ stroke: 'var(--chart-baseline)' }}
-        interval="preserveStartEnd"
+        interval="equidistantPreserveStart"
         minTickGap={16}
       />
-      <YAxis domain={yDomain} tickFormatter={formatAxis} tick={{ fill: 'var(--chart-text)', fontSize: 12 }} tickLine={false} axisLine={false} width={76} />
+      <YAxis
+        domain={scale?.domain ?? yDomain}
+        ticks={scale?.ticks}
+        niceTicks={scale ? 'none' : undefined}
+        tickFormatter={axisFormat}
+        tick={{ fill: 'var(--chart-text)', fontSize: 12 }}
+        tickLine={false}
+        axisLine={false}
+        width={76}
+      />
     </>
   );
 
@@ -315,7 +341,7 @@ export function ChartCard<T>({
               strokeLinejoin="round"
               dot={endDot(lastIndex, s.color)}
               activeDot={{ r: 5, stroke: 'var(--card)', strokeWidth: 2 }}
-              label={labelEnds ? endLabel(lastIndex, formatAxis) : undefined}
+              label={labelEnds ? endLabel(lastIndex, endFormat) : undefined}
               isAnimationActive={false}
               connectNulls={false}
             />
@@ -340,7 +366,7 @@ export function ChartCard<T>({
               fillOpacity={0.1}
               dot={endDot(lastIndex, s.color)}
               activeDot={{ r: 5, stroke: 'var(--card)', strokeWidth: 2 }}
-              label={labelEnds ? endLabel(lastIndex, formatAxis) : undefined}
+              label={labelEnds ? endLabel(lastIndex, endFormat) : undefined}
               isAnimationActive={false}
             />
           ))}

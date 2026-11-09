@@ -1,10 +1,10 @@
-import { Beef, CalendarClock, CircleDollarSign, HandCoins, HeartPulse, type LucideIcon, ReceiptText, Skull, Sprout, TriangleAlert, Users, Wallet, Wheat, Wrench } from 'lucide-react';
+import { Beef, CalendarClock, CircleDollarSign, Fuel, HandCoins, HeartPulse, ListChecks, type LucideIcon, ReceiptText, Skull, Sprout, Tractor, TriangleAlert, Users, Wallet, Wheat } from 'lucide-react';
 import type { ReactNode } from 'react';
 import type { TFunction } from 'i18next';
 import type { StatTone } from '@/components';
 import { MoneyText } from '@/components';
 import { formatDateLong, formatNumber, formatPercent, formatQty } from '@/lib/format';
-import { daysNumber, type LinkTo } from './shared';
+import { daysNumber, journalOfMonth, type LinkTo } from './shared';
 import type { BlockKey, CropsData, DashboardData, FeedData, FinanceData, LivestockData, StaffData } from './types';
 
 export interface TileSpec {
@@ -35,7 +35,7 @@ function financeTiles(d: FinanceData, t: TFunction, link: LinkTo): TileSpec[] {
       label: t('finance.monthExpense'),
       value: compact(d.month.expense),
       hint: <>{t('finance.monthIncome')}: <MoneyText value={d.month.income} compact /></>,
-      to: link('/finance/transactions', 'finance.view'),
+      to: link(journalOfMonth(d.month.month), 'finance.view'),
       icon: ReceiptText,
     },
     {
@@ -105,7 +105,8 @@ function feedTiles(d: FeedData, t: TFunction, link: LinkTo): TileSpec[] {
       key: 'days',
       label: t('feed.lowestDays'),
       value: d.limiting ? t('days', { value: daysNumber(d.limiting.days) }) : null,
-      hint: d.limiting?.name,
+      // Today's rate of use. The outlook allows for the larger rations after lambing, so it can come sooner there.
+      hint: d.limiting ? t('feed.lowestHint', { name: d.limiting.name }) : undefined,
       to: balance,
       icon: Wheat,
       tone: d.lowStockCount > 0 ? 'warning' : 'neutral',
@@ -173,7 +174,7 @@ function staffTiles(d: StaffData, t: TFunction, link: LinkTo): TileSpec[] {
       value: formatNumber(d.tasks.doneToday, 0),
       hint: t('staff.tasksHint', { open: formatNumber(d.tasks.open, 0), overdue: formatNumber(d.tasks.overdue, 0) }),
       to: link('/tasks', 'tasks.view'),
-      icon: Users,
+      icon: ListChecks,
       tone: d.tasks.overdue > 0 ? 'warning' : 'neutral',
     });
   }
@@ -184,7 +185,7 @@ function staffTiles(d: StaffData, t: TFunction, link: LinkTo): TileSpec[] {
       value: t('crops.ofTotal', { value: formatNumber(d.machinery.byStatus.working ?? 0, 0), total: formatNumber(d.machinery.total, 0) }),
       hint: t('staff.machineryHint', { repair: formatNumber(d.machinery.byStatus.repair ?? 0, 0), due: formatNumber(d.machinery.maintenanceDue, 0) }),
       to: link('/assets', 'assets.view'),
-      icon: Wrench,
+      icon: Tractor,
       tone: (d.machinery.byStatus.repair ?? 0) > 0 ? 'warning' : 'neutral',
     });
   }
@@ -195,7 +196,7 @@ function staffTiles(d: StaffData, t: TFunction, link: LinkTo): TileSpec[] {
       value: formatQty(d.fuel.liters, 'l', 0),
       hint: t('staff.fuelHint', { days: d.fuel.days }),
       to: link('/assets', 'assets.view'),
-      icon: Wrench,
+      icon: Fuel,
     });
   }
   return tiles;

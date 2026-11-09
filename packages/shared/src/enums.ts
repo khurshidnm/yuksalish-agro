@@ -40,7 +40,11 @@ export const COSTING_METHODS = e(['fifo', 'avg']);
 
 // Finance
 export const COST_CENTER_TYPES = e(['field', 'herd', 'animal', 'asset', 'employee', 'general']);
-export const TRANSACTION_TYPES = e(['expense', 'income', 'transfer', 'debt_payment', 'debt_receipt']);
+/**
+ * `contribution` and `withdrawal` are the owner's own money going into the farm and coming back out.
+ * They move cash but are neither income nor expense, so profit never counts them.
+ */
+export const TRANSACTION_TYPES = e(['expense', 'income', 'transfer', 'debt_payment', 'debt_receipt', 'contribution', 'withdrawal']);
 /**
  * How an expense reaches cost centers:
  *  expense   — direct cost of the cost center now
@@ -54,6 +58,10 @@ export const TRANSACTION_STATUSES = e(['draft', 'pending', 'approved', 'rejected
 /** `non_cash` is for postings that move no money, e.g. depreciation. */
 export const PAYMENT_METHODS = e(['cash', 'bank', 'card', 'debt', 'non_cash']);
 export const ACCOUNT_TYPES = e(['cash', 'bank', 'card']);
+/** Cash handed to a person who spends it for the farm (docs/cash-holders.md). Money moves only when accepted. */
+export const CASH_HANDOVER_STATUSES = e(['sent', 'accepted', 'disputed', 'cancelled', 'reversed']);
+/** Where handed cash came from: the owner's own pocket, or a farm account. */
+export const CASH_HANDOVER_SOURCES = e(['own_funds', 'account']);
 export const CURRENCIES = e(['UZS', 'USD', 'RUB', 'EUR']);
 export const COUNTERPARTY_TYPES = e(['buyer', 'supplier', 'service', 'bank', 'government', 'other']);
 export const CATEGORY_KINDS = e(['expense', 'income']);

@@ -10,7 +10,7 @@ import { api } from '@/lib/api';
 import { usePermission, useSession } from '@/lib/auth';
 import { formatDate, formatMoney, formatQty } from '@/lib/format';
 import { useApiMutation, useDetail } from '@/lib/query';
-import { FINANCE_PATHS, MONEY_QUERIES, useLocalName } from './lib';
+import { FINANCE_PATHS, MONEY_QUERIES, accountLabel, useLocalName } from './lib';
 import type { AccountOption, CategoryOption, UnpaidReceipt } from './types';
 import { type RecordFormOut, type RecordKind, accountsFor, recordDate, recordPayload, recordSchema } from './recordReceipt';
 
@@ -68,7 +68,7 @@ function RecordDialog({ recording, accounts, onClose }: { recording: Recording |
               name="accountId"
               label={t('journal.fields.account')}
               required
-              options={accounts.map((a) => ({ value: a.id, label: a.name }))}
+              options={accounts.map((a) => ({ value: a.id, label: accountLabel(a) }))}
               placeholder={t('journal.chooseAccount')}
             />
           ) : (

@@ -698,6 +698,8 @@ export async function movements(q: z.infer<typeof movementsQuery>): Promise<Page
       totalCost: m.totalCost,
       costCenterId: m.costCenterId,
       costCenterName: costCenters.name,
+      // The farm-wide center is stored as "General"; the type lets the screen show it translated.
+      costCenterType: costCenters.type,
       reason: m.reason,
       docNo: m.docNo,
       refType: m.refType,

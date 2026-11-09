@@ -5,12 +5,27 @@ import { canSeeMoney, ctx, tx } from '../../../core/context';
 import { sumOf } from '../../../core/query';
 import { cropKpis } from '../../crops/summary';
 import { planFact } from '../../crops/plan-fact.service';
+import { fieldLabel } from '../../farm/fields.service';
 import { fieldCosts } from '../../finance/summary';
 import { enumLabel } from '../i18n';
 import type { ReportDefinition, Row } from '../types';
 import { PII, col, filter } from './_helpers';
 
 const { assets, cropPlans, crops, employees, fieldOperations, fields, harvests, seasons, soilAnalyses } = schema;
+
+/**
+ * Fields by id, named as their cost centers are ('№1 G'arbiy massiv'), so a crop report, its chart
+ * and a phone card never show a bare '1', and match the profitability report.
+ */
+async function fieldNames(): Promise<Map<string, string>> {
+  const rows = await tx()
+    .select({ id: fields.id, number: fields.number, name: fields.name })
+    .from(fields)
+    .where(eq(fields.farmId, ctx().farmId));
+  return new Map(rows.map((f) => [f.id, fieldLabel(f)]));
+}
+
+const named = (names: Map<string, string>, id: string, number: string) => names.get(id) ?? `№${number}`;
 
 export const cropReports: ReportDefinition[] = [
   {
@@ -34,10 +49,10 @@ export const cropReports: ReportDefinition[] = [
     ],
     compare: { filter: 'seasonId', by: ['field', 'crop'], values: ['actual'] },
     async run({ seasonId }) {
-      const rows = await fieldCosts(seasonId);
+      const [rows, names] = await Promise.all([fieldCosts(seasonId), fieldNames()]);
       return {
         rows: rows.map((r) => ({
-          field: r.number,
+          field: named(names, r.fieldId, r.number),
           crop: r.crop,
           areaHa: r.areaHa,
           ...r.breakdown,
@@ -51,7 +66,7 @@ export const cropReports: ReportDefinition[] = [
   {
     key: 'crops.yield',
     module: 'crops',
-    filters: [filter.season],
+    filters: [filter.harvestedSeason],
     columns: [
       col.text('field'),
       col.name('crop'),
@@ -65,11 +80,11 @@ export const cropReports: ReportDefinition[] = [
     ],
     chart: { kind: 'bar', x: 'field', series: ['expectedHarvestT', 'harvestedT'] },
     async run({ seasonId }) {
-      const { rows } = await planFact(seasonId);
+      const [{ rows }, names] = await Promise.all([planFact(seasonId), fieldNames()]);
       return {
         rows: rows.map((r) => ({
           ...r,
-          field: r.fieldNumber,
+          field: named(names, r.fieldId, r.fieldNumber),
           crop: r.cropName,
           yieldDeviationPercent: r.yieldDeviationPercent === null ? null : round(r.yieldDeviationPercent, 1),
         })),
@@ -98,6 +113,7 @@ export const cropReports: ReportDefinition[] = [
           date: fieldOperations.date,
           type: fieldOperations.type,
           field: fields.number,
+          fieldName: fields.name,
           crop: crops.name,
           areaDoneHa: fieldOperations.areaDoneHa,
           waterM3: fieldOperations.waterM3,
@@ -122,7 +138,13 @@ export const cropReports: ReportDefinition[] = [
           ),
         )
         .orderBy(desc(fieldOperations.date));
-      return { rows: rows.map((r) => ({ ...r, status: enumLabel(lang, 'reports:operationStatus', r.status) })) };
+      return {
+        rows: rows.map(({ fieldName, ...r }) => ({
+          ...r,
+          field: fieldLabel({ number: r.field, name: fieldName }),
+          status: enumLabel(lang, 'reports:operationStatus', r.status),
+        })),
+      };
     },
   },
   {
@@ -144,6 +166,7 @@ export const cropReports: ReportDefinition[] = [
         .select({
           id: cropPlans.id,
           field: fields.number,
+          fieldName: fields.name,
           season: seasons.name,
           crop: crops.name,
           variety: cropPlans.variety,
@@ -171,10 +194,15 @@ export const cropReports: ReportDefinition[] = [
         : [];
       const tons = new Map(harvested.map((h) => [h.planId, h.tons]));
       return {
-        rows: plans.map((p) => {
+        rows: plans.map(({ fieldName, ...p }) => {
           const harvestedT = tons.get(p.id) ?? 0;
           const value = harvestedT > 0 ? yieldPerHectare(harvestedT, p.areaHa) : null;
-          return { ...p, harvestedT, actualYieldTHa: value === null ? null : round(value, 3) };
+          return {
+            ...p,
+            field: fieldLabel({ number: p.field, name: fieldName }),
+            harvestedT,
+            actualYieldTHa: value === null ? null : round(value, 3),
+          };
         }),
       };
     },
@@ -193,13 +221,14 @@ export const cropReports: ReportDefinition[] = [
       col.num('waterM3PerTon', 1),
     ],
     async run({ seasonId }) {
-      const { rows } = await planFact(seasonId);
+      const [{ rows }, names] = await Promise.all([planFact(seasonId), fieldNames()]);
       return {
         rows: rows.map((r) => ({
           ...r,
-          field: r.fieldNumber,
+          field: named(names, r.fieldId, r.fieldNumber),
           crop: r.cropName,
-          waterM3PerHa: r.areaHa > 0 ? round(r.waterM3 / r.areaHa, 1) : null,
+          // No watering on record is unknown water use, not 0 m³ (rule 5).
+          waterM3PerHa: r.waterM3 !== null && r.areaHa > 0 ? round(r.waterM3 / r.areaHa, 1) : null,
         })),
       };
     },
@@ -222,6 +251,7 @@ export const cropReports: ReportDefinition[] = [
         .select({
           date: harvests.date,
           field: fields.number,
+          fieldName: fields.name,
           crop: crops.name,
           grossT: harvests.grossT,
           moisturePct: harvests.moisturePct,
@@ -242,7 +272,7 @@ export const cropReports: ReportDefinition[] = [
           ),
         )
         .orderBy(desc(harvests.date));
-      return { rows };
+      return { rows: rows.map(({ fieldName, ...r }) => ({ ...r, field: fieldLabel({ number: r.field, name: fieldName }) })) };
     },
   },
   {
@@ -252,9 +282,11 @@ export const cropReports: ReportDefinition[] = [
     columns: [
       col.date('date'),
       col.text('field'),
-      col.num('n', 3),
-      col.num('p', 3),
-      col.num('k', 3),
+      // Units as on the field card: nitrate N, mobile P2O5 and exchangeable K2O in mg/kg, humus in %,
+      // salinity as the dry residue of the water extract in %.
+      col.num('n', 3, { labelParams: { formula: 'N-NO₃' } }),
+      col.num('p', 3, { labelParams: { formula: 'P₂O₅' } }),
+      col.num('k', 3, { labelParams: { formula: 'K₂O' } }),
       col.num('ph', 2),
       col.num('humus', 3),
       col.num('salinity', 3),
@@ -265,6 +297,7 @@ export const cropReports: ReportDefinition[] = [
         .select({
           date: soilAnalyses.date,
           field: fields.number,
+          fieldName: fields.name,
           n: soilAnalyses.n,
           p: soilAnalyses.p,
           k: soilAnalyses.k,
@@ -277,13 +310,13 @@ export const cropReports: ReportDefinition[] = [
         .innerJoin(fields, eq(fields.id, soilAnalyses.fieldId))
         .where(and(eq(soilAnalyses.farmId, ctx().farmId), fieldId ? eq(soilAnalyses.fieldId, fieldId) : undefined))
         .orderBy(desc(soilAnalyses.date), asc(fields.number));
-      return { rows };
+      return { rows: rows.map(({ fieldName, ...r }) => ({ ...r, field: fieldLabel({ number: r.field, name: fieldName }) })) };
     },
   },
   {
     key: 'crops.kpi',
     module: 'crops',
-    filters: [filter.season],
+    filters: [filter.harvestedSeason],
     columns: [col.enum('indicator', 'reports:kpi'), col.num('value', 2), col.enum('unit', 'reports:kpiUnit')],
     async run({ seasonId }) {
       const kpi = await cropKpis(seasonId);
@@ -296,7 +329,8 @@ export const cropReports: ReportDefinition[] = [
         const costs = await fieldCosts(seasonId);
         const harvested = costs.reduce((sum, c) => sum + c.harvestT, 0);
         const spent = costs.filter((c) => c.harvestT > 0).reduce((sum, c) => sum + c.actual, 0);
-        rows.push({ indicator: 'cost_per_ton', value: harvested > 0 ? round(spent / harvested, 2) : null, unit: 'money' });
+        // A harvest with no cost recorded is a gap in the books, not a free crop (rule 5).
+        rows.push({ indicator: 'cost_per_ton', value: harvested > 0 && spent > 0 ? round(spent / harvested, 2) : null, unit: 'money' });
       }
       return { rows };
     },

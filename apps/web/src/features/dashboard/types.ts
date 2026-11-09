@@ -14,9 +14,20 @@ export interface LocalizedName {
 export interface FinanceData {
   month: { month: string; income: number; expense: number; operatingExpense: number };
   cash: {
-    accounts: { id: string; name: string; type: string; currency: string; balance: number; balanceBase: number }[];
+    accounts: {
+      id: string;
+      /** Null for another person's cash when the reader may not see names. */
+      name: string | null;
+      type: string;
+      currency: string;
+      balance: number;
+      balanceBase: number;
+      holder: { isMe: boolean } | null;
+    }[];
     total: number;
   };
+  /** The owner's own money put in, and cash in people's hands. Null without finance.view. */
+  capital: { invested: number; contributed: number; withdrawn: number; cashWithPeople: number; holders: number } | null;
   debts: {
     receivable: number;
     payable: number;
@@ -56,7 +67,11 @@ export interface LivestockData {
     weeks: { week: string; expected: number }[];
     totalEwes: number;
     overdue: number;
+    /** From the farm's own lambings; null until it has some. */
     expectedLambs: number | null;
+    /** The outlook's stated assumption applied to the same ewes, for while expectedLambs is null. */
+    assumedLambs?: number | null;
+    assumedLambsPerEwe?: number;
     next7Days: number;
     nextDate: string | null;
   };
@@ -86,6 +101,10 @@ export interface FeedItem {
   name: string;
   unit: string;
   stockQty: number;
+  /** Daily use by the rations, in the item's unit. Null when no ration plans it, or its weight is unknown. */
+  plannedDaily: number | null;
+  /** Average issued per day lately. Null when nothing was issued. */
+  actualDaily: number | null;
   days: number | null;
   basis: 'actual' | 'plan' | null;
   minDays: number;

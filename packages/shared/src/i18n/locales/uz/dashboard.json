@@ -71,7 +71,12 @@
     "closing": "Oy oxiridagi qoldiq",
     "lowConfidence": "Tarixiy ma'lumot kam, baho taxminiy",
     "shortfall": "Pul yetishmasligi kutilmoqda: {{month}}",
-    "negative": "Pul yetishmaydi"
+    "negative": "Pul yetishmaydi",
+    "cashWithPeople": "Xodimlardagi pul",
+    "cashWithPeopleHint": "{{n}} kishi",
+    "invested": "Egasi kiritgan",
+    "investedHint": "Shaxsiy pul, olingani chegirilgan",
+    "flows": "Kirim va chiqim"
   },
   "livestock": {
     "total": "Jami poda",
@@ -84,12 +89,14 @@
     "lambingByWeek": "Kutilayotgan qo'zilash, hafta bo'yicha",
     "lambingTotal": "Jami {{ewes}} sovliq, kutilayotgan qo'zilar: {{lambs}}",
     "lambsUnknown": "birinchi qo'zilashdan keyin ma'lum bo'ladi",
+    "lambsAssumed": "taxminan {{value}} (faraz: {{perEwe}} qo'zi/sovliq)",
     "ewes": "Sovliqlar",
     "noLambing": "Yaqin oylarda qo'zilash kutilmayapti",
     "lambingOverdue": "{{value}} ta sovliqning qo'zilash muddati o'tgan",
     "composition": "Poda tarkibi",
     "weightTrend": "O'rtacha vazn dinamikasi",
-    "avgWeight": "O'rtacha vazn"
+    "avgWeight": "O'rtacha vazn",
+    "weightChange": "{{from}} → {{to}} ({{change}})"
   },
   "crops": {
     "sown": "Ekilgan dalalar",
@@ -119,14 +126,16 @@
   },
   "feed": {
     "lowestDays": "Eng kam zaxira",
+    "lowestHint": "{{name}} · hozirgi sarf bo'yicha",
     "belowMinimum": "Minimaldan past",
     "belowMinimumBadge": "{{days}} kundan kam",
     "nothingLow": "Hamma pozitsiya me'yorda",
     "dailyUse": "Kunlik sarf",
     "daysTitle": "Zaxira necha kunga yetadi",
-    "daysNote": "To'liq chiziq {{days}} kunni bildiradi",
+    "daysNote": "Hozirgi sarf bo'yicha. To'liq chiziq {{days}} kunni bildiradi",
     "daysOf": "{{item}} zaxirasi",
     "stock": "Qoldiq: {{value}}",
+    "notInUse": "Hozir sarflanmayapti",
     "basis": {
       "actual": "haqiqiy sarf bo'yicha",
       "plan": "ratsion bo'yicha"
@@ -220,14 +229,14 @@
     },
     "conclusions": {
       "title": "Xulosalar",
-      "lambing": "Qo'zilash {{from}} dan {{to}} gacha: {{ewes}} sovliqdan taxminan {{lambs}} ta qo'zi kutilmoqda.",
+      "lambing": "Qo'zilash davri: {{from}} – {{to}}. {{ewes}} sovliqdan taxminan {{lambs}} ta qo'zi kutilmoqda.",
       "herd": "Poda eng yuqori {{peak}} boshga yetadi. {{sold}} ta qo'zi sotuvga chiqadi, {{kept}} tasi podaga qoladi.",
       "feedOk": "O'z hosilidan olingan {{count}} xil ozuqa keyingi hosilgacha to'liq yetadi.",
       "feedShort": "Keyingi hosilgacha yetmaydigan ozuqa: {{names}}.",
       "feedBuy": "Sotib olinadigan ozuqadan birinchi bo'lib {{name}} tugaydi: {{month}}. Xaridni shundan oldin rejalang.",
       "lambIncome": "{{head}} ta qo'zi sotuvidan taxminan {{amount}} tushum kutilmoqda.",
       "cashOk": "Pul yetishmovchiligi kutilmaydi: eng past qoldiq {{amount}}, {{month}}.",
-      "cashShort": "{{month}} oyidan pul yetishmasligi kutilmoqda."
+      "cashShort": "Pul yetishmasligi kutilmoqda: {{month}}."
     },
     "charts": {
       "herd": "Poda soni",
@@ -246,9 +255,9 @@
     "feed": {
       "title": "Ozuqa: keyingi hosilgacha",
       "line": "Qoldiq {{stock}} t, kerak {{need}} t",
-      "harvest": "hosil {{month}}",
+      "harvest": "hosil: {{month}}",
       "enough": "Yetadi",
-      "until": "{{month}} gacha"
+      "runsOut": "Tugaydi: {{month}}"
     },
     "crops": {
       "title": "Hosil prognozi",

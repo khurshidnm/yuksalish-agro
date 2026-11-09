@@ -2,6 +2,7 @@
  * The farm's year ahead: what the herd, the feed and the money will do if nothing unusual happens.
  * Pure projections from records plus stated assumptions, so a person can check them by hand.
  */
+import { round } from './index';
 
 export interface OutlookAssumptions {
   /** Lambs born per ewe that lambs. Hisori ewes mostly carry one. */
@@ -16,6 +17,11 @@ export interface OutlookAssumptions {
   saleWeightKg: number;
 }
 
+/**
+ * The one set of lamb assumptions, for a farm without lambings of its own on record. The outlook,
+ * the cash-flow forecast, the lambing plan and the assistant all read these, so they cannot
+ * expect different numbers of lambs from the same ewes.
+ */
 export const OUTLOOK_ASSUMPTIONS: OutlookAssumptions = {
   lambsPerEwe: 1.1,
   survival: 0.92,
@@ -26,6 +32,16 @@ export const OUTLOOK_ASSUMPTIONS: OutlookAssumptions = {
 
 /** How long a ewe nurses her lambs on the richer ration, in months. */
 export const LACTATION_MONTHS = 3;
+
+/** Whole lambs expected to be born to this many ewes: the count every screen shows. */
+export function expectedLambs(ewes: number, lambsPerEwe = OUTLOOK_ASSUMPTIONS.lambsPerEwe): number {
+  return round(ewes * lambsPerEwe, 0);
+}
+
+/** Lambs from this many ewes that live and are not kept for the flock: what goes to market. */
+export function lambsForSale(ewes: number, assumptions: OutlookAssumptions = OUTLOOK_ASSUMPTIONS): number {
+  return ewes * assumptions.lambsPerEwe * assumptions.survival * (1 - assumptions.keepShare);
+}
 
 export interface HerdOutlookInput {
   /** Consecutive months, oldest first. */
@@ -51,21 +67,25 @@ export interface HerdOutlookRow {
 }
 
 export function projectHerd({ months, head, ewesDue, assumptions }: HerdOutlookInput): HerdOutlookRow[] {
-  const { lambsPerEwe, survival, monthsToSale, keepShare } = assumptions;
+  const { lambsPerEwe, survival, monthsToSale } = assumptions;
   const lambing = months.map((month) => ewesDue[month] ?? 0);
   const born = lambing.map((ewes) => ewes * lambsPerEwe);
-  const sold = months.map((_, i) => (i >= monthsToSale ? born[i - monthsToSale] * survival * (1 - keepShare) : 0));
+  const sold = months.map((_, i) => (i >= monthsToSale ? lambsForSale(lambing[i - monthsToSale], assumptions) : 0));
 
   let lambsOnFarm = 0;
   let carrying = lambing.reduce((sum, ewes) => sum + ewes, 0);
+  // Rounded on the running total, so the months add up to the count for all the ewes together.
+  let ewesSoFar = 0;
   return months.map((month, i) => {
     lambsOnFarm += born[i] * survival - sold[i];
     carrying -= lambing[i];
+    const bornBefore = expectedLambs(ewesSoFar, lambsPerEwe);
+    ewesSoFar += lambing[i];
     const nursing = lambing.slice(Math.max(0, i - LACTATION_MONTHS + 1), i + 1).reduce((sum, ewes) => sum + ewes, 0);
     return {
       month,
       ewesLambing: lambing[i],
-      lambsBorn: Math.round(born[i]),
+      lambsBorn: expectedLambs(ewesSoFar, lambsPerEwe) - bornBefore,
       lambsSold: Math.round(sold[i]),
       lambsOnFarm: Math.round(lambsOnFarm),
       carrying,

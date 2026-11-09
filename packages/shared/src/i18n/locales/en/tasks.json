@@ -80,7 +80,7 @@
   },
   "division": {
     "crops": "Crops",
-    "livestock": "Sheep",
+    "livestock": "Livestock",
     "machinery": "Machinery",
     "admin": "Management"
   },
@@ -92,6 +92,7 @@
   },
   "record": {
     "health_record": "Veterinary record",
+    "vaccination_record": "Vaccination record",
     "field_operation": "Field operation",
     "daily_log": "Daily record",
     "weight_record": "Weight record"
@@ -103,10 +104,10 @@
     "photoPreview": "Photo taken",
     "removePhoto": "Remove photo",
     "note": "Notes",
-    "recordHint": "Choose the record entered for this task.",
+    "recordHint": "Choose a record made since the day the task was set.",
     "chooseRecord": "Choose a record",
     "noRecordTitle": "Enter a record first: {{record}}",
-    "noRecordBody": "This task closes only with the matching record, and there is none yet.",
+    "noRecordBody": "This task closes only with the matching record, and none has been made since the day it was set.",
     "goCreateRecord": "Go to enter the record"
   },
   "series": {
@@ -128,6 +129,7 @@
     "description": "All planned work on the farm in one place.",
     "addEvent": "Add event",
     "editEvent": "Edit event",
+    "eventTitle": "Event name",
     "deleteEvent": "Delete this event?",
     "today": "Today",
     "nothing": "Nothing planned for this day",
@@ -173,7 +175,7 @@
       "other": "Other"
     },
     "item": {
-      "lambing": "Lambing expected: {{count}}",
+      "lambing": "Lambing expected: {{count}} head",
       "vaccination": "Vaccination: {{name}}",
       "field_operation": "{{operation}}: field {{field}}",
       "loan": "Loan payment: {{name}}",
@@ -181,8 +183,16 @@
       "document": "Document expires: {{name}}",
       "maintenance": "Maintenance: {{name}}",
       "state_report": "Report due: {{name}}",
-      "staff_contract": "Contract ends: {{name}}",
+      "staff_contract": "Employment contract ends: {{name}}",
       "staff_medical": "Medical check: {{name}}"
+    },
+    "chip": {
+      "lambing": "Lambing: {{count}}",
+      "loan": "Loan: {{name}}",
+      "contract": "Contract: {{number}}",
+      "document": "Document: {{name}}",
+      "state_report": "Report: {{name}}",
+      "staff_contract": "Employment contract: {{name}}"
     },
     "free": "Nothing planned"
   }

@@ -112,6 +112,7 @@ export interface MovementRow {
   totalCost: number | null;
   costCenterId: string | null;
   costCenterName: string | null;
+  costCenterType?: string | null;
   reason: string | null;
   docNo: string | null;
   refType: string | null;

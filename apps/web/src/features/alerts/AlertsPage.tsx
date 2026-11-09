@@ -17,6 +17,8 @@ import type { Alert, AlertCounts, EvaluationResult } from './types';
 const SEVERITY_TONE: Record<Alert['severity'], BadgeVariant> = { urgent: 'danger', attention: 'warning', info: 'info' };
 const SEVERITY_ICON = { urgent: OctagonAlert, attention: TriangleAlert, info: Info };
 const STATUS_TONE: Record<Alert['status'], BadgeVariant> = { open: 'neutral', acknowledged: 'info', resolved: 'success' };
+/** Colour of a stat card's number while it is above zero. Information stays plain. */
+const VALUE_TONE: Record<Alert['severity'], string | undefined> = { urgent: 'text-danger', attention: 'text-warning', info: undefined };
 
 /** Default view: everything not yet resolved. */
 const ACTIVE = 'active';
@@ -105,16 +107,20 @@ export default function AlertsPage() {
       <div className="mb-4 grid grid-cols-[auto_auto_auto] gap-2 md:grid-cols-3 md:gap-4">
         {SEVERITIES.slice()
           .reverse()
-          .map((level) => (
-            <StatCard
-              key={level}
-              label={t(`stat.${level}`)}
-              value={counts.data?.[level] ?? '—'}
-              loading={counts.isLoading}
-              className="max-sm:p-3"
-              tone={level === 'urgent' && (counts.data?.urgent ?? 0) > 0 ? 'danger' : level === 'attention' && (counts.data?.attention ?? 0) > 0 ? 'warning' : undefined}
-            />
-          ))}
+          .map((level) => {
+            // StatCard tones only an icon, and an icon beside the label does not fit three across at 360 px:
+            // the number itself carries the colour, so six "attention" alerts no longer look like zero.
+            const tone = (counts.data?.[level] ?? 0) > 0 ? VALUE_TONE[level] : undefined;
+            return (
+              <StatCard
+                key={level}
+                label={t(`stat.${level}`)}
+                value={<span className={tone}>{counts.data?.[level] ?? '—'}</span>}
+                loading={counts.isLoading}
+                className="max-sm:p-3"
+              />
+            );
+          })}
       </div>
 
       <DataTable<Alert>

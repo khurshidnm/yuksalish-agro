@@ -1,4 +1,4 @@
-import { ACTIONS, FINANCE_SUMMARY_VIEW, MODULES, PII_VIEW } from '@yap/shared';
+import { ACTIONS, FINANCE_CAPITAL, FINANCE_SUMMARY_VIEW, MODULES, PII_VIEW } from '@yap/shared';
 import { useTranslation } from 'react-i18next';
 import { Checkbox } from '@/components/ui';
 import { useCan } from '@/lib/auth';
@@ -83,6 +83,14 @@ export function PermissionMatrix({ value, onChange, readOnly }: PermissionMatrix
         <span className="min-w-0">
           <span className="block text-sm font-medium">{t('roles.financeSummary')}</span>
           <span className="block text-xs text-muted-foreground">{t('roles.financeSummaryHint')}</span>
+        </span>
+      </label>
+
+      <label className="flex min-h-11 cursor-pointer items-center gap-3">
+        {box(FINANCE_CAPITAL, t('roles.financeCapital'))}
+        <span className="min-w-0">
+          <span className="block text-sm font-medium">{t('roles.financeCapital')}</span>
+          <span className="block text-xs text-muted-foreground">{t('roles.financeCapitalHint')}</span>
         </span>
       </label>
     </div>

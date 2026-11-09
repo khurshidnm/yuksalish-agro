@@ -59,6 +59,7 @@
     },
     "sections": { "pay": "Ish haqi", "work": "Ish joyi va muddatlar" },
     "rate": { "monthly": "Oylik stavka", "daily": "Kunlik stavka", "seasonal": "Butun mavsum uchun haq" },
+    "ratePer": { "monthly": "oy", "daily": "kun", "seasonal": "mavsum" },
     "pieceUnit": { "ha": "1 gektar uchun", "head": "1 bosh ishlov uchun", "headDay": "1 bosh-kun uchun", "t": "1 tonna uchun" }
   },
   "card": {
@@ -76,7 +77,14 @@
     "description": "Dala va chorva jurnallaridan avtomatik yig'iladi.",
     "emptyTitle": "Bu oyda ish qayd etilmagan",
     "emptyBody": "Dala tadbirlari, veterinariya va kunlik qaydlar kiritilganda shu yerda ko'rinadi.",
-    "fields": { "hectares": "Bajarilgan maydon", "tons": "Hosil", "headTreated": "Ishlov berilgan bosh", "headDays": "Bosh-kun" }
+    "fields": {
+      "hectares": "Bajarilgan maydon",
+      "tons": "Hosil",
+      "headTreated": "Ishlov berilgan bosh",
+      "headDays": "Bosh-kun",
+      "operations": "Dala tadbirlari",
+      "records": "Vet. va kunlik qaydlar"
+    }
   },
   "reminders": {
     "what": "Nima",
@@ -125,10 +133,12 @@
     "stats": {
       "attendance": "Tabel intizomi",
       "attendanceHint": "Sababsiz kelmaganlar hisobga olinadi",
-      "present": "Ishda bo'lgan kunlar",
-      "absent": "Kelmagan kunlar",
-      "leave": "Kasallik va ta'til"
+      "present": "Ishda, kishi-kun",
+      "absent": "Kelmagan, kishi-kun",
+      "leave": "Kasallik va ta'til, kishi-kun",
+      "peopleHint": "{{count}} xodim bo'yicha jami"
     },
+    "personTotals": "Ishda bo'lgan kunlar: {{present}}, kelmagan kunlar: {{absent}}",
     "bulk": {
       "open": "Tabelni to'ldirish",
       "title": "Tabelni bir yo'la to'ldirish",
@@ -161,6 +171,8 @@
     "calculate": "Hisoblash",
     "emptyTitle": "Hali hisob-kitob yo'q",
     "emptyBody": "Oy tugagach, shu oy uchun ish haqini hisoblang.",
+    "upToDate": "{{month}} uchun hisob-kitob tayyor. Keyingi oyni u tugagach hisoblang.",
+    "exists": "{{month}} uchun hisob-kitob allaqachon bor, u ochildi.",
     "backToRuns": "Hisob-kitoblar ro'yxati",
     "recalculate": "Qayta hisoblash",
     "recalculated": "Qayta hisoblandi. Qo'lda kiritilgan summalar saqlandi",
@@ -208,6 +220,11 @@
       "tons": "Hosil: {{value}} t",
       "head": "Ishlov berilgan: {{value}} bosh",
       "headDays": "Parvarish: {{value}} bosh-kun",
+      "paid": "Haq to'lanadigan kunlar: {{paid}} ({{detail}})",
+      "sick": "kasallik {{days}}",
+      "vacation": "ta'til {{days}}",
+      "leave": "kasallik va ta'til {{days}}",
+      "employed": "Shtatda: oyning {{days}} kunidan {{employed}} kuni",
       "kpi": "{{name}}: {{value}}, mukofot {{bonus}}",
       "kpiNoData": "{{name}}: ma'lumot yetarli emas"
     },
@@ -269,6 +286,7 @@
     "PAYROLL_EMPTY": "Bu hisob-kitobda xodimlar yo'q",
     "PAYROLL_ADVANCES_WAITING": "Shu oy uchun avans hali tasdiqlanishini kutmoqda. Avval uni tasdiqlang yoki rad eting",
     "PAYROLL_ADVANCES_CHANGED": "Ish haqi hisoblangandan keyin avans berilgan. Avval qayta hisoblang",
-    "SAME_MAKER_CHECKER": "Tayyorlagan xodim o'zi tasdiqlay olmaydi"
+    "SAME_MAKER_CHECKER": "Tayyorlagan xodim o'zi tasdiqlay olmaydi",
+    "EMPLOYEE_HOLDS_CASH": "Xodimda hali ferma puli bor. Avval uni qaytarib oling va hisobdor hisobini yoping."
   }
 }

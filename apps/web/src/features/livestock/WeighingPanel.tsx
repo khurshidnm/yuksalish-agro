@@ -161,7 +161,7 @@ function WeighingScreen({ id, onBack }: { id: string; onBack: () => void }) {
               className="h-14 text-xl font-semibold tabular-nums"
               value={weight}
               onChange={setWeight}
-              suffix="kg"
+              suffix={t('enums:unit.kg')}
               maxDigits={2}
               enterKeyHint="done"
             />
@@ -176,7 +176,7 @@ function WeighingScreen({ id, onBack }: { id: string; onBack: () => void }) {
               <CheckCircle2 className="size-5" aria-hidden />
               <span className="font-semibold">{last.tag}</span>
               <span>{formatQty(last.weightKg, 'kg', 1)}</span>
-              {last.gainKg !== null && <span>({last.gainKg > 0 ? '+' : ''}{formatNumber(last.gainKg, 1)} kg)</span>}
+              {last.gainKg !== null && <span className="whitespace-nowrap">({last.gainKg > 0 ? '+' : ''}{formatQty(last.gainKg, 'kg', 1)})</span>}
               {last.updated && <span>· {t('weighing.corrected')}</span>}
               {last.otherHerd && <span>· {t('weighing.otherHerd')}</span>}
             </p>
@@ -190,9 +190,9 @@ function WeighingScreen({ id, onBack }: { id: string; onBack: () => void }) {
             <div key={entry.id} className="flex items-center gap-3 px-4 py-3">
               <span className="font-semibold tabular-nums">{entry.tag}</span>
               {entry.otherHerd && <TriangleAlert className="size-4 text-warning" aria-label={t('weighing.otherHerd')} />}
-              <span className="ms-auto tabular-nums">{formatQty(entry.weightKg, 'kg', 1)}</span>
-              <span className={cn('w-20 text-right text-sm tabular-nums', entry.gainKg !== null && entry.gainKg < 0 ? 'text-destructive' : 'text-muted-foreground')}>
-                {entry.gainKg === null ? '—' : `${entry.gainKg > 0 ? '+' : ''}${formatNumber(entry.gainKg, 1)}`}
+              <span className="ms-auto whitespace-nowrap tabular-nums">{formatQty(entry.weightKg, 'kg', 1)}</span>
+              <span className={cn('w-20 text-right text-sm whitespace-nowrap tabular-nums', entry.gainKg !== null && entry.gainKg < 0 ? 'text-destructive' : 'text-muted-foreground')}>
+                {entry.gainKg === null ? '—' : `${entry.gainKg > 0 ? '+' : ''}${formatQty(entry.gainKg, 'kg', 1)}`}
               </span>
               {open && (
                 <Button
@@ -233,7 +233,13 @@ export function WeighingPanel() {
   const canManage = usePermission('livestock.update');
   const [campaign, setCampaign] = useUrlParam('campaign');
   const [herdParam] = useUrlParam('herd');
-  const [creating, setCreating] = useState(false);
+  // The herd card's "start weighing" opens the form at once.
+  const [startParam, setStartParam] = useUrlParam('start');
+  const [creating, setCreatingState] = useState(() => canManage && startParam === '1');
+  const setCreating = (open: boolean) => {
+    setCreatingState(open);
+    if (!open && startParam) setStartParam('');
+  };
 
   const create = useApiMutation<NewCampaign, { id: string }>({
     mutationFn: (values) => api.post(PATH, values),

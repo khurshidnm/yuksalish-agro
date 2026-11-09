@@ -45,7 +45,11 @@ export function AnalysisTab() {
         row.amount === null || totalAmount === 0 ? (
           '—'
         ) : (
-          <Meter value={(row.amount / totalAmount) * 100} label={formatPercent((row.amount / totalAmount) * 100)} />
+          // The meter's label is only read aloud, so the share is written beside it.
+          <span className="flex items-center gap-2">
+            <Meter value={(row.amount / totalAmount) * 100} label={formatPercent((row.amount / totalAmount) * 100)} className="flex-1" />
+            <span className="w-12 shrink-0 text-right text-sm tabular-nums">{formatPercent((row.amount / totalAmount) * 100, 0)}</span>
+          </span>
         ),
       className: 'min-w-40',
     },

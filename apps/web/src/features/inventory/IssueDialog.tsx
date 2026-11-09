@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { ComboboxField, DateField, FormDialog, FormGrid, SelectField, Separator, TextareaField, apiOptions } from '@/components';
+import { useCenterName } from '@/features/finance/lib';
 import { api } from '@/lib/api';
 import { zDate, zEnum, zOptionalText, zPositive, zRef } from '@/lib/forms';
 import { useApiMutation } from '@/lib/query';
@@ -17,7 +18,8 @@ const schema = z.object({
   warehouseId: zRef(),
   date: zDate(),
   costCenterId: zRef(),
-  reason: zEnum(ISSUE_REASONS),
+  // Starts empty: the storekeeper names the purpose, which the requisition prints.
+  reason: z.string().min(1).pipe(zEnum(ISSUE_REASONS)),
   notes: zOptionalText(1000),
   lines: z.array(z.object({ itemId: zRef(), unit: z.string().nullish(), qty: zPositive() })).min(1),
 });
@@ -33,6 +35,7 @@ interface CostCenterOption {
 
 function Fields({ form }: { form: UseFormReturn<FormIn, unknown, FormOut> }) {
   const { t } = useTranslation('inventory');
+  const centerName = useCenterName();
   const warehouses = useWarehouseOptions();
   const warehouseId = form.watch('warehouseId');
 
@@ -50,8 +53,9 @@ function Fields({ form }: { form: UseFormReturn<FormIn, unknown, FormOut> }) {
         required
         loadOptions={apiOptions<CostCenterOption>('/finance/cost-centers/lookup', (c) => ({
           value: c.id,
-          label: c.name,
-          hint: i18n.t(`enums:costCenterType.${c.type}`),
+          label: centerName(c.name, c.type),
+          // The farm-wide center's label already is its type.
+          hint: c.type === 'general' ? undefined : i18n.t(`enums:costCenterType.${c.type}`),
         }))}
       />
       <SelectField
@@ -88,7 +92,7 @@ export function IssueDialog({ open, onOpenChange }: { open: boolean; onOpenChang
       title={t('issue.title')}
       description={t('issue.description')}
       schema={schema}
-      defaultValues={{ warehouseId: '', date: todayIso(), costCenterId: '', reason: 'manual', notes: '', lines: [EMPTY_LINE] }}
+      defaultValues={{ warehouseId: '', date: todayIso(), costCenterId: '', reason: '', notes: '', lines: [EMPTY_LINE] }}
       onSubmit={(values) => mutation.mutateAsync(values)}
       submitLabel={t('issue.submit')}
       size="lg"

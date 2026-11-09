@@ -30,6 +30,23 @@ export interface EvaluationResult {
   failedRules: string[];
 }
 
+/** A decision the reader can take from the message. The server says which still apply, and decides again. */
+export interface NotificationButton {
+  key: string;
+  /** "namespace:key" in the dictionaries. */
+  label: string;
+  tone?: 'primary' | 'danger';
+  needsReason?: boolean;
+}
+
+/** What became of the decision, once no button is left: "Accepted · 09.11 04:29". */
+export interface NotificationActionState {
+  /** "namespace:key" in the dictionaries. */
+  label: string;
+  tone?: 'success' | 'danger' | 'neutral';
+  at?: string | null;
+}
+
 export interface NotificationRow {
   id: string;
   eventType: string | null;
@@ -37,6 +54,7 @@ export interface NotificationRow {
   title: string;
   body: string | null;
   link: string | null;
+  action: { kind: string; id: string; buttons: NotificationButton[]; state?: NotificationActionState | null } | null;
   readAt: string | null;
   createdAt: string;
 }

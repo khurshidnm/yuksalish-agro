@@ -36,11 +36,17 @@ function shorten(text: string): string {
   return text.length > MAX_AXIS_LABEL ? `${text.slice(0, MAX_AXIS_LABEL - 1)}…` : text;
 }
 
-/** A leading type column says little on a phone card, so its neighbour, the name, heads the card. */
+/**
+ * A leading type column says little on a phone card, so its neighbour, the name, heads the card:
+ * a card titled 'Dala' three times over tells nothing. The name can itself be an enum (a cost center).
+ */
 function phoneTitle(columns: ResultColumn[]): ResultColumn {
   const named = columns[1];
-  return columns[0].type === 'enum' && named && (named.type === 'text' || named.type === 'name') ? named : columns[0];
+  return columns[0].type === 'enum' && named && ['text', 'name', 'enum'].includes(named.type) ? named : columns[0];
 }
+
+/** Past this many columns, headers wrap and cells tighten, so the last column stays on a laptop screen. */
+const WIDE_REPORT = 7;
 
 function ReportChart({ result }: { result: ReportResult }) {
   const { t } = useTranslation('reports');
@@ -54,6 +60,7 @@ function ReportChart({ result }: { result: ReportResult }) {
 
   if (!chart || result.rows.length < 2) return null;
   const x = result.columns.find((c) => c.key === chart.x)!;
+  const cut = data.length < result.rows.length;
   const first = result.columns.find((c) => c.key === chart.series[0].key)!;
   const formatValue = (value: number) =>
     first.type === 'money' ? formatMoney(value, { plain: true }) : formatNumber(value, first.digits ?? 2);
@@ -71,6 +78,7 @@ function ReportChart({ result }: { result: ReportResult }) {
   return (
     <ChartCard
       title={t('viewer.chart')}
+      description={cut ? t('viewer.chartFirst', { shown: data.length, total: result.rows.length }) : undefined}
       kind={chart.kind}
       data={data}
       xKey={chart.x}
@@ -97,12 +105,27 @@ function ReportTable({ result }: { result: ReportResult }) {
   const firstLabel = isNumeric(titleColumn) ? result.columns.find((c) => !isNumeric(c)) : titleColumn;
 
   const columns = useMemo(() => {
+    // A KPI's value and its unit are two columns; a phone card reads them as one line, '0 %'.
+    const unitIndex = result.columns.findIndex((c) => c.key === 'unit' && c.type === 'enum');
+    const unitColumn = unitIndex > 0 && isNumeric(result.columns[unitIndex - 1]) ? result.columns[unitIndex] : undefined;
+    const valueColumn = unitColumn ? result.columns[unitIndex - 1] : undefined;
+    const wide = result.columns.length > WIDE_REPORT ? 'px-2 whitespace-normal' : undefined;
+
     const cell = (column: ResultColumn, row: Row) => {
       if (row.__total) {
         const text = column === firstLabel && row[column.key] === undefined ? t('viewer.totalRow') : formatTotal(column, row);
         return <span className="font-semibold">{text}</span>;
       }
-      return formatCell(column, row[column.key], yes, no);
+      const text = formatCell(column, row[column.key], yes, no);
+      const unit = column === valueColumn && unitColumn && row[column.key] != null ? row[unitColumn.key] : null;
+      return unit ? (
+        <>
+          {text}
+          <span className="md:hidden"> {String(unit)}</span>
+        </>
+      ) : (
+        text
+      );
     };
     const formatTotal = (column: ResultColumn, row: Row) =>
       column.key in row ? formatCell(column, row[column.key], yes, no) : '';
@@ -111,7 +134,8 @@ function ReportTable({ result }: { result: ReportResult }) {
       header: column.label,
       sortable: true,
       align: isNumeric(column) ? 'right' : 'left',
-      mobile: column === titleColumn ? 'title' : undefined,
+      className: wide,
+      mobile: column === titleColumn ? 'title' : column === unitColumn ? 'hidden' : undefined,
       cell: (row) => cell(column, row),
     }));
   }, [result.columns, titleColumn, firstLabel, t, yes, no]);

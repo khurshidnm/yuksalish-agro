@@ -9,6 +9,7 @@ import { getTableColumns, is } from 'drizzle-orm';
 import { PgTable, getTableConfig } from 'drizzle-orm/pg-core';
 import * as ai from './schema/ai';
 import * as assets from './schema/assets';
+import * as cash from './schema/cash';
 import * as core from './schema/core';
 import * as devices from './schema/devices';
 import * as tracking from './schema/tracking';
@@ -29,6 +30,7 @@ const DOMAINS: [string, Record<string, unknown>][] = [
   ['Livestock and veterinary', livestock],
   ['Inventory and feed', inventory],
   ['Finance', finance],
+  ['Cash held by people', cash],
   ['HR and payroll', hr],
   ['Machinery', assets],
   ['Sales and purchasing', sales],

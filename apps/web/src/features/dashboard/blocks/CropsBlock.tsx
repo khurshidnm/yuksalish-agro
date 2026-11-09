@@ -69,7 +69,15 @@ export function CropsBlock({ data, link }: { data: CropsData; link: LinkTo }) {
           {frostDays > 0 && <Badge variant="warning">{t('crops.frostDays', { value: frostDays })}</Badge>}
         </CardHeader>
         <CardContent>
-          {weather.length === 0 ? <EmptyState title={t('crops.noWeather')} className="py-4" /> : <WeatherStrip days={weather} />}
+          {weather.length === 0 ? (
+            <EmptyState title={t('crops.noWeather')} className="py-4" />
+          ) : (
+            <>
+              <WeatherStrip days={weather} />
+              {/* The forecast is MET Norway's, under CC BY 4.0: its credit goes wherever it is shown. */}
+              <p className="mt-2 text-xs text-muted-foreground">{t('farm:weather.credit')}</p>
+            </>
+          )}
         </CardContent>
       </Card>
 

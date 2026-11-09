@@ -71,8 +71,15 @@ function EmployeesTab() {
     {
       key: 'baseRate',
       header: t('employees.fields.rate'),
-      // A piece worker has no base rate, so a dash says more than "0".
-      cell: (row) => <MoneyText value={row.payType === 'piece' ? null : row.baseRate} />,
+      // A piece worker has no base rate, so a dash says more than "0". The rest say what the rate is for.
+      cell: (row) =>
+        row.payType === 'piece' || row.baseRate === null ? (
+          <MoneyText value={null} />
+        ) : (
+          <span className="whitespace-nowrap">
+            <MoneyText value={row.baseRate} /> <span className="text-muted-foreground">/ {t(`employees.ratePer.${row.payType}`)}</span>
+          </span>
+        ),
       align: 'right',
     },
     { key: 'hireDate', header: t('employees.fields.hireDate'), cell: (row) => formatDate(row.hireDate), sortable: true, mobile: 'hidden' },
@@ -225,6 +232,8 @@ interface WorkRow {
   headTreated: number;
   headDays: number;
   operations: number;
+  treatments: number;
+  dailyLogs: number;
 }
 
 function WorkDoneTab() {
@@ -240,13 +249,17 @@ function WorkDoneTab() {
     { key: 'tons', header: t('workDone.fields.tons'), cell: (row) => (row.tons ? formatQty(row.tons, t('units.t')) : '—'), align: 'right' },
     { key: 'headTreated', header: t('workDone.fields.headTreated'), cell: (row) => num(row.headTreated), align: 'right' },
     { key: 'headDays', header: t('workDone.fields.headDays'), cell: (row) => num(row.headDays), align: 'right' },
+    // Irrigation or a field check has no area, so without a count such work would read as nothing done.
+    { key: 'operations', header: t('workDone.fields.operations'), cell: (row) => num(row.operations), align: 'right' },
+    { key: 'records', header: t('workDone.fields.records'), cell: (row) => num(row.treatments + row.dailyLogs), align: 'right' },
   ];
 
   return (
     <div className="flex flex-col gap-3">
+      {/* The month on the left, as on the advances tab. */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">{t('workDone.description')}</p>
         <MonthSwitcher value={month} onChange={setMonth} />
+        <p className="text-sm text-muted-foreground sm:text-right">{t('workDone.description')}</p>
       </div>
       <DataTableView<WorkRow>
         rows={work.data ?? []}

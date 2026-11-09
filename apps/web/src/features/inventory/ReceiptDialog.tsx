@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { Button, ComboboxField, DateField, FormDialog, FormGrid, NumberField, SelectField, Separator, SwitchField, TextField, TextareaField, apiOptions } from '@/components';
-import { useLocalName } from '@/features/finance/lib';
+import { accountLabel, useLocalName } from '@/features/finance/lib';
 import type { CategoryOption } from '@/features/finance/types';
 import { ApiError, api } from '@/lib/api';
 import { usePermission, useSession } from '@/lib/auth';
@@ -195,7 +195,7 @@ function Fields({
                   name="accountId"
                   label={t('receipt.account')}
                   required
-                  loadOptions={apiOptions<{ id: string; name: string }>('/finance/accounts/lookup', (a) => ({ value: a.id, label: a.name }))}
+                  loadOptions={apiOptions<{ id: string; name: string | null }>('/finance/accounts/lookup', (a) => ({ value: a.id, label: accountLabel(a) }))}
                 />
               )}
             </FormGrid>

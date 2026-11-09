@@ -39,11 +39,21 @@ function lookup(dictionary: unknown, path: string): string | null {
 
 export type TextParams = Record<string, string | number>;
 
+/**
+ * A value as the text prints it. A fraction takes the reader's decimal sign: 25,8 in Uzbek and Russian,
+ * 25.8 in English, the rule notifications/i18n.ts follows for alert texts.
+ */
+function paramText(language: LanguageCode, value: string | number): string {
+  return typeof value === 'number' && !Number.isInteger(value) && language !== 'en'
+    ? String(value).replace('.', ',')
+    : String(value);
+}
+
 /** Text from the `ai` namespace. A missing key returns the key, which tests catch. */
 export function aiText(language: LanguageCode, key: string, params: TextParams = {}): string {
   const template = lookup(resources[language].ai, key) ?? lookup(resources.uz.ai, key) ?? key;
   return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (match, name: string) =>
-    name in params ? String(params[name]) : match,
+    name in params ? paramText(language, params[name]) : match,
   );
 }
 

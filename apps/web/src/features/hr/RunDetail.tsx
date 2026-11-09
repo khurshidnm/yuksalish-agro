@@ -10,6 +10,8 @@ import { usePermission, useSession } from '@/lib/auth';
 import { currencyLabel, formatDateTime, formatMoney, formatMonth, formatNumber } from '@/lib/format';
 import { zDate, zNonNegative, zRef, zText } from '@/lib/forms';
 import { useApiMutation, useDetail } from '@/lib/query';
+import { accountLabel } from '@/features/finance/lib';
+import { monthParams } from './shared';
 
 export interface KpiResult {
   name: string;
@@ -22,6 +24,9 @@ export interface KpiResult {
 interface Basis {
   presentDays?: number;
   paidDays?: number;
+  /** Runs worked out before these were stored have only paidDays. */
+  sickDays?: number;
+  vacationDays?: number;
   expectedDays?: number;
   employedDays?: number;
   daysInMonth?: number;
@@ -91,9 +96,27 @@ const paySchema = z.object({ accountId: zRef(), date: zDate() });
 function BasisFacts({ line }: { line: PayrollLine }) {
   const { t } = useTranslation('hr');
   const { basis } = line;
-  const facts: string[] = [
-    t('payroll.basis.days', { present: basis.presentDays ?? line.daysWorked, expected: basis.expectedDays ?? 0 }),
-  ];
+  const present = basis.presentDays ?? line.daysWorked;
+  const facts: string[] = [t('payroll.basis.days', { present, expected: basis.expectedDays ?? 0 })];
+  // A monthly wage also pays sick and leave days, and covers only the part of the month on staff.
+  if (line.payType === 'monthly') {
+    const leave = (basis.paidDays ?? present) - present;
+    if (leave > 0) {
+      const detail =
+        basis.sickDays === undefined || basis.vacationDays === undefined
+          ? t('payroll.basis.leave', { days: leave })
+          : [
+              basis.sickDays ? t('payroll.basis.sick', { days: basis.sickDays }) : null,
+              basis.vacationDays ? t('payroll.basis.vacation', { days: basis.vacationDays }) : null,
+            ]
+              .filter(Boolean)
+              .join(', ');
+      facts.push(t('payroll.basis.paid', { paid: basis.paidDays, detail }));
+    }
+    if (basis.employedDays !== undefined && basis.daysInMonth !== undefined && basis.employedDays < basis.daysInMonth) {
+      facts.push(t('payroll.basis.employed', { employed: basis.employedDays, days: basis.daysInMonth }));
+    }
+  }
   if (basis.work?.hectares) facts.push(t('payroll.basis.hectares', { value: formatNumber(basis.work.hectares) }));
   if (basis.work?.tons) facts.push(t('payroll.basis.tons', { value: formatNumber(basis.work.tons) }));
   if (basis.work?.headTreated) facts.push(t('payroll.basis.head', { value: formatNumber(basis.work.headTreated, 0) }));
@@ -165,7 +188,7 @@ function LineDialog({ run, line, editable, onClose }: { run: PayrollRun; line: P
         <DialogContent size="sm">
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
-            <DialogDescription>{t('payroll.slipFor', { month: formatMonth(run.month) })}</DialogDescription>
+            <DialogDescription>{t('payroll.slipFor', monthParams(run.month))}</DialogDescription>
           </DialogHeader>
           <DialogBody className="flex flex-col gap-3">
             {line && (
@@ -190,7 +213,7 @@ function LineDialog({ run, line, editable, onClose }: { run: PayrollRun; line: P
       open={line !== null}
       onOpenChange={(open) => !open && onClose()}
       title={title}
-      description={t('payroll.slipFor', { month: formatMonth(run.month) })}
+      description={t('payroll.slipFor', monthParams(run.month))}
       schema={lineSchema}
       defaultValues={{
         base: line?.base ?? 0,
@@ -268,7 +291,7 @@ export function RunDetail({ runId, onBack }: { runId: string; onBack: () => void
   const [returning, setReturning] = useState(false);
   const [paying, setPaying] = useState(false);
 
-  const accounts = useDetail<{ id: string; name: string }[]>(paying ? '/finance/accounts/lookup' : null);
+  const accounts = useDetail<{ id: string; name: string | null }[]>(paying ? '/finance/accounts/lookup' : null);
 
   const action = (path: string, successMessage: string) => ({
     mutationFn: () => api.post<PayrollRun>(`${url}/${path}`),
@@ -365,7 +388,7 @@ export function RunDetail({ runId, onBack }: { runId: string; onBack: () => void
               loading={approve.isPending}
               onClick={async () => {
                 const ok = await confirm({
-                  title: t('payroll.approveTitle', { month: formatMonth(run.month) }),
+                  title: t('payroll.approveTitle', monthParams(run.month)),
                   description: t('payroll.approveBody', { amount: formatMoney(run.totalGross) }),
                   confirmLabel: t('payroll.approve'),
                 });
@@ -394,7 +417,7 @@ export function RunDetail({ runId, onBack }: { runId: string; onBack: () => void
               className="text-destructive"
               loading={remove.isPending}
               onClick={async () => {
-                const ok = await confirm({ title: t('payroll.deleteTitle', { month: formatMonth(run.month) }), destructive: true });
+                const ok = await confirm({ title: t('payroll.deleteTitle', monthParams(run.month)), destructive: true });
                 if (ok) remove.mutate();
               }}
             >
@@ -446,7 +469,7 @@ export function RunDetail({ runId, onBack }: { runId: string; onBack: () => void
       <FormDialog
         open={paying}
         onOpenChange={setPaying}
-        title={t('payroll.payTitle', { month: formatMonth(run.month) })}
+        title={t('payroll.payTitle', monthParams(run.month))}
         description={t('payroll.payBody', { amount: formatMoney(toPay) })}
         schema={paySchema}
         defaultValues={{ accountId: '', date: todayIso() }}
@@ -462,7 +485,7 @@ export function RunDetail({ runId, onBack }: { runId: string; onBack: () => void
               name="accountId"
               label={t('payroll.account')}
               required
-              options={(accounts.data ?? []).map((a) => ({ value: a.id, label: a.name }))}
+              options={(accounts.data ?? []).map((a) => ({ value: a.id, label: accountLabel(a) }))}
             />
             <DateField form={form} name="date" label={t('payroll.payDate')} required />
           </>

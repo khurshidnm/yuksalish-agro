@@ -13,7 +13,7 @@ import { zOptionalText, zRef, zText } from '@/lib/forms';
 import { useApiMutation, useDetail } from '@/lib/query';
 import { LANGUAGES } from '@yap/shared/i18n';
 import { ROLES, type Role, RolesTab } from './RolesTab';
-import { ShowOnceDialog, useRoleLabel } from './shared';
+import { ShowOnceDialog, formatPhone, useRoleLabel } from './shared';
 
 const USERS = '/settings/users';
 const INVITATIONS = '/settings/invitations';
@@ -83,7 +83,7 @@ function PendingInvitations() {
               <div className="min-w-0">
                 <p className="font-medium break-words">{row.fullName}</p>
                 <p className="text-sm text-muted-foreground">
-                  {row.phone ?? '—'} · {roleLabel({ key: row.roleKey, name: row.roleName })} · {t('users.invitationUntil', { date: formatDate(row.expiresAt) })}
+                  {formatPhone(row.phone)} · {roleLabel({ key: row.roleKey, name: row.roleName })} · {t('users.invitationUntil', { date: formatDate(row.expiresAt) })}
                 </p>
               </div>
               {can('users.update') && (
@@ -163,7 +163,7 @@ function PeopleTab() {
       cell: (row) => <Badge>{roleLabel({ key: row.roleKey, name: row.roleName })}</Badge>,
       mobile: 'subtitle',
     },
-    { key: 'phone', header: t('users.phone'), cell: (row) => row.phone ?? '—' },
+    { key: 'phone', header: t('users.phone'), cell: (row) => <span className="whitespace-nowrap">{formatPhone(row.phone)}</span> },
     {
       key: 'status',
       header: t('users.status'),

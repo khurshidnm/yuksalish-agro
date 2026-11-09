@@ -80,11 +80,15 @@ export async function settlement(counterpartyId: string) {
   const approved = postings.filter((p) => p.status === 'approved');
   const balance = round(approved.reduce((sum, p) => sum + balanceEffect(p), 0), 2);
 
+  const sum = (pick: (p: (typeof approved)[number]) => boolean) => round(approved.filter(pick).reduce((s, p) => s + p.amountBase, 0), 2);
+  // Paid and received are all the money that moved, on the spot or later against the debt, so
+  // sold − received and bought − paid are what is still owed.
+  const paidAtOnce = (p: Movement) => p.paymentMethod !== 'debt' && p.paymentMethod !== 'non_cash';
   const totals = {
-    sold: round(approved.filter((p) => p.type === 'income').reduce((s, p) => s + p.amountBase, 0), 2),
-    bought: round(approved.filter((p) => p.type === 'expense').reduce((s, p) => s + p.amountBase, 0), 2),
-    received: round(approved.filter((p) => p.type === 'debt_receipt').reduce((s, p) => s + p.amountBase, 0), 2),
-    paid: round(approved.filter((p) => p.type === 'debt_payment').reduce((s, p) => s + p.amountBase, 0), 2),
+    sold: sum((p) => p.type === 'income'),
+    bought: sum((p) => p.type === 'expense'),
+    received: sum((p) => p.type === 'debt_receipt' || (p.type === 'income' && paidAtOnce(p))),
+    paid: sum((p) => p.type === 'debt_payment' || (p.type === 'expense' && paidAtOnce(p))),
     balance,
     receivable: balance > 0 ? balance : 0,
     payable: balance < 0 ? -balance : 0,

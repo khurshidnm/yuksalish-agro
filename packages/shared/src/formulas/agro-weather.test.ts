@@ -6,18 +6,23 @@ import {
   SPRAY_LIMITS,
   assessSprayHour,
   dayOfYear,
+  daylightHours,
   deltaT,
   et0PenmanMonteith,
   extraterrestrialRadiation,
   frostSeverity,
   hargreavesRadiation,
+  inSprayDaylight,
   saturationVapourPressure,
   sheepHeatStress,
   sheepThi,
+  sprayIssuesInDaylight,
   sprayWindows,
+  sunTimes,
   wetBulbStull,
   windSpeedAt2m,
   type Et0DayInput,
+  type GeoSite,
   type SprayHour,
 } from './agro-weather';
 
@@ -53,6 +58,36 @@ describe('FAO-56 building blocks', () => {
     expect(hargreavesRadiation(14.8, 26.6, ra)).toBeCloseTo(22.3, 1);
     // Coastal coefficient: 0.19 / 0.16 of the interior estimate.
     expect(hargreavesRadiation(14.8, 26.6, ra, 0.19)).toBeCloseTo((hargreavesRadiation(14.8, 26.6, ra) * 0.19) / 0.16, 10);
+  });
+});
+
+describe('daylight (FAO-56)', () => {
+  /** The pilot farm near Qorovulbozor. */
+  const farm: GeoSite = { latitudeDeg: 39.74344, longitudeDeg: 64.7942 };
+  const near = (iso: string, expected: string) => Math.abs(Date.parse(iso) - Date.parse(expected));
+
+  it('daylightHours: 20°S on 3 September is 11.7 hours (FAO-56 Example 9), 0 or 24 at the poles', () => {
+    expect(daylightHours(-20, dayOfYear('2026-09-03'))).toBeCloseTo(11.67, 2);
+    expect(daylightHours(75, dayOfYear('2026-12-21'))).toBe(0);
+    expect(daylightHours(75, dayOfYear('2026-06-21'))).toBe(24);
+  });
+
+  it('sunTimes: solar noon moves with the equation of time (FAO-56 eqs. 31-33)', () => {
+    // Greenwich, 3 November: the sun runs 16.4 minutes ahead of the clock, so noon is at 11:43:36 UTC.
+    const { sunrise, sunset } = sunTimes('2026-11-03', { latitudeDeg: 51.4769, longitudeDeg: 0 });
+    const noon = new Date((Date.parse(sunrise) + Date.parse(sunset)) / 2).toISOString();
+    expect(near(noon, '2026-11-03T11:43:36Z')).toBeLessThan(60_000);
+  });
+
+  it('sunTimes at the pilot farm, hand-computed: 07:29 to 17:22 on 11 November, 05:18 to 20:07 on 21 June', () => {
+    // 11 November: J 315, N 9.882 h, Sc 15.5 min, noon 12 − 64.7942/15 − 0.258 h UTC = 12:25:20 Tashkent time.
+    const november = sunTimes('2026-11-11', farm);
+    expect(near(november.sunrise, '2026-11-11T07:28:53+05:00')).toBeLessThan(60_000);
+    expect(near(november.sunset, '2026-11-11T17:21:47+05:00')).toBeLessThan(60_000);
+    // 21 June: J 172, N 14.817 h, noon 12:42:19.
+    const june = sunTimes('2026-06-21', farm);
+    expect(near(june.sunrise, '2026-06-21T05:17:49+05:00')).toBeLessThan(60_000);
+    expect(near(june.sunset, '2026-06-21T20:06:49+05:00')).toBeLessThan(60_000);
   });
 });
 
@@ -181,6 +216,15 @@ describe('spraying', () => {
     ]);
   });
 
+  it('assessSprayHour: below 8 °C is too cold', () => {
+    const good = { tempC: 20, rhPct: 60, windMs: 2, precipMm: 0 };
+    expect(SPRAY_LIMITS.minTempC).toBe(8);
+    expect(assessSprayHour({ ...good, tempC: 7.9 })).toEqual({ suitable: false, issues: ['cold'] });
+    expect(assessSprayHour({ ...good, tempC: 8 })).toEqual({ suitable: true, issues: [] });
+    // The audit's November dawn: 3.5 °C with calm air.
+    expect(assessSprayHour({ ...good, tempC: 3.5, windMs: 0.5 })).toEqual({ suitable: false, issues: ['wind_calm', 'cold'] });
+  });
+
   it('assessSprayHour: a missing reading leaves the verdict unknown', () => {
     const good = { tempC: 20, rhPct: 60, windMs: 2, precipMm: 0 };
     expect(assessSprayHour({ ...good, windMs: null })).toEqual({ suitable: null, issues: [] });
@@ -280,5 +324,67 @@ describe('daytime spraying windows', () => {
     const evening = { start: at('2026-11-07T19:00:00'), end: at('2026-11-08T06:00:00'), hours: 11 };
     expect(daytimeWindows([evening], tz)).toEqual([]);
     expect(daytimeWindows([evening], tz, { fromHour: 5, toHour: 20, minHours: 1 })).toHaveLength(2);
+  });
+});
+
+describe('spraying by daylight', () => {
+  const farm: GeoSite = { latitudeDeg: 39.74344, longitudeDeg: 64.7942 };
+  const local = (day: string, h: number) => `${day}T${String(h).padStart(2, '0')}:00:00+05:00`;
+  const utc = (day: string, h: number) => new Date(local(day, h)).toISOString();
+  /** Every hour of a day in Tashkent time: good spraying weather unless `over` says otherwise. */
+  const allDay = (day: string, over: (h: number) => Partial<SprayHour> = () => ({})): SprayHour[] =>
+    Array.from({ length: 24 }, (_, h) => ({ time: local(day, h), tempC: 15, rhPct: 60, windMs: 2, precipMm: 0, ...over(h) }));
+
+  it('an hour counts from an hour after sunrise to an hour before sunset', () => {
+    // 11 November: sunrise 07:29, sunset 17:22.
+    expect(inSprayDaylight(local('2026-11-11', 8), farm)).toBe(false);
+    expect(inSprayDaylight(local('2026-11-11', 9), farm)).toBe(true);
+    expect(inSprayDaylight(local('2026-11-11', 15), farm)).toBe(true);
+    expect(inSprayDaylight(local('2026-11-11', 16), farm)).toBe(false);
+    // No offset: the zone would be a guess.
+    expect(inSprayDaylight('2026-11-11T12:00:00', farm)).toBe(false);
+  });
+
+  it('a mild November day gives 09:00 to 16:00, one window each day', () => {
+    const hours = [...allDay('2026-11-11'), ...allDay('2026-11-12')];
+    expect(sprayWindows(hours, { site: farm })).toEqual([
+      { start: utc('2026-11-11', 9), end: utc('2026-11-11', 16), hours: 7 },
+      { start: utc('2026-11-12', 9), end: utc('2026-11-12', 16), hours: 7 },
+    ]);
+  });
+
+  it("the audit's November morning: cold until 11:00, dark after 16:00", () => {
+    // Hourly forecast for 11 November 2026: 3.5 to 5.2 °C from 05:00 to 09:00.
+    const temps: Record<number, number> = { 5: 4.5, 6: 4.1, 7: 3.5, 8: 3.8, 9: 5.2, 10: 7.4, 11: 9.6, 12: 11.8, 13: 13, 14: 13.4, 15: 12.6, 16: 10.8, 17: 8, 18: 6.5 };
+    const hours = allDay('2026-11-11', (h) => ({ tempC: temps[h] ?? 3 }));
+    expect(sprayWindows(hours, { site: farm })).toEqual([{ start: utc('2026-11-11', 11), end: utc('2026-11-11', 16), hours: 5 }]);
+    // Without the farm's place only the cold is known, and the dusk hours stay in.
+    expect(sprayWindows(hours)).toEqual([{ start: utc('2026-11-11', 11), end: utc('2026-11-11', 18), hours: 7 }]);
+    expect(sprayIssuesInDaylight(hours, farm)).toEqual(['cold']);
+  });
+
+  it('a June day: from 07:00, with the heat of the day left out, until 19:00', () => {
+    // Sunrise 05:18, sunset 20:07; 33 °C from 11:00 to 16:00.
+    const hours = allDay('2026-06-21', (h) => ({ tempC: h >= 11 && h <= 16 ? 33 : 22 }));
+    expect(sprayWindows(hours, { site: farm })).toEqual([
+      { start: utc('2026-06-21', 7), end: utc('2026-06-21', 11), hours: 4 },
+      { start: utc('2026-06-21', 17), end: utc('2026-06-21', 19), hours: 2 },
+    ]);
+  });
+
+  it('polar night has no spraying hours', () => {
+    const north: GeoSite = { latitudeDeg: 75, longitudeDeg: 25 };
+    const hours = Array.from({ length: 24 }, (_, h) => ({ time: `2026-12-21T${String(h).padStart(2, '0')}:00:00Z`, tempC: 10, rhPct: 60, windMs: 2, precipMm: 0 }));
+    expect(sprayWindows(hours, { site: north, minHours: 1 })).toEqual([]);
+  });
+
+  it('sprayIssuesInDaylight names what spoils the daylight hours, and not the night', () => {
+    // A gale at 02:00 is outside the spraying day.
+    expect(sprayIssuesInDaylight(allDay('2026-11-11', (h) => (h === 2 ? { windMs: 9 } : {})), farm)).toEqual([]);
+    // Cold at 09:00, wind at noon, and rain at 17:00, which 15:00 looks ahead to.
+    const spoilt = allDay('2026-11-11', (h) => (h === 9 ? { tempC: 6 } : h === 12 ? { windMs: 9 } : h === 17 ? { precipMm: 2 } : {}));
+    expect(sprayIssuesInDaylight(spoilt, farm)).toEqual(['wind_strong', 'rain', 'cold']);
+    // A missing reading is not a reason.
+    expect(sprayIssuesInDaylight(allDay('2026-11-11', () => ({ tempC: null, windMs: null })), farm)).toEqual([]);
   });
 });

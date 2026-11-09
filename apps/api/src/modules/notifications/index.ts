@@ -1,6 +1,8 @@
 import type { FastifyInstance } from 'fastify';
+import { z } from 'zod';
 import { routes } from '../../core/http';
 import { idParam } from '../../core/query';
+import { runAction } from './actions.service';
 import * as service from './notifications.service';
 
 export default async function notificationsModule(app: FastifyInstance) {
@@ -11,6 +13,18 @@ export default async function notificationsModule(app: FastifyInstance) {
     summary: "The signed-in user's notifications, newest first",
     query: service.notificationListQuery,
     handler: (req) => service.list(req.query),
+  });
+
+  r.post('/actions', {
+    access: 'authenticated',
+    summary: 'Take the decision a notification offers, e.g. that cash handed over arrived. The owner decides again',
+    body: z.object({
+      kind: z.string().max(40),
+      id: z.uuid(),
+      button: z.string().max(40),
+      reason: z.string().trim().max(500).optional(),
+    }),
+    handler: (req) => runAction({ kind: req.body.kind, id: req.body.id }, req.body.button, { reason: req.body.reason }),
   });
 
   r.get('/unread-count', {

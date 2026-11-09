@@ -105,7 +105,7 @@
     }
   },
   "passport": {
-    "tab": "Joylashuv va salomatlik",
+    "tab": "Treker (GPS, harorat)",
     "noTracker": "Bu hayvonda treker yo'q",
     "noTrackerHint": "Bo'yinbog' yoki bolyus taqing, shu yerda joylashuv, faollik va harorat ko'rinadi.",
     "toTrackers": "Trekerlar",

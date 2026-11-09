@@ -324,10 +324,12 @@ describe('reports on the control scenario', () => {
 
   it('income and expense match the hand count and leave out what is pending', async () => {
     const data = await run('finance.income_expense', PERIOD);
-    expect(data.totals).toEqual({ income: 10_000_000, expense: 15_000_000 });
+    // Running cost 2 000 000 + 1 000 000 + 8 000 000. The 4 000 000 of feed bought for stock is a
+    // purchase the farm keeps, not a loss (rule 3), so it has its own column.
+    expect(data.totals).toEqual({ income: 10_000_000, expense: 11_000_000, purchaseCost: 4_000_000 });
     const summary = await w.f.run(() => incomeExpenseByCategory(FROM, TO));
     expect(data.totals.income).toBe(summary.income);
-    expect(data.totals.expense).toBe(summary.expense);
+    expect(data.totals.expense + data.totals.purchaseCost).toBe(summary.expense);
     expect(JSON.stringify(data.rows)).not.toContain('9000000');
   });
 
@@ -379,7 +381,7 @@ describe('reports on the control scenario', () => {
 
   it('feed days remaining uses the ration when there is no recent use', async () => {
     const data = await run('feed.days_remaining', { lang: 'en' });
-    expect(data.rows[0]).toMatchObject({ item: 'Beda', stockQty: 1500, plannedDaily: 4.5, days: 333.3, basis: 'Ration plan' });
+    expect(data.rows[0]).toMatchObject({ item: 'Beda', stockQty: 1500, plannedDaily: 4.5, days: 333, basis: 'Ration plan' });
   });
 
   it('feed use compares plan with actual', async () => {

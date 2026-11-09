@@ -43,8 +43,23 @@ describe('format, in Russian (stable separators across ICU versions)', () => {
   it('formats quantities with the unit label', async () => {
     await i18n.changeLanguage('ru');
     expect(plain(formatQty(1200, 'kg'))).toBe('1 200 кг');
-    expect(formatQty(1.2345, 't')).toBe('1,235 т');
+    expect(plain(formatQty(1.2345, 't'))).toBe('1,235 т');
     expect(formatQty(5)).toBe('5');
+  });
+
+  it('keeps a number on the same line as its unit or currency', async () => {
+    for (const lang of ['uz', 'uz-Cyrl', 'ru', 'en']) {
+      await i18n.changeLanguage(lang);
+      // A no-break space joins them, so a narrow cell never shows "56,3 mln" over "so'm".
+      expect(formatMoney(56_300_000, { compact: true })).toMatch(/^[^ ]+$/);
+      expect(formatMoney(645_800)).toMatch(/^[^ ]+$/);
+      expect(formatQty(210, 'kg')).toMatch(/^[^ ]+$/);
+      expect(formatQty(700, 'dose')).toMatch(/^[^ ]+$/);
+      expect(formatCompact(15_400_000)).toMatch(/^[^ ]+$/);
+    }
+    await i18n.changeLanguage('ru');
+    expect(formatQty(210, 'kg')).toBe('210\u00a0кг');
+    expect(formatMoney(15_400_000, { compact: true })).toBe('15,4\u00a0млн\u00a0сум');
   });
 
   it('treats percentages as already scaled', async () => {
@@ -81,12 +96,12 @@ describe('format, in Uzbek (browsers ship almost no `uz` data, so nothing may re
 
   it('writes compact numbers in Uzbek, never "2.1G"', async () => {
     await i18n.changeLanguage('uz');
-    expect(formatCompact(2_100_000_000)).toBe('2,1 mlrd');
-    expect(formatCompact(185_000_000)).toBe('185 mln');
-    expect(formatCompact(12_900)).toBe('12,9 ming');
+    expect(plain(formatCompact(2_100_000_000))).toBe('2,1 mlrd');
+    expect(plain(formatCompact(185_000_000))).toBe('185 mln');
+    expect(plain(formatCompact(12_900))).toBe('12,9 ming');
     expect(formatCompact(950)).toBe('950');
-    expect(formatCompact(-2_500_000)).toBe('-2,5 mln');
-    expect(formatMoney(2_100_000_000, { compact: true })).toBe("2,1 mlrd so'm");
+    expect(plain(formatCompact(-2_500_000))).toBe('-2,5 mln');
+    expect(plain(formatMoney(2_100_000_000, { compact: true }))).toBe("2,1 mlrd so'm");
   });
 
   it('names months from the dictionary, never "M11"', async () => {
@@ -102,7 +117,7 @@ describe('format, in Uzbek (browsers ship almost no `uz` data, so nothing may re
   it('derives the same in Cyrillic', async () => {
     await i18n.changeLanguage('uz-Cyrl');
     expect(formatMonth('2026-11')).toBe('Ноябрь 2026');
-    expect(formatCompact(2_100_000_000)).toBe('2,1 млрд');
+    expect(plain(formatCompact(2_100_000_000))).toBe('2,1 млрд');
     expect(plain(formatMoney(1500))).toBe('1 500 сўм');
   });
 

@@ -148,21 +148,26 @@ function FilterField({
           />
         </div>
       );
-    case 'lookup':
+    case 'lookup': {
+      // Left empty, a season filter is not "all": the report reads one season and names it.
+      const filled = value ? undefined : result?.defaults?.[filter.key];
       return (
         <div className={FIELD}>
           <Label htmlFor={id}>{filter.label}</Label>
           <Combobox
             id={id}
-            value={value || null}
-            selectedLabel={params.get(`${filter.key}Label`)}
-            placeholder={t('viewer.all')}
+            value={value || filled?.value || null}
+            selectedLabel={value ? params.get(`${filter.key}Label`) : (filled?.label ?? null)}
+            placeholder={filter.emptyLabel ?? t('viewer.all')}
+            // The default season is not a choice to clear.
+            clearable={Boolean(value)}
             loadOptions={lookupOptions(filter.path, filter.params)}
             // The label travels with the value so that export headers can name the choice.
             onChange={(next, option) => setParams({ [filter.key]: next, [`${filter.key}Label`]: option?.label ?? null })}
           />
         </div>
       );
+    }
   }
 }
 

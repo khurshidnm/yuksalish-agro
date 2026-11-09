@@ -9,15 +9,16 @@ import { Badge, Button, Separator, apiOptions } from '@/components/ui';
 import { itemOptions, warehouseOptions } from '@/features/crops/options';
 import { api } from '@/lib/api';
 import { usePermission } from '@/lib/auth';
-import { formatDate, formatNumber } from '@/lib/format';
+import { currencyLabel, formatDate, formatNumber } from '@/lib/format';
 import { zDate, zEnum, zOptionalDate, zOptionalEnum, zOptionalNumber, zOptionalRef, zOptionalText, zPositive, zRef } from '@/lib/forms';
 import { enumOptions } from '@/lib/i18n';
 import { useApiMutation } from '@/lib/query';
 import type { Maintenance } from './types';
+import { accountLabel } from '@/features/finance/lib';
 
 const PAYMENT_METHODS = ['cash', 'bank', 'card', 'debt'] as const;
 
-const accountOptions = apiOptions<{ id: string; name: string }>('/finance/accounts/lookup', (a) => ({ value: a.id, label: a.name }));
+const accountOptions = apiOptions<{ id: string; name: string | null }>('/finance/accounts/lookup', (a) => ({ value: a.id, label: accountLabel(a) }));
 const counterpartyOptions = apiOptions<{ id: string; name: string }>('/finance/counterparties/lookup', (c) => ({ value: c.id, label: c.name }));
 
 const schema = z.object({
@@ -202,7 +203,7 @@ export function AssetMaintenanceTab({ assetId }: { assetId: string }) {
               <DateField form={form} name="nextDueDate" label={t('maintenance.nextDate')} />
               <NumberField form={form} name="nextDueMotoHours" label={t('maintenance.nextHours')} suffix={t('unit.hours')} />
               <NumberField form={form} name="downtimeHours" label={t('maintenance.downtime')} suffix={t('unit.hours')} />
-              {seesMoney && <NumberField money form={form} name="cost" label={t('maintenance.cost')} />}
+              {seesMoney && <NumberField money form={form} name="cost" label={t('maintenance.cost')} suffix={currencyLabel()} />}
             </FormGrid>
             <Separator />
             <PartsEditor form={form} />

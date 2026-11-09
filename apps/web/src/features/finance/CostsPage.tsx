@@ -1,12 +1,15 @@
 import { todayIso } from '@yap/shared';
-import { Beef, Coins, Scale, Sprout, TrendingUp } from 'lucide-react';
+import { Beef, Coins, Scale, Sprout } from 'lucide-react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
 import { type Column, DataTableView, ErrorCard, MoneyText, PageHeader, StatCard, UrlTabs, useUrlParam } from '@/components';
 import { ChartCard } from '@/components/ChartCard';
 import { Alert, Badge, Card, CardContent, CardHeader, CardTitle, DateInput, Label, Meter, Select, Skeleton } from '@/components/ui';
+import { usePermission } from '@/lib/auth';
 import { formatMoney, formatNumber, formatPercent } from '@/lib/format';
 import { useDetail } from '@/lib/query';
+import { CashFlowStat } from './CashFlowStat';
 import { FINANCE_PATHS, budgetYear, useCenterName, useLocalName } from './lib';
 import type { CategoryAmount, CategoryReport, CostCenterCost, FieldCost, HerdCost } from './types';
 
@@ -140,8 +143,9 @@ function FieldsTab() {
       header: t('budget.views.diff'),
       align: 'right',
       mobile: 'hidden',
+      // With no cost recorded there is nothing to compare: the plan is not a saving.
       cell: (row) =>
-        row.deviation === null ? '—' : (
+        row.deviation === null || row.actual === 0 ? '—' : (
           <span className={row.deviation > 0 ? 'text-danger' : 'text-success'}>
             {row.deviation > 0 ? '+' : ''}
             {formatMoney(row.deviation)}
@@ -150,8 +154,16 @@ function FieldsTab() {
     },
     { key: 'harvest', header: t('costs.harvest'), align: 'right', cell: (row) => (row.harvestT > 0 ? t('costs.tons', { value: formatNumber(row.harvestT) }) : '—') },
     { key: 'yield', header: t('costs.yield'), align: 'right', mobile: 'hidden', cell: (row) => formatNumber(row.yieldTHa) },
-    { key: 'perTon', header: t('costs.costPerTon'), align: 'right', cell: (row) => <MoneyText value={row.costPerTon} /> },
-    { key: 'profit', header: t('costs.profitability'), align: 'right', mobile: 'hidden', cell: (row) => <Percent value={row.profitabilityPercent} /> },
+    { key: 'perTon', header: t('costs.costPerTon'), align: 'right', cell: (row) => <MoneyText value={row.actual > 0 ? row.costPerTon : null} /> },
+    {
+      key: 'profit',
+      header: t('costs.profitability'),
+      align: 'right',
+      mobile: 'hidden',
+      // Before this plan's harvest is in and sold or used there is no return to measure: a sale in its
+      // window is an older crop, and nothing sold yet is not a loss of 100 %.
+      cell: (row) => <Percent value={row.harvestT > 0 && row.income + row.internalRevenue > 0 ? row.profitabilityPercent : null} />,
+    },
   ];
 
   if (fields.error) return <ErrorCard error={fields.error} onRetry={() => void fields.refetch()} />;
@@ -204,6 +216,7 @@ function FieldsTab() {
 
 function CentersTab() {
   const { t } = useTranslation('finance');
+  const canSeeReports = usePermission('reports.view');
   const centerName = useCenterName();
   const period = usePeriod();
   const centers = useDetail<CostCenterCost[]>(`${PATH}/centers`, { from: period.from, to: period.to });
@@ -212,17 +225,22 @@ function CentersTab() {
   // The asset and general rows are negative where they hand cost on, so the chart shows who carries it.
   const carriers = rows.filter((row) => row.type === 'herd' || row.type === 'field');
 
+  // Only herds and fields earn. A machine, an animal or the farm-wide center passes its cost on, and a
+  // herd or field with nothing sold yet has no return to show: -100 % would read as a loss.
+  const earns = (row: CostCenterCost) => (row.type === 'herd' || row.type === 'field') && row.income > 0;
+
   const columns: Column<CostCenterCost>[] = [
     { key: 'name', header: t('costs.center'), mobile: 'title', cell: (row) => centerName(row.name, row.type) },
     { key: 'type', header: t('costs.type'), mobile: 'subtitle', cell: (row) => <Badge>{t(`enums:costCenterType.${row.type}`)}</Badge> },
-    { key: 'direct', header: t('costs.direct'), align: 'right', mobile: 'hidden', cell: (row) => formatMoney(row.direct, { compact: true }) },
-    { key: 'materials', header: t('costs.materials'), align: 'right', mobile: 'hidden', cell: (row) => formatMoney(row.materials, { compact: true }) },
-    { key: 'machinery', header: t('costs.machinery'), align: 'right', mobile: 'hidden', cell: (row) => formatMoney(row.machinery, { compact: true }) },
-    { key: 'overhead', header: t('costs.overhead'), align: 'right', mobile: 'hidden', cell: (row) => formatMoney(row.overhead, { compact: true }) },
+    // The parts of the total, kept on one line; the currency is said once, in the total beside them.
+    { key: 'direct', header: t('costs.direct'), align: 'right', mobile: 'hidden', cell: (row) => <MoneyText value={row.direct} compact plain /> },
+    { key: 'materials', header: t('costs.materials'), align: 'right', mobile: 'hidden', cell: (row) => <MoneyText value={row.materials} compact plain /> },
+    { key: 'machinery', header: t('costs.machinery'), align: 'right', mobile: 'hidden', cell: (row) => <MoneyText value={row.machinery} compact plain /> },
+    { key: 'overhead', header: t('costs.overhead'), align: 'right', mobile: 'hidden', cell: (row) => <MoneyText value={row.overhead} compact plain /> },
     { key: 'total', header: t('costs.total'), align: 'right', cell: (row) => <MoneyText value={row.total} compact className="font-medium" /> },
-    { key: 'income', header: t('costs.income'), align: 'right', cell: (row) => formatMoney(row.income, { compact: true }) },
-    { key: 'profit', header: t('costs.profit'), align: 'right', cell: (row) => <MoneyText value={row.profit} signed compact /> },
-    { key: 'percent', header: t('costs.profitability'), align: 'right', cell: (row) => <Percent value={row.profitabilityPercent} /> },
+    { key: 'income', header: t('costs.income'), align: 'right', cell: (row) => <MoneyText value={row.income} compact /> },
+    { key: 'profit', header: t('costs.profit'), align: 'right', cell: (row) => (earns(row) ? <MoneyText value={row.profit} signed compact /> : '—') },
+    { key: 'percent', header: t('costs.profitability'), align: 'right', cell: (row) => <Percent value={earns(row) ? row.profitabilityPercent : null} /> },
   ];
 
   if (centers.error) return <ErrorCard error={centers.error} onRetry={() => void centers.refetch()} />;
@@ -253,7 +271,17 @@ function CentersTab() {
         rowKey={(row) => row.costCenterId}
         empty={{ icon: Coins, title: t('costs.noData'), description: t('costs.noDataBody') }}
       />
-      <Alert tone="info">{t('costs.internalNote')}</Alert>
+      <Alert tone="info">
+        {t('costs.internalNote')}
+        {canSeeReports && (
+          <>
+            {' '}
+            <Link to="/reports/finance.monthly_result" className="font-medium underline underline-offset-2">
+              {t('costs.resultLink')}
+            </Link>
+          </>
+        )}
+      </Alert>
     </div>
   );
 }
@@ -306,8 +334,8 @@ function CategoriesTab() {
       <PeriodFilter period={period} />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <StatCard label={t('journal.totalIncome')} value={formatMoney(data?.income)} loading={report.isLoading} />
-        <StatCard label={t('journal.totalExpense')} value={formatMoney(data?.expense)} loading={report.isLoading} />
-        <StatCard label={t('journal.totalNet')} value={formatMoney(data?.net)} icon={TrendingUp} loading={report.isLoading} />
+        <StatCard label={t('journal.totalExpense')} value={formatMoney(data?.expense)} hint={t('journal.totalsHint')} loading={report.isLoading} />
+        <CashFlowStat from={period.from} to={period.to} />
       </div>
       {report.isLoading || !data ? (
         <Skeleton className="h-64 w-full" />

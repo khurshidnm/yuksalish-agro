@@ -56,7 +56,13 @@ function describeFilter(filter: FilterDef, lang: Lang) {
     case 'select':
       return { ...base, options: filter.values.map((value) => ({ value, label: enumLabel(lang, filter.enumGroup, value) })) };
     case 'lookup':
-      return { ...base, path: filter.path, params: filter.params };
+      // An empty season is not "all": the screen names the season the report falls back to.
+      return {
+        ...base,
+        path: filter.path,
+        params: filter.params,
+        ...(filter.defaultSeason ? { emptyLabel: t(lang, `seasonDefault.${filter.defaultSeason}`) } : {}),
+      };
   }
 }
 
@@ -71,7 +77,7 @@ function describe(def: ReportDefinition, lang: Lang) {
     // Only what this caller may see, so the builder cannot offer a hidden column.
     columns: visibleColumns(def).map((c) => ({
       key: c.key,
-      label: t(lang, `columns.${c.label ?? c.key}`),
+      label: t(lang, `columns.${c.label ?? c.key}`, c.labelParams),
       type: c.type,
       sum: !!c.sum,
     })),

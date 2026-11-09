@@ -14,6 +14,10 @@ const { fieldOperations, harvests, stockMovements } = schema;
  * Plan against fact per field (spec 7.3): area, yield and tons are measured here; every cost
  * figure comes from the finance engine, the single place that computes cost. Without finance.view
  * the cost columns are null.
+ *
+ * A plan with no watering recorded has unknown water use, and one with no cost recorded has an
+ * unknown cost: both are null, never 0 (CLAUDE.md rule 5). Irrigated wheat at 0 m³ and 0 so'm
+ * a ton is a gap in the records, not a result.
  */
 export async function planFact(seasonId?: string) {
   const season = seasonId ?? (await currentSeason())?.id;
@@ -47,13 +51,15 @@ export async function planFact(seasonId?: string) {
 
   const rows = plans.map((plan) => {
     const cost = costByPlan.get(plan.id);
-    const waterM3 = waterByPlan.get(plan.id) ?? 0;
+    const actualCost = cost?.actual || null;
+    const waterM3 = waterByPlan.get(plan.id) || null;
     const harvested = plan.harvestedT > 0;
     const actualYieldTHa = harvested ? yieldPerHectare(plan.harvestedT, plan.areaHa) : null;
     return {
       planId: plan.id,
       fieldId: plan.fieldId,
       fieldNumber: plan.fieldNumber,
+      cropKey: plan.cropKey,
       cropName: plan.cropName,
       status: plan.status,
       areaHa: plan.areaHa,
@@ -66,9 +72,9 @@ export async function planFact(seasonId?: string) {
       waterM3,
       waterM3PerTon: waterPerTon(waterM3, plan.harvestedT),
       plannedCost: money ? plan.plannedCost : null,
-      actualCost: cost?.actual ?? null,
-      costDeviation: cost?.deviation ?? null,
-      costPerTon: cost?.costPerTon ?? null,
+      actualCost,
+      costDeviation: actualCost === null ? null : (cost?.deviation ?? null),
+      costPerTon: actualCost === null ? null : cost?.costPerTon || null,
       // The internal price of what went to the warehouse (spec 7.3).
       harvestValue: money ? (valueByPlan.get(plan.id) ?? null) : null,
     };
@@ -87,7 +93,7 @@ export async function planFact(seasonId?: string) {
       areaHa: round(sum((r) => r.areaHa) ?? 0, 4),
       expectedHarvestT: sum((r) => r.expectedHarvestT),
       harvestedT: sum((r) => r.harvestedT) ?? 0,
-      waterM3: sum((r) => r.waterM3) ?? 0,
+      waterM3: sum((r) => r.waterM3),
       plannedCost: sum((r) => r.plannedCost),
       actualCost: sum((r) => r.actualCost),
     },

@@ -204,7 +204,7 @@
     },
     "spray_window": {
       "title": "Spraying field {{field}}: {{date}} is unsuitable",
-      "body": "Wind, rain or heat will spoil the treatment. Best time: {{bestDate}}, {{bestFrom}}–{{bestTo}}."
+      "body": "Wind, rain, heat or cold will spoil the treatment. Best time: {{bestDate}}, {{bestFrom}}–{{bestTo}}."
     },
     "spray_window_none": {
       "title": "Spraying field {{field}}: {{date}} is unsuitable",
@@ -231,7 +231,7 @@
     "feed": "Lowest feed: {{name}}, {{days}} days left",
     "cash": "Cash and bank: {{amount}} UZS",
     "alerts": "Open alerts: {{count}}, urgent: {{urgent}}",
-    "tasks": "Open tasks: {{count}}"
+    "tasks": "Active tasks (open and in progress): {{count}}"
   },
   "bot": {
     "linked": "Your account is linked. {{status}} shows today's status, {{alerts}} shows open alerts, {{help}} shows everything I can do.",
@@ -336,7 +336,9 @@
     "ALERT_NOT_YOURS": "Only the people responsible, the owner or the director can stop this urgent alert",
     "TELEGRAM_NOT_CONFIGURED": "The Telegram bot is not set up yet. Contact your administrator.",
     "AI_AUDIO_NOT_SUPPORTED": "The current AI provider cannot read voice notes. Please type your message.",
-    "AI_TRANSCRIPTION_FAILED": "The voice note could not be read. Please say it again or type it."
+    "AI_TRANSCRIPTION_FAILED": "The voice note could not be read. Please say it again or type it.",
+    "ACTION_NOT_AVAILABLE": "This has already been decided, or it is not yours to decide.",
+    "REASON_REQUIRED": "Say why in a few words."
   },
   "title": "Alerts",
   "description": "Problems found by rules and AI, in one list, by severity.",
@@ -372,7 +374,10 @@
     "markAll": "Mark all as read",
     "emptyTitle": "No messages",
     "emptyBody": "New messages will appear here.",
-    "unread": "Unread"
+    "unread": "Unread",
+    "reason": "Reason",
+    "answered": "Answered",
+    "answeredAt": "{{state}} · {{at}}"
   },
   "settings": {
     "tab": "Settings",
@@ -389,7 +394,8 @@
       "alert_info": "Information only",
       "task_assigned": "Tasks assigned to me",
       "daily_summary": "Daily summary",
-      "assistant_recap": "Assistant evening recap"
+      "assistant_recap": "Assistant evening recap",
+      "cash_handover": "Cash handed over to me or by me"
     }
   },
   "testAlert": {

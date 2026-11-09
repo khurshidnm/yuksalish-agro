@@ -1,7 +1,25 @@
 import { describe, expect, it } from 'vitest';
-import { OUTLOOK_ASSUMPTIONS, feedCoverage, projectHerd } from './outlook';
+import { OUTLOOK_ASSUMPTIONS, expectedLambs, feedCoverage, lambsForSale, projectHerd } from './outlook';
 
 const months = ['2027-01', '2027-02', '2027-03', '2027-04', '2027-05', '2027-06', '2027-07', '2027-08', '2027-09', '2027-10'];
+
+describe('expectedLambs', () => {
+  it('is 1.1 lambs a ewe unless the farm has its own rate', () => {
+    // 700 × 1.1
+    expect(expectedLambs(700)).toBe(770);
+    // 10 × 1.24, the farm's own record
+    expect(expectedLambs(10, 1.24)).toBe(12);
+    expect(expectedLambs(0)).toBe(0);
+  });
+});
+
+describe('lambsForSale', () => {
+  it('takes away the lambs lost and the fifth kept for the flock', () => {
+    // 700 × 1.1 × 0.92 × 0.8
+    expect(lambsForSale(700)).toBeCloseTo(566.72, 6);
+    expect(lambsForSale(0)).toBe(0);
+  });
+});
 
 describe('projectHerd', () => {
   const rows = projectHerd({ months, head: 700, ewesDue: { '2027-02': 300, '2027-03': 400 }, assumptions: OUTLOOK_ASSUMPTIONS });
@@ -32,6 +50,14 @@ describe('projectHerd', () => {
     expect(at('2027-04').nursing).toBe(700);
     expect(at('2027-05').nursing).toBe(400);
     expect(at('2027-06').nursing).toBe(0);
+  });
+
+  it('the months add up to the lambs expected from all the ewes together', () => {
+    // 5 × 1.1 = 5.5 in each month: rounding each month alone would give 6 + 6 = 12, not 11.
+    const split = projectHerd({ months, head: 10, ewesDue: { '2027-02': 5, '2027-03': 5 }, assumptions: OUTLOOK_ASSUMPTIONS });
+    expect(split.map((row) => row.lambsBorn).slice(1, 3)).toEqual([6, 5]);
+    expect(split.reduce((sum, row) => sum + row.lambsBorn, 0)).toBe(expectedLambs(10));
+    expect(rows.reduce((sum, row) => sum + row.lambsBorn, 0)).toBe(expectedLambs(700));
   });
 
   it('a farm with no pregnancies just stays as it is', () => {

@@ -84,6 +84,7 @@
       "pickAccount": "Kassa yoki bank hisobini tanlang",
       "itemLine": "Mahsulot",
       "animalLine": "Hayvon",
+      "lineNumber": "{{n}}-qator",
       "removeLine": "Qatorni o'chirish",
       "animalSearch": "Birka raqami bo'yicha qidirish",
       "byWeight": "Tirik vazn bo'yicha (kg)",
@@ -94,6 +95,7 @@
   },
   "prices": {
     "add": "Narx qo'shish",
+    "perUnit": "/{{unit}}",
     "edit": "Narxni tahrirlash",
     "deleteTitle": "Bu narx o'chirilsinmi?",
     "currentTitle": "Joriy narxlar",

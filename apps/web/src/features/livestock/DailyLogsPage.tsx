@@ -128,8 +128,8 @@ function LogDetailSheet({ logId, onClose, onEdit }: { logId: string | null; onCl
                     {log.lines.map((line) => (
                       <Tr key={line.itemId}>
                         <Td>{line.itemName}</Td>
-                        <Td className="text-right tabular-nums">{formatQty(line.plannedQty, line.unit)}</Td>
-                        <Td className="text-right tabular-nums">{formatQty(line.actualQty, line.unit)}</Td>
+                        <Td className="text-right whitespace-nowrap tabular-nums">{formatQty(line.plannedQty, line.unit)}</Td>
+                        <Td className="text-right whitespace-nowrap tabular-nums">{formatQty(line.actualQty, line.unit)}</Td>
                         {canSeeMoney && (
                           <Td className="text-right">
                             <MoneyText value={line.totalCost} />
@@ -309,8 +309,15 @@ function JournalTab({ onOpenLog }: { onOpenLog: (id: string) => void }) {
             placeholder={t('dailyLogs.anyCondition')}
             className="md:w-44"
           />
-          <DateInput aria-label={t('filters.from')} value={from} onChange={(e) => setFrom(e.target.value)} className="md:w-44" />
-          <DateInput aria-label={t('filters.to')} value={to} onChange={(e) => setTo(e.target.value)} className="md:w-44" />
+          {/* Two equal date boxes need words: which one is "from" and which "to". */}
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span className="w-20 shrink-0 md:w-auto">{t('filters.from')}</span>
+            <DateInput value={from} onChange={(e) => setFrom(e.target.value)} className="min-w-0 flex-1 md:w-44 md:flex-none" />
+          </label>
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span className="w-20 shrink-0 md:w-auto">{t('filters.to')}</span>
+            <DateInput value={to} onChange={(e) => setTo(e.target.value)} className="min-w-0 flex-1 md:w-44 md:flex-none" />
+          </label>
         </>
       }
       empty={{ icon: ClipboardList, title: t('dailyLogs.emptyTitle'), description: t('dailyLogs.emptyBody') }}
@@ -320,6 +327,9 @@ function JournalTab({ onOpenLog }: { onOpenLog: (id: string) => void }) {
 
 export default function DailyLogsPage() {
   const { t } = useTranslation('livestock');
+  const [date] = useUrlParam('date');
+  // The day tab says "Today" only when it shows today.
+  const dayLabel = !date || date === todayIso() ? t('dailyLogs.tabs.day') : formatDate(date);
   const [editing, setEditing] = useState<Editing | null>(null);
   const [openLog, setOpenLog] = useState<string | null>(null);
 
@@ -329,7 +339,7 @@ export default function DailyLogsPage() {
       <Card className="border-0 bg-transparent p-0 shadow-none">
         <UrlTabs
           tabs={[
-            { value: 'day', label: t('dailyLogs.tabs.day'), content: <DayTab onEdit={setEditing} onOpenLog={setOpenLog} /> },
+            { value: 'day', label: dayLabel, content: <DayTab onEdit={setEditing} onOpenLog={setOpenLog} /> },
             { value: 'journal', label: t('dailyLogs.tabs.journal'), content: <JournalTab onOpenLog={setOpenLog} /> },
           ]}
         />

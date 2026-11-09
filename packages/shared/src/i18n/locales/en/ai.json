@@ -26,11 +26,11 @@
     },
     "lambing_workload": {
       "title": "Lambing workload: {{ewes}} ewes",
-      "body": "About {{lambs}} lambs are expected. The busiest week starts {{peakWeek}} ({{peakEwes}} ewes) and needs {{workers}} workers. The lactation ration needs a further {{extraFeedT}} t of feed."
+      "body": "About {{lambs}} lambs are expected. The busiest week starts on {{peakWeek}} ({{peakEwes}} ewes); workers needed then: {{workers}}. The lactation ration needs a further {{extraFeedT}} t of feed."
     },
     "season_profit": {
       "title": "{{season}}: expected profit {{profit}} so'm",
-      "body": "Expected revenue {{revenue}} so'm, cost {{cost}} so'm. This covers {{covered}}% of the area. {{skipped}} plans have no price, yield or cost data."
+      "body": "Expected revenue {{revenue}} so'm, cost {{cost}} so'm. This covers {{covered}}% of the area. Plans without price, yield or cost data: {{skipped}}."
     },
     "feed_shortage": {
       "title": "{{item}} will not last the winter",
@@ -38,19 +38,32 @@
     },
     "feed_cost_saving": {
       "title": "{{ration}}: a cheaper mix is possible",
-      "body": "Replacing 10% of the dry matter from {{from}} with {{to}} saves about {{savingPerDay}} so'm a day ({{head}} head). The zootechnician should judge whether it suits the animals."
+      "body": "Replacing 10% of the dry matter from {{from}} with {{to}} saves about {{savingPerDay}} so'm a day ({{head}} head, {{savingPerHead}} so'm per head). The zootechnician should judge whether it suits the animals."
     },
     "crop_suggestion": {
       "title": "Crop suggestion for next season",
-      "body": "A suggestion is ready for {{fields}} fields. For example, field {{field}}: {{crop}}, expected profit {{margin}} so'm/ha. Based on planned yields and costs."
+      "body": "Crops compared by profit per hectare: {{crop}} is highest at {{margin}} so'm/ha. This is not a plan for every field: share crops out with rotation and the herd's feed in mind."
     },
     "lambing_workload_no_feed": {
       "title": "Lambing workload: {{ewes}} ewes",
-      "body": "About {{lambs}} lambs are expected. The busiest week starts {{peakWeek}} ({{peakEwes}} ewes) and needs {{workers}} workers."
+      "body": "About {{lambs}} lambs are expected. The busiest week starts on {{peakWeek}} ({{peakEwes}} ewes); workers needed then: {{workers}}."
     },
     "season_profit_complete": {
       "title": "{{season}}: expected profit {{profit}} so'm",
       "body": "Expected revenue {{revenue}} so'm, cost {{cost}} so'm. This covers every plan."
+    },
+    "crop_plan": {
+      "title": "Crop suggestion for next season",
+      "body": "Suggested by field: {{plan}}. The arable land would then be {{mix}}. The area the herd's winter feed needs is kept. Expected profit from these fields is {{margin}} so'm, from planned yields and costs.",
+      "item": "field {{field}} — {{crop}}"
+    },
+    "crop_plan_feed_short": {
+      "title": "Crop suggestion for next season",
+      "body": "Suggested by field: {{plan}}. The arable land would then be {{mix}}. Note that the land is not enough for the herd's winter feed: {{feedShort}}. Expected profit from these fields is {{margin}} so'm, from planned yields and costs."
+    },
+    "crop_plan_no_feed": {
+      "title": "Crop suggestion for next season",
+      "body": "Suggested by field: {{plan}}. The arable land would then be {{mix}}. Expected profit from these fields is {{margin}} so'm, from planned yields and costs."
     }
   },
   "assistant": {
@@ -148,6 +161,7 @@
       "outlook": "Give me a forecast for the next 12 months.",
       "feedSpending": "How much did we spend on feed last month?",
       "lambingThisWeek": "Which ewes lamb this week?",
+      "lambingPlan": "When does lambing start, and how many ewes are due?",
       "feedDays": "How many days will the feed last?",
       "attention": "What needs attention today?"
     },
@@ -374,6 +388,11 @@
     "method": "Method",
     "cropsCompared": "Crops compared",
     "feedShortCrops": "Crops short as feed",
+    "fieldsSuggested": "Fields suggested",
+    "fieldsKept": "Fields kept as they are",
+    "maxCropSharePercent": "Most for one crop, %",
+    "feedClass": "Feed group",
+    "savingPercent": "Saving, % of ration cost",
     "note": "Note"
   },
   "documents": {
@@ -414,6 +433,7 @@
     "AI_UNSUPPORTED_FILE": "Only photos and PDF files can be read.",
     "ALREADY_DECIDED": "A decision on this recommendation has already been recorded.",
     "NOT_DECIDED": "Record a decision first, then the outcome.",
+    "INSIGHT_SUPERSEDED": "This recommendation is out of date: a newer analysis replaced it. Refresh the list.",
     "PROPOSAL_NOT_PENDING": "This has already been handled.",
     "PROPOSAL_EXPIRED": "This draft has expired. Please say it again.",
     "NOT_YOUR_PROPOSAL": "This draft belongs to someone else.",
@@ -429,7 +449,12 @@
   "sourceValues": {
     "actual": "actual use",
     "plan": "ration plan",
-    "dry_matter_swap": "by cost per kg of dry matter: 10% of the dearest component moves to the cheapest",
+    "dry_matter_swap": "Within one feed group, by cost per kg of dry matter: 10% of the dearest component moves to the cheapest. Salt, premixes, vitamins and components under 2% of the dry matter are not compared, and a saving under 1% of the ration's cost is not offered.",
+    "farm_allocation": "Across the whole farm: first the crops for the herd's winter feed, then profit per hectare. No crop goes past its share of the land, repeating last season's crop is penalised, and fields under perennials or already planned stay as they are.",
+    "roughage": "roughage",
+    "succulent": "succulent feed",
+    "concentrate": "grain and concentrates",
+    "protein": "protein feed (cake, meal)",
     "farm_history": "the farm's own history",
     "assumed_default": "assumed until the farm has 30 lambings",
     "planned_figures": "Margins use planned figures, not results of past harvests."
@@ -759,6 +784,7 @@
       "outlook": "12-month forecast",
       "attention": "Today's priorities",
       "lambing": "Lambing this week",
+      "lambingPlan": "Lambing plan",
       "feed": "Feed reserve"
     }
   },

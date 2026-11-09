@@ -1,7 +1,7 @@
 import { LAND_USES } from '@yap/shared';
 import type { Geometry, Point } from 'geojson';
 import { Check, ExternalLink, LayoutList, MapPin, Pencil, Plus, Shapes, Undo2, X } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type Ref, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { toast } from 'sonner';
@@ -34,7 +34,7 @@ import { HealthLegend } from './satellite/HealthLegend';
 import type { LatestReading, VegetationGrid } from './satellite/types';
 import { type BaseLayer, type ColorBy, CROP_SLOT, type DrawShape, type DrawnShape, FarmMapCanvas, type FarmMapHandle, LAND_USE_SLOT, slotToken } from './map/FarmMapCanvas';
 import type { FarmMapData, FieldProps, I18nName, MapFeature, MapProps, UnmappedField } from './types';
-import { fieldTitle, formatHa, useLocalName } from './utils';
+import { CROP_STATUS_VARIANT, fieldTitle, formatCapacity, formatHa, useLocalName } from './utils';
 
 /** What the map is doing. Each drawing target decides where the finished shape goes. */
 type Mode =
@@ -108,14 +108,40 @@ function FieldStrip({ fields, onPick }: { fields: MapFeature[]; onPick: (feature
   );
 }
 
-function SelectedPanel({ feature, geometry, canEdit, onEdit, onClose }: { feature: MapProps; geometry?: Geometry; canEdit: boolean; onEdit: () => void; onClose: () => void }) {
+/** How far a floating panel hides the map's left or bottom edge: whichever leaves more of the map in view. */
+function coveredBy(map: HTMLElement | null, panel: HTMLElement | null): { left: number; bottom: number } {
+  if (!map || !panel) return { left: 0, bottom: 0 };
+  const m = map.getBoundingClientRect();
+  const p = panel.getBoundingClientRect();
+  if (p.left >= m.right || p.right <= m.left || p.top >= m.bottom || p.bottom <= m.top) return { left: 0, bottom: 0 };
+  const bottom = m.bottom - p.top;
+  const left = p.right - m.left;
+  return (m.height - bottom) * m.width >= (m.width - left) * m.height ? { left: 0, bottom } : { left, bottom: 0 };
+}
+
+function SelectedPanel({
+  feature,
+  geometry,
+  canEdit,
+  onEdit,
+  onClose,
+  ref,
+}: {
+  feature: MapProps;
+  geometry?: Geometry;
+  canEdit: boolean;
+  onEdit: () => void;
+  onClose: () => void;
+  ref?: Ref<HTMLDivElement>;
+}) {
   const { t } = useTranslation('farm');
   const localName = useLocalName();
   const isField = feature.kind === 'field';
 
   return (
-    <Card className="pointer-events-auto w-full overflow-hidden bg-popover shadow-pop md:w-80">
-      {outerRings(geometry).length > 0 && <FieldPhoto geometry={geometry} width={640} aspect={2.4} />}
+    <Card ref={ref} className="pointer-events-auto w-full overflow-hidden bg-popover shadow-pop md:w-80">
+      {/* Below lg the panel floats over the map, which already shows the field: the photo would only hide it. */}
+      {outerRings(geometry).length > 0 && <FieldPhoto geometry={geometry} width={640} aspect={2.4} className="hidden lg:block" />}
       <div className="p-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
@@ -132,11 +158,11 @@ function SelectedPanel({ feature, geometry, canEdit, onEdit, onClose }: { featur
         {isField && feature.cropName && (
           <p className="mt-1 flex flex-wrap items-center gap-2 text-sm">
             {localName(feature.cropName)}
-            {feature.cropStatus && <Badge variant="success">{t(`enums:cropPlanStatus.${feature.cropStatus}`)}</Badge>}
+            {feature.cropStatus && <Badge variant={CROP_STATUS_VARIANT[feature.cropStatus]}>{t(`enums:cropPlanStatus.${feature.cropStatus}`)}</Badge>}
           </p>
         )}
         {!isField && feature.capacity != null && (
-          <p className="mt-1 text-sm">{t('facilities.capacityValue', { value: feature.capacity, unit: feature.capacityUnit ?? '' })}</p>
+          <p className="mt-1 text-sm">{formatCapacity(feature.capacity, feature.capacityUnit)}</p>
         )}
         <div className="mt-3 flex flex-wrap gap-2">
           <Button variant="outline" size="sm" asChild>
@@ -175,6 +201,9 @@ export default function FarmMapPage() {
 
   const canvas = useRef<FarmMapHandle>(null);
   const mapArea = useRef<HTMLDivElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  /** A feature to fly to once its panel is on screen, so the view leaves out what the panel covers. */
+  const [flyTo, setFlyTo] = useState<string | null>(null);
   const [canDraw, setCanDraw] = useState(false);
   const [toolsFailed, setToolsFailed] = useState(false);
   const [mode, setMode] = useState<Mode>({ kind: 'view' });
@@ -202,9 +231,15 @@ export default function FarmMapPage() {
     const feature = query.data.features.find((f) => f.id === focus);
     if (!feature) return;
     setSelected(feature.properties);
-    canvas.current?.focus(focus);
+    setFlyTo(focus);
     setFocus('');
   }, [focus, query.data, canDraw, setFocus]);
+
+  useEffect(() => {
+    if (!flyTo) return;
+    canvas.current?.focus(flyTo, coveredBy(mapArea.current, panel.current));
+    setFlyTo(null);
+  }, [flyTo]);
 
   /** On a phone the map can be mostly below the fold when a tool starts. */
   const bringMapIntoView = () => mapArea.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
@@ -265,7 +300,7 @@ export default function FarmMapPage() {
   );
   const pickField = (feature: MapFeature) => {
     setSelected(feature.properties);
-    canvas.current?.focus(feature.id);
+    setFlyTo(feature.id);
   };
   const selectedEditable = selected !== null && canDraw && canUpdate && (selected.kind === 'field' || selected.areaHa != null);
 
@@ -330,7 +365,8 @@ export default function FarmMapPage() {
           {colorBy === 'health' && health.data?.length === 0 && <Alert tone="info">{t('map.healthEmpty')}</Alert>}
 
           <Card className="overflow-hidden">
-            <div className="grid grid-cols-2 gap-2 border-b border-border p-2 md:flex md:flex-wrap md:items-center">
+            {/* One select a row on a phone, where two side by side cut their labels short. */}
+            <div className="grid grid-cols-1 gap-2 border-b border-border p-2 sm:grid-cols-2 md:flex md:flex-wrap md:items-center">
               <Select
                 aria-label={t('map.baseLayer')}
                 value={baseLayer}
@@ -339,7 +375,7 @@ export default function FarmMapPage() {
                   { value: 'satellite', label: t('map.satellite') },
                   { value: 'streets', label: t('map.streets') },
                 ]}
-                className="md:w-40"
+                className="md:w-44"
               />
               <Select
                 aria-label={t('map.colorBy')}
@@ -350,7 +386,7 @@ export default function FarmMapPage() {
                   { value: 'crop', label: t('map.colorCrop') },
                   { value: 'health', label: t('map.colorHealth') },
                 ]}
-                className="md:w-44"
+                className="md:w-56"
               />
               <div className="hidden min-w-0 md:ml-1 md:block md:flex-1 md:basis-64">
                 <Legend data={query.data} colorBy={colorBy as ColorBy} />
@@ -393,6 +429,7 @@ export default function FarmMapPage() {
               <div className="pointer-events-none fixed inset-x-2 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-40 flex flex-col items-start gap-2 lg:absolute lg:bottom-6 lg:z-10">
                 {selected && !busy && (
                   <SelectedPanel
+                    ref={panel}
                     feature={selected}
                     geometry={query.data?.features.find((feature) => feature.id === selected.id)?.geometry}
                     canEdit={selectedEditable}
@@ -412,7 +449,14 @@ export default function FarmMapPage() {
                     </p>
                     <div className="mt-2 flex items-center gap-2">
                       <p className="min-w-0 flex-1 text-lg font-semibold whitespace-nowrap tabular-nums md:text-xl" aria-live="polite">
-                        {mode.kind === 'draw' && mode.target === 'point' ? null : liveArea === null ? '—' : formatHa(liveArea)}
+                        {/* A live figure is an estimate on a sphere; until a point moves, an outline keeps its saved area. */}
+                        {mode.kind === 'draw' && mode.target === 'point'
+                          ? null
+                          : liveArea !== null
+                            ? t('map.approxArea', { area: formatHa(liveArea) })
+                            : mode.kind === 'edit'
+                              ? formatHa(mode.feature.areaHa)
+                              : '—'}
                       </p>
                       {mode.kind === 'draw' && mode.target !== 'point' && (
                         <Button variant="outline" size="icon" aria-label={t('map.undoPoint')} title={t('map.undoPoint')} onClick={() => canvas.current?.undoPoint()}>

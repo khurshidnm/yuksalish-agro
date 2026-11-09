@@ -12,6 +12,8 @@ export interface ColumnDef {
   key: string;
   /** Key under reports:columns. Defaults to `key`. */
   label?: string;
+  /** Values for the label's placeholders: a chemical formula, which must not change script in Uzbek Cyrillic. */
+  labelParams?: Record<string, string>;
   type: ColumnType;
   sensitive?: Sensitivity[];
   /** 'animalStatus' reads enums:animalStatus.*; 'reports:dueState' reads the reports namespace. */
@@ -32,13 +34,19 @@ export type PeriodPreset =
   | 'this_year'
   | 'last_year';
 
+/** What an empty season filter reads: the current season, or the newest one with a harvest in. */
+export type SeasonDefault = 'current' | 'harvested';
+
 export type FilterDef =
   | { key: 'period'; type: 'period'; preset: PeriodPreset }
   | { key: 'month'; type: 'month'; default: 'current' | 'previous' }
   | { key: string; type: 'number'; default: number; min: number; max: number }
   | { key: string; type: 'select'; values: readonly string[]; enumGroup: string }
-  /** `path` is a lookup endpoint from docs/contracts.md. */
-  | { key: string; type: 'lookup'; path: string; params?: Record<string, string> };
+  /**
+   * `path` is a lookup endpoint from docs/contracts.md. An empty lookup means "all", except a
+   * season: a season report always reads one season, `defaultSeason` says which when none is chosen.
+   */
+  | { key: string; type: 'lookup'; path: string; params?: Record<string, string>; defaultSeason?: SeasonDefault };
 
 /** Filter values, parsed and defaulted. Which ones are set depends on the report's filters. */
 export interface ReportInput {
@@ -126,6 +134,8 @@ export interface ReportResult {
   compareWith: { from: string; to: string } | { seasonId: string } | null;
   /** Human-readable applied filters, for export headers. */
   filterSummary: { label: string; value: string }[];
+  /** Filters left empty that the report filled in itself (the season), so the screen can name them. */
+  defaults: Record<string, { value: string; label: string }>;
   generatedAt: string;
   /** The farm's time zone, for the generation time printed on exports. */
   timezone: string;

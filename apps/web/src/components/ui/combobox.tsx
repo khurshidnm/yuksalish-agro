@@ -132,7 +132,7 @@ export function Combobox({
             aria-controls={listId}
             aria-invalid={invalid || undefined}
             disabled={disabled}
-            className={cn(controlClasses, 'flex items-center justify-between gap-2 pr-10 text-left', clearable && value && 'pr-16', className)}
+            className={cn(controlClasses, 'flex items-center justify-between gap-2 pr-10 text-left', clearable && value && 'pr-20 md:pr-16', className)}
             {...aria}
           >
             <span className={cn('truncate', !label && 'text-muted-foreground')}>{label ?? placeholder ?? t('common:form.selectPlaceholder')}</span>
@@ -142,7 +142,8 @@ export function Combobox({
           <button
             type="button"
             aria-label={t('common:actions.clear')}
-            className="focus-ring absolute top-1/2 right-9 flex size-7 -translate-y-1/2 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+            // A full 44 px target on phones, for gloves; the compact size from md.
+            className="focus-ring absolute top-1/2 right-8 flex size-11 -translate-y-1/2 items-center justify-center rounded text-muted-foreground hover:text-foreground md:right-9 md:size-7"
             onClick={() => {
               setPicked(null);
               onChange(null, null);

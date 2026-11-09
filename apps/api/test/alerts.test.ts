@@ -1891,7 +1891,8 @@ describe('notifications API', () => {
     const f = await createFixture();
     const owner = await f.as('owner');
     const prefs = (await owner.get('/notifications/preferences')).data;
-    expect(prefs.channels).toContainEqual({ key: 'sms', configured: false });
+    // Push, SMS and email have no provider yet, so settings do not offer them.
+    expect(prefs.channels.map((c: any) => c.key)).toEqual(['telegram']);
     expect(prefs.events.find((e: any) => e.eventType === 'alert_urgent').channels).toEqual(['telegram']);
 
     const saved = await owner.put('/notifications/preferences', { eventType: 'alert_urgent', channels: [] });

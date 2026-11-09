@@ -1,11 +1,11 @@
-import { and, asc, desc, eq, ne } from 'drizzle-orm';
+import { and, asc, desc, eq, ne, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { schema } from '../../db/client';
 import { ctx, today, tx } from '../../core/context';
 import { badRequest, notFound } from '../../core/errors';
 import { clientId, isoDate } from '../../core/query';
 
-const { crops, seasons: t } = schema;
+const { cropPlans, crops, harvests, seasons: t } = schema;
 
 export const SEASON_KINDS = ['autumn', 'spring', 'summer'] as const;
 
@@ -30,7 +30,7 @@ function pickCurrent(rows: Season[], date: string): Season | undefined {
   return rows.find((s) => s.isCurrent) ?? rows.find((s) => s.startDate <= date && date <= s.endDate);
 }
 
-export async function list() {
+async function seasonRows() {
   const rows = await tx()
     .select()
     .from(t)
@@ -40,9 +40,30 @@ export async function list() {
   return rows.map((row) => ({ ...row, isCurrent: row.id === current?.id }));
 }
 
+/**
+ * Seasons, newest first. Each carries the date of its last harvest, so the harvest page can open
+ * on the season that has a crop in instead of a current season with nothing harvested yet.
+ */
+export async function list() {
+  const rows = await seasonRows();
+  const last = await tx()
+    .select({ seasonId: cropPlans.seasonId, date: sql<string>`max(${harvests.date})::text` })
+    .from(harvests)
+    .innerJoin(cropPlans, eq(cropPlans.id, harvests.cropPlanId))
+    .where(eq(harvests.farmId, ctx().farmId))
+    .groupBy(cropPlans.seasonId);
+  const lastHarvest = new Map(last.map((row) => [row.seasonId, row.date]));
+  return rows.map((row) => ({ ...row, lastHarvestDate: lastHarvest.get(row.id) ?? null }));
+}
+
 export async function currentSeason(): Promise<Season | null> {
-  const rows = await list();
+  const rows = await seasonRows();
   return rows.find((s) => s.isCurrent) ?? rows[0] ?? null;
+}
+
+/** One season of this farm; 404 for any other id. */
+export async function getSeason(id: string): Promise<Season> {
+  return getRow(id);
 }
 
 async function clearCurrent(exceptId?: string): Promise<void> {

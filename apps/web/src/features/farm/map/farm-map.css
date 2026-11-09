@@ -21,6 +21,12 @@
   display: none;
 }
 
+/* OpenStreetMap draws its tiles for a light page. In the dark theme they are turned dark too, so the
+   outlines, drawn in the theme's light ink, keep their contrast. Satellite imagery stays as it is. */
+[data-theme='dark'] .farm-map-streets .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9);
+}
+
 .farm-map-compact .farm-map-label {
   padding: 0 0.2rem;
   font-size: 0.625rem;

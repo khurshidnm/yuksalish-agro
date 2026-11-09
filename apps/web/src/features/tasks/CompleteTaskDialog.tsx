@@ -21,6 +21,7 @@ interface Candidate {
 /** The enum that names each kind of record in the picker. */
 const RECORD_LABEL_GROUP: Record<(typeof RECORD_TYPES)[number], string> = {
   health_record: 'healthRecordType',
+  vaccination_record: 'healthRecordType',
   field_operation: 'operationType',
   daily_log: 'herdCondition',
   weight_record: 'weightMethod',
@@ -29,6 +30,7 @@ const RECORD_LABEL_GROUP: Record<(typeof RECORD_TYPES)[number], string> = {
 /** Where to create the record a task is waiting for. */
 const RECORD_PAGES: Record<(typeof RECORD_TYPES)[number], string> = {
   health_record: '/livestock/health',
+  vaccination_record: '/livestock/health',
   field_operation: '/crops/operations',
   daily_log: '/livestock/daily-logs',
   weight_record: '/livestock/animals',

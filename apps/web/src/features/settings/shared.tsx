@@ -9,6 +9,16 @@ import { Alert, Button, Dialog, DialogBody, DialogContent, DialogDescription, Di
 import { ApiError } from '@/lib/api';
 import { errorMessage } from '@/lib/query';
 
+/**
+ * An Uzbek number as people write it, '+998 90 123 45 67', the shape the phone field asks for.
+ * Anything else is shown as stored.
+ */
+export function formatPhone(phone: string | null | undefined): string {
+  if (!phone) return '—';
+  const match = /^\+998(\d{2})(\d{3})(\d{2})(\d{2})$/.exec(phone.replace(/[\s()-]/g, ''));
+  return match ? `+998 ${match[1]} ${match[2]} ${match[3]} ${match[4]}` : phone;
+}
+
 export interface ShowOnceDialogProps {
   /** The value to reveal; null keeps the dialog closed. */
   secret: string | null;

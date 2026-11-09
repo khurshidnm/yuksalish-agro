@@ -1,5 +1,5 @@
 /**
- * "Location & health" on the animal passport: where she is, the day's walk, and her temperature
+ * "Tracker (GPS, temperature)" on the animal passport: where she is, the day's walk, and her temperature
  * and activity against the days before. Loaded only when the tab is opened, with Leaflet and charts.
  */
 import { Radio } from 'lucide-react';
@@ -113,7 +113,6 @@ export default function AnimalTrackingTab({ animalId }: { animalId: string }) {
         xKey="label"
         series={[{ key: 'temperatureC', label: t('fields.temperature') }]}
         formatValue={(v) => t('live.temperature', { value: formatNumber(v, 1) })}
-        formatAxis={(v) => formatNumber(v, 1)}
         yDomain={['auto', 'auto']}
         formatX={hourLabel}
         formatLabel={formatDateTime}

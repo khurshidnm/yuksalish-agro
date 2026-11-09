@@ -1,6 +1,6 @@
 import type { ColumnDef, FilterDef, PeriodPreset, Sensitivity } from '../types';
 
-type Options = Partial<Pick<ColumnDef, 'label' | 'sensitive' | 'digits' | 'sum'>>;
+type Options = Partial<Pick<ColumnDef, 'label' | 'labelParams' | 'sensitive' | 'digits' | 'sum'>>;
 
 const MONEY: Sensitivity[] = ['money'];
 
@@ -27,7 +27,10 @@ export const filter = {
   days: (fallback: number, max = 365): FilterDef => ({ key: 'days', type: 'number', default: fallback, min: 1, max }),
   months: (fallback: number, max = 24): FilterDef => ({ key: 'months', type: 'number', default: fallback, min: 1, max }),
   select: (key: string, values: readonly string[], enumGroup: string): FilterDef => ({ key, type: 'select', values, enumGroup }),
-  season: { key: 'seasonId', type: 'lookup', path: '/crops/seasons' } as FilterDef,
+  /** Left empty, it reads the current season and says so. */
+  season: { key: 'seasonId', type: 'lookup', path: '/crops/seasons', defaultSeason: 'current' } as FilterDef,
+  /** For harvest figures: left empty, it reads the newest season with a harvest in. */
+  harvestedSeason: { key: 'seasonId', type: 'lookup', path: '/crops/seasons', defaultSeason: 'harvested' } as FilterDef,
   herd: { key: 'herdId', type: 'lookup', path: '/livestock/herds/lookup' } as FilterDef,
   field: { key: 'fieldId', type: 'lookup', path: '/farm/fields/lookup' } as FilterDef,
   warehouse: { key: 'warehouseId', type: 'lookup', path: '/inventory/warehouses/lookup' } as FilterDef,

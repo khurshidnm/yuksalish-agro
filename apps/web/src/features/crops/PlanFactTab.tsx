@@ -3,11 +3,17 @@ import { useTranslation } from 'react-i18next';
 import { type Column, DataTableView, MoneyText } from '@/components';
 import { ChartCard } from '@/components/ChartCard';
 import { Badge } from '@/components/ui';
-import { useLocalName } from '@/features/farm/utils';
+import { CROP_STATUS_VARIANT, useLocalName } from '@/features/farm/utils';
 import { useSeesCost } from '@/lib/auth';
 import { formatNumber, formatPercent, formatQty } from '@/lib/format';
 import { useDetail } from '@/lib/query';
 import type { PlanFact, PlanFactRow } from './types';
+
+/** A deviation with its sign, "+3,6 %" beside "-3,6 %"; no sign on zero. */
+function signedPercent(value: number | null): string {
+  if (value === null) return formatPercent(null);
+  return value > 0 ? `+${formatPercent(value)}` : formatPercent(value);
+}
 
 export function PlanFactTab({ seasonId }: { seasonId: string }) {
   const { t } = useTranslation('crops');
@@ -27,13 +33,13 @@ export function PlanFactTab({ seasonId }: { seasonId: string }) {
 
   const columns: Column<PlanFactRow>[] = [
     { key: 'field', header: t('operations.fields.field'), mobile: 'title', cell: (r) => `№${r.fieldNumber} · ${localName(r.cropName)}` },
-    { key: 'status', header: t('plans.fields.status'), mobile: 'subtitle', cell: (r) => <Badge>{t(`enums:cropPlanStatus.${r.status}`)}</Badge> },
+    { key: 'status', header: t('plans.fields.status'), mobile: 'subtitle', cell: (r) => <Badge variant={CROP_STATUS_VARIANT[r.status]}>{t(`enums:cropPlanStatus.${r.status}`)}</Badge> },
     { key: 'area', header: t('plans.fields.area'), align: 'right', cell: (r) => `${formatNumber(r.areaHa)} ${t('unit.ha')}` },
     { key: 'expected', header: t('planFact.expected'), align: 'right', cell: (r) => formatQty(r.expectedHarvestT, 't') },
     { key: 'harvested', header: t('planFact.harvested'), align: 'right', cell: (r) => (r.harvestedT > 0 ? formatQty(r.harvestedT, 't') : '—') },
     { key: 'yield', header: t('planFact.yield'), align: 'right', cell: (r) => (r.actualYieldTHa === null ? '—' : `${formatNumber(r.actualYieldTHa, 2)} ${t('unit.tPerHa')}`) },
-    { key: 'deviation', header: t('planFact.deviation'), align: 'right', mobile: 'hidden', cell: (r) => formatPercent(r.yieldDeviationPercent) },
-    { key: 'water', header: t('planFact.water'), align: 'right', mobile: 'hidden', cell: (r) => `${formatNumber(r.waterM3)} ${t('unit.m3')}` },
+    { key: 'deviation', header: t('planFact.deviation'), align: 'right', mobile: 'hidden', cell: (r) => signedPercent(r.yieldDeviationPercent) },
+    { key: 'water', header: t('planFact.water'), align: 'right', mobile: 'hidden', cell: (r) => (r.waterM3 === null ? '—' : `${formatNumber(r.waterM3)} ${t('unit.m3')}`) },
     ...money,
   ];
 

@@ -59,6 +59,7 @@
     },
     "sections": { "pay": "Pay", "work": "Work and dates" },
     "rate": { "monthly": "Monthly rate", "daily": "Daily rate", "seasonal": "Pay for the whole season" },
+    "ratePer": { "monthly": "month", "daily": "day", "seasonal": "season" },
     "pieceUnit": { "ha": "Per hectare", "head": "Per head treated", "headDay": "Per head-day", "t": "Per tonne" }
   },
   "card": {
@@ -76,7 +77,14 @@
     "description": "Gathered automatically from the field and livestock journals.",
     "emptyTitle": "No work recorded this month",
     "emptyBody": "Field operations, veterinary and daily records show up here.",
-    "fields": { "hectares": "Area worked", "tons": "Harvest", "headTreated": "Head treated", "headDays": "Head-days" }
+    "fields": {
+      "hectares": "Area worked",
+      "tons": "Harvest",
+      "headTreated": "Head treated",
+      "headDays": "Head-days",
+      "operations": "Field operations",
+      "records": "Vet and daily records"
+    }
   },
   "reminders": {
     "what": "What",
@@ -125,10 +133,13 @@
     "stats": {
       "attendance": "Attendance",
       "attendanceHint": "Counts unexcused absences",
-      "present": "Days present",
-      "absent": "Days absent",
-      "leave": "Sick days and leave"
+      "present": "Person-days present",
+      "absent": "Person-days absent",
+      "leave": "Person-days sick or on leave",
+      "peopleHint_one": "Total for {{count}} employee",
+      "peopleHint_other": "Total for {{count}} employees"
     },
+    "personTotals": "Days present: {{present}}, days absent: {{absent}}",
     "bulk": {
       "open": "Fill timesheet",
       "title": "Fill the timesheet at once",
@@ -161,6 +172,8 @@
     "calculate": "Calculate",
     "emptyTitle": "No payroll runs yet",
     "emptyBody": "Once a month has ended, calculate its payroll.",
+    "upToDate": "The {{month}} payroll is done. Run the next month once it has ended.",
+    "exists": "Payroll for {{month}} already exists, so it was opened.",
     "backToRuns": "Back to payroll runs",
     "recalculate": "Recalculate",
     "recalculated": "Recalculated. Amounts entered by hand were kept",
@@ -208,6 +221,11 @@
       "tons": "Harvest: {{value}} t",
       "head": "Treated: {{value}} head",
       "headDays": "Care: {{value}} head-days",
+      "paid": "Paid days: {{paid}} ({{detail}})",
+      "sick": "sick {{days}}",
+      "vacation": "leave {{days}}",
+      "leave": "sick or on leave {{days}}",
+      "employed": "On staff {{employed}} of the month's {{days}} days",
       "kpi": "{{name}}: {{value}}, bonus {{bonus}}",
       "kpiNoData": "{{name}}: not enough data"
     },
@@ -269,6 +287,7 @@
     "PAYROLL_EMPTY": "This payroll has no employees",
     "PAYROLL_ADVANCES_WAITING": "An advance for this month is still waiting for approval. Approve or reject it first",
     "PAYROLL_ADVANCES_CHANGED": "An advance was paid after this payroll was worked out. Recalculate it first",
-    "SAME_MAKER_CHECKER": "The person who prepared it cannot approve it"
+    "SAME_MAKER_CHECKER": "The person who prepared it cannot approve it",
+    "EMPLOYEE_HOLDS_CASH": "This person still holds farm cash. Take it back and close their cash account first."
   }
 }

@@ -14,7 +14,7 @@
     },
     "weight_loss": {
       "title": "{{count}} bosh hayvon vazn yo'qotdi",
-      "body": "Oxirgi ikki tortish orasida 8% dan ko'p vazn yo'qotganlar: {{tags}}. Bu kasallik belgisi bo'lishi mumkin, veterinarga ko'rsating."
+      "body": "Oxirgi ikki tortish orasida vaznining 8 foizidan ko'pini yo'qotganlar: {{tags}}. Bu kasallik belgisi bo'lishi mumkin, veterinarga ko'rsating."
     },
     "fuel_spike": {
       "title": "{{asset}}: yoqilg'i sarfi oshdi",
@@ -26,31 +26,44 @@
     },
     "lambing_workload": {
       "title": "Qo'zilash yuklamasi: {{ewes}} sovliq",
-      "body": "Taxminan {{lambs}} qo'zi kutilmoqda. Eng band hafta {{peakWeek}} dan boshlanadi ({{peakEwes}} sovliq), o'shanda {{workers}} nafar ishchi kerak bo'ladi. Emizikli ratsion uchun qo'shimcha {{extraFeedT}} t ozuqa kerak."
+      "body": "Taxminan {{lambs}} qo'zi kutilmoqda. Eng band hafta {{peakWeek}} kuni boshlanadi ({{peakEwes}} sovliq), o'shanda {{workers}} nafar ishchi kerak bo'ladi. Emizikli ratsion uchun qo'shimcha {{extraFeedT}} t ozuqa kerak."
     },
     "season_profit": {
       "title": "{{season}}: kutilayotgan foyda {{profit}} so'm",
-      "body": "Kutilayotgan daromad {{revenue}} so'm, xarajat {{cost}} so'm. Hisob maydonning {{covered}}% ini qamrab oladi. {{skipped}} ta rejada narx, hosil yoki xarajat ma'lumoti yo'q."
+      "body": "Kutilayotgan daromad {{revenue}} so'm, xarajat {{cost}} so'm. Hisob maydonning {{covered}} foizini qamrab oladi. {{skipped}} ta rejada narx, hosil yoki xarajat ma'lumoti yo'q."
     },
     "feed_shortage": {
       "title": "{{item}} qishga yetmaydi",
-      "body": "Zaxira {{days}} kunga yetadi va {{runOut}} da tugaydi. {{winterDays}} kunlik qishlov uchun yana {{shortageT}} t kerak. Xaridni {{purchaseBy}} gacha qiling."
+      "body": "Zaxira {{days}} kunga yetadi va {{runOut}} kuni tugaydi. {{winterDays}} kunlik qishlov uchun yana {{shortageT}} t kerak. Xaridni kechi bilan {{purchaseBy}} kuni qiling."
     },
     "feed_cost_saving": {
       "title": "{{ration}}: arzonlashtirish imkoni",
-      "body": "{{from}} quruq moddasining 10% ini {{to}} bilan almashtirish kuniga taxminan {{savingPerDay}} so'm tejaydi ({{head}} bosh). Bu hayvonlarga mosligini zootexnik baholashi kerak."
+      "body": "{{from}} quruq moddasining 10 foizini {{to}} bilan almashtirish kuniga taxminan {{savingPerDay}} so'm tejaydi ({{head}} bosh, har boshga {{savingPerHead}} so'm). Bu hayvonlarga mosligini zootexnik baholashi kerak."
     },
     "crop_suggestion": {
       "title": "Keyingi mavsum uchun ekin tavsiyasi",
-      "body": "{{fields}} ta dala bo'yicha taklif tayyorlandi. Masalan, {{field}}-dala: {{crop}}, kutilayotgan foyda {{margin}} so'm/ga. Hisob rejadagi hosil va xarajatlarga asoslangan."
+      "body": "Ekinlar gektar boshiga foyda bo'yicha taqqoslandi: eng yuqorisi {{crop}}, {{margin}} so'm/ga. Bu barcha dalalar uchun reja emas: ekinlarni almashlab ekish va chorva ozuqasini hisobga olib taqsimlang."
     },
     "lambing_workload_no_feed": {
       "title": "Qo'zilash yuklamasi: {{ewes}} sovliq",
-      "body": "Taxminan {{lambs}} qo'zi kutilmoqda. Eng band hafta {{peakWeek}} dan boshlanadi ({{peakEwes}} sovliq), o'shanda {{workers}} nafar ishchi kerak bo'ladi."
+      "body": "Taxminan {{lambs}} qo'zi kutilmoqda. Eng band hafta {{peakWeek}} kuni boshlanadi ({{peakEwes}} sovliq), o'shanda {{workers}} nafar ishchi kerak bo'ladi."
     },
     "season_profit_complete": {
       "title": "{{season}}: kutilayotgan foyda {{profit}} so'm",
       "body": "Kutilayotgan daromad {{revenue}} so'm, xarajat {{cost}} so'm. Hisob barcha rejalarni qamrab oladi."
+    },
+    "crop_plan": {
+      "title": "Keyingi mavsum uchun ekin tavsiyasi",
+      "body": "Dalalar bo'yicha taklif: {{plan}}. Shunda haydaladigan yer tarkibi: {{mix}}. Chorvaning qishki ozuqasi uchun kerakli maydon saqlangan. Bu dalalardan kutilayotgan foyda {{margin}} so'm, hisob rejadagi hosil va xarajatlarga asoslangan.",
+      "item": "{{field}}-dala — {{crop}}"
+    },
+    "crop_plan_feed_short": {
+      "title": "Keyingi mavsum uchun ekin tavsiyasi",
+      "body": "Dalalar bo'yicha taklif: {{plan}}. Shunda haydaladigan yer tarkibi: {{mix}}. Diqqat, chorvaning qishki ozuqasi uchun maydon yetmaydi: {{feedShort}}. Bu dalalardan kutilayotgan foyda {{margin}} so'm, hisob rejadagi hosil va xarajatlarga asoslangan."
+    },
+    "crop_plan_no_feed": {
+      "title": "Keyingi mavsum uchun ekin tavsiyasi",
+      "body": "Dalalar bo'yicha taklif: {{plan}}. Shunda haydaladigan yer tarkibi: {{mix}}. Bu dalalardan kutilayotgan foyda {{margin}} so'm, hisob rejadagi hosil va xarajatlarga asoslangan."
     }
   },
   "assistant": {
@@ -148,6 +161,7 @@
       "outlook": "Keyingi 12 oyga prognoz bering.",
       "feedSpending": "O'tgan oyda ozuqaga qancha sarfladik?",
       "lambingThisWeek": "Qaysi sovliqlar bu hafta qo'zilaydi?",
+      "lambingPlan": "Qo'zilash qachon boshlanadi va nechta sovliq qo'zilaydi?",
       "feedDays": "Ozuqa necha kunga yetadi?",
       "attention": "Bugun nimaga e'tibor berish kerak?"
     },
@@ -374,6 +388,11 @@
     "method": "Usul",
     "cropsCompared": "Taqqoslangan ekinlar",
     "feedShortCrops": "Yetishmayotgan ozuqa ekinlari",
+    "fieldsSuggested": "Taklif berilgan dalalar",
+    "fieldsKept": "O'zgarmaydigan dalalar",
+    "maxCropSharePercent": "Bir ekinga ko'pi bilan, %",
+    "feedClass": "Ozuqa guruhi",
+    "savingPercent": "Tejash, ratsion narxidan %",
     "note": "Izoh"
   },
   "documents": {
@@ -414,6 +433,7 @@
     "AI_UNSUPPORTED_FILE": "Faqat foto va PDF fayllarni o'qish mumkin.",
     "ALREADY_DECIDED": "Bu tavsiya bo'yicha qaror allaqachon qabul qilingan.",
     "NOT_DECIDED": "Avval qaror qabul qiling, keyin natijani yozing.",
+    "INSIGHT_SUPERSEDED": "Bu tavsiya eskirdi: yangi tahlil uning o'rnini egalladi. Ro'yxatni yangilang.",
     "PROPOSAL_NOT_PENDING": "Bu allaqachon ko'rib chiqilgan.",
     "PROPOSAL_EXPIRED": "Qoralama muddati tugagan. Qaytadan ayting.",
     "NOT_YOUR_PROPOSAL": "Bu boshqa odamning qoralamasi.",
@@ -429,7 +449,12 @@
   "sourceValues": {
     "actual": "haqiqiy sarf",
     "plan": "ratsion rejasi",
-    "dry_matter_swap": "1 kg quruq modda narxi bo'yicha: eng qimmat tarkibning 10% i eng arzoniga almashtiriladi",
+    "dry_matter_swap": "Bir guruh ozuqalar ichida, 1 kg quruq modda narxi bo'yicha: eng qimmatining 10 foizi eng arzoniga almashtiriladi. Tuz, premiks, vitaminlar va quruq moddaning 2 foizidan kam qismlar taqqoslanmaydi, ratsion narxining 1 foizidan kam tejash taklif qilinmaydi.",
+    "farm_allocation": "Butun ferma bo'yicha: avval chorvaning qishki ozuqa ekinlari, keyin gektar boshiga foyda. Bir ekin yerning belgilangan ulushidan oshmaydi, o'tgan ekinni takrorlash jarimalanadi, ko'p yillik ekin va rejasi tuzilgan dalalar o'zgarmaydi.",
+    "roughage": "dag'al ozuqa",
+    "succulent": "shirali ozuqa",
+    "concentrate": "don va konsentrat ozuqa",
+    "protein": "oqsilli ozuqa (kunjara, shrot)",
     "farm_history": "fermaning o'z tarixi",
     "assumed_default": "ferma 30 ta qo'zilashni qayd etguncha taxminiy qiymat",
     "planned_figures": "Foyda reja ko'rsatkichlariga asoslangan, o'tgan hosil natijalariga emas."
@@ -759,6 +784,7 @@
       "outlook": "12 oylik prognoz",
       "attention": "Bugungi muhim ishlar",
       "lambing": "Bu hafta qo'zilash",
+      "lambingPlan": "Qo'zilash rejasi",
       "feed": "Ozuqa zaxirasi"
     }
   },

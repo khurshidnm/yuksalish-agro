@@ -9,6 +9,8 @@ export interface Season {
   startDate: string;
   endDate: string;
   isCurrent: boolean;
+  /** The day of the season's last harvest; null before anything is harvested. */
+  lastHarvestDate: string | null;
 }
 
 export interface CropRef {
@@ -86,6 +88,7 @@ export interface PlanFactRow {
   planId: string;
   fieldId: string;
   fieldNumber: string;
+  cropKey: string;
   cropName: I18nName;
   status: CropPlan['status'];
   areaHa: number;
@@ -94,7 +97,8 @@ export interface PlanFactRow {
   harvestedT: number;
   actualYieldTHa: number | null;
   yieldDeviationPercent: number | null;
-  waterM3: number;
+  /** Null when no watering was recorded. */
+  waterM3: number | null;
   waterM3PerTon: number | null;
   plannedCost: number | null;
   actualCost: number | null;
@@ -110,7 +114,7 @@ export interface PlanFact {
     areaHa: number;
     expectedHarvestT: number | null;
     harvestedT: number;
-    waterM3: number;
+    waterM3: number | null;
     plannedCost: number | null;
     actualCost: number | null;
   } | null;
@@ -121,6 +125,8 @@ export interface CropsSummary {
   overdue: { id: string; type: string; date: string; fieldNumber: string }[];
   harvest: { plannedT: number; actualT: number };
   kpis: { yieldTHa: number | null; onTimePercent: number | null; waterM3PerTon: number | null };
+  /** Each crop's yield on its own, largest harvest first: hay, silage and grain do not average. */
+  yields: { cropKey: string; cropName: I18nName; areaHa: number; harvestedT: number; yieldTHa: number | null }[];
 }
 
 export interface OperationMaterial {

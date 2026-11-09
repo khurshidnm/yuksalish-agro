@@ -9,7 +9,7 @@ import { ChartCard } from '@/components/ChartCard';
 import { Alert, Badge, Button, Card, CardContent, CardHeader, CardTitle, Select, Skeleton } from '@/components/ui';
 import { api } from '@/lib/api';
 import { usePermission } from '@/lib/auth';
-import { formatDate, formatNumber } from '@/lib/format';
+import { formatDate, formatNumber, formatPercent } from '@/lib/format';
 import { useApiMutation, useDetail } from '@/lib/query';
 import type { FieldCard } from '../types';
 import { fieldTitle, formatHa, useLocalName } from '../utils';
@@ -250,7 +250,7 @@ export function SatelliteTab({ field }: { field: FieldCard }) {
       <Card className="overflow-hidden">
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <CardTitle>{t('satellite.title')}</CardTitle>
+            <CardTitle>{field.landUse === 'arable' ? t('satellite.title') : t('satellite.vegetationTitle')}</CardTitle>
             <p className="text-sm text-muted-foreground">
               {health.crop
                 ? t('satellite.cropLine', { crop: localName(health.crop.cropName), status: t(`enums:cropPlanStatus.${health.crop.status}`) })
@@ -281,7 +281,7 @@ export function SatelliteTab({ field }: { field: FieldCard }) {
             className="h-80 w-full md:h-[28rem]"
           />
         </div>
-        <CardContent className="flex flex-col gap-4 pt-4">
+        <CardContent className="flex flex-col gap-4 pt-4 md:pt-5">
           {walking && positionError && <Alert tone="warning">{t(`satellite.position.${positionError}`)}</Alert>}
           {walking && !position && !positionError && <p className="text-sm text-muted-foreground">{t('satellite.locating')}</p>}
           <HealthLegend />
@@ -307,7 +307,7 @@ export function SatelliteTab({ field }: { field: FieldCard }) {
               tone={zones.length === 0 ? 'success' : 'warning'}
               hint={zones.length > 0 ? t('satellite.zoneCount', { count: zones.length }) : undefined}
             />
-            <StatCard label={t('satellite.clearShare')} value={`${formatNumber(shown?.clearPct ?? null, 0)}%`} hint={t('satellite.clearHint', { date: formatDate(shown?.date ?? latest.date) })} />
+            <StatCard label={t('satellite.clearShare')} value={formatPercent(shown?.clearPct ?? null, 0)} hint={t('satellite.clearHint', { date: formatDate(shown?.date ?? latest.date) })} />
           </div>
           <p className="text-xs text-muted-foreground">{t('satellite.credit', { year: (shown?.date ?? latest.date).slice(0, 4) })}</p>
         </CardContent>

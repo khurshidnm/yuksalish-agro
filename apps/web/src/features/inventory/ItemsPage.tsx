@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { type Column, Badge, Button, DataTable, FormDialog, FormGrid, NumberField, PageHeader, Select, SelectField, TextField, TextareaField, useConfirm, useUrlParam } from '@/components';
 import { api } from '@/lib/api';
 import { usePermission } from '@/lib/auth';
-import { formatQty } from '@/lib/format';
+import { currencyLabel, formatQty } from '@/lib/format';
 import { zEnum, zOptionalNumber, zOptionalRef, zOptionalText, zText } from '@/lib/forms';
 import i18n, { enumOptions } from '@/lib/i18n';
 import { useApiMutation, useDetail } from '@/lib/query';
@@ -102,7 +102,16 @@ function Fields({ form, canSeeMoney }: { form: UseFormReturn<FormIn, unknown, Fo
       {(isDrug || hasTransferPrice) && (
         <FormGrid>
           {isDrug && <NumberField form={form} name="withdrawalDays" label={t('items.fields.withdrawalDays')} hint={t('items.fields.withdrawalDaysHint')} maxDigits={0} />}
-          {hasTransferPrice && <NumberField money form={form} name="transferPrice" label={t('items.fields.transferPrice')} hint={t('items.fields.transferPriceHint')} />}
+          {hasTransferPrice && (
+            <NumberField
+              money
+              form={form}
+              name="transferPrice"
+              label={t('items.fields.transferPrice')}
+              hint={t('items.fields.transferPriceHint', { unit: t(`enums:unit.${unit}`) })}
+              suffix={t('items.fields.transferPriceUnit', { currency: currencyLabel(), unit: t(`enums:unit.${unit}`) })}
+            />
+          )}
         </FormGrid>
       )}
       <FormGrid>

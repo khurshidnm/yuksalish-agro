@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { LogoMark } from '@/app/Logo';
 import { FormField, TextField } from '@/components/FormField';
 import { Alert, Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, PasswordInput } from '@/components/ui';
+import { landingPath } from '@/features/landing/paths';
 import { useAuth } from '@/lib/auth';
 import { LANGUAGES, changeLanguage } from '@/lib/i18n';
 import { errorMessage } from '@/lib/query';
@@ -141,7 +142,8 @@ function FieldRows() {
         </clipPath>
       </defs>
       <path d="M0 60 C 180 16 340 110 640 34 V300 H0Z" className="fill-secondary" />
-      <path d={FIELD_EDGE} className="fill-accent" />
+      {/* Dark theme: primary and accent are the same green, so the field is toned down and its rows drawn in primary stay visible. */}
+      <path d={FIELD_EDGE} className="fill-accent dark:fill-accent/25" />
       <g clipPath="url(#field-edge)" className="stroke-primary" strokeWidth="2" opacity="0.35">
         {Array.from({ length: 15 }, (_, i) => (
           <line key={i} x1={470} y1={30} x2={-420 + i * 150} y2={300} />
@@ -152,16 +154,18 @@ function FieldRows() {
 }
 
 export default function LoginPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [challenge, setChallenge] = useState<string | null>(null);
+  // A plain link: in production the public page is a prerendered file, not a screen of the app.
+  const website = landingPath(i18n.language);
 
   return (
     <div className="grid grid-cols-1 min-h-dvh lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
       <section className="relative hidden flex-col overflow-hidden bg-muted p-10 text-foreground lg:flex">
-        <div className="flex items-center gap-3">
+        <a href={website} className="focus-ring flex min-h-11 items-center gap-3 self-start rounded-lg">
           <LogoMark />
           <span className="text-lg font-semibold">{t('common:app.name')}</span>
-        </div>
+        </a>
         <div className="relative z-10 mt-20 max-w-md">
           <p className="text-4xl leading-tight font-semibold tracking-tight text-heading">{t('auth:login.brandTitle')}</p>
           <p className="mt-4 text-muted-foreground">{t('auth:login.brandBody')}</p>
@@ -171,10 +175,10 @@ export default function LoginPage() {
 
       <main className="flex flex-col p-4 sm:p-8">
         <div className="flex items-center justify-between lg:justify-end">
-          <div className="flex items-center gap-2.5 lg:hidden">
+          <a href={website} className="focus-ring flex min-h-11 items-center gap-2.5 rounded-lg lg:hidden">
             <LogoMark />
             <span className="font-semibold">{t('common:app.name')}</span>
-          </div>
+          </a>
           <LanguagePicker />
         </div>
         <div className="flex flex-1 items-center justify-center py-8">

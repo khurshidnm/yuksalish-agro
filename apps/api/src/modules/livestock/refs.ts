@@ -94,6 +94,9 @@ export async function herdHeadCount(herdId: string): Promise<number> {
 export async function accumulatedCostPerHead(herdId: string | null): Promise<number | null> {
   if (!herdId) return null;
   const cost = await herdCost(herdId);
+  // What the herd carries beyond each animal's own price: running costs, plus the transport and import
+  // vet work capitalised on arrival, so an animal's book value agrees with the herd's cost per head.
+  const carried = cost.accumulated + cost.landedExtra;
   // No cost charged yet means the value is unknown, which is not the same as worth nothing.
-  return cost.head > 0 && cost.accumulated > 0 ? cost.accumulated / cost.head : null;
+  return cost.head > 0 && carried > 0 ? carried / cost.head : null;
 }

@@ -204,7 +204,7 @@
     },
     "spray_window": {
       "title": "{{field}}-dalaga ishlov: {{date}} noqulay kun",
-      "body": "Shamol, yomg'ir yoki issiq ishlovni buzadi. Eng qulay vaqt: {{bestDate}}, {{bestFrom}}–{{bestTo}}."
+      "body": "Shamol, yomg'ir, issiq yoki sovuq ishlovni buzadi. Eng qulay vaqt: {{bestDate}}, {{bestFrom}}–{{bestTo}}."
     },
     "spray_window_none": {
       "title": "{{field}}-dalaga ishlov: {{date}} noqulay kun",
@@ -231,7 +231,7 @@
     "feed": "Eng kam ozuqa: {{name}}, {{days}} kunga yetadi",
     "cash": "Kassa va bank: {{amount}} so'm",
     "alerts": "Ochiq ogohlantirishlar: {{count}}, shundan shoshilinch: {{urgent}}",
-    "tasks": "Ochiq vazifalar: {{count}}"
+    "tasks": "Faol vazifalar (ochiq va bajarilmoqda): {{count}}"
   },
   "bot": {
     "linked": "Hisobingiz Telegramga ulandi. {{status}} bugungi holatni, {{alerts}} ochiq ogohlantirishlarni, {{help}} barcha imkoniyatlarni ko'rsatadi.",
@@ -336,7 +336,9 @@
     "ALERT_NOT_YOURS": "Bu shoshilinch ogohlantirishni faqat mas'ullar, egasi yoki direktor to'xtata oladi",
     "TELEGRAM_NOT_CONFIGURED": "Telegram bot hali sozlanmagan. Administratorga murojaat qiling.",
     "AI_AUDIO_NOT_SUPPORTED": "Hozirgi AI provayder ovozli xabarni o'qiy olmaydi. Iltimos, matn bilan yozing.",
-    "AI_TRANSCRIPTION_FAILED": "Ovozli xabarni o'qib bo'lmadi. Qayta ayting yoki yozib yuboring."
+    "AI_TRANSCRIPTION_FAILED": "Ovozli xabarni o'qib bo'lmadi. Qayta ayting yoki yozib yuboring.",
+    "ACTION_NOT_AVAILABLE": "Bu allaqachon hal qilingan yoki uni hal qilish sizga tegishli emas.",
+    "REASON_REQUIRED": "Sababini qisqacha yozing."
   },
   "title": "Ogohlantirishlar",
   "description": "Qoidalar va AI aniqlagan og'ishlar bir ro'yxatda, muhimlik darajasi bilan.",
@@ -372,7 +374,10 @@
     "markAll": "Hammasini o'qilgan deb belgilash",
     "emptyTitle": "Xabarlar yo'q",
     "emptyBody": "Yangi xabarlar shu yerda ko'rinadi.",
-    "unread": "O'qilmagan"
+    "unread": "O'qilmagan",
+    "reason": "Sabab",
+    "answered": "Javob berilgan",
+    "answeredAt": "{{state}} · {{at}}"
   },
   "settings": {
     "tab": "Sozlamalar",
@@ -389,7 +394,8 @@
       "alert_info": "Ma'lumot uchun xabarlar",
       "task_assigned": "Menga biriktirilgan vazifalar",
       "daily_summary": "Kunlik xulosa",
-      "assistant_recap": "Yordamchining kechki xulosasi"
+      "assistant_recap": "Yordamchining kechki xulosasi",
+      "cash_handover": "Menga berilgan yoki men bergan naqd pul"
     }
   },
   "testAlert": {

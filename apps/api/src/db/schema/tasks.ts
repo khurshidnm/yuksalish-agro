@@ -118,6 +118,11 @@ export const notifications = pgTable(
     alertId: uuid(),
     /** The reader must still hold this when it goes out or is read, e.g. 'finance.view' when the text shows money. */
     permission: text(),
+    /**
+     * Something the reader can decide from the message itself, e.g. { kind: 'cash_handover', id }: the
+     * owning module says which buttons still apply when it is read and decides again when one is pressed.
+     */
+    action: jsonb().$type<{ kind: string; id: string }>(),
     /** Delivery state per external channel, e.g. { telegram: 'sent' }. */
     deliveries: jsonb().$type<Record<string, string>>().notNull().default({}),
     readAt: ts(),

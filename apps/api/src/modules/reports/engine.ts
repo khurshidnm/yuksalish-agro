@@ -9,6 +9,7 @@ import { schema } from '../../db/client';
 import { canSeeMoney, ctx, hasPermission, today, tx } from '../../core/context';
 import { AppError, badRequest, forbidden, notFound } from '../../core/errors';
 import { enumLabel, formatIsoMonth, formatPeriod, localizedName, t } from './i18n';
+import { resolveSeason } from './seasons';
 import type {
   ColumnDef,
   FilterDef,
@@ -191,7 +192,36 @@ export function parseFilters(def: ReportDefinition, raw: Record<string, string>,
   return { input, period };
 }
 
-function summarizeFilters(def: ReportDefinition, raw: Record<string, string>, input: ReportInput, lang: Lang) {
+interface ResolvedLookups {
+  /** Names read from the database, which win over a label the client sent. */
+  labels: Record<string, string>;
+  defaults: ReportResult['defaults'];
+}
+
+/**
+ * A season report always reads one season. Fill an empty choice in now, so that every run, the
+ * comparison and the export name the same season, and the filter never reads "all" for one season.
+ */
+async function resolveLookups(def: ReportDefinition, input: ReportInput): Promise<ResolvedLookups> {
+  const resolved: ResolvedLookups = { labels: {}, defaults: {} };
+  for (const filter of def.filters) {
+    if (filter.type !== 'lookup' || !filter.defaultSeason) continue;
+    const { season, filled } = await resolveSeason(input.seasonId, filter.defaultSeason);
+    if (!season) continue;
+    input.seasonId = season.id;
+    resolved.labels[filter.key] = season.name;
+    if (filled) resolved.defaults[filter.key] = { value: season.id, label: season.name };
+  }
+  return resolved;
+}
+
+function summarizeFilters(
+  def: ReportDefinition,
+  raw: Record<string, string>,
+  input: ReportInput,
+  lang: Lang,
+  names: Record<string, string> = {},
+) {
   const rows: { label: string; value: string }[] = [];
   for (const filter of def.filters) {
     if (filter.type === 'period') continue;
@@ -199,7 +229,8 @@ function summarizeFilters(def: ReportDefinition, raw: Record<string, string>, in
     if (filter.type === 'month') rows.push({ label, value: formatIsoMonth(input.month) });
     if (filter.type === 'number') rows.push({ label, value: String((input as unknown as Record<string, unknown>)[filter.key]) });
     if (filter.type === 'select' && raw[filter.key]) rows.push({ label, value: enumLabel(lang, filter.enumGroup, raw[filter.key]) });
-    if (filter.type === 'lookup' && raw[`${filter.key}Label`]) rows.push({ label, value: raw[`${filter.key}Label`] });
+    const named = names[filter.key] ?? raw[`${filter.key}Label`];
+    if (filter.type === 'lookup' && named) rows.push({ label, value: named });
   }
   return rows;
 }
@@ -251,7 +282,7 @@ function mergeCompare(def: ReportDefinition, a: ReportOutput, b: ReportOutput, c
 
   const out: ColumnDef[] = [...keep];
   for (const column of values) {
-    const base = t(lang, `columns.${column.label ?? column.key}`);
+    const base = t(lang, `columns.${column.label ?? column.key}`, column.labelParams);
     const named = (key: string, label: string, extra: Partial<ColumnDef>): ColumnDef => ({
       ...column,
       key,
@@ -342,7 +373,9 @@ function groupRows(columns: ColumnDef[], rows: Row[], groupBy: string, lang: Lan
 }
 
 function toResultColumn(column: ColumnDef, lang: Lang): ResultColumn {
-  const label = column.label?.startsWith('=') ? column.label.slice(1) : t(lang, `columns.${column.label ?? column.key}`);
+  const label = column.label?.startsWith('=')
+    ? column.label.slice(1)
+    : t(lang, `columns.${column.label ?? column.key}`, column.labelParams);
   return { key: column.key, label, type: column.type, digits: column.digits, sum: column.sum };
 }
 
@@ -385,6 +418,7 @@ export async function runReport(def: ReportDefinition, options: RunOptions): Pro
   assertCanRun(def, await enabledModules());
 
   const { input, period } = parseFilters(def, raw, lang);
+  const lookups = await resolveLookups(def, input);
   const compareWith = parseCompare(def, raw);
   if (compareWith && options.groupBy) {
     throw badRequest('COMPARE_WITH_GROUPING', 'Comparison and grouping cannot be used together');
@@ -445,7 +479,8 @@ export async function runReport(def: ReportDefinition, options: RunOptions): Pro
     ...(await farmNames()),
     period,
     compareWith,
-    filterSummary: summarizeFilters(def, raw, input, lang),
+    filterSummary: summarizeFilters(def, raw, input, lang, lookups.labels),
+    defaults: lookups.defaults,
     generatedAt: new Date().toISOString(),
     timezone: ctx().timezone,
     lang,

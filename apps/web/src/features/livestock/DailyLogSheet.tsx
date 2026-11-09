@@ -252,13 +252,13 @@ function DailyLogForm({ plan, log, herdName, date, herdId, onDone }: FormProps) 
             value={null}
             onChange={(value, option) => addFeed(value, option?.label, (option?.raw as { unit?: string } | undefined)?.unit)}
             placeholder={t('dailyLogs.addFeedPlaceholder')}
-            loadOptions={apiOptions<{ id: string; name: string; unit: string }>('/inventory/items/lookup', (i) => ({ value: i.id, label: i.name, hint: i.unit }), { category: 'feed' })}
+            loadOptions={apiOptions<{ id: string; name: string; unit: string }>('/inventory/items/lookup', (i) => ({ value: i.id, label: i.name, hint: t(`enums:unit.${i.unit}`, { defaultValue: i.unit }) }), { category: 'feed' })}
           />
         </div>
 
         <div>
           <Label htmlFor="daily-water">{t('dailyLogs.water')}</Label>
-          <NumberInput id="daily-water" className="h-14 text-xl" value={water} onChange={setWater} suffix="l" />
+          <NumberInput id="daily-water" className="h-14 text-xl" value={water} onChange={setWater} suffix={t('enums:unit.l')} />
         </div>
 
         <div className="space-y-2">

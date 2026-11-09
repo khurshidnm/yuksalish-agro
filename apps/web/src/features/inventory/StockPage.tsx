@@ -15,6 +15,8 @@ import { ExpiryBadge, useWarehouseOptions } from './shared';
 import type { ExpiringRow, LowRow, StockRow } from './types';
 
 const EXPIRY_WINDOWS = [30, 60, 90, 180];
+/** The tab opens on this window, and its badge counts the same batches the tab then lists. */
+const DEFAULT_EXPIRY_DAYS = '60';
 
 function BalancesTab({ canWrite, onReceive }: { canWrite: boolean; onReceive: () => void }) {
   const { t } = useTranslation('inventory');
@@ -125,7 +127,7 @@ function LowTab({ query }: { query: ReturnType<typeof useDetail<LowRow[]>> }) {
 
 function ExpiringTab() {
   const { t } = useTranslation('inventory');
-  const [days, setDays] = useUrlParam('days', '60');
+  const [days, setDays] = useUrlParam('days', DEFAULT_EXPIRY_DAYS);
   const query = useDetail<ExpiringRow[]>('/inventory/stock/expiring', { days });
   const columns: Column<ExpiringRow>[] = [
     { key: 'item', header: t('stock.columns.item'), cell: (row) => row.itemName, mobile: 'title' },
@@ -179,7 +181,7 @@ export default function StockPage() {
   const canWrite = usePermission('inventory.create');
   const [dialog, setDialog] = useState<'receipt' | 'issue' | 'transfer' | null>(null);
   const low = useDetail<LowRow[]>('/inventory/stock/low');
-  const expiring = useDetail<ExpiringRow[]>('/inventory/stock/expiring', { days: 30 });
+  const expiring = useDetail<ExpiringRow[]>('/inventory/stock/expiring', { days: DEFAULT_EXPIRY_DAYS });
 
   const openChange = (open: boolean) => !open && setDialog(null);
 

@@ -288,7 +288,8 @@ describe('feed anomaly', () => {
     const [insight] = await insightsOf(f, 'feed_anomaly');
     expect(insight.dedupKey).toBe(`feed_anomaly:${today}`);
     expect(insight.periodFrom).toBe(today);
-    expect(insight.body).toContain('2.4 kg');
+    // The farm reads Uzbek, which writes a fraction with a comma.
+    expect(insight.body).toContain('2,4 kg');
     expect(insight.body).toContain('2 kg');
     expect(insight.body).toContain('+20%');
     expect(insight.confidence).toBeGreaterThanOrEqual(0.75);
@@ -459,7 +460,7 @@ describe('fuel', () => {
     });
     await f.run(() => runStatistics());
     const [insight] = await insightsOf(f, 'fuel_spike');
-    expect(insight.body).toContain('13.5');
+    expect(insight.body).toContain('13,5');
     expect(insight.body).toContain('10 ');
     expect(insight.body).toContain('+35%');
   });
@@ -534,15 +535,30 @@ describe('lambing workload', () => {
     const [insight] = await insightsOf(f, 'lambing_workload');
     const { weeks, extraKgPerEweDay } = insight.data as any;
     expect(extraKgPerEweDay).toBe(1);
+    const lactating = (week: number, ewes: number) => ({
+      weekStart: addDays(monday, 7 * week),
+      ewes: 0,
+      lambs: 0,
+      lactatingEwes: ewes,
+      extraFeedKg: ewes * 7,
+      laborHours: 0,
+      workersNeeded: 0,
+    });
+    // 1.1 lambs a ewe, as the dashboard and the outlook assume.
     expect(weeks).toEqual([
-      { weekStart: monday, ewes: 10, lambs: 12, lactatingEwes: 10, extraFeedKg: 70, laborHours: 10, workersNeeded: 1 },
-      { weekStart: addDays(monday, 7), ewes: 20, lambs: 24, lactatingEwes: 30, extraFeedKg: 210, laborHours: 20, workersNeeded: 1 },
+      { weekStart: monday, ewes: 10, lambs: 11, lactatingEwes: 10, extraFeedKg: 70, laborHours: 10, workersNeeded: 1 },
+      { weekStart: addDays(monday, 7), ewes: 20, lambs: 22, lactatingEwes: 30, extraFeedKg: 210, laborHours: 20, workersNeeded: 1 },
+      // No more lambings, but every ewe stays on the lactating ration for her 8 weeks.
+      ...[2, 3, 4, 5, 6, 7].map((week) => lactating(week, 30)),
+      lactating(8, 20),
     ]);
-    expect(insight.body).toContain('0.3 t'); // 70 + 210 = 280 kg more feed over the two weeks.
+    // 30 ewes × 8 weeks × 7 days × 1 kg = 1 680 kg, written the Uzbek way. Stopping at the last lambing gave 280.
+    expect(insight.body).toContain('1,7 t');
+    expect(insight.body).toContain('33 qo'); // 30 × 1.1
     expect(insight.body).toContain(dayText(addDays(monday, 7)));
     expect(insight.sources).toMatchObject({
       pregnantEwes: 30,
-      assumptions: { lambsPerEwe: 1.2, lambsPerEweSource: 'assumed_default' },
+      assumptions: { lambsPerEwe: 1.1, lambsPerEweSource: 'assumed_default', lactationWeeks: 8 },
     });
     expect(insight.confidence).toBe(0.6);
   });
@@ -656,16 +672,17 @@ describe('season profit, feed advice and crop suggestion', () => {
   it('offers a cheaper mix per ration, as money (control numbers)', async () => {
     const f = await createFixture();
     const { herdId } = await makeHerd(f, 100);
-    const barley = await makeFeed(f, 'Arpa', { dryMatterPct: 90 });
+    // Two roughages: a cost swap stays within one feed group, so grain is never swapped for straw.
+    const hay = await makeFeed(f, 'Beda pichani', { dryMatterPct: 90 });
     const straw = await makeFeed(f, 'Somon', { dryMatterPct: 88 });
     await f.run(async () => {
       const [ration] = await tx().insert(schema.rations).values({ ...base(f), name: 'R', state: 'pregnant' }).returning();
       await tx().insert(schema.rationLines).values([
-        { ...base(f), rationId: ration.id, itemId: barley.itemId, kgPerHeadDay: 1 },
+        { ...base(f), rationId: ration.id, itemId: hay.itemId, kgPerHeadDay: 1 },
         { ...base(f), rationId: ration.id, itemId: straw.itemId, kgPerHeadDay: 1 },
       ]);
       await tx().update(schema.herds).set({ rationId: ration.id }).where(eq(schema.herds.id, herdId));
-      await receiveStock({ ...barley, qty: 50_000, unitCost: 3000, date: today, source: 'opening' });
+      await receiveStock({ ...hay, qty: 50_000, unitCost: 3000, date: today, source: 'opening' });
       await receiveStock({ ...straw, qty: 50_000, unitCost: 1000, date: today, source: 'opening' });
     });
 
@@ -685,9 +702,9 @@ describe('season profit, feed advice and crop suggestion', () => {
     const [insight] = await insightsOf(f, 'crop_suggestion');
     expect(insight.containsMoney).toBe(true);
     const rows = (insight.data as any).rows as any[];
-    // Wheat: 5 t × 3 mln − 3 mln/ha = 12 mln. Barley: 4 t × 2.5 mln − 2 mln/ha = 8 mln.
-    // Field 1 grew wheat, so wheat drops 25% to 9 mln and still leads barley's 8 mln.
-    expect(rows.find((r) => r.field === '1')).toMatchObject({ lastCrop: "Bug'doy", marginPerHa: 12_000_000, reasons: ['rotation_penalty'] });
+    // Wheat: 5 t × 3 mln − 3 mln/ha = 12 mln. Barley: 4 t × 2.5 mln − 2 mln/ha = 8 mln. Two priced crops
+    // may hold half the land each: field 2 takes wheat, and field 1, where wheat grew, takes barley.
+    expect(rows.find((r) => r.field === '1')).toMatchObject({ lastCrop: "Bug'doy", crop: 'Arpa', marginPerHa: 8_000_000 });
     expect(rows.find((r) => r.field === '2')).toMatchObject({ lastCrop: 'Arpa', crop: "Bug'doy", marginPerHa: 12_000_000 });
   });
 
@@ -697,6 +714,150 @@ describe('season profit, feed advice and crop suggestion', () => {
     expect(await insightsOf(f)).toEqual([]);
     expect(report.coverage.every((c) => !c.enough)).toBe(true);
     expect(report.failed).toEqual([]);
+  });
+
+  /** Wheat and barley this season, as on the pilot farm: wheat gives grain, which is sold, and straw. */
+  async function wheatWithStraw(f: Fixture) {
+    return f.run(async () => {
+      const cropRows = await tx().select().from(schema.crops).where(eq(schema.crops.tenantId, f.tenantId));
+      const crop = (key: string) => cropRows.find((c) => c.key === key)!.id;
+      const [season] = await tx()
+        .insert(schema.seasons)
+        .values({ ...base(f), name: 'Kuzgi', kind: 'autumn', startDate: addDays(today, -30), endDate: addDays(today, 200), isCurrent: true })
+        .returning();
+      for (const [number, key, y, cost] of [['1', 'wheat', 5, 30_000_000], ['2', 'barley', 4, 20_000_000]] as const) {
+        const [field] = await tx().insert(schema.fields).values({ ...base(f), number, areaHa: 10 }).returning();
+        await tx()
+          .insert(schema.cropPlans)
+          .values({ ...base(f), seasonId: season.id, fieldId: field.id, cropId: crop(key), areaHa: 10, expectedYieldTHa: y, plannedCost: cost });
+      }
+      // One at a time, straw first, so the straw lies first in the table, as it did on the pilot farm.
+      const item = async (name: string, key: string, transferPrice: number, category = 'feed') => {
+        const [row] = await tx()
+          .insert(schema.items)
+          .values({ ...base(f), name, category, unit: 'kg', cropId: crop(key), transferPrice })
+          .returning();
+        return row.id;
+      };
+      await item('Somon', 'wheat', 800);
+      const grain = await item("Bug'doy (yem)", 'wheat', 3800);
+      await item("Bug'doy urug'i", 'wheat', 6500, 'seed');
+      await item('Arpa', 'barley', 2500);
+      await tx().insert(schema.prices).values([
+        { ...base(f), itemId: grain, date: addDays(today, -60), price: 4200, kind: 'sale' },
+        { ...base(f), itemId: grain, date: addDays(today, -1), price: 4600, kind: 'sale' },
+        { ...base(f), itemId: grain, date: today, price: 4700, kind: 'market' },
+      ]);
+      return { crop, grain };
+    });
+  }
+
+  it('prices wheat from its grain, never its straw or seed, at the latest sale price (control numbers)', async () => {
+    const f = await createFixture();
+    await wheatWithStraw(f);
+    await f.run(() => runStatistics());
+
+    const [season] = await insightsOf(f, 'season_profit');
+    const lines = (season.data as any).lines as any[];
+    expect(lines.find((l) => l.field === '1')).toMatchObject({ crop: "Bug'doy", pricePerT: 4_600_000 });
+    expect(lines.find((l) => l.field === '2')).toMatchObject({ crop: 'Arpa', pricePerT: 2_500_000 });
+    // Wheat 50 t × 4.6 mln + barley 40 t × 2.5 mln = 330 mln; cost 30 + 20 = 50 mln. At the straw's
+    // 0.8 mln a ton, wheat brought 40 mln and the profit read 90 mln.
+    expect(season.data).toMatchObject({ revenue: 330_000_000, cost: 50_000_000, profit: 280_000_000 });
+    expect(season.title).toContain("280 000 000 so'm");
+
+    // The crop plan weighs the same price: wheat 5 t × 4.6 mln − 3 mln = 20 mln a hectare, not 1 mln.
+    const [crop] = await insightsOf(f, 'crop_suggestion');
+    const rows = (crop.data as any).rows as any[];
+    expect(rows.find((r) => r.field === '2')).toMatchObject({ crop: "Bug'doy", marginPerHa: 20_000_000 });
+  });
+
+  it('prices a crop from the item its harvest went into, before any other', async () => {
+    const f = await createFixture();
+    const { crop } = await wheatWithStraw(f);
+    await f.run(async () => {
+      // Last year's wheat went into food grain, valued above the feed grain the farm sells.
+      const [food] = await tx()
+        .insert(schema.items)
+        .values({ ...base(f), name: "Bug'doy (oziq-ovqat)", category: 'product', unit: 't', transferPrice: 5_200_000 })
+        .returning();
+      const [last] = await tx()
+        .insert(schema.seasons)
+        .values({ ...base(f), name: 'Kuzgi 2025', kind: 'autumn', startDate: addDays(today, -400), endDate: addDays(today, -150) })
+        .returning();
+      const [field] = await tx().insert(schema.fields).values({ ...base(f), number: '9', areaHa: 5 }).returning();
+      const [plan] = await tx()
+        .insert(schema.cropPlans)
+        .values({ ...base(f), seasonId: last.id, fieldId: field.id, cropId: crop('wheat'), areaHa: 5, expectedYieldTHa: 5, plannedCost: 15_000_000 })
+        .returning();
+      await tx()
+        .insert(schema.harvests)
+        .values({ ...base(f), fieldId: field.id, cropPlanId: plan.id, date: addDays(today, -160), grossT: 26, itemId: food.id });
+    });
+    await f.run(() => runStatistics());
+    const [season] = await insightsOf(f, 'season_profit');
+    expect(((season.data as any).lines as any[]).find((l) => l.field === '1')).toMatchObject({ pricePerT: 5_200_000 });
+  });
+
+  it('retires advice a later run no longer gives, and keeps decisions and detections (control numbers)', async () => {
+    const f = await createFixture();
+    await farmWithPlans(f);
+    await f.run(() => runStatistics());
+    const stored = (key: string, decision = 'pending') => ({
+      ...base(f),
+      type: key.split(':')[0],
+      dedupKey: key,
+      title: 'Eski',
+      body: "Hamma dalaga Beda",
+      confidence: 0.5,
+      sources: { tables: ['crop_plans'] },
+      model: 'statistics',
+      decision,
+    });
+    // Last month's plan nobody answered, one accepted, and a feed detection of a day long past.
+    await f.run(() =>
+      asAiWriter(() =>
+        tx()
+          .insert(schema.aiInsights)
+          .values([
+            stored('crop_suggestion:2000-01'),
+            stored('season_profit:old:2000-01', 'accepted'),
+            stored('feed_anomaly:2000-01-15'),
+          ]),
+      ),
+    );
+
+    const rerun = await f.run(() => runStatistics());
+    expect(rerun).toMatchObject({ created: 0, refreshed: 2, retired: 1 });
+    const decisions = async () =>
+      Object.fromEntries((await insightsOf(f)).map((i) => [i.dedupKey, i.decision]));
+    const month = monthOf(today);
+    expect(await decisions()).toMatchObject({
+      'crop_suggestion:2000-01': 'superseded',
+      'season_profit:old:2000-01': 'accepted',
+      'feed_anomaly:2000-01-15': 'pending',
+      [`crop_suggestion:${month}`]: 'pending',
+    });
+
+    // The prices go, so neither the profit forecast nor the plan stands any more.
+    await f.run(() => tx().update(schema.items).set({ transferPrice: null }));
+    expect((await f.run(() => runStatistics())).retired).toBe(2);
+    const owner = await f.as('owner');
+    const listed = await owner.get('/ai/insights');
+    expect(listed.body.data.map((i: any) => i.dedupKey).sort()).toEqual(['feed_anomaly:2000-01-15', 'season_profit:old:2000-01']);
+    expect((await owner.get('/ai/insights', { decision: 'pending' })).body.meta.total).toBe(1);
+    const [retired] = (await insightsOf(f, 'crop_suggestion')).filter((i) => i.dedupKey === `crop_suggestion:${month}`);
+    const refused = await owner.post(`/ai/insights/${retired.id}/decision`, { decision: 'accepted' });
+    expect(refused.status).toBe(409);
+    expect(refused.body.error.code).toBe('INSIGHT_SUPERSEDED');
+
+    // Priced again, the same month's advice comes back as the same row, pending.
+    await f.run(() => tx().update(schema.items).set({ transferPrice: 3000 }).where(eq(schema.items.name, "Bug'doy")));
+    await f.run(() => tx().update(schema.items).set({ transferPrice: 2500 }).where(eq(schema.items.name, 'Arpa')));
+    await f.run(() => runStatistics());
+    const [back] = (await insightsOf(f, 'crop_suggestion')).filter((i) => i.dedupKey === `crop_suggestion:${month}`);
+    expect(back).toMatchObject({ id: retired.id, decision: 'pending' });
+    expect((await decisions())['crop_suggestion:2000-01']).toBe('superseded');
   });
 });
 
@@ -1310,9 +1471,12 @@ describe('executive summary', () => {
       expect.arrayContaining([
         expect.stringContaining('Kepak zaxirasi faqat 10 kunga'),
         expect.stringContaining('1 ta vazifa'),
-        expect.stringContaining('112.5%'),
+        // Uzbek writes a fraction with a comma.
+        expect.stringContaining('112,5%'),
       ]),
     );
+    expect(templateSections(figures(), 'en').bad).toEqual(expect.arrayContaining([expect.stringContaining('112.5%')]));
+    expect(templateSections(figures(), 'ru').bad).toEqual(expect.arrayContaining([expect.stringContaining('112,5%')]));
     expect(todo).toEqual(expect.arrayContaining([expect.stringContaining('Kepak'), aiText('uz', 'summary.todo.reviewBudget')]));
   });
 

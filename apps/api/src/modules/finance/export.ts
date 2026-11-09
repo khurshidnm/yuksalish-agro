@@ -54,6 +54,8 @@ const MONEY_ACCOUNT: Record<string, string> = { cash: '5010', bank: '5110', card
 const PAYABLE = '6010';
 const RECEIVABLE = '4010';
 const LOAN = '7810';
+/** The owner's own money put in and taken out. To be confirmed by the farm's accountant. */
+const OWNER_CAPITAL = '8300';
 
 const EXPENSE_ACCOUNT: Record<string, string> = {
   livestock: '2010',
@@ -94,6 +96,10 @@ export function doubleEntry(row: ExportRow): { debit: string; credit: string } {
       return { debit: row.sourceType === 'loan_instalment' ? LOAN : PAYABLE, credit: money };
     case 'debt_receipt':
       return { debit: money, credit: row.sourceType === 'loan' ? LOAN : RECEIVABLE };
+    case 'contribution':
+      return { debit: money, credit: OWNER_CAPITAL };
+    case 'withdrawal':
+      return { debit: OWNER_CAPITAL, credit: money };
     default:
       return { debit: moneyAccount(row.toAccountType), credit: money };
   }

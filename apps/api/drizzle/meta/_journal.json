@@ -71,6 +71,13 @@
       "when": 1794081730967,
       "tag": "0009_tracking",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794169622486,
+      "tag": "0010_cash_holders",
+      "breakpoints": true
     }
   ]
 }

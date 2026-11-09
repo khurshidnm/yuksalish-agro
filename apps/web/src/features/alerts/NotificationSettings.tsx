@@ -54,6 +54,8 @@ function ChannelMatrix() {
   };
 
   const telegramWorks = data.channels.some((channel) => channel.key === 'telegram' && channel.configured);
+  // A channel with no provider is not offered. Telegram stays: its own card says how to set it up.
+  const offered = data.channels.filter((channel) => channel.configured || channel.key === 'telegram');
 
   return (
     <Card>
@@ -70,7 +72,7 @@ function ChannelMatrix() {
                 <Checkbox checked disabled />
                 {t('enums:notificationChannel.in_app')}
               </label>
-              {data.channels.map((channel) => (
+              {offered.map((channel) => (
                 <label key={channel.key} className="flex min-h-11 items-center gap-3 text-sm">
                   <Checkbox
                     checked={event.channels.includes(channel.key)}

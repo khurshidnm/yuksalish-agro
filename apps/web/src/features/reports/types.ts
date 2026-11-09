@@ -17,7 +17,8 @@ export type CatalogFilter =
   | (FilterBase & { type: 'month'; default: 'current' | 'previous' })
   | (FilterBase & { type: 'number'; default: number; min: number; max: number })
   | (FilterBase & { type: 'select'; options: { value: string; label: string }[] })
-  | (FilterBase & { type: 'lookup'; path: string; params?: Record<string, string> });
+  /** `emptyLabel`: what an empty choice reads, when it is not "all" (a season report reads one season). */
+  | (FilterBase & { type: 'lookup'; path: string; params?: Record<string, string>; emptyLabel?: string });
 
 export interface CatalogReport {
   key: string;
@@ -51,6 +52,8 @@ export interface ReportResult {
   title: string;
   description: string;
   period: { from: string; to: string } | null;
+  /** Filters left empty that the report filled in itself, such as the season it read. */
+  defaults?: Record<string, { value: string; label: string }>;
   columns: ResultColumn[];
   rows: ReportRow[];
   totals: ReportRow | null;

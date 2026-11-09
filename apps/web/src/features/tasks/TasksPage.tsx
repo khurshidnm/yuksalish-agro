@@ -152,7 +152,7 @@ function TaskList({ onEdit, onComplete }: ListProps) {
             onChange={(e) => setDivision(e.target.value)}
             options={DIVISIONS.map((d) => ({ value: d, label: t(`division.${d}`) }))}
             placeholder={t('filters.allDivisions')}
-            className="md:w-44"
+            className="md:w-52"
           />
           <Select
             aria-label={t('fields.priority')}
@@ -160,7 +160,7 @@ function TaskList({ onEdit, onComplete }: ListProps) {
             onChange={(e) => setPriority(e.target.value)}
             options={enumOptions('priority', PRIORITIES)}
             placeholder={t('filters.allPriorities')}
-            className="md:w-40"
+            className="md:w-52"
           />
           <Combobox
             value={assignee || null}

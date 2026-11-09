@@ -6,10 +6,11 @@ import { ComboboxField, DateField, FormDialog, FormGrid, NumberField, SelectFiel
 import { Separator, apiOptions } from '@/components/ui';
 import { api } from '@/lib/api';
 import { usePermission, useSession } from '@/lib/auth';
-import { formatMoney } from '@/lib/format';
+import { currencyLabel, formatMoney } from '@/lib/format';
 import { zEnum, zOptionalDate, zOptionalEnum, zOptionalNumber, zOptionalRef, zOptionalText, zText } from '@/lib/forms';
 import i18n, { enumOptions } from '@/lib/i18n';
 import { useApiMutation } from '@/lib/query';
+import { assetKind } from './assetKinds';
 import { priceBody } from './assetPrice';
 import { depreciationGaps } from './depreciationGaps';
 import type { Asset } from './types';
@@ -75,7 +76,7 @@ function OwnershipFields({ form, seesMoney }: { form: Form; seesMoney: boolean }
       <>
         <ComboboxField form={form} name="rentalCounterpartyId" label={t('fields.contractor')} loadOptions={contractorOptions} clearable />
         <FormGrid>
-          {seesMoney && <NumberField money form={form} name="rentalPrice" label={t('fields.rentalPrice')} />}
+          {seesMoney && <NumberField money form={form} name="rentalPrice" label={t('fields.rentalPrice')} suffix={currencyLabel()} />}
           <SelectField
             form={form}
             name="rentalUnit"
@@ -116,6 +117,24 @@ function OwnershipFields({ form, seesMoney }: { form: Form; seesMoney: boolean }
       {seesMoney && <NumberField money form={form} name="openingDepreciation" label={t('fields.openingDepreciation')} hint={t('fields.openingDepreciationHint')} suffix={baseSuffix} />}
       {seesMoney && <DateField form={form} name="openingDepreciationDate" label={t('fields.openingDepreciationDate')} hint={t('fields.openingDepreciationDateHint')} />}
     </FormGrid>
+  );
+}
+
+/** Motor-hours and fuel norms for the machines that have them: no fuel per hectare for a generator. */
+function TypeFields({ form }: { form: Form }) {
+  const { t } = useTranslation('assets');
+  const type = useWatch({ control: form.control, name: 'type' });
+  const values = form.getValues();
+  const kind = assetKind(type);
+  // A value already entered stays visible, so changing the type never hides data.
+  const engine = kind.hasEngine || Boolean(values.motoHours) || values.fuelNormLPerHour != null;
+  const perHa = (kind.worksFields && kind.hasEngine) || values.fuelNormLPerHa != null;
+  return (
+    <>
+      {engine && <NumberField form={form} name="motoHours" label={t('fields.motoHours')} suffix={t('unit.hours')} hint={t('fields.motoHoursHint')} />}
+      {engine && <NumberField form={form} name="fuelNormLPerHour" label={t('fields.fuelNormHour')} suffix={t('unit.lPerHour')} />}
+      {perHa && <NumberField form={form} name="fuelNormLPerHa" label={t('fields.fuelNormHa')} suffix={t('unit.lPerHa')} />}
+    </>
   );
 }
 
@@ -184,9 +203,7 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
             <SelectField form={form} name="type" label={t('fields.type')} required options={enumOptions('assetType', ASSET_TYPES)} />
             <TextField form={form} name="inventoryNo" label={t('fields.inventoryNo')} />
             <SelectField form={form} name="status" label={t('fields.status')} options={enumOptions('assetStatus', ASSET_STATUSES)} />
-            <NumberField form={form} name="motoHours" label={t('fields.motoHours')} suffix={t('unit.hours')} hint={t('fields.motoHoursHint')} />
-            <NumberField form={form} name="fuelNormLPerHour" label={t('fields.fuelNormHour')} suffix={t('unit.lPerHour')} />
-            <NumberField form={form} name="fuelNormLPerHa" label={t('fields.fuelNormHa')} suffix={t('unit.lPerHa')} />
+            <TypeFields form={form} />
           </FormGrid>
           <Separator />
           <SwitchField form={form} name="rented" label={t('fields.rented')} hint={t('fields.rentedHint')} />

@@ -23,6 +23,7 @@ import {
   FileSpreadsheet,
   FileText,
   Files,
+  HandCoins,
   HeartPulse,
   Inbox,
   History,
@@ -133,6 +134,7 @@ export const NAV: NavSection[] = [
     items: [
       { key: 'transactions', to: '/finance/transactions', icon: Receipt, permission: 'finance.view' },
       { key: 'accounts', to: '/finance/accounts', icon: Landmark, permission: 'finance.view' },
+      { key: 'cashHolders', to: '/finance/cash-holders', icon: HandCoins, permission: 'finance.view' },
       { key: 'counterparties', to: '/finance/counterparties', icon: BookUser, permission: 'finance.view' },
       { key: 'debts', to: '/finance/debts', icon: CreditCard, permission: 'finance.view' },
       { key: 'budget', to: '/finance/budget', icon: ChartPie, permission: 'finance.view' },

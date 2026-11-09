@@ -1,6 +1,6 @@
 import { eq, sql } from 'drizzle-orm';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import { DEFAULT_ROLE_PERMISSIONS, MODULES, addDays, monthOf, round, todayIso, type RoleKey } from '@yap/shared';
+import { DEFAULT_ROLE_PERMISSIONS, MODULES, addDays, monthOf, monthRange, round, todayIso, type RoleKey } from '@yap/shared';
 import { ctx, tx } from '../src/core/context';
 import { ensureCostCenter, generalCostCenterId } from '../src/core/costCenters';
 import { issueStock, receiveStock } from '../src/core/inventory';
@@ -540,9 +540,13 @@ describe('dashboard KPIs (spec 14.3)', () => {
       profitabilityPercent: round(((INCOME - operating) / operating) * 100, 1),
       operatingRatio: round(operating / INCOME, 2),
       netCashflow: INCOME - EXPENSE,
-      budgetDeviation: EXPENSE - BUDGET,
     });
-    expect(data.budgetDeviationPercent).toBeCloseTo(((EXPENSE - BUDGET) / BUDGET) * 100, 1);
+    // A month still running: spending so far against the plan so far, the month's plan counting for the days gone.
+    const day = Number(now.slice(8, 10));
+    const days = Number(monthRange(month).to.slice(8, 10));
+    const planSoFar = (BUDGET * day) / days;
+    expect(data.budgetDeviation).toBeCloseTo(EXPENSE - planSoFar, 1);
+    expect(data.budgetDeviationPercent).toBeCloseTo(((EXPENSE - planSoFar) / planSoFar) * 100, 1);
     // The herd earned 10 mln and bore the general 8 mln as overhead, since it is the only center
     // with head, plus the hay it ate this month: 50 kg × 2 000 for each feeding day that falls in
     // the month. How many do depends on today's date.
@@ -555,8 +559,8 @@ describe('dashboard KPIs (spec 14.3)', () => {
     // 10 head and 30 ha over 2 employees; 1 present day and no absences.
     expect(groups.staff.data).toEqual({ headPerEmployee: 5, haPerEmployee: 15, attendancePercent: 100 });
     expect(groups.feed.data).toMatchObject({ stockDays: 20, limitingItem: 'Beda' });
-    // Two owned tractors, no hours logged.
-    expect(groups.machinery.data).toMatchObject({ utilizationPercent: 0, unplannedStops: 0, downtimeHours: 0 });
+    // Two owned tractors, no hours ever logged: their load is unknown, not 0 %.
+    expect(groups.machinery.data).toMatchObject({ utilizationPercent: null, unplannedStops: 0, downtimeHours: 0 });
     expect(groups.livestock.data.mortalityPercent).toBe(0);
   });
 

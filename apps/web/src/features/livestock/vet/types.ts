@@ -35,7 +35,11 @@ export interface LambingCalendar {
   weeks: { week: string; expected: number }[];
   totalEwes: number;
   overdue: number;
+  /** From this farm's own lambings; null until the first one. */
   expectedLambs: number | null;
+  /** The outlook's estimate from its stated lambs-per-ewe assumption; null with no ewes due. */
+  assumedLambs?: number | null;
+  assumedLambsPerEwe?: number;
 }
 
 export interface LambDetail {
@@ -147,6 +151,8 @@ export interface HealthRecord {
   totalCost: number | null;
   nextDueDate: string | null;
   vaccinationPlanId: string | null;
+  /** The plan a scheduled dose answered. */
+  planName: string | null;
   reportStatus: 'open' | 'resolved' | null;
   endedOn: string | null;
   notes: string | null;
@@ -196,6 +202,9 @@ export interface VaccinationPlan {
   itemId: string | null;
   itemName: string | null;
   itemUnit: string | null;
+  itemCategory: string | null;
+  /** The type of the last record made under this plan, if any. */
+  lastType: string | null;
   speciesId: string | null;
   category: string | null;
   ageDays: number | null;

@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { and, asc, count, desc, eq, gt, inArray, ne, sql } from 'drizzle-orm';
 import { z } from 'zod';
-import { ACTIONS, FINANCE_SUMMARY_VIEW, MODULES, PII_VIEW } from '@yap/shared';
+import { ACTIONS, FINANCE_SUMMARY_VIEW, MODULES, PII_VIEW, STANDALONE_PERMISSIONS } from '@yap/shared';
 import { schema } from '../../db/client';
 import { ctx, hasPermission, tx, withPlatform } from '../../core/context';
 import { badRequest, conflict, forbidden, notFound } from '../../core/errors';
@@ -20,8 +20,7 @@ const INVITATION_DAYS = 14;
 
 export const ALL_PERMISSIONS: string[] = [
   ...MODULES.flatMap((m) => ACTIONS.map((a) => `${m}.${a}`)),
-  PII_VIEW,
-  FINANCE_SUMMARY_VIEW,
+  ...STANDALONE_PERMISSIONS,
 ];
 
 export const permissionList = z.array(z.enum(ALL_PERMISSIONS as [string, ...string[]])).max(ALL_PERMISSIONS.length);

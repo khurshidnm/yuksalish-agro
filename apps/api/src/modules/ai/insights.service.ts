@@ -1,11 +1,11 @@
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, ne, notInArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { canSeeMoney, ctx, tx } from '../../core/context';
 import { conflict, notFound } from '../../core/errors';
 import { recordEvent } from '../../core/journal';
 import { listQuery, paged } from '../../core/query';
 import { schema } from '../../db/client';
-import { INSIGHT_TYPES, type Finding } from './analyzers/types';
+import { INSIGHT_TYPES, type Finding, type InsightType } from './analyzers/types';
 import { aiText } from './render';
 import type { LanguageCode } from '@yap/shared/i18n';
 import { asAiWriter } from './role';
@@ -14,6 +14,12 @@ const { aiInsights: t } = schema;
 
 /** Confidence from which a detection also raises an alert. */
 export const ALERT_CONFIDENCE = 0.75;
+
+/**
+ * A pending insight a later analysis no longer gives. Nobody decided on it, so it is no decision: it is
+ * kept, off the list, and comes back as pending if a run gives it again.
+ */
+export const SUPERSEDED = 'superseded';
 
 export interface InsightText {
   title: string;
@@ -37,7 +43,7 @@ export interface StoredFinding {
 
 /**
  * Save findings as yap_ai. A finding already stored for the period is refreshed while nobody has
- * decided on it; a decided one stays exactly as the person saw it.
+ * decided on it, and one retired earlier comes back; a decided one stays exactly as the person saw it.
  */
 export async function storeFindings(
   findings: Finding[],
@@ -66,6 +72,7 @@ export async function storeFindings(
         // Moves with the text: a refresh may add money figures to a row that had none.
         containsMoney: finding.containsMoney ?? false,
         model: options.model ?? 'statistics',
+        decision: 'pending',
         updatedAt: new Date(),
       };
       const [row] = await tx()
@@ -84,12 +91,38 @@ export async function storeFindings(
         .onConflictDoUpdate({
           target: [t.farmId, t.dedupKey],
           set: refreshed,
-          where: eq(t.decision, 'pending'),
+          where: inArray(t.decision, ['pending', SUPERSEDED]),
         })
         .returning({ id: t.id, inserted: sql<boolean>`xmax = 0` });
       if (row) stored.push({ id: row.id, inserted: row.inserted, finding, text });
     }
     return stored;
+  });
+}
+
+/**
+ * Retire, as yap_ai, the pending statistical insights of these types that a run no longer gave: advice
+ * worked out afresh from what the farm looks like now, such as last month's crop plan or a ration saving
+ * that a corrected analysis no longer finds. Left pending, an outdated card would stay on the list and on
+ * the dashboard for good. Decided insights stay exactly as they were.
+ */
+export async function retireStale(types: readonly InsightType[], given: readonly string[]): Promise<number> {
+  if (types.length === 0) return 0;
+  return asAiWriter(async () => {
+    const retired = await tx()
+      .update(t)
+      .set({ decision: SUPERSEDED, updatedAt: new Date() })
+      .where(
+        and(
+          eq(t.farmId, ctx().farmId),
+          eq(t.decision, 'pending'),
+          eq(t.model, 'statistics'),
+          inArray(t.type, [...types]),
+          given.length > 0 ? notInArray(t.dedupKey, [...given]) : undefined,
+        ),
+      )
+      .returning({ id: t.id });
+    return retired.length;
   });
 }
 
@@ -102,7 +135,8 @@ const visible = () =>
   and(eq(t.farmId, ctx().farmId), canSeeMoney() ? undefined : eq(t.containsMoney, false));
 
 export async function list(q: z.infer<typeof insightListQuery>) {
-  const where = and(visible(), q.type ? eq(t.type, q.type) : undefined, q.decision ? eq(t.decision, q.decision) : undefined);
+  // A retired insight is never listed: a later analysis replaced it.
+  const where = and(visible(), q.type ? eq(t.type, q.type) : undefined, q.decision ? eq(t.decision, q.decision) : ne(t.decision, SUPERSEDED));
   return paged(q, t, where, (limit, offset) =>
     tx().select().from(t).where(where).orderBy(desc(t.createdAt), desc(t.id)).limit(limit).offset(offset),
   );
@@ -125,6 +159,7 @@ export const decisionInput = z.object({
 /** Spec 15: a recommendation is accepted or rejected by a person, and that decision is kept. */
 export async function decide(id: string, input: z.infer<typeof decisionInput>) {
   const row = await getVisible(id, true);
+  if (row.decision === SUPERSEDED) throw conflict('INSIGHT_SUPERSEDED', 'A later analysis replaced this insight');
   if (row.decision !== 'pending') throw conflict('ALREADY_DECIDED', 'A decision on this insight is already recorded');
   const [updated] = await tx()
     .update(t)
@@ -145,6 +180,7 @@ export const outcomeInput = z.object({ outcome: z.string().trim().min(1).max(200
 /** What actually happened, recorded later, so recommendations can be judged (spec 15.2). */
 export async function recordOutcome(id: string, outcome: string) {
   const row = await getVisible(id, true);
+  if (row.decision === SUPERSEDED) throw conflict('INSIGHT_SUPERSEDED', 'A later analysis replaced this insight');
   if (row.decision === 'pending') throw conflict('NOT_DECIDED', 'Record a decision before the outcome');
   const [updated] = await tx().update(t).set({ outcome }).where(eq(t.id, id)).returning();
   return updated;

@@ -80,7 +80,7 @@
   },
   "division": {
     "crops": "Dehqonchilik",
-    "livestock": "Qo'ychilik",
+    "livestock": "Chorvachilik",
     "machinery": "Mexanizatsiya",
     "admin": "Boshqaruv"
   },
@@ -92,6 +92,7 @@
   },
   "record": {
     "health_record": "Veterinariya qaydi",
+    "vaccination_record": "Emlash qaydi",
     "field_operation": "Agrotexnik tadbir",
     "daily_log": "Kunlik qayd",
     "weight_record": "Vazn qaydi"
@@ -103,10 +104,10 @@
     "photoPreview": "Olingan foto",
     "removePhoto": "Fotoni olib tashlash",
     "note": "Izoh",
-    "recordHint": "Shu vazifa bo'yicha kiritilgan qaydni tanlang.",
+    "recordHint": "Vazifa berilgan kundan beri kiritilgan qaydni tanlang.",
     "chooseRecord": "Qaydni tanlang",
     "noRecordTitle": "Avval qayd kiriting: {{record}}",
-    "noRecordBody": "Bu vazifa faqat tegishli qayd bilan yopiladi, hozircha esa qayd yo'q.",
+    "noRecordBody": "Bu vazifa faqat tegishli qayd bilan yopiladi. Vazifa berilgan kundan beri bunday qayd kiritilmagan.",
     "goCreateRecord": "Qayd kiritish sahifasiga o'tish"
   },
   "series": {
@@ -128,6 +129,7 @@
     "description": "Fermaning barcha rejalashtirilgan ishlari bir joyda.",
     "addEvent": "Tadbir qo'shish",
     "editEvent": "Tadbirni tahrirlash",
+    "eventTitle": "Tadbir nomi",
     "deleteEvent": "Tadbirni o'chirasizmi?",
     "today": "Bugun",
     "nothing": "Bu kunga hech narsa rejalashtirilmagan",
@@ -181,8 +183,16 @@
       "document": "Hujjat muddati tugaydi: {{name}}",
       "maintenance": "Texnik xizmat: {{name}}",
       "state_report": "Hisobot topshirish: {{name}}",
-      "staff_contract": "Shartnoma tugaydi: {{name}}",
+      "staff_contract": "Mehnat shartnomasi tugaydi: {{name}}",
       "staff_medical": "Tibbiy ko'rik: {{name}}"
+    },
+    "chip": {
+      "lambing": "Qo'zilash: {{count}}",
+      "loan": "Kredit: {{name}}",
+      "contract": "Shartnoma: {{number}}",
+      "document": "Hujjat: {{name}}",
+      "state_report": "Hisobot: {{name}}",
+      "staff_contract": "Mehnat shartnomasi: {{name}}"
     },
     "free": "Reja yo'q"
   }

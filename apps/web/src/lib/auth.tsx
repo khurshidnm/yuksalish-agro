@@ -6,7 +6,7 @@ import {
   deliverSignOut,
   forgetOpenSaves,
   oweSignOut,
-  refreshSession,
+  restoreSession,
   setAccessToken,
   setAuthEvents,
   settleSignOut,
@@ -133,9 +133,16 @@ function useProvideAuth(): AuthContextValue {
       setStatus('anonymous');
       return undefined;
     }
-    void refreshSession().then(async (result) => {
+    const mark = storageGet(SIGNED_IN_KEY);
+    void restoreSession().then(async (result) => {
       if (cancelled) return;
-      if (!result) {
+      if (result === 'refused') {
+        // That session is over, and the public page would keep sending every visit on to sign-in while
+        // the mark stays. A mark that changed meanwhile is someone signing in from another tab: theirs.
+        if (mark !== null && storageGet(SIGNED_IN_KEY) === mark) storageRemove(SIGNED_IN_KEY);
+        setStatus('anonymous');
+      } else if (!result) {
+        // No answer says nothing about the session: an offline phone keeps its mark.
         setStatus('anonymous');
       } else if (!result.session) {
         await api.get<Session>('/auth/me').then(applySession, () => setStatus('anonymous'));

@@ -47,6 +47,20 @@ function TemplateCard({ template, onUploaded }: { template: TemplateInfo; onUplo
   );
 }
 
+/**
+ * The order the hint recommends: what others refer to comes first, so a field or an expense can
+ * name a counterparty that is already there. Templates not listed keep the server's order, last.
+ */
+const UPLOAD_ORDER = ['counterparties', 'fields', 'feed', 'animals', 'employees', 'machinery', 'expenses', 'budget'];
+
+function inUploadOrder<T extends { key: string }>(templates: readonly T[]): T[] {
+  const rank = (key: string) => {
+    const index = UPLOAD_ORDER.indexOf(key);
+    return index === -1 ? UPLOAD_ORDER.length : index;
+  };
+  return [...templates].sort((a, b) => rank(a.key) - rank(b.key));
+}
+
 export function TemplatesPanel({ catalog, onUploaded }: { catalog: ImportCatalog; onUploaded: (job: ImportJob) => void }) {
   const { t } = useTranslation('import');
   return (
@@ -61,7 +75,7 @@ export function TemplatesPanel({ catalog, onUploaded }: { catalog: ImportCatalog
       </Alert>
       <p className="text-sm text-muted-foreground">{t('page.maxRows', { max: catalog.maxRows })}</p>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {catalog.templates.map((template) => (
+        {inUploadOrder(catalog.templates).map((template) => (
           <TemplateCard key={template.key} template={template} onUploaded={onUploaded} />
         ))}
       </div>
