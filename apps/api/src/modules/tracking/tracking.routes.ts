@@ -1,6 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import { routes } from '../../core/http';
 import { idParam } from '../../core/query';
+import * as grazing from './grazing.service';
+import { lost } from './lost.service';
 import * as service from './tracking.service';
 
 export function registerTracking(app: FastifyInstance) {
@@ -11,6 +13,20 @@ export function registerTracking(app: FastifyInstance) {
     summary: 'Every animal wearing a tracker: position, temperature, activity, battery and health flags',
     query: service.liveQuery,
     handler: (req) => service.live(req.query),
+  });
+
+  r.get('/lost', {
+    access: 'livestock.view',
+    summary: 'Last seen: animals whose trackers went silent or that are apart from the herd, with where each was last',
+    query: service.liveQuery,
+    handler: (req) => lost(req.query),
+  });
+
+  r.get('/grazing', {
+    access: 'livestock.view',
+    summary: 'Where the flock spent 7, 30 or 90 days: a grid of cells for the map, and hours and animal-days per field',
+    query: grazing.grazingQuery,
+    handler: (req) => grazing.grazing(req.query),
   });
 
   r.get('/animals/:id', {

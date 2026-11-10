@@ -4,7 +4,9 @@
   "map": "Flock map",
   "tabs": {
     "map": "Map",
-    "trackers": "Trackers"
+    "trackers": "Trackers",
+    "lost": "Last seen",
+    "zones": "Zones"
   },
   "kind": {
     "collar": "Collar",
@@ -14,7 +16,8 @@
   "flag": {
     "fever": "Fever",
     "isolated": "Apart from flock",
-    "inactive": "Not moving"
+    "inactive": "Not moving",
+    "out_of_zone": "Out of zone"
   },
   "legend": {
     "title": "Map legend",
@@ -125,6 +128,112 @@
     "fitted": "Tracker fitted",
     "removed": "Tracker taken off"
   },
+  "zones": {
+    "intro": "A zone is where a herd may graze, or where it must not go. Sheep that cross the line raise one alert for their herd.",
+    "rule": "A sheep counts as out when {{fixes}} positions in a row are more than {{buffer}} m over the line. So a closed zone narrower than {{twice}} m can never raise an alert: draw it wider.",
+    "add": "Add a zone",
+    "addTitle": "New zone",
+    "emptyTitle": "No zones yet",
+    "emptyDescription": "Mark where the flock may graze or must not go, and you are told when sheep cross the line.",
+    "everyHerd": "Every herd",
+    "ofField": "Boundary of field {{field}}",
+    "drawn": "Drawn on the map",
+    "noOutline": "This field has no boundary on the map yet, so the zone checks nothing.",
+    "switch": "Zone {{name}} is switched on",
+    "on": "On",
+    "off": "Off",
+    "edit": "Change",
+    "editTitle": "Change the zone",
+    "deleteTitle": "Remove the zone {{name}}?",
+    "deleteBody": "Sheep are no longer checked against it. An open alert about it closes at the next check.",
+    "fields": {
+      "name": "Name",
+      "kind": "Kind",
+      "herd": "Herd",
+      "source": "Outline",
+      "field": "Field"
+    },
+    "source": {
+      "field": "A field's boundary",
+      "draw": "Draw on the map"
+    },
+    "draw": {
+      "hint": "Tap the map to place each corner. Place at least three, then press Finish.",
+      "start": "Start drawing",
+      "undo": "Undo corner",
+      "finish": "Finish",
+      "again": "Draw again",
+      "done": "The outline is drawn.",
+      "needed": "Draw the outline first.",
+      "unavailable": "The drawing tools did not load. Use a field's boundary, or reload the page."
+    },
+    "legend": {
+      "title": "Zone legend",
+      "allowed": "Allowed zone",
+      "forbidden": "Closed zone",
+      "off": "Switched off"
+    },
+    "toast": {
+      "created": "Zone added",
+      "updated": "Zone changed",
+      "removed": "Zone removed",
+      "on": "Zone switched on",
+      "off": "Zone switched off"
+    },
+    "night": {
+      "title": "Night watch",
+      "rule": "Between {{from}}:00 and {{to}}:00, a herd whose centre moves more than {{move}} m in {{hours}} hours, or faster than {{speed}} km/h, raises an urgent alert: a flock asleep does not walk.",
+      "hint": "Switch it off for the months when the flock is grazed at night, or the alert comes every night.",
+      "switch": "Night watch is switched on",
+      "toast": {
+        "on": "Night watch is on",
+        "off": "Night watch is off: a herd moving at night raises no alert"
+      }
+    }
+  },
+  "lost": {
+    "intro": "Sheep whose tracker has gone silent, or who are apart from the flock: where each was last, and the way there.",
+    "count": "To look for: {{count}}",
+    "more": "The first {{shown}} of {{total}} are shown.",
+    "emptyTitle": "Nobody is missing",
+    "emptyDescription": "Every tracked sheep has reported in time and is with her flock.",
+    "allSilent": "No tracker is reporting at all. Check the gateway and its power before looking for sheep.",
+    "reason": {
+      "silent": "Tracker silent",
+      "isolated": "Apart from flock",
+      "both": "Silent and apart"
+    },
+    "lastHeard": "Last heard",
+    "lastPosition": "Last position",
+    "noPosition": "No position was ever received",
+    "fromHerd": "From the flock",
+    "metres": "{{value}} m",
+    "directions": "Directions"
+  },
+  "grazing": {
+    "toggle": "Where the flock grazed",
+    "off": "Off",
+    "days": "{{count}} days",
+    "title": "Where the flock spent its time",
+    "period": "{{from}} to {{to}}. Today is counted tonight.",
+    "presence": "Every position counts, day and night: time spent in a place, not only eating.",
+    "noData": "No positions are stored for this period yet. The first day appears the morning after.",
+    "legend": "Share of time",
+    "less": "Less",
+    "more": "More",
+    "truncated": "Only the most used cells are drawn.",
+    "byField": "Time on each field",
+    "noFields": "No position fell inside a field that has a boundary on the map.",
+    "animalDaysHint": "An animal-day is one sheep spending at least {{hours}} h on the field in a day.",
+    "fields": {
+      "field": "Field",
+      "animalDays": "Animal-days",
+      "hours": "Animal-hours",
+      "daysUsed": "Days used",
+      "share": "Share of time",
+      "perHa": "Animal-days per ha"
+    }
+  },
   "errors": {
     "INVALID_EXTERNAL_ID": "This is not a DevEUI (16 hex digits) or a serial number.",
     "DUPLICATE_IN_IMPORT": "This tracker is listed twice.",
@@ -141,6 +250,8 @@
     "INVALID_READING_TIME": "The reading's time is in the future.",
     "INVALID_RANGE": "The start must be before the end.",
     "RANGE_TOO_LONG": "At most 31 days at a time.",
-    "DATE_IN_FUTURE": "The date is in the future."
+    "DATE_IN_FUTURE": "The date is in the future.",
+    "ZONE_OUTLINE_REQUIRED": "A zone needs one outline: choose a field's boundary or draw a shape, not both.",
+    "ZONE_FIELD_NO_BOUNDARY": "This field has no boundary on the map yet. Draw it on the farm map, or draw the zone itself."
   }
 }

@@ -9,4 +9,5 @@ export const routes: RouteObject[] = [
   { path: 'today/death', element: page(() => import('./DeathPage'), 'livestock.create') },
   { path: 'today/weight', element: page(() => import('./WeightPage'), 'livestock.update') },
   { path: 'today/lambing', element: page(() => import('./LambingPage'), 'livestock.create') },
+  { path: 'today/night-watch', element: page(() => import('./NightWatchPage'), 'livestock.create') },
 ];

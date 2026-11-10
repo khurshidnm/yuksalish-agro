@@ -2,11 +2,12 @@ import { X } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
-import { ComboboxField, FormDialog, TextareaField } from '@/components';
+import { FormDialog, TextareaField } from '@/components';
 import { Button } from '@/components/ui';
 import { api, type UploadedFile } from '@/lib/api';
 import { zRef, zText } from '@/lib/forms';
 import { useApiMutation } from '@/lib/query';
+import { AnimalPickerField } from '../ScanAnimal';
 import { FileButton } from './FileButton';
 import { ANIMALS_PATH, HEALTH_PATH, animalOptions } from './options';
 
@@ -38,7 +39,7 @@ export function ReportSickDialog({ open, onOpenChange }: { open: boolean; onOpen
     >
       {(form) => (
         <>
-          <ComboboxField form={form} name="animalId" label={t('common.animal')} required loadOptions={animalOptions()} />
+          <AnimalPickerField form={form} name="animalId" label={t('common.animal')} required loadOptions={animalOptions()} />
           <TextareaField form={form} name="note" label={t('sick.whatHappened')} required rows={3} placeholder={t('sick.notePlaceholder')} />
           <div className="space-y-2">
             <FileButton camera label={t('sick.addPhoto')} onUploaded={(file) => setPhotos((current) => [...current, file])} />

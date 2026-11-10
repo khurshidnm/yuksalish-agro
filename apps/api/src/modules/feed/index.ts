@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { routes } from '../../core/http';
 import { idParam } from '../../core/query';
 import { feedBalance, feedConsumption, feedingPlan, winterPlan, winterPlanQuery } from './balance.service';
+import * as nutrition from './nutrition.service';
 import * as rations from './rations.service';
 
 export default async function feedModule(app: FastifyInstance) {
@@ -59,5 +60,26 @@ export default async function feedModule(app: FastifyInstance) {
     summary: 'Winter requirement, shortage, purchase cost and hectares to sow',
     query: winterPlanQuery,
     handler: (req) => winterPlan(req.query),
+  });
+
+  r.get('/rations/:id/nutrients', {
+    access: 'feed.view',
+    summary: 'What the ration supplies against what each herd it feeds needs: dry matter, energy, protein, Ca, P',
+    params: idParam,
+    query: nutrition.balanceQuery,
+    handler: (req) => nutrition.rationBalance(req.params.id, req.query),
+  });
+  r.post('/nutrient-balance', {
+    access: 'feed.view',
+    summary: 'The same balance for ration lines that are not saved yet. Saves nothing',
+    body: nutrition.balancePreviewInput,
+    handler: (req) => nutrition.previewBalance(req.body),
+  });
+  r.post('/least-cost-mix', {
+    // Built on feed prices: the service also asks for the right to see feed cost (rule 7).
+    access: 'feed.view',
+    summary: 'The cheapest mix of the chosen feeds that meets the requirement. Saves nothing',
+    body: nutrition.leastCostInput,
+    handler: (req) => nutrition.leastCostMix(req.body),
   });
 }

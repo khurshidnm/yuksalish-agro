@@ -1,9 +1,11 @@
 import type { Module, Permission } from '@yap/shared';
 import {
+  BadgeCheck,
   BadgeDollarSign,
   Banknote,
   Bell,
   BookUser,
+  BookmarkCheck,
   Bot,
   Boxes,
   Building2,
@@ -46,6 +48,7 @@ import {
   Sprout,
   Store,
   Sun,
+  Telescope,
   Tractor,
   TriangleAlert,
   Truck,
@@ -112,6 +115,7 @@ export const NAV: NavSection[] = [
       { key: 'health', to: '/livestock/health', icon: HeartPulse, permission: 'health.view' },
       { key: 'dailyLogs', to: '/livestock/daily-logs', icon: ClipboardList, permission: 'livestock.view' },
       { key: 'exits', to: '/livestock/exits', icon: CircleMinus, permission: 'livestock.view' },
+      { key: 'saleReadiness', to: '/livestock/sale-readiness', icon: BadgeCheck, permission: 'livestock.view' },
     ],
   },
   {
@@ -141,6 +145,7 @@ export const NAV: NavSection[] = [
       { key: 'costs', to: '/finance/costs', icon: BadgeDollarSign, permission: 'finance.view' },
       { key: 'cashflow', to: '/finance/cashflow', icon: LineChart, permission: 'finance.view' },
       { key: 'loans', to: '/finance/loans', icon: Banknote, permission: 'finance.view' },
+      { key: 'scenarios', to: '/finance/scenarios', icon: Telescope, permission: ['finance.view', 'finance.summary'], module: 'finance' },
     ],
   },
   {
@@ -149,6 +154,7 @@ export const NAV: NavSection[] = [
     items: [
       { key: 'sales', to: '/sales', icon: Store, permission: 'sales.view' },
       { key: 'purchases', to: '/sales/purchases', icon: ShoppingCart, permission: 'inventory.view', module: 'sales' },
+      { key: 'reservations', to: '/sales/reservations', icon: BookmarkCheck, permission: 'sales.view' },
     ],
   },
   {

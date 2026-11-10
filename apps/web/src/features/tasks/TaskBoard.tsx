@@ -2,12 +2,14 @@ import { CalendarClock, Camera, CheckCircle2, ClipboardCheck, ListChecks, type L
 import { todayIso } from '@yap/shared';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
+import { useOpenableLink } from '@/app/canOpen';
 import { EmptyState, ErrorCard } from '@/components';
 import { Badge, Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, Skeleton } from '@/components/ui';
 import { usePermission } from '@/lib/auth';
 import { formatDate } from '@/lib/format';
 import { useList } from '@/lib/query';
 import { cn } from '@/lib/utils';
+import { TaskLinks } from './TaskLinks';
 import { entityText, isClosed, PRIORITY_TONE, type Task } from './types';
 import { useTaskActions } from './useTaskActions';
 
@@ -30,6 +32,7 @@ function TaskCard({ task, onComplete, onEdit }: TaskCardProps) {
   const { t } = useTranslation('tasks');
   const canManage = usePermission('tasks.create');
   const { start, cancel, reopen } = useTaskActions();
+  const openable = useOpenableLink();
   const closed = isClosed(task);
   const overdue = !closed && task.dueDate !== null && task.dueDate < todayIso();
   const chip = chipFor(task, overdue);
@@ -97,6 +100,7 @@ function TaskCard({ task, onComplete, onEdit }: TaskCardProps) {
               </div>
             )}
           </dl>
+          <TaskLinks task={task} openable={openable} />
         </div>
       </div>
 

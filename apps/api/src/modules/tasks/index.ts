@@ -54,6 +54,12 @@ export default async function tasksModule(app: FastifyInstance) {
     },
   });
 
+  r.get('/on-time', {
+    access: 'tasks.view',
+    summary: 'How many of my tasks due this month I closed on time',
+    handler: () => service.myOnTime(),
+  });
+
   r.get('/:id', {
     access: 'tasks.view',
     params: idParam,

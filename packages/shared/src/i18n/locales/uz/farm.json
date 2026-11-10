@@ -96,6 +96,9 @@
     "contourCount": "{{value}} ta kontur",
     "soilType": "Tuproq turi",
     "salinityLevel": "Sho'rlanish darajasi",
+    "salinityLevelHint": "Dala uchun tavsiya etiladigan sho'r yuvish me'yori shu darajaga qarab tanlanadi.",
+    "groundwater": "Sizot suvi",
+    "groundwaterDepth": "{{value}} m",
     "irrigationSource": "Sug'orish manbai",
     "currentCrop": "Joriy ekin",
     "crop": "Ekin",
@@ -126,6 +129,7 @@
     "tabOverview": "Umumiy",
     "tabRotation": "Almashlab ekish",
     "tabSoil": "Tuproq tahlili",
+    "tabGroundwater": "Sizot suvlari",
     "tabDocuments": "Hujjatlar",
     "noCropTitle": "Joriy ekin yo'q",
     "noCropBody": "Ekin rejasi O'simlikchilik bo'limida biriktiriladi.",
@@ -287,6 +291,30 @@
       "dense": "Qalin"
     },
     "ndvi": "NDVI",
+    "indexSwitch": "Grafikdagi ko'rsatkich",
+    "moistureShort": "Namlik (NDMI)",
+    "moistureCurveTitle": "Mavsum davomida o'simlikdagi namlik",
+    "moistureCurveHint": "Har bir tiniq suratda dalaning o'rtacha NDMI qiymati: u qancha yuqori bo'lsa, barglarda suv shuncha ko'p. O'sha suratlarning 20 m katakli kanallaridan hisoblanadi. O'zgartirilgan {{provider}} ma'lumotlari {{year}}.",
+    "moistureEmpty": "Namlik bo'yicha ma'lumot hali yo'q. Bu ko'rsatkich qo'shilishidan oldin o'qilgan suratlarda u yo'q.",
+    "moisture": "O'simlikdagi namlik (NDMI)",
+    "moistureNone": "Bu surat uchun hisoblanmagan",
+    "moistureHint": "{{date}} surati. Qancha yuqori bo'lsa, barglarda suv shuncha ko'p.",
+    "outlook": {
+      "title": "Xo'jalikning o'tgan mavsumlariga nisbatan",
+      "hint": "Xo'jalikning tugagan mavsumlari bo'yicha hosildorlik prognozi, bir mavsum oldingi shu hafta va o'simlikdagi namlik.",
+      "yield": "Hosildorlik prognozi",
+      "notEnough": "Ma'lumot yetarli emas",
+      "range": "{{low}} dan {{high}} {{unit}} gacha: hisob o'tgan mavsumlarda shuncha xato qilgan. Hisobga olingan yig'ilgan hosillar: {{count}}.",
+      "extrapolated": "Bu mavsumning eng yuqori NDVI qiymati o'tgan mavsumlar oralig'idan tashqarida, shuning uchun baho unchalik ishonchli emas.",
+      "tooFew": "Bu ekinning sun'iy yo'ldosh ma'lumoti bor yig'ilgan hosillari: {{have}}. Prognoz uchun {{need}} ta kerak.",
+      "noRelation": "Yig'ilgan hosillar: {{count}}, lekin hosildorlik eng yuqori NDVI qiymatiga bog'liq chiqmadi, shuning uchun prognoz berilmaydi.",
+      "noPeak": "Bu mavsumda eng yuqori NDVI qiymatini olish uchun hali tiniq surat yo'q.",
+      "lastSeason": "NDVI, o'tgan mavsumning shu haftasi",
+      "lastSeasonHint": "{{date}} surati. Hozir: {{now}}.",
+      "lastSeasonNone": "O'tgan mavsumning shu haftasidan tiniq surat yo'q",
+      "sinceLastSeason": "o'tgan mavsumga nisbatan",
+      "note": "Prognoz faqat shu xo'jalikning o'z hosillari va ularning eng yuqori NDVI qiymatiga tayanadi. Tashqi koeffitsiyentlar qo'llanmaydi."
+    },
     "sincePrevious": "oldingi suratdan beri",
     "spread": "Eng zaif va eng kuchli o'ndan bir",
     "spreadHint": "Ikki son qancha yaqin bo'lsa, dala shuncha tekis.",
@@ -439,6 +467,70 @@
         "title": "Ob-havo ma'lumoti yetarli emas",
         "body": "Ekilgandan keyingi kunlardan birining ob-havosi hali kelmagan. Haqiqiy ob-havo 3–5 kun kechikib e'lon qilinadi, shuning uchun yangi xo'jalik bir necha kun kutadi; ob-havo tekshiruvi bo'shliqni o'zi to'ldiradi. Xo'jalik joylashuvi kiritilmagan bo'lsa, uni xo'jalik pasportida kiriting.",
         "short": "Ob-havo yo'q"
+      }
+    }
+  },
+  "fertiliser": {
+    "title": "Joriy reja uchun o'g'it me'yori",
+    "typical": "Namunaviy qiymatlar",
+    "inputs": "{{crop}}, rejadagi hosildorlik {{yield}}. Tuproq tahlili: {{date}}.",
+    "noAnalysis": "Bu dalada tuproq tahlili yo'q. Quyida qo'shing, me'yor shunda chiqadi.",
+    "staleTitle": "Tuproq tahlili eskirgan",
+    "staleBody": "{{date}} sanali tahlilga {{years}} yildan oshgan. O'shandan beri tuproq o'zgargan: bu me'yorga tayanishdan oldin yangi namuna oling.",
+    "noYield": "Rejada hosildorlik ko'rsatilmagan, shuning uchun me'yorni hisoblab bo'lmaydi. Uni ekin rejasida kiriting.",
+    "nutrient": "Oziq modda",
+    "removal": "Olib chiqish, kg/t",
+    "uptake": "Hosil bilan chiqadi, kg/ga",
+    "soil": "Tuproqda, mg/kg",
+    "soilGives": "Tuproq beradi, kg/ga",
+    "rate": "Solish kerak",
+    "kgHa": "kg/ga",
+    "typicalHint": "Bir tonnaga olib chiqish jadvaldagi namunaviy qiymat, xo'jalikning o'z ma'lumoti emas. O'z qiymatlaringizni ekin rejalari sahifasidagi «Ekinlar» bo'limida kiriting.",
+    "productsTitle": "Ombordagi o'g'itlar bilan",
+    "productGives": "{{nName}} {{n}}, {{pName}} {{p}}, {{kName}} {{k}} kg/ga beradi. {{area}} uchun: {{total}} kg.",
+    "uncovered": "Tarkibi ma'lum ombordagi o'g'itlar buni qoplamaydi: {{nutrients}}.",
+    "withoutContent": "Tarkibi kiritilmagan: {{names}}. Uni mahsulot kartasida kiriting, shunda ular hisobga qo'shiladi.",
+    "source": "Balans usuli: {{source}}.",
+    "reason": {
+      "no_yield": "Rejada hosildorlik ko'rsatilmagan.",
+      "no_removal": "Bu ekin uchun bir tonnaga olib chiqish kiritilmagan va namunaviy qiymat ham yo'q. Uni ekinlar ro'yxatida kiriting.",
+      "no_soil_value": "Tuproq tahlilida bu ko'rsatkich yo'q.",
+      "nitrate_not_supported": "Tahlilda nitrat azoti berilgan, uni me'yorga aylantiradigan e'lon qilingan usul esa yo'q. Raqam taxmin qilinmaydi.",
+      "fixes_nitrogen": "Bu ekin azotni havodan oladi, shuning uchun azot me'yori berilmaydi.",
+      "no_soil_coefficient": "Manbada bunday ekin tuproq zaxirasidan qancha olishi haqida koeffitsiyent yo'q, shuning uchun me'yor berilmaydi."
+    }
+  },
+  "groundwater": {
+    "depth": "Suv chuqurligi",
+    "mineralisation": "Minerallashuv",
+    "date": "Kuzatuv sanasi",
+    "add": "Kuzatuv qo'shish",
+    "edit": "Kuzatuvni tahrirlash",
+    "trend": "Sizot suvlari dinamikasi",
+    "trendHint": "Chuqurlik yer yuzasidan o'lchanadi: son qancha kichik bo'lsa, suv ildizlarga shuncha yaqin.",
+    "noMineralisation": "Minerallashuv hali o'lchanmagan",
+    "emptyTitle": "Sizot suvlari bo'yicha kuzatuvlar hali yo'q",
+    "emptyBody": "Kuzatuv qudug'idagi suv chuqurligini va, o'lchangan bo'lsa, minerallashuvini yozing.",
+    "deleteTitle": "Kuzatuvni o'chirasizmi?",
+    "deleteBody": "{{date}} sanali kuzatuv o'chiriladi.",
+    "note": "Chuqurlik {{source}} bo'yicha {{min}}–{{max}} m kritik oraliq bilan solishtiriladi. Minerallashuv o'lchangan holicha ko'rsatiladi: uni chuqurlik bilan bog'laydigan e'lon qilingan qoida topilmadi, shuning uchun u baholanmaydi.",
+    "depthHint": "Yer yuzasidan suvgacha",
+    "unit": {
+      "m": "m",
+      "gl": "g/l"
+    },
+    "risk": {
+      "shallow": "Yuzaga yaqin",
+      "within_critical_range": "Kritik oraliq"
+    },
+    "warning": {
+      "shallow": {
+        "title": "Sizot suvi {{depth}} m da: kritik chuqurlikdan yuqori",
+        "body": "{{date}} kuni suv yer yuzasiga {{min}} m dan yaqin turgan. {{source}} bo'yicha kritik chuqurlik {{min}}–{{max}} m: undan yuqorida tuzlar suv bilan ildiz qatlamiga ko'tariladi."
+      },
+      "within_critical_range": {
+        "title": "Sizot suvi {{depth}} m da: kritik oraliqda",
+        "body": "{{date}} kuni suv {{min}} va {{max}} m oralig'ida turgan: bu {{source}} bo'yicha kritik chuqurlik oralig'i. Tuzlar ko'tarilishi tuproqqa, ekin ildiziga va suvning sho'rligiga bog'liq."
       }
     }
   }

@@ -29,6 +29,9 @@ interface WorkRow {
   operations: number;
   treatments: number;
   dailyLogs: number;
+  tasksOnTime: number;
+  tasksDue: number;
+  tasksOnTimePercent: number | null;
 }
 
 /** The measures this person's work shows up in: a shepherd in head-days, a tractor driver in hectares. */
@@ -41,6 +44,10 @@ function workFacts(done: WorkRow | undefined, t: TFunction): [ReactNode, ReactNo
   if (done.headDays) facts.push([t('workDone.fields.headDays'), formatNumber(done.headDays, 0)]);
   if (done.operations) facts.push([t('workDone.fields.operations'), formatNumber(done.operations, 0)]);
   if (done.treatments + done.dailyLogs) facts.push([t('workDone.fields.records'), formatNumber(done.treatments + done.dailyLogs, 0)]);
+  if (done.tasksDue) {
+    const counts = t('workDone.fields.tasksValue', { onTime: done.tasksOnTime, due: done.tasksDue });
+    facts.push([t('workDone.fields.tasksOnTime'), `${counts} (${formatPercent(done.tasksOnTimePercent)})`]);
+  }
   return facts;
 }
 

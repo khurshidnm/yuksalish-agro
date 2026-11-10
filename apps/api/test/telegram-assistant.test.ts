@@ -11,6 +11,7 @@ import { config } from '../src/config';
 import { tx, withPlatform } from '../src/core/context';
 import { AppError, safeError } from '../src/core/errors';
 import { ensureCostCenter, generalCostCenterId } from '../src/core/costCenters';
+import { receiveStock, stockOnHand } from '../src/core/inventory';
 import { addMember } from '../src/core/tenancy';
 import { schema } from '../src/db/client';
 import { setProvider, type LlmBlock, type LlmProvider, type LlmRequest, type LlmResponse } from '../src/modules/ai/provider';
@@ -18,6 +19,8 @@ import { ClaudeProvider } from '../src/modules/ai/provider/claude';
 import { renderProposalText } from '../src/modules/ai/records/render';
 import type { ProposalView } from '../src/modules/ai/records/types';
 import { raiseAlert } from '../src/modules/alerts/alerts.service';
+import { FARM_DRAFT_TOOLS } from '../src/modules/ai/records/farm-tools';
+import { createWeight } from '../src/modules/livestock/weights.service';
 import { modelTextToHtml } from '../src/modules/notifications/assistant-bot';
 import { createChatQueue, createUpdateLedger, handleUpdate, startTelegramBot } from '../src/modules/notifications/bot';
 import { tr } from '../src/modules/notifications/i18n';
@@ -1479,7 +1482,9 @@ describe('without finance', () => {
     await send(textUpdate(w.owner.chatId, '/holat'));
     await press(card, CONFIRM);
 
-    expect(offered(requests[0]).filter((name) => name.startsWith('draft_') || name === 'cash_position')).toEqual([]);
+    // A farm record is not money: its draft tool follows the livestock module, which is on here.
+    const moneyTools = offered(requests[0]).filter((name) => (name.startsWith('draft_') && !FARM_DRAFT_TOOLS.has(name)) || name === 'cash_position');
+    expect(moneyTools).toEqual([]);
     expect(w.telegram.sentTo(w.owner.chatId).at(-1)).not.toContain(tr('uz', 'alerts', 'digest.cash', { amount: '' }).trim().split(' ')[0]);
     expect(await transactions(w)).toHaveLength(0);
     expect(w.telegram.notices()).toEqual([tr('uz', 'alerts', 'bot.moneyHidden')]);
@@ -2369,7 +2374,8 @@ describe('rule 7: a role without finance.view', () => {
     await send(textUpdate(shepherd.chatId, 'Kassada qancha pul bor?'));
 
     expect(offered(requests[0])).not.toContain('cash_position');
-    expect(offered(requests[0]).filter((name) => name.startsWith('draft_'))).toEqual([]);
+    // A farm record is not money: its draft tool follows the owning module's right, not finance.create.
+    expect(offered(requests[0]).filter((name) => name.startsWith('draft_') && !FARM_DRAFT_TOOLS.has(name))).toEqual([]);
     const result = requests[1].messages.at(-1)!.content[0] as { content: string; isError: boolean };
     expect(result.isError).toBe(true);
     expect(result.content).toContain('does not have access');
@@ -3775,5 +3781,272 @@ describe('rate limit', () => {
     expect(requests).toHaveLength(10);
     expect(w.telegram.of('getFile')).toHaveLength(0);
     expect(w.telegram.sentTo(w.owner.chatId)).toEqual(Array(2).fill(tr('uz', 'alerts', 'bot.rateLimited', { minutes: 1 })));
+  });
+});
+
+// ─── Farm records (docs/assistant.md, "Farm records") ───────────────────────
+
+describe('farm record cards', () => {
+  /** One herd and one ewe, tag 1234. */
+  async function flock(w: World): Promise<string> {
+    const base = { tenantId: w.f.tenantId, farmId: w.f.farmId };
+    return w.f.run(async () => {
+      const [sheep] = await tx().select().from(schema.species).where(eq(schema.species.key, 'sheep'));
+      const [herd] = await tx().insert(schema.herds).values({ ...base, name: '1-otar' }).returning();
+      await ensureCostCenter('herd', herd.id, herd.name);
+      const [animal] = await tx()
+        .insert(schema.animals)
+        .values({ ...base, tag: '1234', speciesId: sheep.id, sex: 'female', category: 'ewe', origin: 'purchased', herdId: herd.id })
+        .returning();
+      return animal.id;
+    });
+  }
+
+  const WEIGHED = "1234-qo'y 46 kilo chiqdi";
+  const weights = (w: World) => w.f.run(() => tx().select().from(schema.weightRecords));
+
+  async function weightCard(w: World, person = w.owner, text = WEIGHED): Promise<Call> {
+    scripted(toolCall('draft_weight', { tag: '1234', weightKg: 46 }), 'Tasdiqlashingizni kutmoqda.');
+    await send(textUpdate(person.chatId, text));
+    return lastCard(w, person.chatId);
+  }
+
+  it('a weight becomes a card with Confirm and Cancel, Confirm records it as the presser, and Undo takes it back', async () => {
+    const w = await world();
+    const animalId = await flock(w);
+
+    const card = await weightCard(w);
+    expect(card.body.text).toContain('Hayvon: 1234, Sovliq');
+    expect(card.body.text).toContain('Vazni: 46 kg');
+    expect(labelsOf(card)).toEqual([CONFIRM, CANCEL]);
+    for (const button of buttonsOf(card)) expect(Buffer.byteLength(button.callback_data)).toBeLessThanOrEqual(64);
+    expect(await weights(w)).toEqual([]);
+
+    await press(card, CONFIRM);
+    expect(await weights(w)).toMatchObject([{ animalId, weightKg: 46, createdBy: w.owner.client.userId }]);
+    const edit = w.telegram.edits().at(-1)!;
+    expect(edit.body.message_id).toBe(card.messageId);
+    expect(edit.body.text).toContain(tr('uz', 'alerts', 'bot.recorded'));
+    expect(labelsOf(edit)).toEqual([UNDO]);
+
+    await press(edit, UNDO);
+    expect(await weights(w)).toEqual([]);
+    const undone = w.telegram.edits().at(-1)!;
+    expect(undone.body.text).toContain(tr('uz', 'alerts', 'bot.undone'));
+    expect(labelsOf(undone)).toEqual([]);
+  });
+
+  it('Cancel withdraws the card, and nothing is written', async () => {
+    const w = await world();
+    await flock(w);
+    const card = await weightCard(w);
+
+    await press(card, CANCEL);
+
+    expect(await weights(w)).toEqual([]);
+    expect((await proposals(w))[0].status).toBe('rejected');
+    expect(w.telegram.edits().at(-1)!.body.text).toContain(tr('uz', 'alerts', 'bot.cancelled'));
+  });
+
+  it('holds no money, so someone without finance.view reads and confirms it', async () => {
+    const w = await world();
+    await flock(w);
+    await grantAi(w.f, 'zootechnician');
+    const zoo = await link(w.f, 'zootechnician');
+
+    const card = await weightCard(w, zoo);
+    expect(card.body.text).toContain('Vazni: 46 kg');
+    expect(card.body.text).not.toBe(tr('uz', 'alerts', 'bot.moneyHidden'));
+
+    await press(card, CONFIRM);
+    expect(await weights(w)).toMatchObject([{ weightKg: 46, createdBy: zoo.client.userId }]);
+  });
+
+  it('a Confirm without the right to record a weight is refused, as on the weighing screen', async () => {
+    const w = await world();
+    await flock(w);
+    await grantAi(w.f, 'zootechnician');
+    const zoo = await link(w.f, 'zootechnician');
+    const card = await weightCard(w, zoo);
+    await setRolePermissions(w.f, 'zootechnician', ['ai.view', 'livestock.view', 'livestock.create']);
+
+    await press(card, CONFIRM);
+
+    expect(await weights(w)).toEqual([]);
+    expect((await proposals(w))[0].status).toBe('pending');
+    expect(w.telegram.notices().at(-1)).toBeTruthy();
+  });
+
+  it('a Confirm for what is already in the books says so, writes nothing, and leaves only Cancel', async () => {
+    const w = await world();
+    const animalId = await flock(w);
+    const card = await weightCard(w);
+    await w.f.run(() => createWeight({ animalId, weightKg: 46 }), { userId: w.owner.client.userId });
+
+    await press(card, CONFIRM);
+
+    expect(await weights(w)).toHaveLength(1);
+    const edit = w.telegram.edits().at(-1)!;
+    expect(edit.body.text).toContain(tr('uz', 'ai', 'farmRecords.existsBody'));
+    expect(labelsOf(edit)).toEqual([CANCEL]);
+  });
+
+  it("another person's press on the card does nothing", async () => {
+    const w = await world();
+    await flock(w);
+    await grantAi(w.f, 'zootechnician');
+    const zoo = await link(w.f, 'zootechnician');
+    const card = await weightCard(w);
+
+    await send(pressUpdate(zoo.chatId, buttonsOf(card)[0].callback_data, card.messageId!));
+
+    expect(await weights(w)).toEqual([]);
+    expect((await proposals(w))[0].status).toBe('pending');
+  });
+
+  it('a shepherd reports a death: the card names the animal, Confirm takes it out of the flock, and no Undo is offered', async () => {
+    const w = await world();
+    const animalId = await flock(w);
+    await grantAi(w.f, 'shepherd');
+    const shepherd = await link(w.f, 'shepherd');
+    scripted(toolCall('draft_death', { tag: '1234', cause: 'ichi ketgan' }), 'Tasdiqlashingizni kutmoqda.');
+    await send(textUpdate(shepherd.chatId, "bugun 1234 raqamli qo'y o'ldi, ichi ketgan"));
+    const card = lastCard(w, shepherd.chatId);
+
+    expect(card.body.text).toContain("Hayvon o'limi");
+    expect(card.body.text).toContain('Hayvon: 1234, Sovliq');
+    expect(card.body.text).toContain("Sizning so'zingiz: ichi ketgan");
+    expect(card.body.text).toContain(tr('uz', 'ai', 'farmRecords.deathNote'));
+    expect(labelsOf(card)).toEqual([CONFIRM, CANCEL]);
+
+    await press(card, CONFIRM);
+
+    const exits = await w.f.run(() => tx().select().from(schema.animalExits));
+    expect(exits).toMatchObject([{ animalId, type: 'death', reason: 'ichi ketgan', createdBy: shepherd.client.userId }]);
+    const edit = w.telegram.edits().at(-1)!;
+    expect(edit.body.text).toContain(tr('uz', 'alerts', 'bot.recorded'));
+    // Taking a death back is `livestock.delete` on the exits page, which a shepherd does not hold.
+    expect(edit.body.text).toContain(tr('uz', 'ai', 'farmRecords.noUndo'));
+    expect(edit.body.text).not.toContain(tr('uz', 'ai', 'farmRecords.deathNote'));
+    expect(labelsOf(edit)).toEqual([]);
+  });
+
+  /** A vet store with 2 litres of Ivermektin in it. */
+  async function vetStore(w: World): Promise<string> {
+    const base = { tenantId: w.f.tenantId, farmId: w.f.farmId };
+    return w.f.run(async () => {
+      const [store] = await tx().insert(schema.warehouses).values({ ...base, name: 'Vet ombor', type: 'vet' }).returning();
+      const [item] = await tx().insert(schema.items).values({ ...base, name: 'Ivermektin', category: 'vet_drug', unit: 'l', defaultWarehouseId: store.id }).returning();
+      await receiveStock({ itemId: item.id, warehouseId: store.id, qty: 2, unitCost: 40_000, date: todayIso(), source: 'opening' });
+      return item.id;
+    });
+  }
+
+  it('a vet reports a treatment: the card shows what leaves the warehouse, Confirm takes it, and Undo returns it', async () => {
+    const w = await world();
+    const animalId = await flock(w);
+    const itemId = await vetStore(w);
+    await grantAi(w.f, 'veterinarian');
+    const vet = await link(w.f, 'veterinarian');
+    scripted(toolCall('draft_treatment', { tag: '1234', drug: 'ivermektin', qty: 5, unit: 'ml' }), 'Tasdiqlashingizni kutmoqda.');
+    await send(textUpdate(vet.chatId, '1234 ga 5 ml ivermektin qildim'));
+    const card = lastCard(w, vet.chatId);
+
+    expect(card.body.text).toContain(tr('uz', 'ai', 'farmRecords.kind.treatment'));
+    expect(card.body.text).toContain('Hayvon: 1234, Sovliq');
+    expect(card.body.text).toContain('Dori: Ivermektin');
+    expect(card.body.text).toContain('Doza: 5 ml');
+    expect(card.body.text).toContain('Ombordan chiqadi: Ivermektin, 0,005 l (Vet ombor)');
+    // A vet does not see money, and the card has none to show.
+    expect(card.body.text).not.toMatch(/40[  ]?000|so'm/);
+    expect(labelsOf(card)).toEqual([CONFIRM, CANCEL]);
+    expect(await w.f.run(() => stockOnHand(itemId))).toBe(2);
+
+    await press(card, CONFIRM);
+
+    const records = await w.f.run(() => tx().select().from(schema.healthRecords));
+    expect(records).toMatchObject([{ animalId, type: 'treatment', itemId, qtyUsed: 0.005, dose: 5, doseUnit: 'ml', createdBy: vet.client.userId }]);
+    expect(await w.f.run(() => stockOnHand(itemId))).toBe(1.995);
+    const edit = w.telegram.edits().at(-1)!;
+    expect(edit.body.text).toContain(tr('uz', 'alerts', 'bot.recorded'));
+    expect(labelsOf(edit)).toEqual([UNDO]);
+
+    await press(edit, UNDO);
+
+    expect(await w.f.run(() => tx().select().from(schema.healthRecords))).toEqual([]);
+    expect(await w.f.run(() => stockOnHand(itemId))).toBe(2);
+  });
+
+  it('a treatment the warehouse cannot cover is refused at Confirm, and the card stays', async () => {
+    const w = await world();
+    await flock(w);
+    const itemId = await vetStore(w);
+    scripted(toolCall('draft_treatment', { tag: '1234', drug: 'ivermektin', qty: 5, unit: 'litr' }), 'Tasdiqlashingizni kutmoqda.');
+    await send(textUpdate(w.owner.chatId, '1234 ga 5 litr ivermektin qildim'));
+    const card = lastCard(w, w.owner.chatId);
+
+    await press(card, CONFIRM);
+
+    expect(await w.f.run(() => tx().select().from(schema.healthRecords))).toEqual([]);
+    expect(await w.f.run(() => stockOnHand(itemId))).toBe(2);
+    expect((await proposals(w))[0].status).toBe('pending');
+    expect(w.telegram.notices().at(-1)).toBeTruthy();
+  });
+
+  /** A feed store with 5 tonnes of Beda in it, and the herd with its cost center. */
+  async function feedStore(w: World): Promise<string> {
+    const base = { tenantId: w.f.tenantId, farmId: w.f.farmId };
+    return w.f.run(async () => {
+      const [herd] = await tx().select().from(schema.herds).where(eq(schema.herds.name, '1-otar'));
+      await tx().update(schema.herds).set({ costCenterId: await ensureCostCenter('herd', herd.id, herd.name) }).where(eq(schema.herds.id, herd.id));
+      const [store] = await tx().insert(schema.warehouses).values({ ...base, name: 'Yem ombori', type: 'feed' }).returning();
+      const [item] = await tx().insert(schema.items).values({ ...base, name: 'Beda', category: 'feed', unit: 'kg', defaultWarehouseId: store.id }).returning();
+      await receiveStock({ itemId: item.id, warehouseId: store.id, qty: 5000, unitCost: 1500, date: todayIso(), source: 'opening' });
+      return item.id;
+    });
+  }
+
+  it('a shepherd reports the feeding of a herd: the card shows what leaves the warehouse, and Confirm writes the day', async () => {
+    const w = await world();
+    await flock(w);
+    const itemId = await feedStore(w);
+    await grantAi(w.f, 'shepherd');
+    const shepherd = await link(w.f, 'shepherd');
+    scripted(toolCall('draft_herd_log', { herd: '1-otar', feeds: [{ feed: 'beda', qty: 300, unit: 'kilo' }] }), 'Tasdiqlashingizni kutmoqda.');
+    await send(textUpdate(shepherd.chatId, 'bugun 1-otarga 300 kilo beda berdim'));
+    const card = lastCard(w, shepherd.chatId);
+
+    expect(card.body.text).toContain(tr('uz', 'ai', 'farmRecords.kind.herd_log'));
+    expect(card.body.text).toContain('Poda: 1-otar');
+    expect(card.body.text).toContain('Ombordan chiqadi: Beda, 300 kg (ombor yozilayotganda tanlanadi)');
+    expect(card.body.text).toContain(tr('uz', 'ai', 'farmRecords.herdLogNote'));
+    // Rule 7: a shepherd sees no money, and the card has none to show.
+    expect(card.body.text).not.toMatch(/1[  ]?500|450[  ]?000|so'm/);
+    expect(labelsOf(card)).toEqual([CONFIRM, CANCEL]);
+    expect(await w.f.run(() => stockOnHand(itemId))).toBe(5000);
+
+    await press(card, CONFIRM);
+
+    const logs = await w.f.run(() => tx().select().from(schema.dailyLogs));
+    expect(logs).toMatchObject([{ date: todayIso(), headCount: 1, createdBy: shepherd.client.userId }]);
+    expect(await w.f.run(() => stockOnHand(itemId))).toBe(4700);
+    const edit = w.telegram.edits().at(-1)!;
+    expect(edit.body.text).toContain(tr('uz', 'alerts', 'bot.recorded'));
+    // Taking a daily log back is `livestock.delete`, which a shepherd does not hold: no Undo button.
+    expect(labelsOf(edit)).toEqual([]);
+  });
+
+  it('/kutilmoqda lists a waiting farm card with its buttons', async () => {
+    const w = await world();
+    await flock(w);
+    await weightCard(w);
+    const before = w.telegram.of('sendMessage', w.owner.chatId).length;
+
+    await send(textUpdate(w.owner.chatId, '/kutilmoqda'));
+
+    const sent = w.telegram.of('sendMessage', w.owner.chatId).slice(before);
+    expect(sent[0].body.text).toBe(tr('uz', 'alerts', 'bot.pendingCount', { count: 1 }));
+    expect(sent[1].body.text).toContain('Vazni: 46 kg');
+    expect(labelsOf(sent[1])).toEqual([CONFIRM, CANCEL]);
   });
 });

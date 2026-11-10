@@ -11,7 +11,9 @@ import { currencyLabel, formatNumber } from '@/lib/format';
 import { zEnum, zNonNegative, zOptionalNumber, zOptionalText, zText } from '@/lib/forms';
 import { enumOptions } from '@/lib/i18n';
 import { errorMessage, useApiMutation, useDetail } from '@/lib/query';
+import { AlertTasksTab } from './AlertTasksTab';
 import { FilesTab } from './FilesTab';
+import { SalesSettingsTab } from './SalesSettingsTab';
 import { InlineForm } from './shared';
 import { toast } from 'sonner';
 
@@ -378,6 +380,8 @@ export default function SettingsPage() {
         tabs={[
           { value: 'profile', label: t('tabs.profile'), content: <ProfileTab /> },
           { value: 'policy', label: t('tabs.policy'), content: <PolicyTab /> },
+          { value: 'alertTasks', label: t('tabs.alertTasks'), content: <AlertTasksTab /> },
+          { value: 'sales', label: t('tabs.sales'), content: <SalesSettingsTab /> },
           { value: 'files', label: t('tabs.files'), content: <FilesTab /> },
           { value: 'data', label: t('tabs.data'), content: <DataTab />, hidden: !can('pii.view') },
         ]}

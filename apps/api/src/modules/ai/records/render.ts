@@ -1,15 +1,15 @@
 import { interpolate, localizeValue, lookup, moneyText } from '../../notifications/i18n';
 import type { ProposalView } from './types';
 
-const number = (value: number, digits = 2) =>
+export const number = (value: number, digits = 2) =>
   new Intl.NumberFormat('ru-RU', { maximumFractionDigits: digits }).format(value).replace(/\u00a0/g, ' ');
 
 export const money = (amount: number, currency: string, language?: string) => moneyText(amount, currency, language);
 
-const dayText = (date: string) => date.split('-').reverse().join('.');
+export const dayText = (date: string) => date.split('-').reverse().join('.');
 
 /** A name or a note is one value, and a line break in it must not pass for a line of the card. */
-const oneLine = (text: string) => text.replace(/[\s\p{Cc}\p{Zl}\p{Zp}]+/gu, ' ').trim();
+export const oneLine = (text: string) => text.replace(/[\s\p{Cc}\p{Zl}\p{Zp}]+/gu, ' ').trim();
 
 /** A proposal as plain text for Telegram. Escaping for HTML is the caller's job. */
 export function renderProposalText(view: ProposalView, language: string, farmName?: string): string {

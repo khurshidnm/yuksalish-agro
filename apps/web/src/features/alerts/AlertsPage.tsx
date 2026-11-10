@@ -1,5 +1,6 @@
 import { ALERT_STATUSES, SEVERITIES } from '@yap/shared';
 import { BellOff, Check, CheckCheck, ExternalLink, Info, OctagonAlert, RefreshCw, TriangleAlert } from 'lucide-react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
@@ -11,6 +12,7 @@ import { usePermission } from '@/lib/auth';
 import { formatDateTime } from '@/lib/format';
 import { enumOptions } from '@/lib/i18n';
 import { useApiMutation, useDetail } from '@/lib/query';
+import { AlertTaskCell, AlertTaskDialog, tasksOfAlertLink } from './AlertTask';
 import { alertText } from './alertText';
 import type { Alert, AlertCounts, EvaluationResult } from './types';
 
@@ -28,10 +30,14 @@ export default function AlertsPage() {
   const navigate = useNavigate();
   const canAct = usePermission('tasks.update');
   const canEvaluate = usePermission('dashboard.update');
+  const canCreateTask = usePermission('tasks.create');
   const openable = useOpenableLink();
+  const [tasking, setTasking] = useState<Alert | null>(null);
 
   const [status, setStatus] = useUrlParam('status', ACTIVE);
   const [severity, setSeverity] = useUrlParam('severity');
+  // A task links back to its alert, which may be resolved by now: one alert is shown whatever the filters say.
+  const [only, setOnly] = useUrlParam('alert');
 
   const counts = useDetail<AlertCounts>('/alerts/counts');
 
@@ -86,6 +92,13 @@ export default function AlertsPage() {
       header: t('fields.status'),
       cell: (alert) => <Badge variant={STATUS_TONE[alert.status]}>{t(`enums:alertStatus.${alert.status}`)}</Badge>,
     },
+    {
+      key: 'task',
+      header: t('fields.task'),
+      cell: (alert) => (
+        <AlertTaskCell alert={alert} canCreate={canCreateTask} tasksLink={openable(tasksOfAlertLink(alert.id))} onCreate={setTasking} />
+      ),
+    },
   ];
 
   return (
@@ -123,13 +136,26 @@ export default function AlertsPage() {
           })}
       </div>
 
+      {only && (
+        <div className="mb-3 flex flex-wrap items-center gap-x-3 rounded-xl border border-border bg-muted px-3 text-sm">
+          <span>{t('filters.oneAlert')}</span>
+          <Button variant="link" size="sm" className="px-0" onClick={() => setOnly('')}>
+            {t('filters.showAll')}
+          </Button>
+        </div>
+      )}
+
       <DataTable<Alert>
         path="/alerts"
-        params={{
-          active: status === ACTIVE ? true : undefined,
-          status: status === ACTIVE ? undefined : status,
-          severity: severity || undefined,
-        }}
+        params={
+          only
+            ? { id: only }
+            : {
+                active: status === ACTIVE ? true : undefined,
+                status: status === ACTIVE ? undefined : status,
+                severity: severity || undefined,
+              }
+        }
         columns={columns}
         searchable={false}
         rowHref={(alert) => openable(alert.link)}
@@ -168,6 +194,13 @@ export default function AlertsPage() {
             onClick: () => resolve.mutate(alert.id),
           },
         ]}
+      />
+
+      <AlertTaskDialog
+        alert={tasking}
+        onOpenChange={(open) => {
+          if (!open) setTasking(null);
+        }}
       />
     </>
   );

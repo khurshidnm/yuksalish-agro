@@ -28,8 +28,13 @@ export const rationListQuery = listQuery.extend({ state: z.enum(PHYSIOLOGICAL_ST
 /**
  * Value of one kg of each item: average cost of what is in stock, or the latest batch's cost
  * when the stock has run out. Absent when the item was never received, or its weight is unknown.
+ *
+ * With `ownProduce: 'left_out'` the farm's own harvest counts at no cost, as farm-level operating
+ * expense counts it (rule 3: its cost was counted as it grew). A feed half bought and half grown
+ * then costs half its bought price per kg. For a farm-level cost that sits beside crop spending.
  */
-export async function unitCostsPerKg(itemIds: string[]): Promise<Map<string, number>> {
+export async function unitCostsPerKg(itemIds: string[], opts: { ownProduce?: 'left_out' } = {}): Promise<Map<string, number>> {
+  const bought = opts.ownProduce === 'left_out' ? sql`case when ${stockBatches.source} = 'own_harvest' then 0 else ${stockBatches.unitCost} end` : sql`${stockBatches.unitCost}`;
   const result = new Map<string, number>();
   if (itemIds.length === 0) return result;
   const farmId = ctx().farmId;
@@ -43,7 +48,7 @@ export async function unitCostsPerKg(itemIds: string[]): Promise<Map<string, num
   const onHand = await tx()
     .select({
       itemId: stockBatches.itemId,
-      cost: sql<number>`sum(${stockBatches.qtyRemaining} * ${stockBatches.unitCost}) / sum(${stockBatches.qtyRemaining})`.mapWith(Number),
+      cost: sql<number>`sum(${stockBatches.qtyRemaining} * ${bought}) / sum(${stockBatches.qtyRemaining})`.mapWith(Number),
     })
     .from(stockBatches)
     .where(and(eq(stockBatches.farmId, farmId), inArray(stockBatches.itemId, itemIds), gt(stockBatches.qtyRemaining, 0)))
@@ -53,7 +58,7 @@ export async function unitCostsPerKg(itemIds: string[]): Promise<Map<string, num
   const missing = itemIds.filter((id) => !costs.has(id));
   if (missing.length > 0) {
     const last = await tx()
-      .selectDistinctOn([stockBatches.itemId], { itemId: stockBatches.itemId, cost: stockBatches.unitCost })
+      .selectDistinctOn([stockBatches.itemId], { itemId: stockBatches.itemId, cost: sql<number>`${bought}`.mapWith(Number) })
       .from(stockBatches)
       .where(and(eq(stockBatches.farmId, farmId), inArray(stockBatches.itemId, missing)))
       .orderBy(stockBatches.itemId, desc(stockBatches.receivedDate), desc(stockBatches.createdAt));

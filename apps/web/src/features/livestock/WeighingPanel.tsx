@@ -1,5 +1,5 @@
 import { todayIso } from '@yap/shared';
-import { ArrowLeft, CheckCircle2, Scale, Trash2, TriangleAlert } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, FileUp, Scale, Trash2, TriangleAlert } from 'lucide-react';
 import { type FormEvent, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
@@ -11,6 +11,8 @@ import { formatDate, formatNumber, formatQty } from '@/lib/format';
 import { zDate, zRef, zText } from '@/lib/forms';
 import { errorMessage, useApiMutation, useDetail } from '@/lib/query';
 import { cn } from '@/lib/utils';
+import { ScaleImportDialog } from './ScaleImportDialog';
+import { ScanAnimalButton } from './ScanAnimal';
 import type { HerdLookup } from './shared';
 
 const PATH = '/livestock/weighing-campaigns';
@@ -64,17 +66,22 @@ function WeighingScreen({ id, onBack }: { id: string; onBack: () => void }) {
   const [weight, setWeight] = useState<number | null>(null);
   const [last, setLast] = useState<EntryResult | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
+  // The animal a camera scan found. It names the animal by id for as long as its tag stays in the field.
+  const [scanned, setScanned] = useState<{ id: string; tag: string } | null>(null);
+  const [importing, setImporting] = useState(false);
   const codeInput = useRef<HTMLInputElement>(null);
   const weightInput = useRef<HTMLInputElement>(null);
 
   const enter = useApiMutation<void, EntryResult>({
-    mutationFn: () => api.post(`${PATH}/${id}/entries`, { code: code.trim(), weightKg: weight }),
+    mutationFn: () =>
+      api.post(`${PATH}/${id}/entries`, { code: code.trim(), animalId: scanned && scanned.tag === code.trim() ? scanned.id : undefined, weightKg: weight }),
     invalidate: [PATH, '/livestock/animals'],
     silentError: true,
     onSuccess: (result) => {
       setLast(result);
       setProblem(null);
       setCode('');
+      setScanned(null);
       setWeight(null);
       codeInput.current?.focus();
     },
@@ -135,22 +142,35 @@ function WeighingScreen({ id, onBack }: { id: string; onBack: () => void }) {
           <div>
             <Label htmlFor="weigh-code">{t('weighing.code')}</Label>
             {/* A scanner types the code and presses Enter, so it lands on the weight by itself. */}
-            <Input
-              id="weigh-code"
-              ref={codeInput}
-              className="h-14 text-xl font-semibold"
-              autoComplete="off"
-              autoFocus
-              enterKeyHint="next"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  if (code.trim()) weightInput.current?.focus();
-                }
-              }}
-            />
+            <div className="flex gap-2">
+              <Input
+                id="weigh-code"
+                ref={codeInput}
+                className="h-14 min-w-0 flex-1 text-xl font-semibold"
+                autoComplete="off"
+                autoFocus
+                enterKeyHint="next"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (code.trim()) weightInput.current?.focus();
+                  }
+                }}
+              />
+              {/* The phone's camera does the scanner's work: the animal is chosen and the weight is next. */}
+              <ScanAnimalButton
+                onFarmOnly
+                className="size-14 shrink-0"
+                focusAfter={weightInput}
+                onPick={(animal) => {
+                  setScanned({ id: animal.id, tag: animal.tag });
+                  setCode(animal.tag);
+                  setProblem(null);
+                }}
+              />
+            </div>
             <p className="mt-1 text-sm text-muted-foreground">{t('weighing.codeHint')}</p>
           </div>
           <div>
@@ -210,6 +230,16 @@ function WeighingScreen({ id, onBack }: { id: string; onBack: () => void }) {
             </div>
           ))}
         </Card>
+      )}
+
+      {open && (
+        <>
+          <Button variant="outline" className="w-full" onClick={() => setImporting(true)}>
+            <FileUp aria-hidden />
+            {t('scan:scale.open')}
+          </Button>
+          <ScaleImportDialog open={importing} onOpenChange={setImporting} campaign={{ id, herdId: data.herdId, date: data.date }} />
+        </>
       )}
 
       {open && (

@@ -61,11 +61,21 @@ export interface ItemRow {
   sku: string | null;
   barcode: string | null;
   dryMatterPct: number | null;
+  /** Feed nutrients per kg of dry matter. Null: not known. */
+  meMjPerKgDm?: number | null;
+  crudeProteinPctDm?: number | null;
+  calciumGPerKgDm?: number | null;
+  phosphorusGPerKgDm?: number | null;
+  isRoughage?: boolean | null;
   minQty: number | null;
   minDays: number | null;
   defaultWarehouseId: string | null;
   defaultWarehouseName: string | null;
   withdrawalDays: number | null;
+  /** Fertiliser content, percent of the product as sold. Null: not said. */
+  nPct?: number | null;
+  p2o5Pct?: number | null;
+  k2oPct?: number | null;
   transferPrice: number | null;
   kgPerUnit: number | null;
   cropId: string | null;

@@ -8,6 +8,7 @@ import { api } from '@/lib/api';
 import { zDate, zEnum, zOptionalDate, zOptionalNumber, zOptionalRef, zOptionalText } from '@/lib/forms';
 import { enumOptions } from '@/lib/i18n';
 import { useApiMutation } from '@/lib/query';
+import { AnimalPickerField } from '../ScanAnimal';
 import { ANIMALS_PATH, HEALTH_PATH, animalOptions, drugOptions, employeeOptions, herdOptions, warehouseOptions } from './options';
 import type { HealthRecord } from './types';
 
@@ -140,7 +141,7 @@ export function RecordDialog({ open, onOpenChange, record, preset }: RecordDialo
                 ]}
               />
               {targetKind === 'animal' ? (
-                <ComboboxField
+                <AnimalPickerField
                   form={form}
                   name="animalId"
                   label={t('common.animal')}

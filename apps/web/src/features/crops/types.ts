@@ -1,3 +1,4 @@
+import type { CROP_FAMILIES } from '@yap/shared';
 import type { I18nName } from '@/features/farm/types';
 
 export type { I18nName };
@@ -13,12 +14,33 @@ export interface Season {
   lastHarvestDate: string | null;
 }
 
+export type CropFamily = (typeof CROP_FAMILIES)[number];
+
 export interface CropRef {
   id: string;
   key: string;
   name: I18nName;
   isFeed: boolean;
   defaultYieldTHa: number | null;
+  /** Place in the rotation, as the farm set it. Null: the typical family for the crop is used. */
+  family: CropFamily | null;
+  /** Nutrients one tonne of produce takes from the field, kg/t. Null: the typical figure is used. */
+  removalNKgT: number | null;
+  removalP2o5KgT: number | null;
+  removalK2oKgT: number | null;
+  typical: { family: CropFamily | null; removal: { n: number; p2o5: number; k2o: number } | null };
+}
+
+export interface RotationNote {
+  rule: 'same_crop' | 'cereal_run' | 'cereal_after_cereal' | 'legume_after_legume' | 'after_legume' | 'after_perennial_grass';
+  level: 'warning' | 'good';
+  source: string;
+}
+
+export interface RotationCheck {
+  notes: RotationNote[];
+  /** The field's earlier crops, newest first. */
+  history: { key: string; family: CropFamily | null; name: I18nName; seasonName: string }[];
 }
 
 export interface TechCardLine {

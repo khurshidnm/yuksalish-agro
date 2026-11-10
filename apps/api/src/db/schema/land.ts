@@ -54,6 +54,8 @@ export const facilities = pgTable(
     areaHa: dec(12, 4),
     status: text().notNull().default('active'),
     notes: text(),
+    /** A barn section used as a lambing pen (modules/livestock/pens.service.ts). */
+    lambingPen: boolean().notNull().default(false),
   },
   (t) => [index().on(t.farmId, t.type)],
 );
@@ -219,6 +221,23 @@ export const soilAnalyses = pgTable(
   (t) => [index().on(t.fieldId, t.date)],
 );
 
+/** Groundwater under a field, as measured in an observation well: depth to the water and its salt content. */
+export const groundwaterObservations = pgTable(
+  'groundwater_observations',
+  {
+    id: pk(),
+    ...tenantColumns(),
+    fieldId: uuid().notNull().references(() => fields.id),
+    date: day().notNull(),
+    /** Depth from the surface to the water table, m. */
+    depthM: dec(6, 2).notNull(),
+    /** Mineralisation, g/l. Null: not measured. */
+    mineralisationGl: dec(6, 2),
+    notes: text(),
+  },
+  (t) => [index().on(t.fieldId, t.date)],
+);
+
 export const weatherDaily = pgTable(
   'weather_daily',
   {
@@ -319,6 +338,8 @@ export const fieldVegetation = pgTable(
     ndviP10: dec(5, 3),
     ndviP50: dec(5, 3),
     ndviP90: dec(5, 3),
+    /** Moisture index (B8A against B11) over the same clear cells. Null for scenes read before it was added. */
+    ndmiMean: dec(5, 3),
     grid: jsonb().$type<VegetationGrid>(),
     weakZones: jsonb().$type<WeakZoneRecord[]>().notNull().default([]),
   },

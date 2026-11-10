@@ -1,5 +1,6 @@
 import { ctx } from '../../core/context';
 import type { FarmJob } from '../../jobs/types';
+import { summarizeGrazing } from './grazing.service';
 import { evaluateHealth, releaseExited, summarizeDays } from './health.service';
 
 /** Two runs missed, or none yet: the server has been away. */
@@ -27,6 +28,7 @@ export const jobs: FarmJob[] = [
     run: async () => {
       await releaseExited();
       await summarizeDays();
+      await summarizeGrazing();
     },
   },
 ];

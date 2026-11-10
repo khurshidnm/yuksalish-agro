@@ -1,13 +1,15 @@
 import { and, desc, eq, inArray, isNull, lte, ne, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
-import { ALERT_STATUSES, SEVERITIES, type Permission, type RoleKey, type Severity } from '@yap/shared';
+import { ALERT_STATUSES, SEVERITIES, addDays, type PRIORITIES, type Permission, type RoleKey, type Severity } from '@yap/shared';
 import { schema } from '../../db/client';
-import { ctx, hasPermission, tx } from '../../core/context';
-import { conflict, forbidden, notFound } from '../../core/errors';
+import { ctx, hasPermission, today, tx } from '../../core/context';
+import { conflict, forbidden, notFound, safeError } from '../../core/errors';
 import { recordEvent } from '../../core/journal';
-import { listQuery, paged, sortBy } from '../../core/query';
+import { idParam, isoDate, listQuery, paged, sortBy } from '../../core/query';
 import { interpolate, lookup, tr, type Params } from '../notifications/i18n';
-import { notifyRole } from '../notifications/notify.service';
+import { notifyRole, usersWithRole } from '../notifications/notify.service';
+import * as tasks from '../tasks/tasks.service';
+import { takeAlert } from './take.service';
 
 const { alerts } = schema;
 
@@ -192,6 +194,7 @@ export async function raiseAlert(input: RaiseAlertInput): Promise<{ id: string; 
   if (created) {
     await notifyAlert(created, { inAppOnly: i.inAppOnly });
     await journalRaised(i, created.id);
+    await autoTask(created);
     return { id: created.id, created: true, escalated: false };
   }
 
@@ -248,6 +251,7 @@ export async function resolveByDedupKey(dedupKey: string): Promise<boolean> {
     .set({ status: 'resolved', resolvedAt: new Date(), nextNotifyAt: null })
     .where(and(eq(alerts.farmId, ctx().farmId), eq(alerts.dedupKey, dedupKey), ne(alerts.status, 'resolved')))
     .returning({ id: alerts.id });
+  await tasks.completeForResolvedAlerts(closed.map((alert) => alert.id));
   return closed.length > 0;
 }
 
@@ -291,6 +295,8 @@ export const alertListQuery = listQuery.extend({
   severity: z.enum(SEVERITIES).optional(),
   /** Open and acknowledged, i.e. everything not yet resolved. */
   active: z.stringbool().optional(),
+  /** One alert, which is how a task links back to the alert it answers. */
+  id: idParam.shape.id.optional(),
 });
 
 const SEVERITY_ORDER = sql`case ${alerts.severity} when 'urgent' then 0 when 'attention' then 1 else 2 end`;
@@ -298,11 +304,12 @@ const SEVERITY_ORDER = sql`case ${alerts.severity} when 'urgent' then 0 when 'at
 export async function list(q: z.infer<typeof alertListQuery>) {
   const where = and(
     visible(),
+    q.id ? eq(alerts.id, q.id) : undefined,
     q.status ? eq(alerts.status, q.status) : undefined,
     q.active ? ne(alerts.status, 'resolved') : undefined,
     q.severity ? eq(alerts.severity, q.severity) : undefined,
   );
-  return paged(q, alerts, where, (limit, offset) =>
+  const page = await paged(q, alerts, where, (limit, offset) =>
     tx()
       .select()
       .from(alerts)
@@ -313,6 +320,18 @@ export async function list(q: z.infer<typeof alertListQuery>) {
       .limit(limit)
       .offset(offset),
   );
+  return { ...page, data: await withTasks(page.data) };
+}
+
+/** Each alert with the task that answers it, or null. */
+async function withTasks<T extends { id: string }>(rows: T[]) {
+  const linked = await tasks.tasksOfAlerts(rows.map((row) => row.id));
+  return rows.map((row) => ({ ...row, task: linked.get(row.id) ?? null }));
+}
+
+export async function get(id: string) {
+  const [alert] = await withTasks([await getVisible(id)]);
+  return alert;
 }
 
 export async function counts() {
@@ -343,15 +362,7 @@ async function getVisible(id: string): Promise<Alert> {
 }
 
 /** Whoever comes second, from the app or the bot, finds it taken. */
-async function take(alert: Alert): Promise<Alert | undefined> {
-  const [row] = await tx()
-    .update(alerts)
-    .set({ status: 'acknowledged', acknowledgedBy: ctx().userId, acknowledgedAt: new Date(), nextNotifyAt: null })
-    .where(and(eq(alerts.id, alert.id), eq(alerts.status, 'open')))
-    .returning();
-  if (row) await recordEvent({ type: 'alert.acknowledged', entityType: 'alert', entityId: alert.id, data: { ruleKey: alert.ruleKey } });
-  return row;
-}
+const take = (alert: Alert): Promise<Alert | undefined> => takeAlert(alert.id);
 
 export async function acknowledge(id: string) {
   const alert = await getVisible(id);
@@ -381,7 +392,105 @@ export async function resolve(id: string) {
     .where(eq(alerts.id, id))
     .returning();
   await recordEvent({ type: 'alert.resolved', entityType: 'alert', entityId: id, data: { ruleKey: alert.ruleKey } });
+  await tasks.completeForResolvedAlerts([id]);
   return row;
+}
+
+// ─── Tasks ─────────────────────────────────────────────────────────────────
+
+/** Starting values, not policy from the farm or the spec: how pressing a problem's task is. */
+export const ALERT_TASK_PRIORITY: Record<Severity, (typeof PRIORITIES)[number]> = { urgent: 'high', attention: 'normal', info: 'low' };
+
+/** Starting values: days from today until the task is due when nobody chose a date. Urgent is today. */
+export const ALERT_TASK_DUE_DAYS: Record<Severity, number> = { urgent: 0, attention: 2, info: 7 };
+
+export const alertTaskInput = z.object({
+  assigneeUserId: z.uuid().nullish(),
+  dueDate: isoDate.nullish(),
+});
+
+/**
+ * What the task says. An alert that needs a permission says things not everyone may read, such as
+ * an amount, and a task is read by whoever it is given to. So its task names the kind of problem
+ * and nothing else: the figures stay on the alert, behind its permission.
+ */
+function taskText(alert: Alert, locale: string): { title: string; description: string | null } {
+  if (alert.permission) {
+    const rule = lookup(locale, 'alerts', `ruleNames.${alert.ruleKey}`);
+    return {
+      title: rule ? tr(locale, 'alerts', 'task.restrictedTitle', { rule }) : tr(locale, 'alerts', 'task.restrictedTitleUnnamed'),
+      description: tr(locale, 'alerts', 'task.restrictedDescription'),
+    };
+  }
+  const text = renderAlert(alert, locale);
+  return { title: text.title, description: text.body?.slice(0, 2000) || null };
+}
+
+/** The one way an alert gets a task, pressed or automatic. */
+async function taskFor(alert: Alert, options: { assigneeUserId: string | null; dueDate: string | null; auto: boolean }) {
+  const severity = alert.severity as Severity;
+  // A task links to a field, herd, animal or asset. An alert about anything else keeps its page link.
+  const linkable = alert.entityId !== null && (tasks.ENTITY_TYPES as readonly string[]).includes(alert.entityType ?? '');
+  return tasks.createForAlert({
+    alertId: alert.id,
+    ...taskText(alert, await tasks.workspaceLocale()),
+    priority: ALERT_TASK_PRIORITY[severity],
+    dueDate: options.dueDate ?? addDays(today(), ALERT_TASK_DUE_DAYS[severity]),
+    assigneeUserId: options.assigneeUserId,
+    entityType: linkable ? alert.entityType : null,
+    entityId: linkable ? alert.entityId : null,
+    link: alert.link,
+    auto: options.auto,
+  });
+}
+
+/**
+ * Turn an alert into a task. Asking again while that task is open gives the same task back, so a
+ * second press, or a second person, changes nothing.
+ */
+export async function createTask(id: string, input: z.infer<typeof alertTaskInput>) {
+  const alert = await getVisible(id);
+  if (alert.status === 'resolved') throw conflict('ALERT_ALREADY_RESOLVED', 'This alert is already resolved');
+  await tasks.assertAssignable(input.assigneeUserId);
+  const { id: taskId, created } = await taskFor(alert, {
+    assigneeUserId: input.assigneeUserId ?? null,
+    dueDate: input.dueDate ?? null,
+    auto: false,
+  });
+  return { created, task: await tasks.get(taskId) };
+}
+
+/** The person a role points at, when it points at exactly one. Two shepherds means nobody is chosen for them. */
+async function soleHolder(role: RoleKey): Promise<string | null> {
+  const holders = [...new Set(await usersWithRole(role))];
+  return holders.length === 1 ? holders[0] : null;
+}
+
+/**
+ * The farm asked for a task whenever this rule finds a new problem. Inside a savepoint: a task that
+ * cannot be created must not take the alert down with it.
+ */
+async function autoTask(alert: Alert): Promise<void> {
+  const rule = ctx().settings.alerts.autoTask[alert.ruleKey];
+  if (!rule?.enabled) return;
+  try {
+    await tx().transaction(async () => {
+      const assigneeUserId = rule.assigneeRole ? await soleHolder(rule.assigneeRole) : null;
+      await taskFor(alert, { assigneeUserId, dueDate: null, auto: true });
+    });
+  } catch (error) {
+    console.error(`[alerts] task for ${alert.ruleKey} was not created`, safeError(error));
+  }
+}
+
+/** Every rule a farm can switch a task on for, with what it has chosen. */
+export function autoTaskRules(ruleKeys: string[]) {
+  const chosen = ctx().settings.alerts.autoTask;
+  return ruleKeys.map((ruleKey) => ({
+    ruleKey,
+    enabled: chosen[ruleKey]?.enabled ?? false,
+    assigneeRole: chosen[ruleKey]?.assigneeRole ?? null,
+  }));
 }
 
 /** Newest and most severe first, for dashboards. */

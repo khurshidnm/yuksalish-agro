@@ -32,12 +32,20 @@ export const tasks = pgTable(
     completionPhotoFileId: uuid().references(() => files.id),
     /** The record that closed the task, when `requiresRecord` is set. */
     completionRecordId: uuid(),
+    /** The alert this task answers. An alert has at most one task that is not closed. */
+    alertId: uuid().references(() => alerts.id),
+    /** Where to go to do the work, copied from the alert, e.g. '/feed/balance'. */
+    link: text(),
+    /** TASK_COMPLETION_SOURCES: 'person', or 'alert_resolved' when the problem went away by itself. */
+    completionSource: text(),
   },
   (t) => [
     index().on(t.farmId, t.status, t.dueDate),
     index().on(t.assigneeUserId, t.status),
     // A recurring task has at most one instance per date, so the job can run any number of times.
     uniqueIndex('tasks_template_due_idx').on(t.templateId, t.dueDate).where(sql`template_id IS NOT NULL`),
+    // One open task per alert: two people pressing the button at once get the same task.
+    uniqueIndex('tasks_open_alert_idx').on(t.alertId).where(sql`alert_id IS NOT NULL AND status NOT IN ('done', 'cancelled')`),
   ],
 );
 

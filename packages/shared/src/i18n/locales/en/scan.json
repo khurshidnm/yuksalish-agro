@@ -1,0 +1,168 @@
+{
+  "title": "Scan a code",
+  "description": "Point the camera at the QR code or barcode, or type the number.",
+  "button": "Scan a code",
+  "again": "Scan again",
+  "retry": "Try the camera again",
+  "torchOn": "Turn the light on",
+  "torchOff": "Turn the light off",
+  "state": {
+    "idle": {
+      "title": "Camera is off",
+      "body": "You can type the code below."
+    },
+    "insecure": {
+      "title": "The camera needs a secure connection",
+      "body": "Open the site at an address that starts with https:// and the camera will work. Until then, type the code below."
+    },
+    "no_camera": {
+      "title": "No camera found",
+      "body": "This device has no camera the browser can use. Type the code below."
+    },
+    "asking": {
+      "title": "Allow the camera",
+      "body": "The browser is asking for permission to use the camera. Press Allow."
+    },
+    "denied": {
+      "title": "The camera is not allowed",
+      "body": "Press the padlock or the settings icon in the address bar, allow the camera for this site, then try again. You can also type the code below."
+    },
+    "busy": {
+      "title": "The camera is in use",
+      "body": "Another app or tab holds the camera. Close it and try again, or type the code below."
+    },
+    "failed": {
+      "title": "The camera did not start",
+      "body": "Try again, or type the code below."
+    },
+    "searching": {
+      "title": "Looking for a code",
+      "body": "Hold the code inside the frame. In poor light, turn the phone's light on."
+    },
+    "found": {
+      "title": "Code read",
+      "body": "Looking it up."
+    }
+  },
+  "manual": {
+    "label": "Type it instead",
+    "placeholder": "Number on the tag or pack",
+    "submit": "Find",
+    "invalid": "Type a code of up to {{max}} characters."
+  },
+  "animal": {
+    "title": "Scan the animal's tag",
+    "hint": "Hold the tag's QR code or barcode inside the frame.",
+    "noneTitle": "Animal not found",
+    "noneBody": "No animal on this farm carries this code. Check the tag, or look the animal up by its number.",
+    "severalTitle": "Which animal?",
+    "severalBody": "More than one animal carries this code. Choose the one in front of you.",
+    "search": "Search the list",
+    "offFarm": "{{tag}} is no longer on the farm."
+  },
+  "item": {
+    "title": "Scan the item",
+    "hint": "Hold the barcode on the pack, or the printed label, inside the frame.",
+    "noneTitle": "Item not found",
+    "noneBody": "No item in the warehouse list carries this code. Choose the item from the list, and save the barcode on the item so the next scan finds it.",
+    "severalTitle": "Which item?",
+    "severalBody": "More than one item carries this code. Choose the right one.",
+    "inactive": "{{name}} is switched off in the item list.",
+    "switchedOff": "switched off",
+    "barcodeHint": "Scan the pack or type the number",
+    "barcodeTitle": "Scan the barcode on the pack"
+  },
+  "labels": {
+    "size": "Label size",
+    "sizes": {
+      "small": "Small: 24 on an A4 sheet",
+      "large": "Large: 10 on an A4 sheet"
+    },
+    "count": "Labels: {{labels}} · A4 sheets: {{pages}}",
+    "print": "Print"
+  },
+  "tags": {
+    "print": "Print tags",
+    "title": "Tags with QR codes",
+    "description": "Choose a herd and print a tag for every animal in it. The code holds the animal's number and nothing else.",
+    "chosen": "Tags for the animals chosen in the list: {{n}}.",
+    "back": "Animals",
+    "herd": "Choose a herd",
+    "pickTitle": "Choose a herd",
+    "pickBody": "The tags of every animal now in the herd will be laid out for printing. To print only some, tick them in the animal list.",
+    "emptyTitle": "No animals to print",
+    "emptyBody": "There is no animal in this herd now."
+  },
+  "itemLabels": {
+    "print": "Print labels",
+    "printOne": "Print label",
+    "title": "Item labels with QR codes",
+    "description": "Stick a label on the shelf or the sack and scan it when receiving or issuing. The code holds the item's barcode or its own code, never a price.",
+    "back": "Items",
+    "category": "Category",
+    "allCategories": "All categories",
+    "emptyTitle": "No items to print",
+    "emptyBody": "There is no item in this category.",
+    "more": "{{shown}} of {{total}} items are shown. Choose a category to print the rest."
+  },
+  "scale": {
+    "open": "Import from scale file",
+    "title": "Weights from a scale file",
+    "description": "Choose the file the electronic scale saved. You will see which animal every line means before anything is recorded.",
+    "choose": "Choose a file",
+    "another": "Choose another file",
+    "formats": "A CSV or text file: one line per animal, with the tag or electronic number and the weight in kilograms.",
+    "file": {
+      "tooBig": "This file is larger than 2 MB. A scale file is much smaller: check that you chose the right one.",
+      "notText": "This is a spreadsheet file. In the spreadsheet choose Save as, then CSV, and pick that file.",
+      "unreadable": "The file could not be read. Try choosing it again.",
+      "empty": "The file has no lines with data."
+    },
+    "column": "Column {{n}}",
+    "codeColumn": "Tag or electronic number",
+    "weightColumn": "Weight",
+    "pick": "Choose a column",
+    "headerRow": "The first row holds the column names",
+    "pickColumns": "Choose which column holds the tag and which holds the weight.",
+    "tooMany": "The file has {{rows}} lines. At most {{max}} can be recorded at a time: split the file in two.",
+    "unit": {
+      "lb": "The weights in this file are in pounds. Set the scale to kilograms and save the file again.",
+      "g": "The weights in this file are in grams. Set the scale to kilograms and save the file again."
+    },
+    "ready": "Will be recorded: {{n}} of {{of}}",
+    "none": "No line of this file can be recorded.",
+    "include": "Record the weight of {{tag}}",
+    "byRfid": "by electronic number",
+    "otherHerd": "another herd",
+    "left": "Will not be recorded: {{n}}",
+    "line": "Line {{line}}",
+    "status": {
+      "unmatched": "No animal on the farm carries this number.",
+      "several": "Several animals carry this number: {{tags}}. Weigh this one by hand.",
+      "not_on_farm": "{{tag}} is no longer on the farm.",
+      "implausible": "Heavier than this species can be: the most is {{max}} kg.",
+      "before_birth": "The weighing date is before this animal was born.",
+      "duplicate": "The same animal comes again on line {{line}}: the later weight is taken."
+    },
+    "problem": {
+      "no_code": "The line has no tag or electronic number.",
+      "code_damaged": "A spreadsheet turned the electronic number into a rounded figure and its digits are lost. Save the file from the scale again without opening it in a spreadsheet.",
+      "no_weight": "The line has no weight.",
+      "not_a_number": "The weight is not a number.",
+      "ambiguous": "The weight can be read two ways, as about a kilogram or as over a tonne. Enter this one by hand.",
+      "unit": "The weight is not in kilograms.",
+      "not_positive": "The weight is zero or below: there was no animal on the scale.",
+      "too_heavy": "Heavier than any animal."
+    },
+    "send": "Record weights: {{n}}",
+    "done": {
+      "applied": "Weights recorded: {{n}}",
+      "failed": "Not recorded: {{n}}",
+      "close": "Done"
+    }
+  },
+  "errors": {
+    "SCAN_UNREADABLE": "This code cannot be read as a tag or item number. Scan it again or type the number.",
+    "WEIGHT_NOT_PLAUSIBLE": "Check the weight: it is more than this species can weigh"
+  }
+}

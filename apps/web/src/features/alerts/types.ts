@@ -1,4 +1,4 @@
-import type { ALERT_STATUSES, SEVERITIES } from '@yap/shared';
+import type { ALERT_STATUSES, SEVERITIES, TASK_COMPLETION_SOURCES, TASK_STATUSES } from '@yap/shared';
 
 export interface Alert {
   id: string;
@@ -13,6 +13,25 @@ export interface Alert {
   lastSeenAt: string;
   createdAt: string;
   acknowledgedAt: string | null;
+  /** The task that answers this alert, for those who may see tasks: the open one, else the last one done. */
+  task?: AlertTask | null;
+}
+
+export interface AlertTask {
+  id: string;
+  status: (typeof TASK_STATUSES)[number];
+  dueDate: string | null;
+  assigneeUserId: string | null;
+  /** Null without `pii.view`, and when nobody is assigned. */
+  assigneeName: string | null;
+  completionSource: (typeof TASK_COMPLETION_SOURCES)[number] | null;
+}
+
+/** Whether an alert takes its rule's task by itself, and whose it becomes. */
+export interface AutoTaskRule {
+  ruleKey: string;
+  enabled: boolean;
+  assigneeRole: string | null;
 }
 
 export interface AlertCounts {

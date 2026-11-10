@@ -1,7 +1,21 @@
 {
   "title": "Sozlamalar",
   "description": "Xo'jalik ma'lumotlari, siyosatlar va ma'lumotlarni eksport qilish.",
-  "tabs": { "profile": "Xo'jalik", "policy": "Siyosatlar", "data": "Ma'lumotlar", "files": "Fayllar" },
+  "tabs": { "profile": "Xo'jalik", "policy": "Siyosatlar", "data": "Ma'lumotlar", "files": "Fayllar", "sales": "Sotuv", "alertTasks": "Ogohlantirishlardan vazifalar" },
+  "salesTab": {
+    "targetTitle": "Sotuv vazni",
+    "targetHint": "Xo'jalik hayvonni sotadigan vazn. Sotuvga tayyorlar ro'yxati shu bo'yicha tuziladi. Yagona raqam bo'lmasa, bo'sh qoldiring.",
+    "targetWeight": "Maqsadli sotuv vazni",
+    "catalogueTitle": "Sotuvdagi hayvonlarning ommaviy sahifasi",
+    "catalogueHint": "Har kim tizimga kirmasdan ocha oladigan sahifa. Unda faqat siz belgilagan hayvonlar ko'rsatiladi, birka, tannarx va veterinariya yozuvlarisiz. Siz yoqmaguningizcha o'chiq turadi.",
+    "enabled": "Ommaviy sahifa yoqilgan",
+    "slug": "Sahifa manzili",
+    "slugHint": "3 tadan 40 tagacha lotin harfi, raqam va chiziqcha.",
+    "contact": "Aloqa satri",
+    "contactHint": "Sahifada ko'rsatiladi, masalan telefon raqami va ish vaqti.",
+    "link": "Sahifa manzili",
+    "linkOff": "Sahifa o'chiq: uning manzili \"topilmadi\" deb javob beradi."
+  },
   "showOnce": {
     "warning": "Bu qiymat boshqa ko'rsatilmaydi. Hozir nusxalab, xavfsiz joyga saqlang.",
     "copy": "Nusxalash",
@@ -157,6 +171,17 @@
     "health_records": "Veterinariya jurnali",
     "breeding_records": "Bo'g'ozlik qaydlari",
     "lambing_records": "Qo'zilash qaydlari",
+    "pregnancy_scans": "Bo'g'ozlik skanerlash qaydlari",
+    "lamb_care": "Yangi tug'ilgan qo'zilar parvarishi",
+    "pen_stays": "Qo'zilash kataklari qaydlari",
+    "body_condition_scores": "Semizlik baholari",
+    "fat_tail_measurements": "Dumba o'lchamlari",
+    "animal_gradings": "Hayvonlar bonitirovkasi",
+    "cull_marks": "Brak belgilari",
+    "scenarios": "Uch yillik reja variantlari",
+    "geofences": "Yaylov hududlari (geozona)",
+    "grazing_cell_days": "Yaylovdan foydalanish xaritasi (kunlik)",
+    "grazing_field_days": "Dalalarda o'tlash kunlari",
     "weight_records": "Vazn qaydlari",
     "animal_exits": "Chiqim operatsiyalari",
     "sales": "Sotuvlar",
@@ -165,6 +190,7 @@
     "farms": "Fermalar",
     "seasons": "Mavsumlar",
     "soil_analyses": "Tuproq tahlillari",
+    "groundwater_observations": "Sizot suvi kuzatuvlari",
     "webhook_subscriptions": "Webhook obunalari",
     "species": "Hayvon turlari",
     "breeds": "Zotlar",
@@ -189,7 +215,10 @@
     "animal_tracking": "Hayvonlar joylashuvi",
     "animal_track_days": "Hayvonlar harakati (kunlik)",
     "job_runs": "Fon ishlari",
-    "idempotency_keys": "Takroriy so'rov kalitlari"
+    "idempotency_keys": "Takroriy so'rov kalitlari",
+    "animal_reservations": "Hayvon bandlari",
+    "catalogue_listings": "Katalogdagi hayvonlar",
+    "catalogue_requests": "Katalog so'rovlari"
   },
   "users": {
     "title": "Foydalanuvchilar va rollar",
@@ -395,6 +424,8 @@
     "SYSTEM_ROLE": "Standart rolning nomini o'zgartirib yoki o'chirib bo'lmaydi.",
     "ROLE_IN_USE": "Bu rol xodimlarga biriktirilgan. Avval ularning rolini o'zgartiring.",
     "WEBHOOK_URL_NOT_ALLOWED": "Bu manzilga yuborib bo'lmaydi. Ochiq internetdagi https manzilni kiriting.",
-    "NOTHING_TO_UPDATE": "O'zgarish kiritilmagan."
+    "NOTHING_TO_UPDATE": "O'zgarish kiritilmagan.",
+    "CATALOGUE_SLUG_REQUIRED": "Katalogni yoqishdan oldin sahifa manzilini kiriting.",
+    "CATALOGUE_SLUG_TAKEN": "Bu sahifa manzili band. Boshqasini tanlang."
   }
 }

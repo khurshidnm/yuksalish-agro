@@ -9,6 +9,7 @@ import { schema } from '../../../db/client';
 import { tr } from '../../notifications/i18n';
 import { notifyUser } from '../../notifications/notify.service';
 import { money } from './render';
+import { RECORD_KINDS } from './routing';
 import type { ProposalFields } from './types';
 
 const { aiProposals: t, memberships, roles, transactions } = schema;
@@ -57,6 +58,8 @@ export async function eveningRecaps(): Promise<Map<string, Recap>> {
     .where(
       and(
         eq(t.farmId, c.farmId),
+        // The recap is about money; a farm record has no amount to total.
+        inArray(t.kind, [...RECORD_KINDS]),
         or(
           and(eq(t.status, 'confirmed'), sql`(${t.confirmedAt} at time zone ${c.timezone})::date = ${date}::date`),
           and(eq(t.status, 'pending'), gt(t.expiresAt, new Date())),

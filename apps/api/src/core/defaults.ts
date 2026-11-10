@@ -1,3 +1,4 @@
+import type { CROP_FAMILIES } from '@yap/shared';
 import type { I18nName } from '../db/schema';
 
 const n = (uz: string, ru: string, en: string): I18nName => ({ uz, ru, en });
@@ -30,13 +31,14 @@ export const DEFAULT_BREEDS: { species: string; key: string; name: I18nName }[] 
   { species: 'cattle', key: 'holstein', name: n('Golshteyn', 'Голштинская', 'Holstein') },
 ];
 
-export const DEFAULT_CROPS: { key: string; name: I18nName; isFeed: boolean }[] = [
-  { key: 'wheat', name: n("Bug'doy", 'Пшеница', 'Wheat'), isFeed: false },
-  { key: 'barley', name: n('Arpa', 'Ячмень', 'Barley'), isFeed: true },
-  { key: 'rice', name: n('Sholi', 'Рис', 'Rice'), isFeed: false },
-  { key: 'alfalfa', name: n('Beda', 'Люцерна', 'Alfalfa'), isFeed: true },
-  { key: 'corn', name: n("Makkajo'xori", 'Кукуруза', 'Corn'), isFeed: true },
-  { key: 'cotton', name: n('Paxta', 'Хлопок', 'Cotton'), isFeed: false },
+/** `family` is the crop's place in the rotation: the same values as TYPICAL_CROP_FAMILY in formulas/rotation.ts. */
+export const DEFAULT_CROPS: { key: string; name: I18nName; isFeed: boolean; family: (typeof CROP_FAMILIES)[number] }[] = [
+  { key: 'wheat', name: n("Bug'doy", 'Пшеница', 'Wheat'), isFeed: false, family: 'cereal' },
+  { key: 'barley', name: n('Arpa', 'Ячмень', 'Barley'), isFeed: true, family: 'cereal' },
+  { key: 'rice', name: n('Sholi', 'Рис', 'Rice'), isFeed: false, family: 'cereal' },
+  { key: 'alfalfa', name: n('Beda', 'Люцерна', 'Alfalfa'), isFeed: true, family: 'perennial_grass' },
+  { key: 'corn', name: n("Makkajo'xori", 'Кукуруза', 'Corn'), isFeed: true, family: 'row_crop' },
+  { key: 'cotton', name: n('Paxta', 'Хлопок', 'Cotton'), isFeed: false, family: 'row_crop' },
 ];
 
 type Category = { kind: 'expense' | 'income'; group: string; key: string; name: I18nName };

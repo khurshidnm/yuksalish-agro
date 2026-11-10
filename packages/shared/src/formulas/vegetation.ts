@@ -39,6 +39,21 @@ export function ndvi(red: number | null, nir: number | null): number | null {
 }
 
 /**
+ * NDMI, the moisture index: (B8A − B11) / (B8A + B11), narrow near infrared against short-wave
+ * infrared, both 20 m bands of Sentinel-2. Water in the leaves absorbs the short-wave band, so a
+ * canopy drying out falls on this index before it loses its green.
+ * Source: Gao B.-C., 1996, «NDWI — a normalized difference water index for remote sensing of
+ * vegetation liquid water from space», Remote Sensing of Environment 58: 257-266.
+ * The same rules as `ndvi`: null on a missing band or an empty sum, never 0.
+ */
+export function ndmi(nir8a: number | null, swir: number | null): number | null {
+  if (nir8a == null || swir == null || !Number.isFinite(nir8a) || !Number.isFinite(swir)) return null;
+  const sum = nir8a + swir;
+  if (sum <= 0) return null;
+  return Math.min(1, Math.max(-1, (nir8a - swir) / sum));
+}
+
+/**
  * Scene classification (SCL) codes whose pixels are usable: 4 vegetation, 5 not vegetated,
  * 6 water, 7 unclassified. Every other code is not clear: 0 nodata, 1 saturated or defective,
  * 2 dark area (topographic or cast shadow), 3 cloud shadow, 8 and 9 cloud, 10 thin cirrus, 11 snow or ice.

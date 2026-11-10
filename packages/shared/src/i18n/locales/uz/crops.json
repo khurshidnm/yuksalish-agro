@@ -165,7 +165,8 @@
       "plans": "Rejalar",
       "fact": "Reja va fakt",
       "cards": "Texnologik kartalar",
-      "seasons": "Mavsumlar"
+      "seasons": "Mavsumlar",
+      "crops": "Ekinlar"
     },
     "stats": {
       "sown": "Ekilgan dalalar",
@@ -280,5 +281,69 @@
     "STOCK_QTY_REQUIRED": "Omborga kirgan miqdorni kiriting",
     "USE_HARVEST_FORM": "Hosilni hosil yig'ish oynasi orqali kiriting",
     "WATER_REQUIRED": "Suv miqdorini kiriting"
+  },
+  "leaching": {
+    "norm": "Tavsiya etiladigan me'yor: {{min}}–{{max}} m³/ga",
+    "forField": "{{area}} ga uchun: {{min}}–{{max}} m³.",
+    "basis": "{{salinity}}, {{soil}}. Manba: {{source}}. Bu tavsiya, shu dala uchun hisob-kitob emas.",
+    "group": {
+      "light": "yengil tuproq",
+      "medium": "o'rta tuproq",
+      "heavy": "og'ir tuproq"
+    },
+    "noTexture": "mexanik tarkib ko'rsatilmagan, shuning uchun e'lon qilingan butun oraliq ko'rsatilgan",
+    "not_saline": "Dala sho'rlanmagan deb belgilangan, shuning uchun sho'r yuvish me'yori tavsiya etilmaydi.",
+    "level_unknown": "Dalaning sho'rlanish darajasi ko'rsatilmagan, shuning uchun me'yor tavsiya etilmaydi. Uni dala kartasida belgilang.",
+    "capital_leaching": "Kuchli sho'rlangan og'ir tuproq uchun manbada oddiy me'yor berilmagan: bunday yerga loyiha asosida kapital sho'r yuvish kerak. Manba: {{source}}."
+  },
+  "rotation": {
+    "source": "Manba: {{source}}.",
+    "history": "Bu dalada avval: {{crops}}.",
+    "historyItem": "{{season}}: {{crop}}",
+    "stillSave": "Bu faqat ogohlantirish: rejani saqlash mumkin.",
+    "rule": {
+      "same_crop": {
+        "title": "O'sha ekin takroran",
+        "reason": "Ko'pchilik ekinlar avvalgi dalasiga kamida 2–3 yildan keyin qaytariladi."
+      },
+      "cereal_run": {
+        "title": "Ketma-ket uchinchi boshoqli ekin",
+        "reason": "Boshoqli don ekinlarini 2 yildan ortiq takror ekishdan qochish kerak."
+      },
+      "cereal_after_cereal": {
+        "title": "Boshoqli ekindan keyin boshoqli ekin",
+        "reason": "Boshoqli don ekinlari eng yomon o'tmishdoshlar qatoriga kiradi."
+      },
+      "legume_after_legume": {
+        "title": "Dukkakli ekindan keyin dukkakli ekin",
+        "reason": "Dukkakli don ekinlarini takror ekish maqsadga muvofiq emas."
+      },
+      "after_legume": {
+        "title": "Yaxshi o'tmishdosh: dukkakli ekin",
+        "reason": "Dukkakli don ekinlari deyarli barcha ekinlar uchun yaxshi o'tmishdosh."
+      },
+      "after_perennial_grass": {
+        "title": "Yaxshi o'tmishdosh: ko'p yillik o't",
+        "reason": "Ko'p yillik o'tlarning keyingi ta'siri ikkinchi va uchinchi ekingacha saqlanadi."
+      }
+    }
+  },
+  "cropRef": {
+    "hint": "Almashlab ekish ogohlantirishlari va o'g'it me'yori har bir ekindan oladigan ma'lumotlar. Xo'jalik kiritmagan joyda namunaviy qiymatlar olinadi va shunday belgilanadi.",
+    "name": "Ekin",
+    "family": "Almashlab ekishdagi guruh",
+    "familyHint": "Reja oynasidagi almashlab ekish ogohlantirishlari shu guruhga qarab ishlaydi.",
+    "removal": "{{formula}} olib chiqilishi, kg/t",
+    "kgT": "kg/t",
+    "source": "Qiymatlar",
+    "own": "Xo'jalikniki",
+    "typical": "Namunaviy",
+    "typicalValue": "Namunaviy: {{value}}",
+    "notSet": "Ko'rsatilmagan",
+    "noTypical": "Namunaviy qiymat yo'q",
+    "edit": "{{name}}: agronomik qiymatlar",
+    "emptyTitle": "Ekinlar yo'q",
+    "emptyBody": "Xo'jalikning ekinlar ro'yxati bo'sh.",
+    "removalHint": "Bir tonna mahsulot bilan daladan chiqib ketadigan oziq moddalar. Uchalasini ham kiriting: bittasi to'ldirilsa, qolganlari uchun namunaviy qiymatlar ishlatilmaydi. Namunaviy qiymatlar jadvallardagi o'rtacha ko'rsatkichlar, asosan {{source}} dan."
   }
 }

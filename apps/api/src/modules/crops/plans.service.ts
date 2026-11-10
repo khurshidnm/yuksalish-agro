@@ -2,6 +2,7 @@ import { and, asc, desc, eq, inArray, ne, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { CROP_PLAN_STATUSES, addDays, round } from '@yap/shared';
 import { expectedHarvestT, harvestSplit, planCostEstimate, techCardNorms } from '@yap/shared/formulas/crops';
+import { cropFamilyOf, rotationNotes, type RotationNote } from '@yap/shared/formulas/rotation';
 import { schema } from '../../db/client';
 import { ctx, today, tx } from '../../core/context';
 import { badRequest, conflict, notFound } from '../../core/errors';
@@ -222,6 +223,69 @@ export async function get(id: string) {
   return (await withProgress(rows))[0];
 }
 
+export const rotationQuery = z.object({
+  fieldId: z.uuid(),
+  seasonId: z.uuid(),
+  cropId: z.uuid(),
+  /** The plan being edited, so it is not read as its own predecessor. */
+  planId: z.uuid().optional(),
+});
+
+/**
+ * What the rotation rules say about a crop on a field in a season (formulas/rotation.ts), with the
+ * earlier crops they were read from. History is one crop per earlier season, the one on most land,
+ * newest first. Notes warn and never block: saving a plan does not depend on them.
+ */
+export async function rotationCheck(input: z.infer<typeof rotationQuery>) {
+  const farmId = ctx().farmId;
+  const [season] = await tx()
+    .select({ startDate: seasons.startDate })
+    .from(seasons)
+    .where(and(eq(seasons.id, input.seasonId), eq(seasons.farmId, farmId)));
+  if (!season) throw notFound('Season');
+  const [crop] = await tx()
+    .select({ key: crops.key, family: crops.family })
+    .from(crops)
+    .where(and(eq(crops.id, input.cropId), eq(crops.tenantId, ctx().tenantId)));
+  if (!crop) throw notFound('Crop');
+
+  const earlier = await tx()
+    .select({
+      seasonId: t.seasonId,
+      seasonName: seasons.name,
+      cropKey: crops.key,
+      cropName: crops.name,
+      family: crops.family,
+    })
+    .from(t)
+    .innerJoin(seasons, eq(seasons.id, t.seasonId))
+    .innerJoin(crops, eq(crops.id, t.cropId))
+    .where(
+      and(
+        eq(t.farmId, farmId),
+        eq(t.fieldId, input.fieldId),
+        ne(t.status, 'cancelled'),
+        sql`${seasons.startDate} < ${season.startDate}`,
+        input.planId ? ne(t.id, input.planId) : undefined,
+      ),
+    )
+    .orderBy(desc(seasons.startDate), desc(t.areaHa), t.id);
+
+  const seen = new Set<string>();
+  const history = earlier
+    .filter((row) => !seen.has(row.seasonId) && seen.add(row.seasonId))
+    .map((row) => ({ key: row.cropKey, family: cropFamilyOf(row.cropKey, row.family), name: row.cropName, seasonName: row.seasonName }));
+
+  const notes: RotationNote[] = rotationNotes({ key: crop.key, family: cropFamilyOf(crop.key, crop.family) }, history);
+  return { notes, history: history.slice(0, 3) };
+}
+
+async function withRotation(id: string) {
+  const plan = await get(id);
+  const rotation = await rotationCheck({ fieldId: plan.fieldId, seasonId: plan.seasonId, cropId: plan.cropId, planId: plan.id });
+  return { ...plan, rotation };
+}
+
 export async function create(input: PlanInput) {
   const c = ctx();
   await assertSeason(input.seasonId);
@@ -254,7 +318,7 @@ export async function create(input: PlanInput) {
     entityId: row.id,
     data: { fieldId: row.fieldId, cropId: row.cropId, seasonId: row.seasonId, areaHa },
   });
-  return get(row.id);
+  return withRotation(row.id);
 }
 
 export async function update(id: string, input: Partial<PlanInput>) {
@@ -284,7 +348,7 @@ export async function update(id: string, input: Partial<PlanInput>) {
       ...(sownByHand && !input.sowingDateFact ? { sowingDateFact: before.sowingDatePlan ?? today() } : {}),
     })
     .where(eq(t.id, id));
-  return get(id);
+  return withRotation(id);
 }
 
 /** A plan with recorded work or harvest answers 409 PLAN_HAS_WORK: cancel it instead. */

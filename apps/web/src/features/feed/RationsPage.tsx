@@ -1,11 +1,13 @@
-import { Pencil, Plus, Trash2, Wheat } from 'lucide-react';
+import { Calculator, Pencil, Plus, Trash2, Wheat } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, EmptyState, ErrorCard, PageHeader, Skeleton, useConfirm } from '@/components';
 import { api } from '@/lib/api';
 import { usePermission, useSeesCost } from '@/lib/auth';
 import { formatMoney, formatNumber } from '@/lib/format';
 import { useApiMutation, useList } from '@/lib/query';
+import { RationNutrientsSection } from './NutrientBalance';
 import { RationDialog } from './RationDialog';
 import type { Ration } from './types';
 
@@ -75,6 +77,7 @@ function RationCard({ ration, canEdit, canDelete, canSeeMoney, onEdit, onDelete 
             </>
           )}
         </dl>
+        <RationNutrientsSection rationId={ration.id} />
       </CardContent>
     </Card>
   );
@@ -102,10 +105,30 @@ export default function RationsPage() {
       {t('rations.add')}
     </Button>
   );
+  // The mix is worked out from feed prices, so only people who see feed cost get the way in.
+  const mixButton = canSeeMoney && (
+    <Button variant="outline" asChild>
+      <Link to="/feed/least-cost">
+        <Calculator aria-hidden />
+        {t('mix.open')}
+      </Link>
+    </Button>
+  );
 
   return (
     <>
-      <PageHeader title={t('rations.title')} description={t('rations.description')} actions={addButton} />
+      <PageHeader
+        title={t('rations.title')}
+        description={t('rations.description')}
+        actions={
+          (mixButton || addButton) && (
+            <>
+              {mixButton}
+              {addButton}
+            </>
+          )
+        }
+      />
 
       {rations.isLoading && (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">

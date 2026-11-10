@@ -7,6 +7,7 @@ import { registerExits } from './exits.routes';
 import { animalsUnderWithdrawal } from './health.service';
 import * as passport from './passport.service';
 import { registerPasture } from './pasture.routes';
+import * as saleReadiness from './sale-readiness.service';
 import { registerShearing } from './shearing.routes';
 import * as summary from './summary';
 import { registerWeights } from './weights.routes';
@@ -19,6 +20,13 @@ export function registerAnimals(app: FastifyInstance) {
     summary: 'Registry with filters; search matches the tag and every identifier',
     query: animals.animalListQuery,
     handler: (req) => animals.listAnimals(req.query),
+  });
+
+  r.get('/sale-readiness', {
+    access: 'livestock.view',
+    summary: 'Ready-for-sale list: weight, daily gain, the date each animal reaches the target, and what holds it back',
+    query: saleReadiness.saleReadinessQuery,
+    handler: (req) => saleReadiness.listSaleReadiness(req.query),
   });
 
   r.get('/animals/lookup', {

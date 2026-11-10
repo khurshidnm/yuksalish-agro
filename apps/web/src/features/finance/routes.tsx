@@ -11,4 +11,6 @@ export const routes: RouteObject[] = [
   { path: 'finance/costs', element: page(() => import('./CostsPage'), 'finance.view') },
   { path: 'finance/cashflow', element: page(() => import('./CashflowPage'), 'finance.view') },
   { path: 'finance/loans', element: page(() => import('./LoansPage'), 'finance.view') },
+  // Open to finance.view or finance.summary: the page checks, since the guard takes one permission.
+  { path: 'finance/scenarios', element: page(() => import('./ScenarioPlannerPage')) },
 ];

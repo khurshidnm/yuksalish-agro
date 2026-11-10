@@ -267,10 +267,12 @@ interface AnimalPickerProps {
   /** Called as the person types, for forms that can send a tag the phone does not know. */
   onTextChange?: (text: string) => void;
   label?: string;
+  /** Only needed when a screen shows more than one picker. */
+  id?: string;
 }
 
 /** Find an animal by the number on its ear tag, from the list stored on this phone. */
-export function AnimalPicker({ animals, value, onChange, onTextChange, label }: AnimalPickerProps) {
+export function AnimalPicker({ animals, value, onChange, onTextChange, label, id = 'animal-search' }: AnimalPickerProps) {
   const { t } = useTranslation('today');
   const [query, setQuery] = useState('');
   const matches = matchAnimals(animals, query);
@@ -293,11 +295,11 @@ export function AnimalPicker({ animals, value, onChange, onTextChange, label }: 
 
   return (
     <div className="flex flex-col gap-2">
-      <FieldLabel htmlFor="animal-search">{label ?? t('animal.label')}</FieldLabel>
+      <FieldLabel htmlFor={id}>{label ?? t('animal.label')}</FieldLabel>
       <div className="relative">
         <Search className="pointer-events-none absolute top-1/2 left-3 size-6 -translate-y-1/2 text-muted-foreground" aria-hidden />
         <input
-          id="animal-search"
+          id={id}
           type="search"
           autoComplete="off"
           enterKeyHint="search"

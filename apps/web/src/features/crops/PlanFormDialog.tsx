@@ -12,8 +12,8 @@ import { formatNumber } from '@/lib/format';
 import { zEnum, zNonNegative, zOptionalDate, zOptionalNumber, zOptionalRef, zOptionalText, zPositive, zRef } from '@/lib/forms';
 import { enumOptions } from '@/lib/i18n';
 import { useApiMutation, useDetail, useList } from '@/lib/query';
-import { type FieldOption, PLANS, SUMMARY, TECH_CARDS, fieldOptions } from './options';
-import type { CropPlan, CropRef, PlanEstimate, Season, TechCard } from './types';
+import { CROPS, type FieldOption, PLANS, SUMMARY, TECH_CARDS, fieldOptions } from './options';
+import type { CropPlan, CropRef, PlanEstimate, RotationCheck, Season, TechCard } from './types';
 
 const schema = z.object({
   seasonId: zRef(),
@@ -61,6 +61,35 @@ function Estimate({ form, seesMoney }: { form: Form; seesMoney: boolean }) {
   );
 }
 
+/**
+ * What the rotation rules say about this crop on this field, shown before saving. The notes warn
+ * and never block: the save button works the same with or without them.
+ */
+function RotationNotes({ form, planId }: { form: Form; planId?: string }) {
+  const { t } = useTranslation('crops');
+  const localName = useLocalName();
+  const seasonId = useWatch({ control: form.control, name: 'seasonId' });
+  const fieldId = useWatch({ control: form.control, name: 'fieldId' });
+  const cropId = useWatch({ control: form.control, name: 'cropId' });
+  const { data } = useDetail<RotationCheck>(seasonId && fieldId && cropId ? `${PLANS}/rotation-check` : null, { seasonId, fieldId, cropId, planId });
+  if (!data || data.notes.length === 0) return null;
+  const warns = data.notes.some((note) => note.level === 'warning');
+  return (
+    <div className="flex flex-col gap-2">
+      {data.notes.map((note) => (
+        <Alert key={note.rule} tone={note.level === 'warning' ? 'warning' : 'success'} title={t(`rotation.rule.${note.rule}.title`)}>
+          <p>{t(`rotation.rule.${note.rule}.reason`)}</p>
+          <p className="text-xs">{t('rotation.source', { source: note.source })}</p>
+        </Alert>
+      ))}
+      <p className="text-sm text-muted-foreground">
+        {t('rotation.history', { crops: data.history.map((h) => t('rotation.historyItem', { season: h.seasonName, crop: localName(h.name) })).join('; ') })}
+        {warns && ` ${t('rotation.stillSave')}`}
+      </p>
+    </div>
+  );
+}
+
 function CardSelect({ form }: { form: Form }) {
   const { t } = useTranslation('crops');
   const cropId = useWatch({ control: form.control, name: 'cropId' });
@@ -85,7 +114,7 @@ export function PlanFormDialog({ open, onOpenChange, plan, seasonId }: PlanFormD
   const localName = useLocalName();
   const seesMoney = useSeesCost('crops.approve');
   const { data: seasons } = useList<Season>('/crops/seasons');
-  const { data: crops } = useList<CropRef>('/crops/crops');
+  const { data: crops } = useList<CropRef>(CROPS);
 
   const save = useApiMutation<z.output<typeof schema>>({
     mutationFn: ({ plannedCost, ...values }) => {
@@ -159,6 +188,7 @@ export function PlanFormDialog({ open, onOpenChange, plan, seasonId }: PlanFormD
             <NumberField form={form} name="areaHa" label={t('plans.fields.area')} suffix={t('unit.ha')} required />
             <DateField form={form} name="sowingDatePlan" label={t('plans.fields.sowingPlan')} />
           </FormGrid>
+          <RotationNotes form={form} planId={plan?.id} />
           <CardSelect form={form} />
           <FormGrid>
             <NumberField form={form} name="expectedYieldTHa" label={t('plans.fields.yield')} suffix={t('unit.tPerHa')} hint={t('plans.fields.yieldHint')} />

@@ -198,3 +198,20 @@ export const grantApplications = pgTable('grant_applications', {
   decisionOn: day(),
   notes: text(),
 });
+
+/**
+ * Saved three-year plans: one set of assumptions under a name (formulas/scenario.ts). The figures
+ * are not stored. They are worked out again from the assumptions each time the plan is opened.
+ */
+export const scenarios = pgTable(
+  'scenarios',
+  {
+    id: pk(),
+    ...tenantColumns(),
+    name: text().notNull(),
+    /** A ScenarioAssumptions object, checked by the API before it is stored. */
+    assumptions: jsonb().$type<Record<string, unknown>>().notNull(),
+    notes: text(),
+  },
+  (t) => [index().on(t.farmId, t.name)],
+);

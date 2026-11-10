@@ -36,13 +36,22 @@ function addMonths(month: string, n: number): string {
   return `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, '0')}`;
 }
 
-async function ewesDueByMonth(): Promise<Record<string, number>> {
+/** Ewes due by month, and of those the ones a pregnancy scan has counted, with their foetuses. */
+async function ewesDueByMonth(): Promise<{ ewesDue: Record<string, number>; scanned: Record<string, { ewes: number; fetuses: number }> }> {
   const rows = await tx()
-    .select({ month: sql<string>`to_char(${breedingRecords.expectedDate}, 'YYYY-MM')`, ewes: sql<number>`count(*)`.mapWith(Number) })
+    .select({
+      month: sql<string>`to_char(${breedingRecords.expectedDate}, 'YYYY-MM')`,
+      ewes: sql<number>`count(*)`.mapWith(Number),
+      scannedEwes: sql<number>`count(${breedingRecords.fetusCount})`.mapWith(Number),
+      scannedFetuses: sql<number>`coalesce(sum(${breedingRecords.fetusCount}), 0)`.mapWith(Number),
+    })
     .from(breedingRecords)
     .where(and(eq(breedingRecords.farmId, ctx().farmId), eq(breedingRecords.status, 'pregnant')))
     .groupBy(sql`to_char(${breedingRecords.expectedDate}, 'YYYY-MM')`);
-  return Object.fromEntries(rows.map((row) => [row.month, row.ewes]));
+  return {
+    ewesDue: Object.fromEntries(rows.map((row) => [row.month, row.ewes])),
+    scanned: Object.fromEntries(rows.filter((row) => row.scannedEwes > 0).map((row) => [row.month, { ewes: row.scannedEwes, fetuses: row.scannedFetuses }])),
+  };
 }
 
 async function lambingWindow(): Promise<{ from: string | null; to: string | null }> {
@@ -55,7 +64,8 @@ async function lambingWindow(): Promise<{ from: string | null; to: string | null
 
 async function herdOutlook(months: string[]) {
   const { total: head, pregnant } = await herdSummary();
-  const rows = projectHerd({ months, head, ewesDue: await ewesDueByMonth(), assumptions: OUTLOOK_ASSUMPTIONS });
+  // Scanned ewes count what the scan found; the rest take the stated assumption.
+  const rows = projectHerd({ months, head, ...(await ewesDueByMonth()), assumptions: OUTLOOK_ASSUMPTIONS });
   const lambsBorn = rows.reduce((sum, row) => sum + row.lambsBorn, 0);
   const lambsSold = rows.reduce((sum, row) => sum + row.lambsSold, 0);
   return {

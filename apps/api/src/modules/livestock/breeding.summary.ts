@@ -2,9 +2,10 @@
  * Calendar and reproduction KPIs (spec 8.2, 8.6). Re-export these two from modules/livestock/
  * summary.ts: reproductionKpis() and lambingCalendar(days).
  */
-import { and, count, eq, gte, inArray, lte, sql } from 'drizzle-orm';
+import { and, count, eq, gte, inArray, lte, ne, sql } from 'drizzle-orm';
 import { addDays, lambingPercent, round, survivalPercent } from '@yap/shared';
-import { OUTLOOK_ASSUMPTIONS, expectedLambs } from '@yap/shared/formulas/outlook';
+import { expectedLambCrop } from '@yap/shared/formulas/lambing';
+import { OUTLOOK_ASSUMPTIONS } from '@yap/shared/formulas/outlook';
 import {
   MIN_PROGENY_FOR_RATING,
   WEANING_DAYS,
@@ -19,7 +20,7 @@ import { ctx, today, tx } from '../../core/context';
 import { weekStart } from './breeding.shared';
 import { onFarm } from './refs';
 
-const { animals, breedingRecords: b, lambingRecords: l } = schema;
+const { animals, breedingRecords: b, lambCare, lambingRecords: l } = schema;
 
 function onFarmEwes() {
   return tx().select({ id: animals.id }).from(animals).where(and(eq(animals.farmId, ctx().farmId), onFarm()));
@@ -28,12 +29,17 @@ function onFarmEwes() {
 /** Expected lambings per day from today, for ewes still on the farm. */
 export async function lambingCalendar(days: number): Promise<{ date: string; expected: number }[]> {
   const from = today();
-  return expectedByDay(from, addDays(from, days));
+  return (await expectedByDay(from, addDays(from, days))).map(({ date, expected }) => ({ date, expected }));
 }
 
 async function expectedByDay(from: string, to: string, herdId?: string) {
   const rows = await tx()
-    .select({ date: b.expectedDate, expected: count() })
+    .select({
+      date: b.expectedDate,
+      expected: count(),
+      scannedEwes: sql<number>`count(${b.fetusCount})`.mapWith(Number),
+      scannedFetuses: sql<number>`coalesce(sum(${b.fetusCount}), 0)`.mapWith(Number),
+    })
     .from(b)
     .where(
       and(
@@ -54,7 +60,11 @@ export async function calendar(q: { from?: string; to?: string; herdId?: string 
   const now = today();
   const from = q.from ?? now;
   const to = q.to ?? addDays(from, 180);
-  const days = await expectedByDay(from, to, q.herdId);
+  const counted = await expectedByDay(from, to, q.herdId);
+  const days = counted.map(({ date, expected }) => ({ date, expected }));
+  // Ewes a pregnancy scan has counted, and the foetuses it found.
+  const scannedEwes = counted.reduce((sum, d) => sum + d.scannedEwes, 0);
+  const scannedFetuses = counted.reduce((sum, d) => sum + d.scannedFetuses, 0);
 
   const byWeek = new Map<string, number>();
   for (const day of days) {
@@ -69,6 +79,7 @@ export async function calendar(q: { from?: string; to?: string; herdId?: string 
   const totalEwes = days.reduce((sum, d) => sum + d.expected, 0);
   const history = await lambingTotals();
   const perEwe = lambsPerEwe(history.born, history.lambings);
+  const tally = { ewes: totalEwes, scannedEwes, scannedFetuses };
   return {
     from,
     to,
@@ -77,11 +88,16 @@ export async function calendar(q: { from?: string; to?: string; herdId?: string 
     totalEwes,
     /** Past their latest plausible date and still not recorded. */
     overdue,
-    /** Only from this farm's own history: null until the first lambing is recorded. */
-    expectedLambs: perEwe === null ? null : Math.round(totalEwes * perEwe),
-    /** The outlook's estimate for these ewes, from its stated assumption. Null with no ewes due. */
-    assumedLambs: totalEwes > 0 ? expectedLambs(totalEwes) : null,
+    /**
+     * Scanned ewes count what the scan found, the rest take this farm's own lambs per ewe. Null while
+     * an unscanned ewe has no own history to go by (formulas/lambing.ts).
+     */
+    expectedLambs: expectedLambCrop(tally, perEwe),
+    /** The same with the outlook's stated assumption for unscanned ewes. Null with no ewes due. */
+    assumedLambs: totalEwes > 0 ? expectedLambCrop(tally, OUTLOOK_ASSUMPTIONS.lambsPerEwe) : null,
     assumedLambsPerEwe: OUTLOOK_ASSUMPTIONS.lambsPerEwe,
+    scannedEwes,
+    scannedFetuses,
   };
 }
 
@@ -209,35 +225,103 @@ export async function reproductionKpis(from?: string, to?: string) {
   };
 }
 
-/** Per-ewe figures (spec 8.2): lambs born, survival, 100-day weight. */
-export async function ewePerformance(eweIds: string[]) {
+/** What one ewe's records say. The per-ewe table, the ewe score and the culling list all read this. */
+export interface EweFacts {
+  lambings: number;
+  lambsBorn: number;
+  lambsAlive: number;
+  /** Oldest first. */
+  lambingDates: string[];
+  /** Lambs born in lambings old enough for their lambs to have reached weaning. */
+  lambsDueAtWeaning: number;
+  /** Of her lambs old enough, those alive at weaning, whoever raised them. */
+  lambsWeaned: number;
+  /** Of those, the ones she raised herself: not fostered to another ewe and not on the bottle. */
+  lambsReared: number;
+  /** Not rounded. */
+  avgWeight100Kg: number | null;
+  /**
+   * Lambs she herself reared from each lambing, newest first. Null while the lambs of a lambing are
+   * still with her and not yet at weaning age.
+   */
+  rearedByLambing: (number | null)[];
+  /** Lambings with a complication on record. */
+  complicatedLambings: number;
+}
+
+/**
+ * The facts for the given ewes, and the farm's average 100-day weight to hold their lambs against.
+ * A lamb given to a foster ewe or raised on the bottle stays its genetic dam's lamb (it was born to
+ * her and its growth is her genetics), but she did not rear it. The foster ewe gets no credit here.
+ */
+export async function eweFacts(eweIds: string[]): Promise<{ farmWeight100Kg: number | null; byEwe: Map<string, EweFacts> }> {
+  const farmId = ctx().farmId;
   const records = eweIds.length
     ? await tx()
-        .select({ eweId: l.eweId, date: l.date, born: l.lambsBorn, alive: l.lambsAlive })
+        .select({ eweId: l.eweId, date: l.date, born: l.lambsBorn, alive: l.lambsAlive, complications: l.complications })
         .from(l)
-        .where(and(eq(l.farmId, ctx().farmId), inArray(l.eweId, eweIds)))
+        .where(and(eq(l.farmId, farmId), inArray(l.eweId, eweIds)))
+        .orderBy(l.date)
     : [];
   const lambs = await bornAnimals();
   const growth = await lambGrowth();
   const cutoff = addDays(today(), -WEANING_DAYS);
+  const awayFromDam = new Set(
+    (
+      await tx()
+        .select({ lambId: lambCare.lambId })
+        .from(lambCare)
+        .where(and(eq(lambCare.farmId, farmId), ne(lambCare.mothering, 'with_dam')))
+    ).map((row) => row.lambId),
+  );
 
-  return new Map(
+  const recordsOf = new Map<string, typeof records>();
+  for (const record of records) recordsOf.set(record.eweId, [...(recordsOf.get(record.eweId) ?? []), record]);
+  const offspringOf = new Map<string, LambRow[]>();
+  for (const lamb of lambs) if (lamb.damId) offspringOf.set(lamb.damId, [...(offspringOf.get(lamb.damId) ?? []), lamb]);
+
+  const byEwe = new Map(
     eweIds.map((eweId) => {
-      const own = records.filter((r) => r.eweId === eweId);
-      const offspring = lambs.filter((a) => a.damId === eweId);
-      const bornInCohort = own.filter((r) => r.date <= cutoff).reduce((sum, r) => sum + r.born, 0);
-      const weaned = offspring.filter((a) => a.birthDate && a.birthDate <= cutoff && !lostBeforeWeaning(a)).length;
-      return [
-        eweId,
-        {
-          lambings: own.length,
-          lambsBorn: own.reduce((sum, r) => sum + r.born, 0),
-          lambsAlive: own.reduce((sum, r) => sum + r.alive, 0),
-          survivalPercent: rounded(survivalPercent(weaned, bornInCohort), 1),
-          avgWeight100Kg: rounded(averageOf(offspring.map((a) => growth.get(a.id)?.weight100)), 1),
-        },
-      ];
+      const own = recordsOf.get(eweId) ?? [];
+      const offspring = offspringOf.get(eweId) ?? [];
+      const reachedWeaning = offspring.filter((a) => a.birthDate && a.birthDate <= cutoff && !lostBeforeWeaning(a));
+      const rearedByLambing = [...own].reverse().map((record) => {
+        const stillHers = offspring.filter((a) => a.birthDate === record.date && !lostBeforeWeaning(a) && !awayFromDam.has(a.id)).length;
+        // Before weaning age a lamb still at her side is an outcome not yet known; none left is already an answer.
+        return record.date > cutoff && stillHers > 0 ? null : stillHers;
+      });
+      const facts: EweFacts = {
+        lambings: own.length,
+        lambsBorn: own.reduce((sum, r) => sum + r.born, 0),
+        lambsAlive: own.reduce((sum, r) => sum + r.alive, 0),
+        lambingDates: own.map((r) => r.date),
+        lambsDueAtWeaning: own.filter((r) => r.date <= cutoff).reduce((sum, r) => sum + r.born, 0),
+        lambsWeaned: reachedWeaning.length,
+        lambsReared: reachedWeaning.filter((a) => !awayFromDam.has(a.id)).length,
+        avgWeight100Kg: averageOf(offspring.map((a) => growth.get(a.id)?.weight100)),
+        rearedByLambing,
+        complicatedLambings: own.filter((r) => !!r.complications?.trim()).length,
+      };
+      return [eweId, facts] as const;
     }),
+  );
+  return { farmWeight100Kg: averageOf(lambs.map((a) => growth.get(a.id)?.weight100)), byEwe };
+}
+
+/** Per-ewe figures (spec 8.2): lambs born, survival, 100-day weight. */
+export async function ewePerformance(eweIds: string[]) {
+  const { byEwe } = await eweFacts(eweIds);
+  return new Map(
+    [...byEwe].map(([eweId, facts]) => [
+      eweId,
+      {
+        lambings: facts.lambings,
+        lambsBorn: facts.lambsBorn,
+        lambsAlive: facts.lambsAlive,
+        survivalPercent: rounded(survivalPercent(facts.lambsWeaned, facts.lambsDueAtWeaning), 1),
+        avgWeight100Kg: rounded(facts.avgWeight100Kg, 1),
+      },
+    ]),
   );
 }
 

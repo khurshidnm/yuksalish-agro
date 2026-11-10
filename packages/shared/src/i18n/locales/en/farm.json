@@ -96,6 +96,9 @@
     "contourCount": "contours: {{value}}",
     "soilType": "Soil type",
     "salinityLevel": "Salinity",
+    "salinityLevelHint": "The leaching norm suggested for this field is read from this level.",
+    "groundwater": "Groundwater",
+    "groundwaterDepth": "{{value}} m",
     "irrigationSource": "Irrigation source",
     "currentCrop": "Current crop",
     "crop": "Crop",
@@ -126,6 +129,7 @@
     "tabOverview": "Overview",
     "tabRotation": "Crop rotation",
     "tabSoil": "Soil analysis",
+    "tabGroundwater": "Groundwater",
     "tabDocuments": "Documents",
     "noCropTitle": "No current crop",
     "noCropBody": "Crop plans are assigned in the Crops section.",
@@ -287,6 +291,30 @@
       "dense": "Dense"
     },
     "ndvi": "NDVI",
+    "indexSwitch": "Index on the chart",
+    "moistureShort": "Moisture (NDMI)",
+    "moistureCurveTitle": "Canopy moisture through the season",
+    "moistureCurveHint": "Mean NDMI of the field on each clear image: the higher it is, the more water the leaves hold. Read from the 20 m bands of the same images. Contains modified {{provider}} data {{year}}.",
+    "moistureEmpty": "No moisture readings yet. Images read before this index was added carry none.",
+    "moisture": "Canopy moisture (NDMI)",
+    "moistureNone": "Not read for this image",
+    "moistureHint": "Image of {{date}}. Higher means more water in the leaves.",
+    "outlook": {
+      "title": "Against the farm's own past",
+      "hint": "A yield forecast from the farm's own finished seasons, the same week a season ago, and the moisture in the canopy.",
+      "yield": "Yield forecast",
+      "notEnough": "Not enough data",
+      "range": "From {{low}} to {{high}} {{unit}}, by how far this line missed in past seasons. Finished harvests used: {{count}}.",
+      "extrapolated": "This season's peak NDVI lies outside what the past seasons covered, so the figure is less sure.",
+      "tooFew": "Finished harvests of this crop with satellite readings: {{have}}. A forecast needs {{need}}.",
+      "noRelation": "Finished harvests: {{count}}, but the yield did not follow peak NDVI, so no forecast is given.",
+      "noPeak": "This season has no clear image yet to take its peak NDVI from.",
+      "lastSeason": "NDVI, same week last season",
+      "lastSeasonHint": "Image of {{date}}. Now: {{now}}.",
+      "lastSeasonNone": "No clear image from the same week last season",
+      "sinceLastSeason": "against last season",
+      "note": "The forecast rests only on this farm's own harvests and their peak NDVI. No outside coefficient is applied."
+    },
     "sincePrevious": "since the previous image",
     "spread": "Weakest to strongest tenth",
     "spreadHint": "The closer the two, the more even the field.",
@@ -439,6 +467,70 @@
         "title": "Not enough weather data",
         "body": "Weather for a day since sowing is not in yet. Observed weather is published 3 to 5 days late, so a new farm waits a few days; the weather check fills the gap by itself. If the farm's location is not set, set it in the farm passport.",
         "short": "No weather"
+      }
+    }
+  },
+  "fertiliser": {
+    "title": "Fertiliser rate for the current plan",
+    "typical": "Typical values",
+    "inputs": "{{crop}}, target yield {{yield}}. Soil analysis of {{date}}.",
+    "noAnalysis": "This field has no soil analysis. Add one below and the rate appears.",
+    "staleTitle": "The soil analysis is out of date",
+    "staleBody": "The analysis of {{date}} is more than {{years}} years old. The soil has changed since: take a new sample before relying on this rate.",
+    "noYield": "The plan has no target yield, so no rate can be worked out. Enter it in the crop plan.",
+    "nutrient": "Nutrient",
+    "removal": "Removal, kg/t",
+    "uptake": "Crop takes, kg/ha",
+    "soil": "In soil, mg/kg",
+    "soilGives": "Soil gives, kg/ha",
+    "rate": "To apply",
+    "kgHa": "kg/ha",
+    "typicalHint": "Removal per tonne is a typical table value, not this farm's own figure. Enter your own on the Crops tab of the crop plans page.",
+    "productsTitle": "With the fertilisers the farm stocks",
+    "productGives": "Gives {{nName}} {{n}}, {{pName}} {{p}}, {{kName}} {{k}} kg/ha. For {{area}}: {{total}} kg.",
+    "uncovered": "No stocked fertiliser with a known content covers: {{nutrients}}.",
+    "withoutContent": "Nutrient content not entered for: {{names}}. Enter it in the item card and they join the calculation.",
+    "source": "Nutrient balance method: {{source}}.",
+    "reason": {
+      "no_yield": "The plan has no target yield.",
+      "no_removal": "No removal per tonne is stored for this crop and there is no typical value. Enter it in the crop list.",
+      "no_soil_value": "The soil analysis has no value for it.",
+      "nitrate_not_supported": "The analysis gives nitrate nitrogen, and no published method turns it into a rate. No figure is guessed.",
+      "fixes_nitrogen": "This crop takes its nitrogen from the air, so no nitrogen rate is given.",
+      "no_soil_coefficient": "The source has no figure for how much of the soil's reserve this kind of crop takes up, so no rate is given."
+    }
+  },
+  "groundwater": {
+    "depth": "Depth to water",
+    "mineralisation": "Mineralisation",
+    "date": "Observation date",
+    "add": "Add observation",
+    "edit": "Edit observation",
+    "trend": "Groundwater over time",
+    "trendHint": "Depth is counted from the surface: the smaller the figure, the closer the water stands to the roots.",
+    "noMineralisation": "Mineralisation has not been measured yet",
+    "emptyTitle": "No groundwater observations yet",
+    "emptyBody": "Record the depth to water in the observation well and, if measured, its mineralisation.",
+    "deleteTitle": "Delete this observation?",
+    "deleteBody": "The observation of {{date}} will be deleted.",
+    "note": "Depth is set against the critical range of {{min}} to {{max}} m from {{source}}. Mineralisation is shown as measured: no published rule joining it with depth was found, so it is not judged.",
+    "depthHint": "From the soil surface down to the water",
+    "unit": {
+      "m": "m",
+      "gl": "g/l"
+    },
+    "risk": {
+      "shallow": "Shallow",
+      "within_critical_range": "Critical range"
+    },
+    "warning": {
+      "shallow": {
+        "title": "Groundwater at {{depth}} m: above the critical depth",
+        "body": "On {{date}} the water stood closer to the surface than {{min}} m. {{source}} puts the critical depth at {{min}} to {{max}} m: above it, salts rise with the water into the root zone."
+      },
+      "within_critical_range": {
+        "title": "Groundwater at {{depth}} m: inside the critical range",
+        "body": "On {{date}} the water stood between {{min}} and {{max}} m, the critical depth range in {{source}}. Whether salts rise from here depends on the soil, the crop's roots and the salt in the water."
       }
     }
   }

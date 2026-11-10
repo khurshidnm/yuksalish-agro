@@ -3,7 +3,7 @@
  * (green-up, harvest, bare soil), where it disagrees with the recorded work, and for a pasture how
  * many days it can feed the flock. Every figure comes from formulas/vegetation.ts.
  */
-import { and, asc, desc, eq, gte, inArray, isNotNull, lte, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNotNull, lte, ne, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { ANIMAL_ON_FARM_STATUSES, addDays, diffDays, round } from '@yap/shared';
 import {
@@ -17,6 +17,14 @@ import {
   type SatelliteEvent,
   type WorkCheck,
 } from '@yap/shared/formulas/vegetation';
+import {
+  MIN_YIELD_SEASONS,
+  fitYieldModel,
+  forecastYield,
+  sameWeekLastSeason,
+  type YieldForecast,
+  type YieldSeason,
+} from '@yap/shared/formulas/yield-forecast';
 import { ctx, today, tx } from '../../core/context';
 import { notFound } from '../../core/errors';
 import { recordEvent } from '../../core/journal';
@@ -25,7 +33,7 @@ import { schema } from '../../db/client';
 import { currentPlans, getField } from './fields.service';
 import { lastSceneDate, vegetationOn, vegetationSeries, type VegetationPoint, type VegetationView } from './satellite.service';
 
-const { animals, fieldVegetation: veg, harvests, pastureSamples: samples, species } = schema;
+const { animals, cropPlans, fieldVegetation: veg, harvests, pastureSamples: samples, seasons, species } = schema;
 
 /** A year and a bit: enough for this season's curve and last year's for comparison. */
 const SERIES_DAYS = 400;
@@ -106,6 +114,86 @@ async function pastureEstimate(fieldId: string, areaHa: number, latest: Vegetati
   };
 }
 
+// ─── Yield forecast ──────────────────────────────────────────────────────────
+
+/**
+ * A season's NDVI window opens at sowing, but never more than this many days before the season
+ * starts: autumn-sown wheat is sown the year before, while a lucerne stand keeps a sowing date
+ * from years ago, and its earlier years belong to their own seasons. A starting value of ours.
+ */
+const SEASON_WINDOW = { maxDaysBeforeSeason: 183 } as const;
+
+/** The window's first day, as SQL over a plan and its season. */
+const windowStart = sql<string>`greatest(coalesce(${cropPlans.sowingDateFact}, ${cropPlans.sowingDatePlan}, ${seasons.startDate}), ${seasons.startDate} - ${SEASON_WINDOW.maxDaysBeforeSeason}::int)::text`;
+
+async function peakNdvi(fieldId: string, from: string, to: string): Promise<number | null> {
+  const [row] = await tx()
+    .select({ peak: sql<number | null>`max(${veg.ndviMean})::float8` })
+    .from(veg)
+    .where(and(eq(veg.farmId, ctx().farmId), eq(veg.fieldId, fieldId), gte(veg.date, from), lte(veg.date, to), isNotNull(veg.ndviMean)));
+  return row?.peak ?? null;
+}
+
+export interface YieldOutlook {
+  cropKey: string;
+  /** Finished field-seasons of this crop on the farm that have both a harvest and a clear NDVI peak. */
+  seasons: number;
+  seasonsNeeded: number;
+  /** This season's highest field mean so far. */
+  peakNdvi: number | null;
+  forecast: YieldForecast | null;
+  /** Why there is no forecast. */
+  reason: 'too_few_seasons' | 'no_relation' | 'no_peak' | null;
+}
+
+/**
+ * The forecast for a field's growing crop, from the farm's own finished seasons of the same crop:
+ * harvested tonnes per planned hectare against the highest NDVI the field showed between sowing and
+ * its last harvest. Null once the crop is harvested: the yield is then a fact, not a forecast.
+ */
+async function yieldOutlook(plan: Plan): Promise<YieldOutlook | null> {
+  if (plan.status === 'harvested') return null;
+  const c = ctx();
+  const finished = await tx()
+    .select({
+      fieldId: cropPlans.fieldId,
+      areaHa: cropPlans.areaHa,
+      from: windowStart,
+      grossT: sql<number | null>`sum(${harvests.grossT})::float8`,
+      lastHarvest: sql<string>`max(${harvests.date})::text`,
+    })
+    .from(cropPlans)
+    .innerJoin(seasons, eq(seasons.id, cropPlans.seasonId))
+    .innerJoin(harvests, eq(harvests.cropPlanId, cropPlans.id))
+    .where(and(eq(cropPlans.farmId, c.farmId), eq(cropPlans.cropId, plan.cropId), eq(cropPlans.status, 'harvested'), ne(cropPlans.id, plan.planId)))
+    .groupBy(cropPlans.id, seasons.startDate);
+
+  const history: YieldSeason[] = [];
+  for (const row of finished) {
+    if (row.grossT === null || !(row.areaHa > 0)) continue;
+    const peak = await peakNdvi(row.fieldId, row.from, row.lastHarvest);
+    if (peak === null) continue;
+    history.push({ peakNdvi: peak, yieldTHa: row.grossT / row.areaHa });
+  }
+  const fit = fitYieldModel(history);
+
+  const [own] = await tx()
+    .select({ from: windowStart })
+    .from(cropPlans)
+    .innerJoin(seasons, eq(seasons.id, cropPlans.seasonId))
+    .where(and(eq(cropPlans.farmId, c.farmId), eq(cropPlans.id, plan.planId)));
+  const peak = own ? await peakNdvi(plan.fieldId, own.from, today()) : null;
+  const forecast = forecastYield(fit.model, peak);
+  return {
+    cropKey: plan.cropKey,
+    seasons: fit.seasons,
+    seasonsNeeded: MIN_YIELD_SEASONS,
+    peakNdvi: peak === null ? null : round(peak, 3),
+    forecast,
+    reason: fit.reason ?? (forecast ? null : 'no_peak'),
+  };
+}
+
 export interface FieldHealth {
   fieldId: string;
   landUse: string;
@@ -120,6 +208,10 @@ export interface FieldHealth {
   /** The last scene looked at for the farm, clear over this field or not. */
   lastSceneDate: string | null;
   pasture: PastureEstimate | null;
+  /** Null without a growing crop. */
+  yieldOutlook: YieldOutlook | null;
+  /** The clear reading nearest to one year before the latest, within a week, and the change since. */
+  lastSeason: { date: string; mean: number; change: number } | null;
 }
 
 export async function fieldHealth(fieldId: string): Promise<FieldHealth> {
@@ -140,6 +232,8 @@ export async function fieldHealth(fieldId: string): Promise<FieldHealth> {
     checks: plan ? await workChecks(plan, series) : [],
     lastSceneDate: await lastSceneDate(),
     pasture: field.landUse === 'pasture' ? await pastureEstimate(fieldId, field.areaHa, latest) : null,
+    yieldOutlook: plan ? await yieldOutlook(plan) : null,
+    lastSeason: sameWeekLastSeason(points.at(-1), points),
   };
 }
 

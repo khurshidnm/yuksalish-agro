@@ -8,6 +8,7 @@ import {
   fitBiomassModel,
   grazingDays,
   MIN_VEGETATED_NDVI,
+  ndmi,
   ndvi,
   ndviStats,
   pastureBiomassKgHa,
@@ -65,6 +66,18 @@ describe('reflectance and NDVI', () => {
     // Slightly negative red after the offset would give 1.105; clamped.
     expect(ndvi(-0.01, 0.2)).toBe(1);
     expect(ndvi(0.2, -0.01)).toBe(-1);
+  });
+
+  it('ndmi: narrow near infrared against short-wave infrared (control numbers)', () => {
+    // (0.30 − 0.15) / (0.30 + 0.15) = 0.15 / 0.45 = 0.3333: a canopy holding water.
+    expect(ndmi(0.3, 0.15)).toBeCloseTo(0.3333, 4);
+    // (0.25 − 0.30) / (0.25 + 0.30) = −0.05 / 0.55 = −0.0909: dry ground.
+    expect(ndmi(0.25, 0.3)).toBeCloseTo(-0.0909, 4);
+    expect(ndmi(0.2, 0.2)).toBe(0);
+    expect(ndmi(null, 0.2)).toBeNull();
+    expect(ndmi(0.2, null)).toBeNull();
+    expect(ndmi(0, 0)).toBeNull();
+    expect(ndmi(0.2, -0.01)).toBe(1);
   });
 
   it('SCL: only vegetation, not vegetated, water and unclassified are clear', () => {

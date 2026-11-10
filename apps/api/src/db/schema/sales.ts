@@ -1,4 +1,5 @@
-import { index, pgTable, text, unique, uuid } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { index, integer, jsonb, pgTable, text, unique, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { dec, day, money, pk, qty, ts } from './_helpers';
 import { tenantColumns } from './_tenant';
 import { files } from './core';
@@ -131,4 +132,81 @@ export const stateReports = pgTable(
     notes: text(),
   },
   (t) => [index().on(t.farmId, t.dueDate)],
+);
+
+/**
+ * An animal held for a buyer. The buyer is a counterparty, or a name and phone typed in for someone
+ * who is not one yet. No money moves here: a reservation becomes a sale through the sales order.
+ */
+export const animalReservations = pgTable(
+  'animal_reservations',
+  {
+    id: pk(),
+    ...tenantColumns(),
+    animalId: uuid().notNull().references(() => animals.id),
+    counterpartyId: uuid().references(() => counterparties.id),
+    /** Personal data: shown only with pii.view. */
+    customerName: text(),
+    customerPhone: text(),
+    /** For the whole animal, in the base currency. Shown only with finance.view. */
+    agreedPrice: money(),
+    reservedUntil: day().notNull(),
+    /** open, converted, cancelled, expired (RESERVATION_STATUSES). */
+    status: text().notNull().default('open'),
+    note: text(),
+    /** The sale this reservation became. */
+    saleId: uuid().references(() => sales.id, { onDelete: 'set null' }),
+    /** The pre-order from the public catalogue it answers, if any. */
+    requestId: uuid().references(() => catalogueRequests.id),
+    closedBy: uuid().references(() => users.id),
+    closedAt: ts(),
+    closeReason: text(),
+  },
+  (t) => [
+    // The rule itself: two people reserving the same animal at the same moment cannot both succeed.
+    uniqueIndex('animal_reservations_one_open_per_animal').on(t.animalId).where(sql`status = 'open'`),
+    index().on(t.farmId, t.status, t.reservedUntil),
+    index().on(t.counterpartyId),
+    index().on(t.saleId),
+  ],
+);
+
+/** An animal the farm chose to show on its public catalogue page. No row: not shown. */
+export const catalogueListings = pgTable(
+  'catalogue_listings',
+  {
+    id: pk(),
+    ...tenantColumns(),
+    animalId: uuid().notNull().references(() => animals.id, { onDelete: 'cascade' }),
+    /** The price the farm publishes for this animal, in the base currency. Null: no price is shown. */
+    price: money(),
+  },
+  (t) => [uniqueIndex('catalogue_listings_animal').on(t.animalId), index().on(t.farmId)],
+);
+
+/**
+ * A pre-order a visitor sent from the public catalogue page. Everything in it is a stranger's text:
+ * it is stored and shown, never interpreted, and the AI role cannot read this table (post-schema.sql).
+ */
+export const catalogueRequests = pgTable(
+  'catalogue_requests',
+  {
+    id: pk(),
+    ...tenantColumns(),
+    name: text().notNull(),
+    phone: text().notNull(),
+    /** Listed animals the visitor picked. Checked against the catalogue when the request arrives. */
+    animalIds: jsonb().$type<string[]>().notNull().default([]),
+    /** What they want, in their own words, when it is not a listed animal. */
+    wanted: text(),
+    note: text(),
+    language: text().notNull().default('uz'),
+    /** new, reserved, closed (CATALOGUE_REQUEST_STATUSES). */
+    status: text().notNull().default('new'),
+    /** How many times this phone sent the form while the request was still waiting. */
+    submissions: integer().notNull().default(1),
+    closedBy: uuid().references(() => users.id),
+    closedAt: ts(),
+  },
+  (t) => [index().on(t.farmId, t.status), index().on(t.tenantId, t.phone)],
 );

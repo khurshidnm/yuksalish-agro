@@ -12,6 +12,14 @@
     "ASSIGNEE_NOT_MEMBER": "This person does not work on this farm",
     "INVALID_DATE_RANGE": "The end date cannot be before the start date"
   },
+  "alertResolvedNote": "The problem went away by itself, so this task was closed automatically.",
+  "fromAlert": "From an alert",
+  "workLink": "Open where the work is",
+  "onTime": {
+    "title": "On time this month",
+    "value": "{{onTime}} of {{due}}",
+    "none": "No task of yours has fallen due yet this month."
+  },
   "title": "Tasks",
   "description": "Work on the farm: who does what, and by when.",
   "myTitle": "My tasks",
@@ -59,6 +67,8 @@
     "notes": "Notes"
   },
   "filters": {
+    "ofAlert": "Tasks of one alert are shown",
+    "showAll": "Show all",
     "allStatuses": "All statuses",
     "allDivisions": "All divisions",
     "allPriorities": "All priorities",

@@ -35,6 +35,7 @@ const QUICK_ACTIONS: { key: string; anyOf: Permission[] }[] = [
   { key: 'record_death', anyOf: ['livestock.create'] },
   { key: 'weight', anyOf: ['livestock.update'] },
   { key: 'lambing', anyOf: ['livestock.create', 'health.update'] },
+  { key: 'night_watch', anyOf: ['livestock.create'] },
   { key: 'animals', anyOf: ['livestock.view'] },
   { key: 'health', anyOf: ['health.update'] },
   { key: 'field_operation', anyOf: ['crops.create'] },

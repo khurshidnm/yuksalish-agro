@@ -520,6 +520,217 @@
       "reversed": "Reversed"
     }
   },
+  "scenarios": {
+    "title": "Scenario planner",
+    "description": "Three years ahead, month by month: the flock, the profit, the cash, and the price per kg at which the farm breaks even. Change an assumption and the plan is worked out again.",
+    "reset": "Reset to the farm's figures",
+    "saveChanges": "Save changes",
+    "saveAs": "Save as a new plan",
+    "saveHint": "The plan is saved with the assumptions now on the page.",
+    "openPlan": "Open plan:",
+    "changed": "Changed, not saved",
+    "notSet": "Not set",
+    "wholeNumber": "Enter a whole number",
+    "emptyCount": "Empty: {{n}}",
+    "noStallMonths": "No month is marked: the flock grazes all year.",
+    "gaps": {
+      "title": "Empty assumptions the app has a starting value for: {{n}}",
+      "body": "The farm's records give no figure for them, so the results that rest on them show a dash. The starting values are the app's own, not the farm's: check each one after filling.",
+      "fill": "Fill the empty fields with starting values"
+    },
+    "invalid": {
+      "title": "The plan cannot be worked out yet",
+      "body": "These figures are outside what a plan accepts: {{fields}}. Correct them to see the result."
+    },
+    "missing": {
+      "title": "Some figures cannot be worked out",
+      "body": "They show a dash because these assumptions are empty: {{fields}}."
+    },
+    "groups": {
+      "herd": "Flock at the start",
+      "lambing": "Lambing and the flock",
+      "sales": "Sales",
+      "costs": "Costs",
+      "cash": "Start and cash"
+    },
+    "fields": {
+      "startMonth": "First month of the plan",
+      "openingEwes": "Ewes",
+      "openingRams": "Rams",
+      "openingReplacements": "Replacement ewe lambs",
+      "openingLambs": "Lambs held for sale",
+      "lambingMonth": "Lambing month",
+      "lambingShare": "Ewes that lamb",
+      "lambsPerEweLambing": "Lambs born per ewe that lambs",
+      "lambSurvival": "Lambs alive at weaning",
+      "eweDeathsPerYear": "Ewe deaths in a year",
+      "eweCullsPerYear": "Ewes culled in a year",
+      "replacementShare": "Share of ewe lambs kept",
+      "firstLambingAgeMonths": "Age at first lambing",
+      "saleAgeMonths": "Age at sale",
+      "saleWeightKg": "Live weight at sale",
+      "pricePerKg": "Price per kg of live weight",
+      "cullEwePrice": "Price of a cull ewe",
+      "feedAdultStallPerMonth": "Feed for a grown sheep, a stall month",
+      "feedAdultGrazingPerMonth": "Feed for a grown sheep, a grazing month",
+      "feedLambPerMonth": "Feed for a growing lamb, a month",
+      "otherCostPerHeadPerMonth": "Other cost per head, a month",
+      "fixedCostPerMonth": "Fixed cost, a month",
+      "openingCash": "Cash at the start",
+      "stallMonths": "Months on stall feed"
+    },
+    "help": {
+      "openingReplacements": "Ewe lambs kept to join the ewes, not yet lambed.",
+      "openingLambs": "Lambs and fattening stock that will be sold.",
+      "lambingShare": "Of all ewes in the flock in the lambing month.",
+      "lambSurvival": "Of the lambs born.",
+      "replacementShare": "Of the ewe lambs weaned. The rest are sold, with all ram lambs.",
+      "firstLambingAgeMonths": "A kept ewe lamb joins the ewes at this age.",
+      "eweDeathsPerYear": "Share of the ewes, spread evenly over the year.",
+      "eweCullsPerYear": "Share of the ewes, spread evenly over the year. A culled ewe is sold.",
+      "cullEwePrice": "Per head. A cull ewe is not priced by weight here.",
+      "feedAdultGrazingPerMonth": "Ewes, rams and kept ewe lambs past the sale age, in a month not marked as stall feed.",
+      "feedLambPerMonth": "A lamb held for sale, or a kept ewe lamb younger than the sale age.",
+      "otherCostPerHeadPerMonth": "Charged on every head, such as veterinary care.",
+      "fixedCostPerMonth": "Spent whatever the size of the flock: wages, fuel, repairs, field work.",
+      "openingCash": "Money on hand in the first month. It can be below zero.",
+      "stallMonths": "In these months a grown sheep costs the stall figure, in the others the grazing figure."
+    },
+    "units": {
+      "months": "mo",
+      "headCount": "{{value}} head",
+      "kgCount": "{{value}} kg",
+      "monthsCount": "{{value}} mo"
+    },
+    "origin": {
+      "farm": "Farm's figure: {{value}} ({{source}})",
+      "suggested": "No figure in the farm's records. The app's starting value: {{value}}",
+      "use": "Use it",
+      "none": "No figure in the farm's records"
+    },
+    "sources": {
+      "animals": "animals on the farm today",
+      "lambings": "lambing records",
+      "scans": "pregnancy scans",
+      "pregnancies": "pregnancies now open",
+      "sales": "approved sales of the last 12 months",
+      "costs": "spending of the last 12 months",
+      "rations": "bought feed in today's rations; the cost of growing the farm's own feed is in the fixed cost",
+      "accounts": "account balances"
+    },
+    "oneOffs": {
+      "title": "One-off outlays",
+      "help": "A purchase or a building paid once, in the month it falls. What was invested before the plan can be entered in the first month.",
+      "month": "Month",
+      "amount": "Amount",
+      "remove": "Remove this outlay",
+      "add": "Add an outlay"
+    },
+    "stats": {
+      "breakEven": "Break-even price per kg",
+      "noPrice": "No sale price is set",
+      "assumedPrice": "Assumed price: {{price}}",
+      "priceCovers": "The assumed price, {{price}}, covers it",
+      "priceShort": "The assumed price, {{price}}, does not cover it",
+      "lowestCash": "Lowest cash",
+      "payback": "The plan pays for itself",
+      "neverPays": "Not within three years",
+      "paybackHint": "The first month in which everything earned since the start exceeds everything spent, one-off outlays included.",
+      "profit": "Profit over three years",
+      "perEwe": "{{amount}} per ewe a year"
+    },
+    "cash": {
+      "shortTitle": "Cash goes below zero in {{month}}",
+      "shortBody": "The lowest point is {{amount}}, in {{month}}. That much has to be found beforehand, or spending moved.",
+      "okTitle": "Cash stays above zero for all three years",
+      "okBody": "The lowest point is {{amount}}, in {{month}}."
+    },
+    "years": {
+      "title": "Year by year",
+      "hint": "Money in {{currency}}. Head counts are at the end of each year. A year is twelve months from the plan's first month.",
+      "figure": "Figure",
+      "year": "Year {{n}}",
+      "rows": {
+        "ewes": "Ewes",
+        "head": "All head",
+        "lambsBorn": "Lambs born",
+        "lambsSold": "Lambs sold",
+        "ewesCulled": "Ewes culled",
+        "kgSold": "Live weight sold, kg",
+        "revenueLambs": "Income from lambs",
+        "revenueCulls": "Income from cull ewes",
+        "costFeed": "Feed",
+        "costOther": "Other cost per head",
+        "costFixed": "Fixed costs",
+        "costOneOff": "One-off outlays",
+        "costTotal": "All costs",
+        "profit": "Profit",
+        "closingCash": "Cash at year end",
+        "lowestCash": "Lowest cash in the year"
+      }
+    },
+    "charts": {
+      "cash": "Cash at month end",
+      "cashHint": "The shaded months are below zero.",
+      "closing": "Cash",
+      "herd": "Flock size",
+      "herdHint": "Head at month end, after lambing, sales and culling.",
+      "total": "All head",
+      "ewes": "Ewes",
+      "empty": "Not enough assumptions to draw this."
+    },
+    "method": {
+      "title": "How this is worked out",
+      "breakEvenWith": "Break-even price: all costs of the three years, {{costs}}, divided by the {{kg}} kg of lamb live weight sold. Income from cull ewes is not taken off.",
+      "breakEven": "Break-even price: all costs of the three years divided by the kilograms of lamb live weight sold. Income from cull ewes is not taken off.",
+      "months": "Each month, in order: kept ewe lambs old enough join the ewes, a twelfth of the year's deaths and culls leave, the ewes lamb in the lambing month, and lambs that reach the sale age are sold. Costs are charged on the flock as it stands after that.",
+      "leftOut": "Left out: the number of rams stays as it starts, no lamb is lost after weaning, wool brings nothing, and a cull ewe sells by the head.",
+      "notPromise": "This is arithmetic on the assumptions above, not a forecast of the market."
+    },
+    "compare": {
+      "title": "Plans side by side",
+      "hint": "What each plan leads to, then the assumptions in which they differ.",
+      "current": "The plan on this page",
+      "never": "Never",
+      "none": "None",
+      "outcomes": "Results over three years",
+      "differences": "Assumptions that differ",
+      "noDifferences": "These plans rest on the same assumptions.",
+      "rows": {
+        "breakEven": "Break-even price per kg",
+        "price": "Assumed price per kg",
+        "profit": "Profit",
+        "revenue": "Income",
+        "costs": "Costs",
+        "perEwe": "Profit per ewe a year",
+        "lowestCash": "Lowest cash",
+        "firstNegative": "Cash first below zero",
+        "payback": "Pays for itself",
+        "closingCash": "Cash at the end",
+        "ewes": "Ewes at the end"
+      }
+    },
+    "saved": {
+      "title": "Saved plans",
+      "hint": "Open a plan on the page, or tick up to {{n}} to see them side by side.",
+      "emptyTitle": "No plan is saved yet",
+      "emptyBody": "Set the assumptions, then save them under a name to come back to or to compare.",
+      "emptyBodyReadOnly": "Plans saved by the farm's finance staff show here.",
+      "compareOne": "Compare {{name}}",
+      "open": "On the page",
+      "updated": "Changed {{date}}",
+      "load": "Open",
+      "renameOne": "Rename {{name}}",
+      "deleteOne": "Delete {{name}}",
+      "limit": "{{n}} plans are ticked. Untick one to add another.",
+      "loadedToast": "{{name}} is open on the page",
+      "deleteTitle": "Delete this plan?",
+      "deleteBody": "{{name}} will be deleted. Other plans stay.",
+      "renameTitle": "Name and note",
+      "name": "Name",
+      "notes": "Note"
+    }
+  },
   "errors": {
     "WAGES_PAID_FROM_PAYROLL": "Wages are paid from the payroll run under Staff, not from here.",
     "TRANSACTION_CHANGED": "This entry was changed after you opened it. It now reads {{amount}} {{currency}}. Nothing was saved: read it again, then decide.",

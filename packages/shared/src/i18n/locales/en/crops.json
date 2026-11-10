@@ -165,7 +165,8 @@
       "plans": "Plans",
       "fact": "Plan and actual",
       "cards": "Tech cards",
-      "seasons": "Seasons"
+      "seasons": "Seasons",
+      "crops": "Crops"
     },
     "stats": {
       "sown": "Fields sown",
@@ -280,5 +281,69 @@
     "STOCK_QTY_REQUIRED": "Enter the quantity received",
     "USE_HARVEST_FORM": "Use the harvest form for this",
     "WATER_REQUIRED": "Enter the amount of water"
+  },
+  "leaching": {
+    "norm": "Suggested norm: {{min}} to {{max}} m³/ha",
+    "forField": "For {{area}} ha: {{min}} to {{max}} m³.",
+    "basis": "{{salinity}}, {{soil}}. Source: {{source}}. This is a suggestion, not a calculation for this field.",
+    "group": {
+      "light": "light soil",
+      "medium": "medium soil",
+      "heavy": "heavy soil"
+    },
+    "noTexture": "soil texture not set, so the whole published span is shown",
+    "not_saline": "This field is recorded as not saline, so no leaching norm is suggested.",
+    "level_unknown": "The field has no salinity level, so no norm is suggested. Set the level in the field's card.",
+    "capital_leaching": "For strongly saline heavy soil the source gives no ordinary norm: such land needs capital leaching designed for the site. Source: {{source}}."
+  },
+  "rotation": {
+    "source": "Source: {{source}}.",
+    "history": "Earlier on this field: {{crops}}.",
+    "historyItem": "{{season}}: {{crop}}",
+    "stillSave": "This only warns: the plan can still be saved.",
+    "rule": {
+      "same_crop": {
+        "title": "The same crop again",
+        "reason": "Most crops should come back to the same field only after 2 to 3 years."
+      },
+      "cereal_run": {
+        "title": "A third cereal in a row",
+        "reason": "Repeat sowings of cereals for more than 2 years should be avoided."
+      },
+      "cereal_after_cereal": {
+        "title": "A cereal after a cereal",
+        "reason": "Cereals are among the worst predecessors."
+      },
+      "legume_after_legume": {
+        "title": "A grain legume after a grain legume",
+        "reason": "Repeat sowings of grain legumes are not advisable."
+      },
+      "after_legume": {
+        "title": "A good predecessor: a grain legume",
+        "reason": "Grain legumes are good predecessors for almost every crop."
+      },
+      "after_perennial_grass": {
+        "title": "A good predecessor: a perennial grass",
+        "reason": "The after-effect of perennial grasses lasts into the second and third crop after them."
+      }
+    }
+  },
+  "cropRef": {
+    "hint": "What the rotation warnings and the fertiliser rate read from each crop. Where the farm has entered nothing, typical values are used and marked as such.",
+    "name": "Crop",
+    "family": "Rotation family",
+    "familyHint": "The rotation warnings in the plan form go by this group.",
+    "removal": "{{formula}} removal, kg/t",
+    "kgT": "kg/t",
+    "source": "Values",
+    "own": "Farm's own",
+    "typical": "Typical",
+    "typicalValue": "Typical: {{value}}",
+    "notSet": "Not set",
+    "noTypical": "No typical value",
+    "edit": "{{name}}: agronomy values",
+    "emptyTitle": "No crops",
+    "emptyBody": "The farm's crop list is empty.",
+    "removalHint": "Nutrients carried off the field with one tonne of produce. Enter all three: once one is filled in, typical values are no longer used for the others. Typical values are published table averages, mainly from {{source}}."
   }
 }

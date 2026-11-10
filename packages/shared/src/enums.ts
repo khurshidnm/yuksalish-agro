@@ -11,7 +11,11 @@ export const LAND_USES = e(['arable', 'pasture', 'reserve', 'yard', 'infrastruct
 export const SOIL_TEXTURE_CLASSES = e(['sand', 'loamy_sand', 'sandy_loam', 'loam', 'silt_loam', 'silt', 'silty_clay_loam', 'silty_clay', 'clay']);
 export const FACILITY_TYPES = e(['barn', 'feed_storage', 'warehouse', 'water', 'well', 'pump', 'power', 'road', 'fence', 'guardhouse', 'other']);
 export const IRRIGATION_NODE_TYPES = e(['canal', 'ditch', 'pump', 'pipe', 'well']);
-export const OPERATION_TYPES = e(['tillage', 'sowing', 'irrigation', 'fertilizing', 'protection', 'observation', 'harvest']);
+export const OPERATION_TYPES = e(['tillage', 'sowing', 'irrigation', 'leaching', 'fertilizing', 'protection', 'observation', 'harvest']);
+/** How salty a field's soil is, as the farm rates it. formulas/salinity.ts holds the leaching norm for each level. */
+export const SALINITY_LEVELS = e(['none', 'low', 'medium', 'high']);
+/** A crop's place in the rotation. formulas/rotation.ts holds the rules between families. */
+export const CROP_FAMILIES = e(['cereal', 'legume', 'row_crop', 'oilseed', 'perennial_grass', 'annual_grass', 'vegetable', 'other']);
 export const CROP_PLAN_STATUSES = e(['planned', 'sown', 'growing', 'harvested', 'cancelled']);
 
 // Livestock
@@ -25,6 +29,13 @@ export const IDENTIFIER_TYPES = e(['ear_tag', 'rfid', 'qr']);
 export const WEIGHT_METHODS = e(['manual', 'scale', 'rfid']);
 export const BREEDING_STATUSES = e(['pregnant', 'lambed', 'aborted', 'failed']);
 export const BREEDING_SOURCES = e(['mating', 'purchase']);
+export const LAMB_MOTHERING = e(['with_dam', 'fostered', 'bottle']);
+/** The grading (bonitirovka) classes a new farm starts with. A farm's own working list, kept in its settings; not an official standard. */
+export const GRADING_CLASSES = e(['elite', 'class_1', 'class_2', 'unclassed']);
+/** The parts of the ewe score (formulas/ewe-score.ts). */
+export const EWE_SCORE_COMPONENTS = e(['prolificacy', 'rearing', 'lamb_growth', 'lambing_interval', 'age', 'condition']);
+/** Why a ewe is on the culling list. The first six are worked out from her records (formulas/ewe-score.ts); the rest only a person can say. */
+export const CULL_REASONS = e(['old_age', 'empty_twice', 'no_lamb_reared', 'low_score', 'thin_twice', 'lambing_complications', 'udder', 'teeth', 'feet', 'health', 'other']);
 export const HEALTH_RECORD_TYPES = e(['vaccination', 'treatment', 'prophylaxis', 'deworming', 'examination', 'quarantine']);
 export const ANIMAL_EXIT_TYPES = e(['sale', 'slaughter', 'death', 'loss']);
 export const HERD_CONDITIONS = e(['normal', 'deviation']);
@@ -86,9 +97,17 @@ export const MAINTENANCE_TYPES = e(['planned', 'repair']);
 // Sales
 export const SALE_STATUSES = e(['draft', 'pending', 'confirmed', 'cancelled']);
 export const PURCHASE_REQUEST_STATUSES = e(['requested', 'approved', 'rejected', 'paid', 'received']);
+/** Where an animal stands against the farm's sale weight (formulas/sale-readiness.ts). */
+export const SALE_READINESS_STATUSES = e(['ready', 'soon', 'later', 'unknown']);
+/** An animal held for a buyer. One open reservation per animal. */
+export const RESERVATION_STATUSES = e(['open', 'converted', 'cancelled', 'expired']);
+/** A pre-order sent from the public catalogue: waiting, turned into a reservation, or closed without one. */
+export const CATALOGUE_REQUEST_STATUSES = e(['new', 'reserved', 'closed']);
 
 // Tasks, notifications, events
 export const TASK_STATUSES = e(['open', 'in_progress', 'done', 'cancelled']);
+/** Who closed a task: a person, or the alert it answered going away by itself. Only the first counts as that person's work. */
+export const TASK_COMPLETION_SOURCES = e(['person', 'alert_resolved']);
 export const PRIORITIES = e(['low', 'normal', 'high']);
 export const RECURRENCES = e(['none', 'daily', 'weekly', 'monthly']);
 export const SEVERITIES = e(['info', 'attention', 'urgent']);
@@ -97,6 +116,8 @@ export const NOTIFICATION_CHANNELS = e(['in_app', 'telegram', 'email', 'sms', 'p
 export const EVENT_SOURCES = e(['user', 'mobile', 'system', 'camera', 'sensor', 'ai', 'import']);
 export const DEVICE_TYPES = e(['camera', 'sensor', 'rfid_reader', 'scale', 'gps_tracker']);
 export const DEVICE_STATUSES = e(['planned', 'online', 'offline']);
+/** A zone a herd must stay in, or must stay out of (docs/tracking.md). */
+export const GEOFENCE_KINDS = e(['allowed', 'forbidden']);
 export const AI_DECISIONS = e(['pending', 'accepted', 'rejected']);
 export const DOCUMENT_TYPES = e(['land', 'construction', 'permit', 'contract', 'invoice', 'vet_certificate', 'act', 'other']);
 export const LEAD_STATUSES = e(['new', 'contacted', 'qualified', 'won', 'lost']);

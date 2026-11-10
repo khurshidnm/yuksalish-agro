@@ -33,6 +33,9 @@ describe('latinToCyrillic', () => {
     expect(latinToCyrillic('{{count}} bosh')).toBe('{{count}} бош');
     expect(latinToCyrillic('PDF va Excel')).toBe('PDF ва Excel');
     expect(latinToCyrillic('Sayt: https://keeping.uz')).toBe('Сайт: https://keeping.uz');
+    // A data credit names its source as the source writes it.
+    expect(latinToCyrillic("O'zgartirilgan Copernicus Sentinel ma'lumotlari")).toBe('Ўзгартирилган Copernicus Sentinel маълумотлари');
+    expect(latinToCyrillic('MET Norway (CC BY 4.0), Sentinel-2')).toBe('MET Norway (CC BY 4.0), Sentinel-2');
   });
 
   it('applies overrides', () => {

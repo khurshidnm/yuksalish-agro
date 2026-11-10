@@ -40,6 +40,9 @@ export interface LambingCalendar {
   /** The outlook's estimate from its stated lambs-per-ewe assumption; null with no ewes due. */
   assumedLambs?: number | null;
   assumedLambsPerEwe?: number;
+  /** Ewes with a pregnancy scan, and the foetuses counted in them: those are counted, not estimated. */
+  scannedEwes?: number;
+  scannedFetuses?: number;
 }
 
 export interface LambDetail {
@@ -263,4 +266,260 @@ export interface SickAnimal {
   tag: string;
   status: string;
   herdName: string | null;
+}
+
+export interface ScanEwe {
+  breedingId: string;
+  eweId: string;
+  tag: string;
+  herdId: string | null;
+  herdName: string | null;
+  expectedDate: string;
+  /** Null until she is scanned. */
+  fetusCount: number | null;
+  scanDate: string | null;
+}
+
+export interface ScanEwes {
+  summary: { total: number; notScanned: number; single: number; twin: number; triplet: number; fetuses: number };
+  ewes: ScanEwe[];
+}
+
+export interface BulkScanResult {
+  date: string;
+  recorded: number;
+  closed: number;
+  skipped: { tag: string | null; eweId: string | null; reason: string }[];
+}
+
+export type Mothering = 'with_dam' | 'fostered' | 'bottle';
+
+export interface LambCare {
+  lambId: string;
+  tag: string;
+  birthDate: string | null;
+  damId: string | null;
+  damTag: string | null;
+  /** False until someone has entered anything for this lamb. */
+  recorded: boolean;
+  colostrumAt: string | null;
+  navelTreated: boolean;
+  mothering: Mothering | null;
+  fosterEweId: string | null;
+  fosterEweTag: string | null;
+  notes: string | null;
+}
+
+export interface AttentionLamb {
+  lambId: string;
+  tag: string;
+  sex: string;
+  birthDate: string;
+  ageDays: number;
+  /** At least this old: the hour of birth itself is not recorded. */
+  hoursOld: number;
+  damId: string | null;
+  damTag: string | null;
+  herdName: string | null;
+  facilityName: string | null;
+  colostrumAt: string | null;
+  navelTreated: boolean;
+  mothering: Mothering | null;
+  fosterEweTag: string | null;
+  reasons: ('no_colostrum' | 'bottle')[];
+}
+
+export interface WatchEwe {
+  breedingId: string;
+  eweId: string;
+  tag: string;
+  expectedDate: string;
+  expectedEarliest: string;
+  expectedLatest: string;
+  fetusCount: number | null;
+  herdId: string | null;
+  herdName: string | null;
+  facilityId: string | null;
+  facilityName: string | null;
+  barnName: string | null;
+  daysLeft: number;
+  overdue: boolean;
+  firstLambing: boolean;
+  complications: { date: string; text: string }[];
+  stillborn: number;
+  inPen: boolean;
+}
+
+export interface Pen {
+  id: string;
+  name: string;
+  parentId: string | null;
+  parentName: string | null;
+  free: boolean;
+  stay: {
+    id: string;
+    eweId: string;
+    eweTag: string;
+    sinceDate: string;
+    plannedReleaseDate: string | null;
+    releaseDue: boolean;
+    lambs: { id: string; tag: string }[];
+  } | null;
+}
+
+export interface PenSection {
+  id: string;
+  name: string;
+  parentId: string | null;
+  parentName: string | null;
+  capacity: number | null;
+  lambingPen: boolean;
+}
+
+export interface LambingDesk {
+  today: string;
+  limits: { watchDays: number; colostrumHours: number; penDays: number };
+  counts: {
+    dueThisWeek: number;
+    overdue: number;
+    lambedToday: number;
+    lambsToday: number;
+    lambsNeedingAttention: number;
+    pensTotal: number;
+    pensFree: number;
+  };
+  watch: WatchEwe[];
+  attention: AttentionLamb[];
+  pens: Pen[];
+}
+
+// ─── Appraisal: body condition, fat tail, grading, ewe score, culling ───────
+
+export interface ScorePart {
+  key: string;
+  /** The fact behind the part: lambs per lambing, a share 0..1, an index, days, years or a condition score. */
+  value: number;
+  /** 0..100. */
+  points: number;
+  /** Share of the score this part carries, after the missing parts gave theirs up. */
+  weight: number;
+}
+
+export interface EweScore {
+  score: number | null;
+  parts: ScorePart[];
+  missing: string[];
+  lambings: number;
+}
+
+export interface ScoredEwe extends EweScore {
+  eweId: string;
+  tag: string;
+  status: string;
+  herdId: string | null;
+  herdName: string | null;
+  birthDate: string | null;
+  ageYears: number | null;
+  lambsBorn: number;
+  lambsAlive: number;
+  survivalPercent: number | null;
+  avgWeight100Kg: number | null;
+  bodyCondition: number | null;
+  bodyConditionDate: string | null;
+  gradingClass: string | null;
+  gradedOn: string | null;
+  cullMarked: boolean;
+}
+
+export interface ConditionAnimal {
+  animalId: string;
+  tag: string;
+  category: string;
+  speciesKey: string | null;
+  herdId: string | null;
+  herdName: string | null;
+  score: number | null;
+  scoredOn: string | null;
+}
+
+export interface HerdCondition {
+  summary: {
+    head: number;
+    scored: number;
+    average: number | null;
+    thin: number;
+    thinPercent: number | null;
+    recentDays: number;
+    thinAtOrBelow: number;
+  };
+  animals: ConditionAnimal[];
+}
+
+export interface BulkConditionResult {
+  date: string;
+  recorded: number;
+  skipped: { tag: string | null; animalId: string | null; reason: string }[];
+}
+
+export interface CullMark {
+  id: string;
+  animalId: string;
+  reason: string;
+  note: string | null;
+  markedOn: string;
+}
+
+export interface Appraisal {
+  animalId: string;
+  bodyCondition: { id: string; date: string; score: number; notes: string | null } | null;
+  gradingClass: string | null;
+  gradedOn: string | null;
+  conditionScores: { id: string; date: string; score: number; notes: string | null }[];
+  fatTail: { id: string; date: string; widthCm: number | null; lengthCm: number | null; circumferenceCm: number | null; notes: string | null }[];
+  gradings: { id: string; date: string; classKey: string; gradedBy: string | null; notes: string | null }[];
+  gradingClasses: string[];
+  cullMark: CullMark | null;
+}
+
+export interface CullSuggestion {
+  animalId: string;
+  tag: string;
+  herdId: string | null;
+  herdName: string | null;
+  ageYears: number | null;
+  lambings: number;
+  score: number | null;
+  bodyCondition: number | null;
+  reasons: string[];
+}
+
+export interface MarkedAnimal {
+  id: string;
+  animalId: string;
+  tag: string;
+  category: string;
+  herdId: string | null;
+  herdName: string | null;
+  reason: string;
+  note: string | null;
+  markedOn: string;
+  ageYears: number | null;
+  score: number | null;
+  suggestedReasons: string[];
+}
+
+export interface CullingList {
+  suggested: CullSuggestion[];
+  marked: MarkedAnimal[];
+  flock: { ewes: number; scored: number; lowScoreCutoff: number | null };
+  thresholds: {
+    oldAgeYears: number;
+    emptySeasons: number;
+    lambingsWithoutRearing: number;
+    lowScoreShare: number;
+    lowScoreMinFlock: number;
+    thinScorings: number;
+    complicatedLambings: number;
+    thinAtOrBelow: number;
+  };
 }

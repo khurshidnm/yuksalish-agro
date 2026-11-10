@@ -1,7 +1,21 @@
 {
   "title": "Settings",
   "description": "Workspace details, policies and data export.",
-  "tabs": { "profile": "Workspace", "policy": "Policies", "data": "Data", "files": "Files" },
+  "tabs": { "profile": "Workspace", "policy": "Policies", "data": "Data", "files": "Files", "sales": "Sales", "alertTasks": "Tasks from alerts" },
+  "salesTab": {
+    "targetTitle": "Sale weight",
+    "targetHint": "The weight at which the farm sells an animal. The ready-for-sale list is built from it. Leave empty if there is no single figure.",
+    "targetWeight": "Target sale weight",
+    "catalogueTitle": "Public page of animals for sale",
+    "catalogueHint": "A page anyone can open without signing in. It shows only the animals you mark, and never tags, costs or health records. It is off until you switch it on.",
+    "enabled": "The public page is on",
+    "slug": "Page address",
+    "slugHint": "3 to 40 Latin letters, digits and hyphens.",
+    "contact": "Contact line",
+    "contactHint": "Shown on the page, for example a phone number and working hours.",
+    "link": "The page is at",
+    "linkOff": "The page is off: its address answers \"not found\"."
+  },
   "showOnce": {
     "warning": "This value will not be shown again. Copy it now and keep it somewhere safe.",
     "copy": "Copy",
@@ -157,6 +171,17 @@
     "health_records": "Health records",
     "breeding_records": "Breeding records",
     "lambing_records": "Lambing records",
+    "pregnancy_scans": "Pregnancy scans",
+    "lamb_care": "Newborn lamb care",
+    "pen_stays": "Lambing pen stays",
+    "body_condition_scores": "Body condition scores",
+    "fat_tail_measurements": "Fat-tail measurements",
+    "animal_gradings": "Animal gradings",
+    "cull_marks": "Cull marks",
+    "scenarios": "Three-year plan scenarios",
+    "geofences": "Grazing zones (geofences)",
+    "grazing_cell_days": "Grazing map (daily)",
+    "grazing_field_days": "Grazing days by field",
     "weight_records": "Weight records",
     "animal_exits": "Animal exits",
     "sales": "Sales",
@@ -165,6 +190,7 @@
     "farms": "Farms",
     "seasons": "Seasons",
     "soil_analyses": "Soil analyses",
+    "groundwater_observations": "Groundwater observations",
     "webhook_subscriptions": "Webhook subscriptions",
     "species": "Species",
     "breeds": "Breeds",
@@ -189,7 +215,10 @@
     "animal_tracking": "Animal locations",
     "animal_track_days": "Animal activity by day",
     "job_runs": "Background jobs",
-    "idempotency_keys": "Repeat request keys"
+    "idempotency_keys": "Repeat request keys",
+    "animal_reservations": "Animal reservations",
+    "catalogue_listings": "Catalogue listings",
+    "catalogue_requests": "Catalogue requests"
   },
   "users": {
     "title": "Users and roles",
@@ -395,6 +424,8 @@
     "SYSTEM_ROLE": "A standard role cannot be renamed or deleted.",
     "ROLE_IN_USE": "This role is assigned to people. Change their role first.",
     "WEBHOOK_URL_NOT_ALLOWED": "Events cannot be sent there. Use a public https address.",
-    "NOTHING_TO_UPDATE": "Nothing was changed."
+    "NOTHING_TO_UPDATE": "Nothing was changed.",
+    "CATALOGUE_SLUG_REQUIRED": "Enter the page address before switching the catalogue on.",
+    "CATALOGUE_SLUG_TAKEN": "This page address is already taken. Choose another one."
   }
 }

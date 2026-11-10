@@ -519,6 +519,217 @@
       "reversed": "Berish bekor qilindi"
     }
   },
+  "scenarios": {
+    "title": "3 yillik ssenariylar",
+    "description": "Uch yil oldinga, oyma-oy: poda, foyda, pul va xo'jalik zararsiz ishlaydigan 1 kg narxi. Taxminni o'zgartirsangiz, reja qayta hisoblanadi.",
+    "reset": "Xo'jalik raqamlariga qaytarish",
+    "saveChanges": "O'zgarishlarni saqlash",
+    "saveAs": "Yangi reja sifatida saqlash",
+    "saveHint": "Reja hozir sahifada turgan taxminlar bilan saqlanadi.",
+    "openPlan": "Ochilgan reja:",
+    "changed": "O'zgartirilgan, saqlanmagan",
+    "notSet": "Belgilanmagan",
+    "wholeNumber": "Butun son kiriting",
+    "emptyCount": "Bo'sh: {{n}}",
+    "noStallMonths": "Hech bir oy belgilanmagan: poda yil bo'yi yaylovda.",
+    "gaps": {
+      "title": "Ilovada {{n}} ta bo'sh taxmin uchun boshlang'ich qiymat bor",
+      "body": "Xo'jalik yozuvlarida bu raqamlar yo'q, shuning uchun ularga tayanadigan natijalar o'rnida chiziqcha turadi. Boshlang'ich qiymatlar ilovaniki, xo'jalikniki emas: to'ldirgandan keyin har birini tekshiring.",
+      "fill": "Bo'sh maydonlarni boshlang'ich qiymatlar bilan to'ldirish"
+    },
+    "invalid": {
+      "title": "Rejani hali hisoblab bo'lmaydi",
+      "body": "Bu raqamlar reja qabul qiladigan chegaradan tashqarida: {{fields}}. Natijani ko'rish uchun ularni to'g'rilang."
+    },
+    "missing": {
+      "title": "Ayrim raqamlarni hisoblab bo'lmaydi",
+      "body": "Ular o'rnida chiziqcha turibdi, chunki bu taxminlar bo'sh: {{fields}}."
+    },
+    "groups": {
+      "herd": "Boshlang'ich poda",
+      "lambing": "Qo'zilash va poda",
+      "sales": "Sotuv",
+      "costs": "Xarajatlar",
+      "cash": "Boshlanish va pul"
+    },
+    "fields": {
+      "startMonth": "Rejaning birinchi oyi",
+      "openingEwes": "Sovliqlar",
+      "openingRams": "Qo'chqorlar",
+      "openingReplacements": "Podaga qoldirilgan urg'ochi qo'zilar",
+      "openingLambs": "Sotuvga boqilayotgan qo'zilar",
+      "lambingMonth": "Qo'zilash oyi",
+      "lambingShare": "Qo'zilaydigan sovliqlar",
+      "lambsPerEweLambing": "Qo'zilagan bir sovliqdan tug'ilgan qo'zi",
+      "lambSurvival": "Ajratishgacha tirik qolgan qo'zilar",
+      "eweDeathsPerYear": "Bir yilda nobud bo'ladigan sovliqlar",
+      "eweCullsPerYear": "Bir yilda brakka chiqariladigan sovliqlar",
+      "replacementShare": "Podaga qoldiriladigan urg'ochi qo'zilar ulushi",
+      "firstLambingAgeMonths": "Birinchi qo'zilash yoshi",
+      "saleAgeMonths": "Sotuv yoshi",
+      "saleWeightKg": "Sotuvdagi tirik vazn",
+      "pricePerKg": "1 kg tirik vazn narxi",
+      "cullEwePrice": "Brak sovliq narxi",
+      "feedAdultStallPerMonth": "Katta qo'y ozuqasi, qo'radagi bir oy",
+      "feedAdultGrazingPerMonth": "Katta qo'y ozuqasi, yaylovdagi bir oy",
+      "feedLambPerMonth": "O'sayotgan qo'zi ozuqasi, bir oy",
+      "otherCostPerHeadPerMonth": "Bir boshga boshqa xarajat, bir oy",
+      "fixedCostPerMonth": "Doimiy xarajat, bir oy",
+      "openingCash": "Boshlang'ich pul",
+      "stallMonths": "Qo'rada boqiladigan oylar"
+    },
+    "help": {
+      "openingReplacements": "Sovliqlarga qo'shilish uchun qoldirilgan, hali qo'zilamagan urg'ochi qo'zilar.",
+      "openingLambs": "Sotiladigan qo'zilar va boquvdagi qo'ylar.",
+      "lambingShare": "Qo'zilash oyida podadagi barcha sovliqlardan.",
+      "lambSurvival": "Tug'ilgan qo'zilardan.",
+      "replacementShare": "Ajratilgan urg'ochi qo'zilardan. Qolganlari barcha erkak qo'zilar bilan birga sotiladi.",
+      "firstLambingAgeMonths": "Qoldirilgan urg'ochi qo'zi shu yoshda sovliqlarga qo'shiladi.",
+      "eweDeathsPerYear": "Sovliqlar ulushi, yil bo'yicha teng taqsimlanadi.",
+      "eweCullsPerYear": "Sovliqlar ulushi, yil bo'yicha teng taqsimlanadi. Brakka chiqarilgan sovliq sotiladi.",
+      "cullEwePrice": "Bir bosh uchun. Bu yerda brak sovliq vazn bo'yicha narxlanmaydi.",
+      "feedAdultGrazingPerMonth": "Sovliqlar, qo'chqorlar va sotuv yoshidan o'tgan qoldirilgan urg'ochi qo'zilar, qo'rada boqiladigan deb belgilanmagan oyda.",
+      "feedLambPerMonth": "Sotuvga boqilayotgan qo'zi yoki sotuv yoshiga yetmagan qoldirilgan urg'ochi qo'zi.",
+      "otherCostPerHeadPerMonth": "Har bir boshga hisoblanadi, masalan veterinariya xarajati.",
+      "fixedCostPerMonth": "Poda soniga bog'liq bo'lmagan xarajat: ish haqi, yoqilg'i, ta'mirlash, dala ishlari.",
+      "openingCash": "Birinchi oydagi mavjud pul. Noldan past bo'lishi mumkin.",
+      "stallMonths": "Bu oylarda katta qo'yga qo'ra narxi, qolgan oylarda yaylov narxi hisoblanadi."
+    },
+    "units": {
+      "months": "oy",
+      "headCount": "{{value}} bosh",
+      "kgCount": "{{value}} kg",
+      "monthsCount": "{{value}} oy"
+    },
+    "origin": {
+      "farm": "Xo'jalik raqami: {{value}} ({{source}})",
+      "suggested": "Xo'jalik yozuvlarida raqam yo'q. Ilovaning boshlang'ich qiymati: {{value}}",
+      "use": "Qo'llash",
+      "none": "Xo'jalik yozuvlarida raqam yo'q"
+    },
+    "sources": {
+      "animals": "bugun xo'jalikdagi hayvonlar",
+      "lambings": "qo'zilash yozuvlari",
+      "scans": "bo'g'ozlik tekshiruvlari",
+      "pregnancies": "hozirgi bo'g'ozliklar",
+      "sales": "oxirgi 12 oydagi tasdiqlangan sotuvlar",
+      "costs": "oxirgi 12 oydagi xarajatlar",
+      "rations": "bugungi ratsionlardagi sotib olingan ozuqa; o'zi yetishtirgan ozuqaning xarajati doimiy xarajat ichida",
+      "accounts": "hisoblar qoldig'i"
+    },
+    "oneOffs": {
+      "title": "Bir martalik xarajatlar",
+      "help": "Bir marta to'lanadigan xarid yoki qurilish, o'z oyida. Rejadan oldin kiritilgan sarmoyani birinchi oyga yozish mumkin.",
+      "month": "Oy",
+      "amount": "Summa",
+      "remove": "Bu xarajatni olib tashlash",
+      "add": "Xarajat qo'shish"
+    },
+    "stats": {
+      "breakEven": "Zararsizlik narxi, 1 kg",
+      "noPrice": "Sotuv narxi kiritilmagan",
+      "assumedPrice": "Taxmin qilingan narx: {{price}}",
+      "priceCovers": "Taxmin qilingan narx, {{price}}, buni qoplaydi",
+      "priceShort": "Taxmin qilingan narx, {{price}}, buni qoplamaydi",
+      "lowestCash": "Eng past pul qoldig'i",
+      "payback": "Reja o'zini oqlaydi",
+      "neverPays": "Uch yil ichida emas",
+      "paybackHint": "Boshidan beri topilgan pul sarflangan puldan birinchi marta oshgan oy, bir martalik xarajatlar ham hisobda.",
+      "profit": "Uch yillik foyda",
+      "perEwe": "Bir sovliqqa yiliga {{amount}}"
+    },
+    "cash": {
+      "shortTitle": "Pul noldan pastga tushadi: {{month}}",
+      "shortBody": "Eng past nuqta: {{amount}}, {{month}}. Shuncha pulni oldindan topish yoki xarajatni surish kerak.",
+      "okTitle": "Pul uch yil davomida noldan yuqori turadi",
+      "okBody": "Eng past nuqta: {{amount}}, {{month}}."
+    },
+    "years": {
+      "title": "Yillar bo'yicha",
+      "hint": "Pul: {{currency}}. Bosh soni har yil oxiriga. Yil: rejaning birinchi oyidan boshlab o'n ikki oy.",
+      "figure": "Ko'rsatkich",
+      "year": "{{n}}-yil",
+      "rows": {
+        "ewes": "Sovliqlar",
+        "head": "Jami bosh",
+        "lambsBorn": "Tug'ilgan qo'zilar",
+        "lambsSold": "Sotilgan qo'zilar",
+        "ewesCulled": "Brakka chiqarilgan sovliqlar",
+        "kgSold": "Sotilgan tirik vazn, kg",
+        "revenueLambs": "Qo'zilardan daromad",
+        "revenueCulls": "Brak sovliqlardan daromad",
+        "costFeed": "Ozuqa",
+        "costOther": "Bir boshga boshqa xarajat",
+        "costFixed": "Doimiy xarajatlar",
+        "costOneOff": "Bir martalik xarajatlar",
+        "costTotal": "Jami xarajat",
+        "profit": "Foyda",
+        "closingCash": "Yil oxiridagi pul",
+        "lowestCash": "Yil ichidagi eng past pul"
+      }
+    },
+    "charts": {
+      "cash": "Oy oxiridagi pul",
+      "cashHint": "Bo'yalgan oylarda pul noldan past.",
+      "closing": "Pul",
+      "herd": "Poda soni",
+      "herdHint": "Oy oxiridagi bosh soni: qo'zilash, sotuv va brakdan keyin.",
+      "total": "Jami bosh",
+      "ewes": "Sovliqlar",
+      "empty": "Buni chizish uchun taxminlar yetarli emas."
+    },
+    "method": {
+      "title": "Bu qanday hisoblanadi",
+      "breakEvenWith": "Zararsizlik narxi: uch yilning barcha xarajati, {{costs}}, sotilgan {{kg}} kg qo'zi tirik vazniga bo'linadi. Brak sovliqlardan tushgan daromad ayirilmaydi.",
+      "breakEven": "Zararsizlik narxi: uch yilning barcha xarajati sotilgan qo'zi tirik vazni kilogrammiga bo'linadi. Brak sovliqlardan tushgan daromad ayirilmaydi.",
+      "months": "Har oy shu tartibda: yoshi yetgan qoldirilgan urg'ochi qo'zilar sovliqlarga qo'shiladi, yillik nobudgarchilik va brakning o'n ikkidan biri podadan chiqadi, qo'zilash oyida sovliqlar qo'zilaydi, sotuv yoshiga yetgan qo'zilar sotiladi. Xarajat shundan keyingi podaga hisoblanadi.",
+      "leftOut": "Hisobga olinmagan: qo'chqorlar soni o'zgarmaydi, ajratishdan keyin qo'zi nobud bo'lmaydi, jun daromad bermaydi, brak sovliq boshiga sotiladi.",
+      "notPromise": "Bu yuqoridagi taxminlar ustidagi arifmetika, bozor prognozi emas."
+    },
+    "compare": {
+      "title": "Rejalar yonma-yon",
+      "hint": "Har bir reja nimaga olib keladi, keyin ular farq qiladigan taxminlar.",
+      "current": "Shu sahifadagi reja",
+      "never": "Hech qachon",
+      "none": "Yo'q",
+      "outcomes": "Uch yillik natijalar",
+      "differences": "Farq qiladigan taxminlar",
+      "noDifferences": "Bu rejalar bir xil taxminlarga tayanadi.",
+      "rows": {
+        "breakEven": "Zararsizlik narxi, 1 kg",
+        "price": "Taxmin qilingan narx, 1 kg",
+        "profit": "Foyda",
+        "revenue": "Daromad",
+        "costs": "Xarajatlar",
+        "perEwe": "Bir sovliqqa yillik foyda",
+        "lowestCash": "Eng past pul qoldig'i",
+        "firstNegative": "Pul birinchi marta noldan past",
+        "payback": "O'zini oqlaydi",
+        "closingCash": "Oxiridagi pul",
+        "ewes": "Oxiridagi sovliqlar"
+      }
+    },
+    "saved": {
+      "title": "Saqlangan rejalar",
+      "hint": "Rejani sahifada oching yoki yonma-yon ko'rish uchun {{n}} tagacha belgilang.",
+      "emptyTitle": "Hali reja saqlanmagan",
+      "emptyBody": "Taxminlarni kiriting, keyin qaytish yoki solishtirish uchun nom bilan saqlang.",
+      "emptyBodyReadOnly": "Xo'jalik moliya xodimlari saqlagan rejalar shu yerda ko'rinadi.",
+      "compareOne": "Solishtirish: {{name}}",
+      "open": "Sahifada",
+      "updated": "O'zgartirilgan: {{date}}",
+      "load": "Ochish",
+      "renameOne": "Nomini o'zgartirish: {{name}}",
+      "deleteOne": "O'chirish: {{name}}",
+      "limit": "{{n}} ta reja belgilangan. Boshqasini qo'shish uchun bittasini olib tashlang.",
+      "loadedToast": "{{name}} sahifada ochildi",
+      "deleteTitle": "Bu reja o'chirilsinmi?",
+      "deleteBody": "{{name}} o'chiriladi. Boshqa rejalar qoladi.",
+      "renameTitle": "Nom va izoh",
+      "name": "Nomi",
+      "notes": "Izoh"
+    }
+  },
   "errors": {
     "WAGES_PAID_FROM_PAYROLL": "Ish haqi Xodimlar bo'limidagi oylik hisob-kitobdan to'lanadi, bu yerdan emas.",
     "TRANSACTION_CHANGED": "Bu yozuv siz ochganingizdan keyin o'zgartirildi. Hozir unda {{amount}} {{currency}}. Hech narsa saqlanmadi: qayta o'qib, keyin qaror qiling.",

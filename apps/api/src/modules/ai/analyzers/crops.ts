@@ -1,5 +1,6 @@
 import { and, desc, eq } from 'drizzle-orm';
 import { allocateCrops, MAX_CROP_SHARE, type CropField, type CropOption } from '@yap/shared/formulas/ai';
+import { cropFamilyOf, type RotationCrop } from '@yap/shared/formulas/rotation';
 import { latinToCyrillic, type LanguageCode } from '@yap/shared/i18n';
 import { hectaresForShortage, monthOf, round } from '@yap/shared';
 import { ctx, today, tx } from '../../../core/context';
@@ -13,8 +14,6 @@ import { coverage, type AnalyzerResult } from './types';
 const { cropPlans, crops, fields, seasons, techCards, tenants } = schema;
 
 const MIN_PRICED_CROPS = 2;
-/** Grown for years on one field, so repeating it is the plan, not a rotation fault. */
-const PERENNIAL = new Set(['alfalfa']);
 
 /** A name as a reader of `language` writes it. Uzbek Cyrillic is derived from the Latin. */
 function nameIn(name: I18nName, language: LanguageCode): string {
@@ -42,7 +41,7 @@ async function farmLanguage(): Promise<LanguageCode> {
 export async function cropSuggestion(): Promise<AnalyzerResult> {
   const farmId = ctx().farmId;
   const cropRows = await tx()
-    .select({ id: crops.id, key: crops.key, name: crops.name, isFeed: crops.isFeed, active: crops.active })
+    .select({ id: crops.id, key: crops.key, name: crops.name, isFeed: crops.isFeed, active: crops.active, family: crops.family })
     .from(crops)
     .where(eq(crops.tenantId, ctx().tenantId));
 
@@ -90,8 +89,7 @@ export async function cropSuggestion(): Promise<AnalyzerResult> {
       pricePerT: prices.get(crop.id) ?? null,
       costPerHa: costPerHaOf(crop.id),
       isFeed: crop.isFeed,
-      perennial: PERENNIAL.has(crop.key),
-      grownLastSeason: false,
+      family: cropFamilyOf(crop.key, crop.family),
       feedShortage: shortCrops.has(crop.id),
     }));
 
@@ -111,12 +109,20 @@ export async function cropSuggestion(): Promise<AnalyzerResult> {
   const committedHa: Record<string, number> = {};
   const free: (CropField & { number: string })[] = [];
   for (const field of fieldRows) {
+    // What the field carried, newest first: the rotation rules read more than the last season.
+    const history: RotationCrop[] = [];
+    for (const p of plans) {
+      const crop = p.fieldId === field.id ? cropById.get(p.cropId) : undefined;
+      if (crop) history.push({ key: crop.key, family: cropFamilyOf(crop.key, crop.family) });
+    }
     const latest = plans.find((p) => p.fieldId === field.id);
     const lastKey = latest ? (cropById.get(latest.cropId)?.key ?? null) : null;
-    if (latest && lastKey && (PERENNIAL.has(lastKey) || latest.seasonStart > today())) {
+    // Grown for years on one field, so a perennial stand is the plan, not a field to fill.
+    const perennial = history[0]?.family === 'perennial_grass';
+    if (latest && lastKey && (perennial || latest.seasonStart > today())) {
       committedHa[lastKey] = (committedHa[lastKey] ?? 0) + field.areaHa;
     } else {
-      free.push({ id: field.id, number: field.number, areaHa: field.areaHa, lastCropKey: lastKey });
+      free.push({ id: field.id, number: field.number, areaHa: field.areaHa, lastCropKey: lastKey, history });
     }
   }
 

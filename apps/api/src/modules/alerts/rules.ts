@@ -33,6 +33,10 @@ import { hourlyForecast } from '../farm/weather.service';
 import { feedBalance } from '../feed/balance.service';
 import { lowDisk } from '../files/files.service';
 import { allUnpaidReceipts } from '../inventory/stock.service';
+import { lambsNeedingAttention } from '../livestock/lamb-care.service';
+import { completeForResolvedAlerts } from '../tasks/tasks.service';
+import { herdConditions } from '../livestock/appraisal.service';
+import { BODY_CONDITION_RULES, herdIsThin } from '@yap/shared/formulas/body-condition';
 import { tr, type Params } from '../notifications/i18n';
 import { raiseAlert } from './alerts.service';
 
@@ -179,6 +183,50 @@ export const RULES: Rule[] = [
         where farm_id = ${r.farmId} and status = 'pregnant' and expected_latest < ${r.today}::date`);
       if (num(row.n) === 0) return [];
       return [{ dedupKey: 'lambing_overdue', severity: 'attention', params: { count: num(row.n) }, link: '/livestock/breeding' }];
+    },
+  },
+  {
+    // Newborn lambs with no colostrum on record. The hour threshold is the starting value in
+    // LAMBING_DESK (formulas/lambing.ts), not a book figure; the list itself is the livestock module's.
+    key: 'lambing_no_colostrum',
+    async run() {
+      const { lambs, colostrumHours } = await lambsNeedingAttention();
+      const count = lambs.filter((lamb) => lamb.reasons.includes('no_colostrum')).length;
+      if (count === 0) return [];
+      return [{ dedupKey: 'lambing_no_colostrum', severity: 'attention', params: { count, hours: colostrumHours }, link: '/livestock/breeding?tab=desk' }];
+    },
+  },
+  {
+    // Orphans fed by hand: a standing reminder for as long as any lamb is on the bottle.
+    key: 'lambing_bottle_lambs',
+    async run() {
+      const { lambs } = await lambsNeedingAttention();
+      const count = lambs.filter((lamb) => lamb.reasons.includes('bottle')).length;
+      if (count === 0) return [];
+      return [{ dedupKey: 'lambing_bottle_lambs', severity: 'info', params: { count }, link: '/livestock/breeding?tab=desk' }];
+    },
+  },
+  {
+    // A herd where a large share of the recently scored animals is thin. The thin value, the share,
+    // the fewest animals that count and how old a score may be are the starting values in
+    // BODY_CONDITION_RULES (formulas/body-condition.ts), not book figures and not breed targets.
+    key: 'herd_thin',
+    async run() {
+      const herds = await herdConditions();
+      return herds.filter(herdIsThin).map((herd) => ({
+        dedupKey: `herd_thin:${herd.herdId}`,
+        severity: 'attention' as const,
+        params: {
+          herd: herd.herdName,
+          thin: herd.thin,
+          scored: herd.scored,
+          percent: round((herd.thinShare ?? 0) * 100, 0),
+          score: BODY_CONDITION_RULES.thinAtOrBelow,
+        },
+        link: `/livestock/breeding?tab=condition&herd=${herd.herdId}`,
+        entityType: 'herd',
+        entityId: herd.herdId,
+      }));
     },
   },
   {
@@ -711,6 +759,8 @@ export async function evaluateRules(): Promise<EvaluationResult> {
       .update(alerts)
       .set({ status: 'resolved', resolvedAt: new Date(), nextNotifyAt: null })
       .where(inArray(alerts.id, gone));
+    // The problem went away, so the task that answered it has nothing left to do.
+    await completeForResolvedAlerts(gone);
     result.resolved = gone.length;
   }
   return result;

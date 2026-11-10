@@ -78,10 +78,10 @@ const ASSISTANT_COMMANDS = new Set(['/kutilmoqda', '/pending', '/yangi', '/new']
 const ORDERED_COMMANDS = new Set(['/yangi', '/new']);
 
 /** Stopping something needs no model, an Undo has a clock on it, and a fire must not queue behind a question. */
-const QUICK_PRESS = /^(p:[xu]:|l:|a:)/;
+const QUICK_PRESS = /^(p:[xu]:|g:[xu]:|l:|a:)/;
 
-/** These book money, so they must never run ahead of what an earlier turn does to the card. */
-const BOOKING_PRESS = /^p:[cd]:/;
+/** These write to the books, so they must never run ahead of what an earlier turn does to the card. */
+const BOOKING_PRESS = /^(p:[cd]|g:c):/;
 
 /** A farm changes in its place among the messages, or what was written before it would land on the new farm. */
 const FARM_PRESS = /^f:/;

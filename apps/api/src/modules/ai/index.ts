@@ -11,6 +11,7 @@ import { extractDocument } from './documents';
 import { gatherFigures, saveSummary, writeSummary, type SummaryKind } from './executive';
 import * as insights from './insights.service';
 import { getProvider, notConfigured } from './provider';
+import * as farmRecords from './records/farm-service';
 import * as records from './records/service';
 import { asAi } from './role';
 
@@ -166,6 +167,18 @@ export default async function aiModule(app: FastifyInstance) {
   });
   r.post('/proposals/:id/reject', { access: 'ai.view', params: idParam, handler: (req) => records.rejectProposal(req.params.id) });
   r.post('/proposals/:id/undo', { access: 'finance.create', params: idParam, handler: (req) => records.undoProposal(req.params.id) });
+  // Farm records the assistant prepared. The service asks for what the owning module's own screen asks for.
+  r.get('/farm-proposals', { access: 'ai.view', summary: 'Farm-record drafts waiting for this person', handler: () => farmRecords.listFarmPending() });
+  r.get('/farm-proposals/:id', { access: 'ai.view', params: idParam, handler: (req) => farmRecords.getFarmProposal(req.params.id) });
+  r.post('/farm-proposals/:id/confirm', {
+    access: 'ai.view',
+    summary: 'Record it, through the owning module\'s own service. The stamp says which version of the card was read.',
+    params: idParam,
+    body: z.object({ stamp: z.string().min(1).max(64) }),
+    handler: (req) => farmRecords.confirmFarmProposal(req.params.id, req.body),
+  });
+  r.post('/farm-proposals/:id/reject', { access: 'ai.view', params: idParam, handler: (req) => farmRecords.rejectFarmProposal(req.params.id) });
+  r.post('/farm-proposals/:id/undo', { access: 'ai.view', params: idParam, handler: (req) => farmRecords.undoFarmProposal(req.params.id) });
   r.get('/aliases', { access: 'ai.view', summary: 'Phrases the assistant has learned on this farm', handler: () => records.listAliases() });
   r.delete('/aliases/:id', { access: 'ai.create', params: idParam, handler: (req) => records.deleteAlias(req.params.id) });
 

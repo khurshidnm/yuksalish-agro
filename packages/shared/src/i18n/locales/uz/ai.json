@@ -444,7 +444,8 @@
     "PROPOSAL_NEEDS_ANSWER": "Bu kartaga tuzatish javobingizni kutmoqda.",
     "PROPOSAL_STALE": "Kartadagi narsa o'zgardi, masalan hisob yopilgan. Kartani tekshiring.",
     "NOT_ACKNOWLEDGED": "Bu yozuv uchun alohida roziligingiz kerak.",
-    "UNDO_IMPOSSIBLE": "Bu yozuvni bu yerda bekor qilib bo'lmaydi."
+    "UNDO_IMPOSSIBLE": "Bu yozuvni bu yerda bekor qilib bo'lmaydi.",
+    "FARM_RECORD_EXISTS": "Bu daftarda allaqachon bor. Qayta yozilmadi."
   },
   "sourceValues": {
     "actual": "haqiqiy sarf",
@@ -577,7 +578,9 @@
       "OLD_DATE": "Sana, {{date}}, 30 kundan ko'proq oldin.",
       "STALE_RATE": "Saqlangan valyuta kursi, {{rate}}, {{date}} sanasiga tegishli: bir haftadan eski. Tekshirib ko'ring.",
       "PHRASE_USED": "\"{{phrase}}\" avval o'rgatganingizdek {{name}} deb tushunildi.",
-      "CURRENCY_CONVERTED": "{{account}} so'mda yuritiladi, shuning uchun bu so'mdagi qiymati bilan yoziladi. Tekshirib ko'ring."
+      "CURRENCY_CONVERTED": "{{account}} so'mda yuritiladi, shuning uchun bu so'mdagi qiymati bilan yoziladi. Tekshirib ko'ring.",
+      "DRUG_NOT_STOCKED": "Bu dori ombor ro'yxatida yo'q: ombordan hech narsa chiqmaydi.",
+      "RATION_REST_NOT_GIVEN": "Ratsiondagi boshqa ozuqalar berilmagan deb yoziladi: {{items}}."
     },
     "pending": {
       "tab": "Kutilmoqda",
@@ -679,7 +682,29 @@
         "CURRENCY_NOT_SUPPORTED": "Bu yerda faqat bitta valyutada yoziladi. Valyuta ayirboshlash Moliya bo'limida kiritiladi.",
         "CURRENCY_UNSUPPORTED": "Bu valyuta bu yerda yuritilmaydi. Summani xo'jalik valyutasida, {{base}}da ayting.",
         "CURRENCY_UNCLEAR": "Qaysi valyutada edi?",
-        "FX_RATE_REQUIRED": "Valyuta kursi qancha edi?"
+        "FX_RATE_REQUIRED": "Valyuta kursi qancha edi?",
+        "ANIMAL_REQUIRED": "Qaysi hayvon edi? Birka raqamini ayting.",
+        "ANIMAL_NOT_STATED": "So'zlaringizda birka raqamini topmadim. Qaysi hayvon edi? Birka raqamini ayting.",
+        "ANIMAL_COUNT_OR_TAG": "Bu son hayvonning birka raqamimi yoki bosh sonimi? Birka bo'lsa, shunday ayting: \"46 raqamli\".",
+        "ANIMAL_UNKNOWN": "Fermada bunday birkali hayvon yo'q. Birka raqamini tekshiring.",
+        "ANIMAL_AMBIGUOUS": "Bu raqamga bir nechta hayvon to'g'ri keladi. Qaysi biri? Birkani to'liq ayting.",
+        "ANIMAL_LEFT": "Daftarda bu hayvon endi fermada emas. Birka raqamini tekshiring.",
+        "ALREADY_RECORDED": "Bu daftarda allaqachon bor. Qayta yozilmadi.",
+        "WEIGHT_REQUIRED": "Necha kilo chiqdi? Birligi bilan ayting, masalan \"46 kg\".",
+        "WEIGHT_NOT_PLAUSIBLE": "Bu hayvon uchun bunday vazn bo'lishi mumkin emas. Tekshirib ko'ring.",
+        "WEIGHT_BEFORE_BIRTH": "Bu hayvon o'sha kundan keyin tug'ilgan. Qaysi kuni tortildi?",
+        "DEATH_NOT_STATED": "Bu hayvonga nima bo'ldi? O'lim faqat siz o'ldi deganingizda yoziladi.",
+        "CARE_TARGET_REQUIRED": "Qaysi hayvon yoki qaysi poda edi? Birka raqamini yoki podani ayting.",
+        "DRUG_AMBIGUOUS": "Omborda bu nomga bir nechta mahsulot to'g'ri keladi. Qaysi biri ishlatildi?",
+        "DRUG_REQUIRED": "Qaysi dori yoki vaksina ishlatildi?",
+        "DOSE_REQUIRED": "Qancha ishlatildi? Birligi bilan ayting: u ombordan chiqariladi.",
+        "DOSE_UNIT_MISMATCH": "Omborda bu mahsulot boshqa birlikda yuritiladi. Ombor birligida qancha ishlatildi?",
+        "HERD_REQUIRED": "Qaysi poda edi?",
+        "FEED_AMBIGUOUS": "Omborda bu nomga bir nechta mahsulot to'g'ri keladi. Qaysi ozuqa berildi?",
+        "FEED_REQUIRED": "Qaysi ozuqa berildi? U omborda yuritiladigan mahsulot bo'lishi kerak.",
+        "FEED_QTY_REQUIRED": "Qancha berildi? Birligi bilan ayting.",
+        "FEED_UNIT_MISMATCH": "Omborda bu ozuqa boshqa birlikda yuritiladi. Ombor birligida qancha berildi?",
+        "WAREHOUSE_REQUIRED": "Qaysi ombordan olindi?"
       }
     },
     "tools": {
@@ -751,7 +776,9 @@
       "STALE_RATE": "Valyuta kursi eski. Tekshirib ko'ring.",
       "UNUSUAL_PRICE": "Bu narx odatdagidan ancha farq qiladi.",
       "PHRASE_USED": "Bu tanlov avval o'rgatilgan so'z bo'yicha qilindi.",
-      "CURRENCY_CONVERTED": "Bu hisob so'mda yuritiladi, shuning uchun bu so'mdagi qiymati bilan yoziladi. Tekshirib ko'ring."
+      "CURRENCY_CONVERTED": "Bu hisob so'mda yuritiladi, shuning uchun bu so'mdagi qiymati bilan yoziladi. Tekshirib ko'ring.",
+      "DRUG_NOT_STOCKED": "Bu dori ombor ro'yxatida yo'q: ombordan hech narsa chiqmaydi.",
+      "RATION_REST_NOT_GIVEN": "Ratsiondagi boshqa ozuqalar berilmagan deb yoziladi: {{items}}."
     },
     "direction": {
       "payable": "Qarzni to'ladik",
@@ -791,5 +818,44 @@
   "insightStrip": {
     "title": "AI tahlili",
     "open": "Barcha tahlillarni ochish"
+  },
+  "farmRecords": {
+    "kind": {
+      "weight": "Tortish",
+      "death": "Hayvon o'limi",
+      "treatment": "Veterinariya muolajasi",
+      "herd_log": "Podani oziqlantirish"
+    },
+    "fields": {
+      "animal": "Hayvon",
+      "age": "Yoshi",
+      "herd": "Poda",
+      "weight": "Vazni",
+      "date": "Sana",
+      "cause": "Sizning so'zingiz",
+      "care": "Muolaja",
+      "drug": "Dori",
+      "dose": "Doza",
+      "stockOut": "Ombordan chiqadi",
+      "headCount": "Bosh soni",
+      "said": "Siz aytdingiz"
+    },
+    "ageMonths": "{{months}} oylik",
+    "ageUnknown": "yoshi noma'lum",
+    "noHerd": "podasiz",
+    "herdDefaulted": "yagona poda, siz aytmadingiz",
+    "warehouseByRule": "ombor yozilayotganda tanlanadi",
+    "noPermission": "Buni yozishga ruxsatingiz yo'q.",
+    "deathNote": "Tasdiqlasangiz, bu hayvon daftarda podadan chiqariladi.",
+    "herdLogNote": "Tasdiqlasangiz, bu podaning shu kungi yozuvi bo'ladi. Bir podaga kuniga bitta yozuv yoziladi.",
+    "expires": "{{time}} gacha amal qiladi",
+    "confirmedBody": "U daftarga sizning nomingizdan yozildi.",
+    "undoneBody": "Yozuv qaytarib olindi, daftar avvalgi holida.",
+    "noUndo": "Uni shu yerda qaytarib bo'lmaydi. O'z sahifasida o'zgartiring.",
+    "staleBody": "Bu kartadagi hayvon fermadan chiqqan yoki daftarda o'zgargan. Kartani bekor qilib, qaytadan ayting.",
+    "existsTitle": "Daftarda bor",
+    "existsBody": "Bu yozuv allaqachon bor. Qayta yozilmadi. Kartani bekor qiling.",
+    "needsAnswer": "Chatdagi savolga javob bering. Ungacha bu kartani tasdiqlab bo'lmaydi.",
+    "pendingTitle": "Ferma yozuvlari"
   }
 }

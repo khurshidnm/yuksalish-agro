@@ -171,6 +171,43 @@
       "barcode": "Shtrix-kod",
       "barcodeHint": "Raqamini qo'lda kiriting",
       "notes": "Izoh"
+    },
+    "fertiliser": {
+      "title": "O'g'it tarkibi",
+      "hint": "Ta'sir etuvchi modda foizi, qopda yozilganidek. Bilmasangiz, bo'sh qoldiring: shunda dala kartasidagi o'g'it me'yori bu mahsulotni hisobga olmaydi.",
+      "content": "{{formula}}, %"
+    },
+    "nutrients": {
+      "title": "Ozuqaning to'yimliligi",
+      "hint": "Barcha ko'rsatkichlar 1 kg quruq moddaga nisbatan. Bilmagan qiymatingizni bo'sh qoldiring: ratsion balansi nima yetishmayotganini aytadi, taxmin qilmaydi.",
+      "typical": "Namunaviy qiymatlarni qo'yish",
+      "typicalPlaceholder": "Ozuqani tanlang",
+      "typicalHint": "Namunaviy qiymatlar, o'lchangan emas: Feedipedia (INRAE, CIRAD, AFZ, FAO) jadvallaridagi o'rtacha ko'rsatkichlar. Sizning ozuqangiz farq qilishi mumkin.",
+      "typicalApplied": "\"{{feed}}\" uchun namunaviy qiymatlar qo'yildi. Bular jadvaldagi o'rtacha ko'rsatkichlar, sizning ozuqangiz tahlili emas: laboratoriya natijasi bo'lganda tuzating.",
+      "energy": "Almashinuv energiyasi",
+      "energyUnit": "MJ/kg QM",
+      "protein": "Xom protein",
+      "proteinUnit": "% QM",
+      "calcium": "Kalsiy",
+      "phosphorus": "Fosfor",
+      "mineralUnit": "g/kg QM",
+      "feedClass": "Ozuqa turi",
+      "feedClassHint": "Eng arzon aralashmada dag'al ozuqa ulushi saqlanadi",
+      "classUnknown": "Ko'rsatilmagan",
+      "class": {
+        "roughage": "Dag'al ozuqa: pichan, somon, silos",
+        "concentrate": "Konsentrat: don, kepak, kunjara"
+      },
+      "feeds": {
+        "lucerne_hay": "Beda pichani",
+        "cereal_straw": "Boshoqli don somoni (bug'doy)",
+        "barley_grain": "Arpa doni",
+        "wheat_grain": "Bug'doy doni",
+        "wheat_bran": "Bug'doy kepagi",
+        "cottonseed_cake": "Paxta kunjarasi",
+        "maize_silage": "Makkajo'xori silosi",
+        "maize_grain": "Makkajo'xori doni"
+      }
     }
   },
   "warehouses": {

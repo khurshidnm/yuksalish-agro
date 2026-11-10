@@ -1,9 +1,9 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
-import { COSTING_METHODS, CURRENCIES, OVERHEAD_BASES } from '@yap/shared';
+import { COSTING_METHODS, CURRENCIES, OVERHEAD_BASES, ROLE_KEYS } from '@yap/shared';
 import { schema } from '../../db/client';
 import { ctx, tx } from '../../core/context';
-import { conflict, notFound } from '../../core/errors';
+import { badRequest, conflict, notFound, uniqueViolation } from '../../core/errors';
 import { recordEvent } from '../../core/journal';
 import { mergeSettings } from '../../core/settings';
 
@@ -67,6 +67,25 @@ export const policyInput = z
       .object({
         quarantineDays: z.number().int().min(0).max(365),
         defaultGestationDays: z.number().int().min(1).max(400),
+        gradingClasses: z
+          .array(z.string().trim().min(1).max(40))
+          .min(1)
+          .max(12)
+          .refine((list) => new Set(list).size === list.length, { message: 'A class is listed twice' }),
+        saleTargetWeightKg: z.number().positive().max(2000).nullable(),
+      })
+      .partial()
+      .strict(),
+    catalogue: z
+      .object({
+        enabled: z.boolean(),
+        slug: z
+          .string()
+          .trim()
+          .toLowerCase()
+          .regex(/^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$/, 'Use 3 to 40 Latin letters, digits and hyphens')
+          .nullable(),
+        contact: z.string().trim().max(200).nullable(),
       })
       .partial()
       .strict(),
@@ -88,6 +107,17 @@ export const policyInput = z
         importDays: z.number().int().min(7).max(3650),
         // The nightly summary looks back a week for days it missed.
         trackerReadingsDays: z.number().int().min(7).max(365),
+      })
+      .partial()
+      .strict(),
+    tracking: z.object({ nightWatch: z.boolean() }).partial().strict(),
+    alerts: z
+      .object({
+        // By alert rule key. A rule that is sent replaces that rule's choice; the others keep theirs.
+        autoTask: z.record(
+          z.string().regex(/^[a-z0-9_.]{1,60}$/),
+          z.object({ enabled: z.boolean(), assigneeRole: z.enum(ROLE_KEYS).nullish() }).strict(),
+        ),
       })
       .partial()
       .strict(),
@@ -153,6 +183,12 @@ function mergePolicy(stored: Record<string, unknown>, patch: Record<string, Reco
   for (const [section, values] of Object.entries(patch)) {
     merged[section] = { ...(stored[section] as Record<string, unknown> | undefined), ...values };
   }
+  // The per-rule map goes one level deeper: switching one rule on must not forget the others.
+  const autoTask = patch.alerts?.autoTask;
+  if (autoTask) {
+    const before = (stored.alerts as { autoTask?: Record<string, unknown> } | undefined)?.autoTask;
+    merged.alerts = { ...(merged.alerts as Record<string, unknown>), autoTask: { ...before, ...(autoTask as Record<string, unknown>) } };
+  }
   return merged;
 }
 
@@ -172,14 +208,30 @@ export async function updatePolicy(input: z.infer<typeof policyInput>) {
     }
   }
 
-  await tx()
-    .update(tenants)
-    .set({
-      settings: mergePolicy(tenant.settings, sections),
-      ...(currency ? { currency } : {}),
-      ...(timezone ? { timezone } : {}),
-    })
-    .where(eq(tenants.id, c.tenantId));
+  const settings = mergePolicy(tenant.settings, sections);
+  const { catalogue } = mergeSettings(settings);
+  if (catalogue.enabled && !catalogue.slug) {
+    throw badRequest('CATALOGUE_SLUG_REQUIRED', 'Choose an address for the public page before switching it on');
+  }
+
+  try {
+    // In a savepoint: another workspace may hold this page address, and only the unique index can see that.
+    await tx().transaction(() =>
+      tx()
+        .update(tenants)
+        .set({
+          settings,
+          ...(currency ? { currency } : {}),
+          ...(timezone ? { timezone } : {}),
+        })
+        .where(eq(tenants.id, c.tenantId)),
+    );
+  } catch (error) {
+    if (uniqueViolation(error) === 'tenants_catalogue_slug') {
+      throw conflict('CATALOGUE_SLUG_TAKEN', 'This page address is already taken, choose another');
+    }
+    throw error;
+  }
 
   await recordEvent({
     type: 'settings.policy_changed',

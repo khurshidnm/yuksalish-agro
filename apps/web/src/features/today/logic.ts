@@ -1,6 +1,6 @@
 /** The rules behind the field screens, separate from React so they can be tested directly. */
 import { deviationPercent, round } from '@yap/shared';
-import type { OutboxRecord, SentRecord } from '@/lib/outbox';
+import type { NewRecord, OutboxRecord, SentRecord } from '@/lib/outbox';
 import type { TodayData, TodayHerd } from './data';
 
 export interface DirectoryAnimal {
@@ -172,4 +172,80 @@ export function signOutWarning(unsent: number, noSignal: boolean): { title: stri
 /** Animals a queued record has already taken off the farm. */
 export function animalsLeaving(records: OutboxRecord[]): Set<string> {
   return new Set(records.filter((r) => r.kind === 'death').map((r) => r.body.animalId as string));
+}
+
+/** Ewes whose lambing is on this phone, waiting or just sent: the watch list shows them as done. */
+export function ewesLambed(records: OutboxRecord[], sent: SentRecord[]): Set<string> {
+  const ids = new Set<string>();
+  for (const record of [...records, ...sent]) {
+    if (record.kind === 'lambing' && typeof record.meta.eweId === 'string') ids.add(record.meta.eweId);
+  }
+  return ids;
+}
+
+/** Pens a queued or just-sent record on this phone has filled: the stored list of free pens is older. */
+export function pensTaken(records: OutboxRecord[], sent: SentRecord[]): Set<string> {
+  const ids = new Set<string>();
+  for (const record of [...records, ...sent]) {
+    if (record.kind === 'pen_stay' && typeof record.meta.facilityId === 'string') ids.add(record.meta.facilityId);
+  }
+  return ids;
+}
+
+export type Mothering = 'with_dam' | 'fostered' | 'bottle';
+
+export interface LambCareDraft {
+  /** The id the lambing form gave the lamb, which is its id on the server too. */
+  lambId: string;
+  colostrum: boolean;
+  navelTreated: boolean;
+  mothering: Mothering;
+  fosterEweId: string | null;
+}
+
+export interface AfterLambing {
+  ewe: { id: string; tag: string };
+  lambingId: string;
+  /** When the form was saved: the hour colostrum was given, if it was. */
+  at: string;
+  date: string;
+  lambs: LambCareDraft[];
+  penId: string | null;
+  titles: { care: (n: number) => string; pen: string };
+}
+
+/**
+ * What follows a lambing in the queue: a care record per lamb, then the pen. They carry the ewe's
+ * tag, so they wait behind her lambing if that one gets stuck. Only what was done is sent: a late
+ * delivery must not wipe what someone has recorded since.
+ */
+export function afterLambingRecords(input: AfterLambing): NewRecord[] {
+  const meta = { tag: input.ewe.tag, eweId: input.ewe.id };
+  const records: NewRecord[] = [];
+  input.lambs.forEach((lamb, index) => {
+    const fostered = lamb.mothering === 'fostered' && lamb.fosterEweId !== null;
+    const body: Record<string, unknown> = {
+      ...(lamb.colostrum ? { colostrumAt: input.at } : {}),
+      ...(lamb.navelTreated ? { navelTreated: true } : {}),
+      ...(lamb.mothering === 'bottle' ? { mothering: 'bottle' } : {}),
+      ...(fostered ? { mothering: 'fostered', fosterEweId: lamb.fosterEweId } : {}),
+    };
+    if (Object.keys(body).length === 0) return;
+    records.push({ kind: 'lamb_care', path: `/livestock/lambs/${lamb.lambId}/care`, body, title: input.titles.care(index + 1), meta: { ...meta, lambId: lamb.lambId } });
+  });
+  if (input.penId) {
+    records.push({
+      kind: 'pen_stay',
+      path: '/livestock/pens/stays',
+      body: { facilityId: input.penId, eweId: input.ewe.id, lambingId: input.lambingId, sinceDate: input.date },
+      title: input.titles.pen,
+      meta: { ...meta, facilityId: input.penId },
+    });
+  }
+  return records;
+}
+
+/** A care form is ready when every fostered lamb has its foster ewe. */
+export function careReady(lambs: LambCareDraft[]): boolean {
+  return lambs.every((lamb) => lamb.mothering !== 'fostered' || lamb.fosterEweId !== null);
 }

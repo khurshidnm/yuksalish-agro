@@ -7,6 +7,8 @@
  */
 import { addDays } from '../dates';
 import { round } from './index';
+import { lambsFromPregnancies } from './lambing';
+import { rotationPenalised, type CropFamily, type RotationCrop } from './rotation';
 import { APOSTROPHES, fold, wordSet } from './units';
 
 export function mean(values: readonly number[]): number | null {
@@ -177,6 +179,9 @@ export function weekStartOf(isoDate: string): string {
 export interface LambingWeek {
   weekStart: string;
   ewes: number;
+  /** Of those ewes, the ones a pregnancy scan has counted, and the foetuses it found. */
+  scannedEwes?: number;
+  scannedFetuses?: number;
 }
 
 export interface LambingWorkloadOptions {
@@ -215,7 +220,8 @@ export function lambingWorkload(lambingWeeks: readonly LambingWeek[], o: Lambing
     const laborHours = round(week.ewes * o.laborHoursPerLambing, 1);
     return {
       ...week,
-      lambs: round(week.ewes * o.lambsPerEwe, 1),
+      // A scanned ewe counts what the scan found; the rest take the rate (formulas/lambing.ts).
+      lambs: round(lambsFromPregnancies(week, o.lambsPerEwe) ?? 0, 1),
       lactatingEwes,
       extraFeedKg: o.extraKgPerEweDay === null ? null : round(lactatingEwes * o.extraKgPerEweDay * 7, 1),
       laborHours,
@@ -445,8 +451,8 @@ export interface CropOption {
   pricePerT: number | null;
   costPerHa: number | null;
   isFeed: boolean;
-  perennial?: boolean;
-  grownLastSeason: boolean;
+  /** The crop's place in the rotation (formulas/rotation.ts). Without it only the same-crop rule applies. */
+  family?: CropFamily | null;
   /** Own feed is short, so this crop saves a purchase (spec 15.1.6). */
   feedShortage: boolean;
 }
@@ -464,15 +470,18 @@ const FEED_BONUS = 0.15;
 /** Yield, price and cost are all known, so the margin is. */
 const priced = (o: CropOption) => o.yieldTHa !== null && o.pricePerT !== null && o.costPerHa !== null;
 
-/** Rank next-season crops by expected margin, adjusted for rotation and feed need. */
-export function rankCropOptions(options: readonly CropOption[]): RankedCrop[] {
+/**
+ * Rank next-season crops by expected margin, adjusted for rotation and feed need. `history` is what the
+ * field carried, newest first; the penalty falls wherever the rotation rules warn (formulas/rotation.ts).
+ */
+export function rankCropOptions(options: readonly CropOption[], history: readonly RotationCrop[] = []): RankedCrop[] {
   return options
     .filter(priced)
     .map((o) => {
       const margin = o.yieldTHa! * o.pricePerT! - o.costPerHa!;
       const reasons: RankedCrop['reasons'] = [];
       let score = margin;
-      if (o.grownLastSeason && !o.perennial) {
+      if (rotationPenalised({ key: o.key, family: o.family ?? null }, history)) {
         score -= Math.abs(margin) * ROTATION_PENALTY;
         reasons.push('rotation_penalty');
       }
@@ -493,6 +502,8 @@ export interface CropField {
   areaHa: number;
   /** The crop the field carries now, or carried last. Repeating it costs the rotation penalty. */
   lastCropKey: string | null;
+  /** Earlier crops, newest first, for the rules that look further back. Without it, the last crop alone. */
+  history?: readonly RotationCrop[];
 }
 
 export interface CropAllocationRules {
@@ -548,9 +559,10 @@ export function allocateCrops(
   const capHa = keys.length === 0 ? 0 : Math.max(rules.maxShare ?? MAX_CROP_SHARE, 1 / keys.length) * totalHa;
   const fits = (key: string, field: CropField) => held(key) === 0 || held(key) + field.areaHa <= capHa + EPS;
 
-  const ranking = new Map(
-    fields.map((f) => [f.id, rankCropOptions(options.map((o) => ({ ...o, grownLastSeason: o.key === f.lastCropKey })))]),
-  );
+  const familyOf = (key: string) => options.find((o) => o.key === key)?.family ?? null;
+  const historyOf = (f: CropField): readonly RotationCrop[] =>
+    f.history ?? (f.lastCropKey ? [{ key: f.lastCropKey, family: familyOf(f.lastCropKey) }] : []);
+  const ranking = new Map(fields.map((f) => [f.id, rankCropOptions(options, historyOf(f))]));
   const ranked = (field: CropField) => ranking.get(field.id)!;
   const scoreOf = (field: CropField, key: string) => ranked(field).find((r) => r.key === key)!.score;
 
@@ -563,7 +575,11 @@ export function allocateCrops(
     open.splice(open.indexOf(field), 1);
   };
 
-  // The herd's winter feed first, the largest gap first, on the fields where it costs the least.
+  /** The crop would follow itself on this field. Breaks a tie only: the score already carries the rotation rules. */
+  const repeats = (field: CropField, key: string) => (historyOf(field)[0]?.key ?? null) === key;
+
+  // The herd's winter feed first, the largest gap first, on the fields where it costs the least. Between
+  // fields that cost the same, the smaller one, then the one where the crop does not follow itself.
   const needs = Object.entries(rules.feedNeedHa ?? {})
     .filter(([key, ha]) => keys.includes(key) && ha > held(key) + EPS)
     .sort(([a, x], [b, y]) => y - held(b) - (x - held(a)) || a.localeCompare(b));
@@ -572,20 +588,26 @@ export function allocateCrops(
       const candidates = open.filter((f) => fits(key, f));
       if (candidates.length === 0) break;
       const loss = (f: CropField) => ranked(f)[0].score - scoreOf(f, key);
-      const field = candidates.reduce((a, b) =>
-        loss(b) < loss(a) - EPS || (Math.abs(loss(b) - loss(a)) <= EPS && b.areaHa < a.areaHa) ? b : a,
-      );
+      const field = candidates.reduce((a, b) => {
+        const fresher = b.areaHa === a.areaHa && repeats(a, key) && !repeats(b, key);
+        return loss(b) < loss(a) - EPS || (Math.abs(loss(b) - loss(a)) <= EPS && (b.areaHa < a.areaHa || fresher)) ? b : a;
+      });
       take(field, key, 'feed_need');
     }
   }
 
-  // Then the best score per hectare anywhere. On a tie the larger field goes first, while there is room.
+  // Then the best score per hectare anywhere. On a tie the larger field goes first, while there is room;
+  // between equal fields, the one where the crop does not follow itself. Where every choice breaks a
+  // rotation rule the scores tie, and the tie must not hand each field the crop it has just carried.
   while (open.length > 0) {
     let best: { field: CropField; key: string; score: number } | null = null;
     for (const field of open) {
       const option = ranked(field).find((r) => fits(r.key, field));
       if (!option) continue;
-      if (!best || option.score > best.score + EPS || (Math.abs(option.score - best.score) <= EPS && field.areaHa > best.field.areaHa)) {
+      const tie = best !== null && Math.abs(option.score - best.score) <= EPS;
+      const larger = best !== null && field.areaHa > best.field.areaHa;
+      const freshOnEqual = best !== null && field.areaHa === best.field.areaHa && repeats(best.field, best.key) && !repeats(field, option.key);
+      if (!best || option.score > best.score + EPS || (tie && (larger || freshOnEqual))) {
         best = { field, key: option.key, score: option.score };
       }
     }

@@ -25,6 +25,8 @@ const operationDetails = {
   tillage: z.object({ method: z.string().trim().max(60).optional() }),
   sowing: z.object({ variety: z.string().trim().max(120).optional(), seedRateKgHa: z.number().min(0).optional() }),
   irrigation: z.object({ waterSource: z.string().trim().max(120).optional() }),
+  /** Washing salts out of the soil: water in m³ like an irrigation, outside the growing season. */
+  leaching: z.object({ waterSource: z.string().trim().max(120).optional() }),
   fertilizing: z.object({ method: z.string().trim().max(60).optional() }),
   protection: z.object({
     target: z.string().trim().max(120).optional(),
@@ -125,7 +127,7 @@ async function validateWork(input: {
   if (input.areaDoneHa && field.areaHa > 0 && input.areaDoneHa > field.areaHa * AREA_TOLERANCE) {
     throw badRequest('AREA_EXCEEDS_FIELD', `This field is only ${field.areaHa} ha`, { fieldAreaHa: field.areaHa });
   }
-  if (input.type === 'irrigation' && !input.waterM3) {
+  if ((input.type === 'irrigation' || input.type === 'leaching') && !input.waterM3) {
     throw badRequest('WATER_REQUIRED', 'Enter the amount of water');
   }
   if ((input.fuelL ?? 0) > 0 && !input.assetId) {

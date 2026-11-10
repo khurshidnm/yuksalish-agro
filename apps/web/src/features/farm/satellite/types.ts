@@ -26,6 +26,8 @@ export interface VegetationReading {
   ndviP10: number | null;
   ndviP50: number | null;
   ndviP90: number | null;
+  /** Moisture index of the field; null for images read before it was stored. */
+  ndmiMean: number | null;
   grid: VegetationGrid | null;
   weakZones: WeakZone[];
 }
@@ -35,6 +37,7 @@ export interface VegetationPoint {
   mean: number;
   p10: number | null;
   p90: number | null;
+  ndmi: number | null;
 }
 
 export type SatelliteEventType = 'green_up' | 'harvest' | 'bare';
@@ -52,6 +55,25 @@ export interface PastureEstimate {
   samples: { id: string; date: string; biomassKgHa: number; ndvi: number | null; notes: string | null }[];
 }
 
+export interface YieldForecast {
+  estimateTHa: number;
+  lowTHa: number;
+  highTHa: number;
+  seasons: number;
+  r2: number;
+  extrapolated: boolean;
+}
+
+export interface YieldOutlook {
+  cropKey: string;
+  /** Finished field-seasons of this crop with a harvest and a satellite peak. */
+  seasons: number;
+  seasonsNeeded: number;
+  peakNdvi: number | null;
+  forecast: YieldForecast | null;
+  reason: 'too_few_seasons' | 'no_relation' | 'no_peak' | null;
+}
+
 export interface FieldHealth {
   fieldId: string;
   landUse: string;
@@ -64,6 +86,10 @@ export interface FieldHealth {
   checks: { kind: WorkCheckKind; date: string }[];
   lastSceneDate: string | null;
   pasture: PastureEstimate | null;
+  /** Null without a growing crop. */
+  yieldOutlook: YieldOutlook | null;
+  /** The reading nearest to a year before the latest one, and the change since. */
+  lastSeason: { date: string; mean: number; change: number } | null;
 }
 
 export interface LatestReading extends VegetationReading {

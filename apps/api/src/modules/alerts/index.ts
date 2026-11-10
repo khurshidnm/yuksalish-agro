@@ -6,7 +6,7 @@ import { routes } from '../../core/http';
 import { idParam } from '../../core/query';
 import * as service from './alerts.service';
 import { sendTestAlert } from './reach';
-import { evaluateRules } from './rules';
+import { RULES, evaluateRules } from './rules';
 
 /** Each test is a message to every member of staff, so a farm has one allowance. Runs in the handler, so a refused call spends none of it. */
 function testLimiter(app: FastifyInstance) {
@@ -33,6 +33,31 @@ export default async function alertsModule(app: FastifyInstance) {
     access: 'authenticated',
     summary: 'Unresolved alerts by severity',
     handler: () => service.counts(),
+  });
+
+  r.get('/rules', {
+    access: 'settings.view',
+    summary: 'Alert rules, and whether each one creates its task by itself',
+    handler: () => service.autoTaskRules(RULES.map((rule) => rule.key)),
+  });
+
+  r.get('/:id', {
+    access: 'authenticated',
+    summary: 'One alert, with the task that answers it',
+    params: idParam,
+    handler: (req) => service.get(req.params.id),
+  });
+
+  r.post('/:id/task', {
+    access: 'tasks.create',
+    summary: 'Turn an alert into a task. While that task is open, asking again returns it.',
+    params: idParam,
+    body: service.alertTaskInput,
+    handler: async (req, reply) => {
+      const { created, task } = await service.createTask(req.params.id, req.body);
+      reply.code(created ? 201 : 200);
+      return task;
+    },
   });
 
   r.post('/:id/acknowledge', {

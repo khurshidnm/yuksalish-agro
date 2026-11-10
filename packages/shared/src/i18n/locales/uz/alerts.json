@@ -20,6 +20,18 @@
       "title": "{{count}} ta sovliqning qo'zilash muddati o'tdi",
       "body": "Holatini tekshiring va qaydni kiriting."
     },
+    "lambing_no_colostrum": {
+      "title": "Og'iz suti yozilmagan yangi tug'ilgan qo'zilar: {{count}} bosh",
+      "body": "Tug'ilganiga {{hours}} soatdan oshdi. Ularni tekshirib, parvarish yozuvini kiriting."
+    },
+    "lambing_bottle_lambs": {
+      "title": "Shishadan boqilayotgan qo'zilar: {{count}} bosh",
+      "body": "Ular onadan ajratilguncha yoki boshqa sovliq qabul qilguncha qo'lda boqiladi."
+    },
+    "herd_thin": {
+      "title": "{{herd}}: baholangan {{scored}} boshdan {{thin}} tasi oriq",
+      "body": "Yaqinda baholangan hayvonlarning {{percent}}% ida semizlik bahosi {{score}} yoki undan past. Ozuqa, tishlar va parazitlarni tekshiring."
+    },
     "vaccination_overdue": {
       "title": "{{plan}}: {{count}} boshda bajarilmagan",
       "body": "Muddati o'tgan yoki hali bajarilmagan."
@@ -178,6 +190,18 @@
       "title": "Batareyasi kam trekerlar: {{count}}",
       "body": "{{percent}}% dan past. Almashtirishni rejalashtiring."
     },
+    "geofence_exit": {
+      "title": "{{herd}}: {{count}} bosh ruxsat etilgan hududdan tashqarida",
+      "body": "Kuzatilayotgan {{tracked}} boshdan {{count}} tasi ketma-ket {{fixes}} ta o'lchovda {{zone}} chegarasidan chiqqan. Qayerdaligini xaritadan ko'ring."
+    },
+    "geofence_exit_forbidden": {
+      "title": "{{herd}}: {{count}} bosh yopiq hududda",
+      "body": "Kuzatilayotgan {{tracked}} boshdan {{count}} tasi ketma-ket {{fixes}} ta o'lchovda {{zone}} ichida. Qayerdaligini xaritadan ko'ring."
+    },
+    "night_movement": {
+      "title": "{{herd}} tunda harakatlanmoqda",
+      "body": "Poda markazi {{minutes}} daqiqada {{distance}} m siljidi ({{tracked}} bosh bo'yicha). Qo'ra va darvozani tekshiring."
+    },
     "crop_weak_zone": {
       "title": "{{field}}-dalada zaif joylar: {{areaHa}} ga",
       "body": "{{date}} sun'iy yo'ldosh suratida zaif joylar: {{count}} ta. Borib zararkunanda, suv yoki o'g'it yetishmasligini tekshiring."
@@ -331,6 +355,7 @@
     "sentLate": "Kechikib yetkazildi. Asl vaqti: {{time}}."
   },
   "errors": {
+    "ALERT_TASK_EXISTS": "Bu ogohlantirishning boshqa ochiq vazifasi bor",
     "ALERT_NOT_OPEN": "Bu ogohlantirish allaqachon ko'rib chiqilgan",
     "ALERT_ALREADY_RESOLVED": "Bu ogohlantirish allaqachon yopilgan",
     "ALERT_NOT_YOURS": "Bu shoshilinch ogohlantirishni faqat mas'ullar, egasi yoki direktor to'xtata oladi",
@@ -340,27 +365,91 @@
     "ACTION_NOT_AVAILABLE": "Bu allaqachon hal qilingan yoki uni hal qilish sizga tegishli emas.",
     "REASON_REQUIRED": "Sababini qisqacha yozing."
   },
+  "ruleNames": {
+    "feed_low": "Ozuqa zaxirasi kamaydi",
+    "stock_low": "Qoldiq minimaldan past",
+    "ration_deviation": "Ozuqa sarfi me'yordan chetlandi",
+    "lambing_soon": "7 kun ichida qo'zilash",
+    "lambing_overdue": "Qo'zilash muddati o'tdi",
+    "lambing_no_colostrum": "Og'iz suti yozilmagan yangi tug'ilgan qo'zilar",
+    "lambing_bottle_lambs": "Shishadan boqilayotgan qo'zilar",
+    "herd_thin": "Suruvda oriq hayvonlar",
+    "vaccination_overdue": "Emlash muddatida bajarilmagan",
+    "sick_animals": "Kasal hayvonlar",
+    "quarantine_animals": "Karantindagi hayvonlar",
+    "quarantine_ended": "Karantin muddati tugadi",
+    "mortality_spike": "Nobudgarchilik oshdi",
+    "budget_overrun": "Byudjetdan oshdi",
+    "tasks_overdue": "Muddati o'tgan vazifalar",
+    "operations_overdue": "Muddati o'tgan agrotexnik tadbirlar",
+    "disk_low": "Server diski deyarli to'ldi",
+    "document_expiring": "Hujjat muddati tugayapti",
+    "contract_expiring": "Shartnoma muddati tugayapti",
+    "batch_expiring": "Partiya yaroqlilik muddati tugayapti",
+    "approvals_pending": "Tasdiq kutayotgan to'lovlar",
+    "receipt_unpaid": "Tovar keldi, to'lov yoki qarz yozilmagan",
+    "loan_payment_due": "Kredit to'lovi yaqinlashdi",
+    "maintenance_due": "Texnik xizmat vaqti keldi",
+    "crop_weak_zone": "Dalada zaif joylar",
+    "satellite_check": "Sun'iy yo'ldosh va yozuvlar mos emas",
+    "frost_risk": "Sovuq kutilmoqda",
+    "spray_window": "Dalaga ishlov uchun noqulay kun",
+    "heat_stress": "Suruv uchun jazirama",
+    "irrigation_due": "Sug'orish kerak",
+    "camera_offline": "Kamera oflayn"
+  },
+  "task": {
+    "restrictedTitle": "Tekshirish: {{rule}}",
+    "restrictedTitleUnnamed": "Ogohlantirishni tekshirish",
+    "restrictedDescription": "Tafsilotlar ogohlantirishning o'zida, uni ko'ra oladiganlar uchun.",
+    "unassigned": "Mas'ul belgilanmagan",
+    "open": "Vazifani ochish"
+  },
+  "taskDialog": {
+    "title": "Ogohlantirish bo'yicha vazifa",
+    "description": "Vazifa matni ogohlantirishdan olinadi. Ikkala maydonni bo'sh qoldirish mumkin.",
+    "assignee": "Kim bajaradi",
+    "assigneePlaceholder": "Hozircha hech kim",
+    "dueDate": "Muddat",
+    "dueDateHint": "Bo'sh qolsa: shoshilinch uchun bugun, qolganlari uchun bir necha kundan keyin.",
+    "submit": "Vazifa yaratish"
+  },
+  "autoTask": {
+    "title": "Ogohlantirishlardan vazifalar",
+    "description": "Qoida yoqilgan bo'lsa, yangi ogohlantirish darhol o'z vazifasini oladi. Siz yoqmaguningizcha hammasi o'chiq.",
+    "role": "Kimga topshirish",
+    "noRole": "Hech kimga: mas'ulsiz qoldirish",
+    "roleHint": "Vazifa o'sha xodimga faqat fermada bu rol aynan bitta faol xodimda bo'lsa beriladi. Aks holda mas'ulsiz kutadi.",
+    "switchLabel": "Vazifa yaratish: {{rule}}",
+    "saved": "Saqlandi",
+    "emptyTitle": "Qoidalar yo'q"
+  },
   "title": "Ogohlantirishlar",
   "description": "Qoidalar va AI aniqlagan og'ishlar bir ro'yxatda, muhimlik darajasi bilan.",
   "evaluate": "Hozir tekshirish",
   "emptyTitle": "Hammasi joyida",
   "emptyBody": "Hozircha ochiq ogohlantirish yo'q.",
   "fields": {
+    "task": "Vazifa",
     "severity": "Muhimlik",
     "alert": "Ogohlantirish",
     "lastSeen": "Oxirgi tekshiruv",
     "status": "Holat"
   },
   "filters": {
+    "oneAlert": "Bitta ogohlantirish ko'rsatilmoqda",
+    "showAll": "Hammasini ko'rsatish",
     "active": "Hal qilinmaganlar",
     "allSeverities": "Barcha darajalar"
   },
   "actions": {
+    "createTask": "Vazifa yaratish",
     "open": "Manbani ochish",
     "acknowledge": "Qabul qilish",
     "resolve": "Hal qilindi deb belgilash"
   },
   "toast": {
+    "taskCreated": "Vazifa yaratildi",
     "acknowledged": "Qabul qilindi, takroriy xabarlar to'xtatildi",
     "resolved": "Ogohlantirish yopildi",
     "evaluated": "Tekshirildi: yangi {{raised}}, yopilgan {{resolved}}",

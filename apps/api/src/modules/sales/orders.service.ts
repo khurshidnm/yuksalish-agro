@@ -24,6 +24,7 @@ import { undoExit } from '../livestock/exits.service';
 import { animalsUnderWithdrawal } from '../livestock/health.service';
 import { notifySaleSubmitted } from './notify';
 import { assertAccount, assertCategories, assertCounterparty, assertFile, assertWarehouses } from './refs';
+import { assertNotReservedForOthers, settleReservations } from './reserved.service';
 
 const {
   animalExits,
@@ -189,6 +190,8 @@ async function buildLines(saleId: string, input: LineInput[]) {
 
 const sumAmounts = (rows: { amount: number }[]) => round(rows.reduce((sum, l) => sum + l.amount, 0), 2);
 
+const animalIdsOf = (rows: { animalId: string | null }[]) => rows.flatMap((l) => (l.animalId ? [l.animalId] : []));
+
 /** A line names a cost center only when a person chose one, so a blank line works it out and skips this. */
 async function assertLineCostCenters(lines: { costCenterId?: string | null }[]): Promise<void> {
   for (const id of new Set(lines.flatMap((l) => (l.costCenterId ? [l.costCenterId] : [])))) await assertCostCenterOpen(id);
@@ -352,6 +355,7 @@ export async function create(input: SaleInput) {
   const { id: givenId, lines: lineValues, ...header } = input;
   const id = givenId ?? newId();
   const rows = await buildLines(id, lineValues);
+  await assertNotReservedForOthers(animalIdsOf(rows), input.counterpartyId);
   const number = await nextNumber(input.date);
   await tx()
     .insert(sales)
@@ -396,6 +400,9 @@ export async function update(id: string, input: SalePatch) {
     await tx().insert(saleLines).values(rows);
     totalAmount = sumAmounts(rows);
   }
+  // Whichever changed, the buyer or the animals, the sale as it now stands is what is checked.
+  const lineAnimals = await tx().select({ animalId: saleLines.animalId }).from(saleLines).where(eq(saleLines.saleId, id));
+  await assertNotReservedForOthers(animalIdsOf(lineAnimals), header.counterpartyId ?? sale.counterpartyId);
   await tx()
     .update(sales)
     .set({ ...header, totalAmount, status: 'draft', rejectedReason: null })
@@ -573,6 +580,8 @@ async function postSale(sale: Sale, lines: SaleLine[], fxRate: number) {
   const animalById = new Map(animalRows.map((a) => [a.id, a]));
   animalRows.forEach(assertOnFarm);
   await assertNoWithdrawal(animalRows, sale.date);
+  // Under the animal locks: a reservation made while this draft waited still stops the sale.
+  await assertNotReservedForOthers(animalIds, sale.counterpartyId);
 
   const perHead = new Map<string, number | null>();
   const postings: Posting[] = [];
@@ -616,6 +625,7 @@ async function postSale(sale: Sale, lines: SaleLine[], fxRate: number) {
     });
     await markExited(p.animal.id, 'sold', sale.date);
   }
+  await settleReservations(animalIds, sale.counterpartyId, sale.id);
 
   const [first] = transactionByLine.values();
   await tx()

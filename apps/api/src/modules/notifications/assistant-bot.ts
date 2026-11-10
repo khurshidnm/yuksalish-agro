@@ -20,6 +20,9 @@ import { db, schema } from '../../db/client';
 import { chat } from '../ai/assistant';
 import { assertWithinLimits } from '../ai/conversations';
 import { transcribeAudio, type LlmBlock } from '../ai/provider';
+import { renderFarmProposalText } from '../ai/records/farm-render';
+import { confirmFarmProposal, getFarmProposal, listFarmPending, rejectFarmProposal, undoFarmProposal } from '../ai/records/farm-service';
+import type { FarmProposalView } from '../ai/records/farm-types';
 import { renderProposalText } from '../ai/records/render';
 import { confirmProposal, getProposal, listPending, rejectProposal, undoProposal } from '../ai/records/service';
 import type { ProposalView, Question } from '../ai/records/types';
@@ -530,11 +533,13 @@ async function say(person: Person, key: string, params?: Record<string, unknown>
 
 /** /kutilmoqda: the person's own drafts on this farm from any channel, each with its buttons. */
 export async function sendPending(person: Person): Promise<void> {
-  const views = await withTenant(person.identity, () => listPending());
-  if (views.length === 0) return say(person, 'bot.noPending');
-  await say(person, 'bot.pendingCount', { count: views.length });
+  const [views, farmViews] = await withTenant(person.identity, async () => [await listPending(), await listFarmPending()] as const);
+  const count = views.length + farmViews.length;
+  if (count === 0) return say(person, 'bot.noPending');
+  await say(person, 'bot.pendingCount', { count });
   for (const view of views.slice(0, MAX_CARDS_LISTED)) await sendCard(person, view);
-  const more = views.length - MAX_CARDS_LISTED;
+  for (const view of farmViews.slice(0, Math.max(0, MAX_CARDS_LISTED - views.length))) await sendFarmCard(person, view);
+  const more = count - MAX_CARDS_LISTED;
   if (more > 0) await say(person, 'bot.pendingMore', { count: more });
 }
 
@@ -596,7 +601,7 @@ async function applyPress(person: Person, action: CardAction, id: string, stamp:
 }
 
 /** The button goes when the window closes. The service refuses a late press regardless. */
-function dropUndoButton(person: Person, messageId: number, view: ProposalView, log: BotLog) {
+function dropUndoButton(person: Person, messageId: number, view: { undoUntil: string | null }, log: BotLog) {
   if (!view.undoUntil) return;
   const timer = setTimeout(() => {
     clearButtons(person.chatId, messageId).catch((error) =>
@@ -628,14 +633,133 @@ async function showOutcome(person: Person, messageId: number, applied: Applied, 
   return notice ?? (shownOn === messageId ? undefined : (note ?? statusNote(view, person.locale) ?? undefined));
 }
 
+// ─── Farm record cards ─────────────────────────────────────────────────────────────
+
+/**
+ * A weight, a death, a treatment, a day's feeding (docs/assistant.md, "Farm records"). These cards
+ * hold no money, so they are neither masked nor kept from people without finance.view: the owning
+ * module's own right decides, at confirm, as it does on the manual screen.
+ */
+type FarmAction = 'c' | 'x' | 'u';
+
+const FARM_CALLBACK = new RegExp(`^g:([cxu]):(${CARD_ID}):([0-9a-f]{12})$`);
+
+function farmCardButtons(person: Person, view: FarmProposalView, confirmable = true): InlineKeyboard | undefined {
+  const button = (key: string, action: FarmAction) => ({
+    text: tr(person.locale, 'alerts', `bot.buttons.${key}`),
+    callback_data: `g:${action}:${view.id}:${view.stamp}`,
+  });
+  if (view.status === 'confirmed') return view.canUndo ? [[button('undo', 'u')]] : undefined;
+  if (view.status !== 'pending') return undefined;
+  if (!confirmable || view.needsAnswer) return [[button('cancel', 'x')]];
+  return [[button('confirm', 'c')], [button('cancel', 'x')]];
+}
+
+function farmStatusNote(view: FarmProposalView, locale: string): string | null {
+  const said = (key: string) => tr(locale, 'alerts', key);
+  switch (view.status) {
+    case 'pending':
+      return view.needsAnswer ? said('bot.needsAnswer') : null;
+    case 'confirmed':
+      // Where the record cannot be taken back from here, the card says so instead of showing no button in silence.
+      return view.undoUntil === null ? `${said('bot.recorded')} ${tr(locale, 'ai', 'farmRecords.noUndo')}` : said('bot.recorded');
+    case 'rejected':
+      return said('bot.cancelled');
+    case 'expired':
+      return said('bot.expired');
+    case 'failed':
+      return said('bot.failed');
+    case 'undone':
+      return said('bot.undone');
+  }
+}
+
+function farmCardHtml(person: Person, view: FarmProposalView, note = farmStatusNote(view, person.locale)): string {
+  const body = escapeHtml(renderFarmProposalText(view, person.locale, person.farmName));
+  return note ? `${body}\n\n<b>${escapeHtml(note)}</b>` : body;
+}
+
+async function sendFarmCard(person: Person, view: FarmProposalView): Promise<void> {
+  const keyboard = farmCardButtons(person, view);
+  await sendHtml(person.chatId, farmCardHtml(person, view), keyboard && { inline_keyboard: keyboard });
+}
+
+interface FarmApplied {
+  view: FarmProposalView;
+  note?: string;
+  notice?: string;
+  /** False once a press showed that this card cannot go into the books as it stands. */
+  confirmable?: boolean;
+}
+
+/** Every call checks that the card is the presser's own, and confirm checks the owning module's right. */
+async function pressFarm(person: Person, action: FarmAction, id: string, stamp: string): Promise<FarmApplied> {
+  if (action === 'u') return { view: await undoFarmProposal(id) };
+  if (action === 'c') return { view: await confirmFarmProposal(id, { stamp }) };
+  const view = await getFarmProposal(id);
+  if (view.status === 'pending' && view.stamp !== stamp) return { view, notice: tr(person.locale, 'alerts', 'bot.cardChanged') };
+  return { view: await rejectFarmProposal(id) };
+}
+
+/** What a refused press has to say. Nothing was recorded by any of these. */
+async function refusedFarmPress(person: Person, id: string, error: AppError): Promise<FarmApplied | null> {
+  const fresh = (error.details as { proposal?: FarmProposalView } | undefined)?.proposal;
+  const current = () => fresh ?? withTenant(person.identity, () => getFarmProposal(id));
+  switch (error.code) {
+    case 'PROPOSAL_CHANGED':
+      return { view: await current(), notice: tr(person.locale, 'alerts', 'bot.cardChanged') };
+    case 'PROPOSAL_NEEDS_ANSWER':
+      return { view: await current(), confirmable: false, note: tr(person.locale, 'alerts', 'bot.needsAnswer') };
+    case 'PROPOSAL_STALE':
+      return { view: await current(), confirmable: false, note: tr(person.locale, 'ai', 'farmRecords.staleBody') };
+    case 'FARM_RECORD_EXISTS':
+      return { view: await current(), confirmable: false, note: tr(person.locale, 'ai', 'farmRecords.existsBody') };
+  }
+  return CARD_IS_BEHIND.has(error.code) ? { view: await current(), notice: failureText(person.locale, error) } : null;
+}
+
+async function applyFarmPress(person: Person, action: FarmAction, id: string, stamp: string): Promise<FarmApplied> {
+  try {
+    return await withTenant(person.identity, () => pressFarm(person, action, id, stamp));
+  } catch (error) {
+    const known = error instanceof AppError ? await refusedFarmPress(person, id, error) : null;
+    if (!known) throw error;
+    return known;
+  }
+}
+
+/** As showOutcome: the press has taken effect by now, so nothing here may turn it into a failure. */
+async function showFarmOutcome(person: Person, messageId: number, applied: FarmApplied, log: BotLog): Promise<string | undefined> {
+  const { view, note, notice, confirmable } = applied;
+  const keyboard = farmCardButtons(person, view, confirmable);
+  const html = farmCardHtml(person, view, note);
+  let shownOn: number | undefined = messageId;
+  try {
+    await editHtml(person.chatId, messageId, html, keyboard);
+  } catch (error) {
+    log.error({ err: safeError(error), userId: person.userId }, 'telegram card not edited');
+    shownOn = await sendHtml(person.chatId, html, keyboard && { inline_keyboard: keyboard }).catch((failure) => {
+      log.error({ err: safeError(failure), userId: person.userId }, 'telegram outcome not sent');
+      return undefined;
+    });
+  }
+  if (keyboard && shownOn && view.status === 'confirmed') dropUndoButton(person, shownOn, view, log);
+  return notice ?? (shownOn === messageId ? undefined : (note ?? farmStatusNote(view, person.locale) ?? undefined));
+}
+
 async function act(query: TelegramCallbackQuery, person: Person | Refused, log: BotLog): Promise<string | undefined> {
   if (person.status !== 'ok') return refusalText(person);
   if (!person.canAsk) return noAssistantText(person);
-  const pressed = CALLBACK.exec(query.data ?? '');
+  const farmPress = FARM_CALLBACK.exec(query.data ?? '');
+  const pressed = farmPress ?? CALLBACK.exec(query.data ?? '');
   const card = query.message;
   if (!pressed || !card) return tr(person.locale, 'alerts', 'bot.stale');
   if (card.chat.type !== 'private' || String(card.chat.id) !== person.chatId) {
     return tr(person.locale, 'alerts', 'bot.groupOnly');
+  }
+  // A farm card holds no money, so the rule below is not about it.
+  if (farmPress) {
+    return showFarmOutcome(person, card.message_id, await applyFarmPress(person, farmPress[1] as FarmAction, farmPress[2], farmPress[3]), log);
   }
   if (!person.seesMoney) {
     // Nobody acts on what they may not read, and an old card's figures come off their screen.
@@ -917,12 +1041,20 @@ async function draftsOfTurn(person: Person, asked: Asked, since: Date): Promise<
   return views.filter((view) => view.channel === 'telegram' && Date.parse(view.createdAt) >= since.getTime() && view.sourceText.includes(words));
 }
 
+async function farmDraftsOfTurn(person: Person, asked: Asked, since: Date): Promise<FarmProposalView[]> {
+  const views = await withTenant(person.identity, () => listFarmPending());
+  const words = asked.text.slice(0, WORDS_COMPARED);
+  return views.filter((view) => view.channel === 'telegram' && Date.parse(view.createdAt) >= since.getTime() && (view.sourceText ?? '').includes(words));
+}
+
 /** A pending draft nobody can see is the worst outcome of a failed turn: they would say it again. */
 async function salvageCards(person: Person, asked: Asked, since: Date, log: BotLog): Promise<boolean> {
   try {
     const views = await draftsOfTurn(person, asked, since);
     for (const view of views) await sendCard(person, view);
-    return views.length > 0;
+    const farmViews = await farmDraftsOfTurn(person, asked, since);
+    for (const view of farmViews) await sendFarmCard(person, view);
+    return views.length + farmViews.length > 0;
   } catch (error) {
     log.error({ err: safeError(error), userId: person.userId }, 'telegram cards not recovered');
     return false;
@@ -968,16 +1100,19 @@ async function ask(person: Person, asked: Asked, source: TelegramMessage, log: B
 
   // One turn can draft and then correct the same record, and only the last version is a card.
   const cards = new Map<string, ProposalView>();
+  const farmCards = new Map<string, FarmProposalView>();
   for (const attachment of reply.attachments) {
     if (attachment.type === 'proposal') cards.set(attachment.proposal.id, attachment.proposal);
+    if (attachment.type === 'farm_proposal') farmCards.set(attachment.proposal.id, attachment.proposal);
   }
   try {
     await sendHtml(person.chatId, answerHtml(reply, person.locale), await answerMarkup(person, reply, log));
   } catch (error) {
-    if (cards.size === 0) throw error;
+    if (cards.size + farmCards.size === 0) throw error;
     log.error({ err: safeError(error), userId: person.userId }, 'telegram answer not sent, the cards still go out');
   }
   for (const view of cards.values()) await sendCard(person, view);
+  for (const view of farmCards.values()) await sendFarmCard(person, view);
 }
 
 /** One plain message, voice note, photo or document from a linked person in a private chat. */

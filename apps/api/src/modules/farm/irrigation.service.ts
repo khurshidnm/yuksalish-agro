@@ -42,7 +42,10 @@ async function assertFields(fieldIds: string[] | undefined): Promise<void> {
   if (found.length !== new Set(fieldIds).size) throw badRequest('INVALID_FIELD', 'A linked field was not found');
 }
 
-/** Water actually applied per field in a period, from the irrigation journal. */
+/** Work that draws water from the network: watering a crop, and washing salts out of the soil. */
+const WATER_USE_TYPES = ['irrigation', 'leaching'];
+
+/** Water actually applied per field in a period, from the irrigation and leaching journal. */
 async function waterByField(from: string, to: string): Promise<Map<string, number>> {
   const rows = await tx()
     .select({ fieldId: fieldOperations.fieldId, waterM3: sumOf(fieldOperations.waterM3) })
@@ -50,7 +53,7 @@ async function waterByField(from: string, to: string): Promise<Map<string, numbe
     .where(
       and(
         eq(fieldOperations.farmId, ctx().farmId),
-        eq(fieldOperations.type, 'irrigation'),
+        inArray(fieldOperations.type, WATER_USE_TYPES),
         eq(fieldOperations.status, 'done'),
         gte(fieldOperations.date, from),
         lte(fieldOperations.date, to),

@@ -30,7 +30,11 @@ export const tenants = pgTable('tenants', {
   status: text().notNull().default('active'),
   createdAt: ts().notNull().defaultNow(),
   updatedAt: ts().notNull().defaultNow().$onUpdate(() => new Date()),
-});
+}, () => [
+  // The address of a public catalogue page belongs to one workspace. Row-level security hides other
+  // workspaces from each other, so only an index can keep two of them from choosing the same one.
+  uniqueIndex('tenants_catalogue_slug').on(sql`(settings #>> '{catalogue,slug}')`),
+]);
 
 /** Global identity: one person can work for several tenants (spec 5.1). No tenant_id, no RLS. */
 export const users = pgTable('users', {

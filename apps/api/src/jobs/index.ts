@@ -16,6 +16,7 @@ import { jobs as deviceJobs } from '../modules/devices/jobs';
 import { jobs as farmJobs } from '../modules/farm/jobs';
 import { jobs as notificationJobs } from '../modules/notifications/jobs';
 import { jobs as reportJobs } from '../modules/reports/jobs';
+import { jobs as salesJobs } from '../modules/sales/jobs';
 import { jobs as settingsJobs } from '../modules/settings/jobs';
 import { jobs as taskJobs } from '../modules/tasks/jobs';
 import { jobs as trackingJobs } from '../modules/tracking/jobs';
@@ -32,6 +33,7 @@ export const ALL_JOBS: ScheduledJob[] = [
   ...notificationJobs,
   ...assetJobs,
   ...reportJobs,
+  ...salesJobs,
   ...aiJobs,
   ...deviceJobs,
   ...trackingJobs,

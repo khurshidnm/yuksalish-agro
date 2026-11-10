@@ -6,5 +6,6 @@
   "src/features/today/DeathPage.tsx",
   "src/features/today/WeightPage.tsx",
   "src/features/today/LambingPage.tsx",
+  "src/features/today/NightWatchPage.tsx",
   "src/features/today/SyncPage.tsx"
 ]

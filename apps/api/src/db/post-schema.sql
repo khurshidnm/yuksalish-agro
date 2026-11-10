@@ -69,9 +69,12 @@ DECLARE
                            'notification_prefs', 'ai_messages', 'weather_daily', 'weather_hourly',
                            'satellite_scenes', 'field_vegetation', 'import_jobs',
                            'webhook_deliveries', 'job_runs', 'tracker_readings', 'tracker_state',
-                           'animal_tracking', 'animal_track_days'];
+                           'animal_tracking', 'animal_track_days', 'grazing_cell_days', 'grazing_field_days'];
   -- Secrets the AI role must never read.
-  no_ai_read text[] := ARRAY['api_keys', 'idempotency_keys', 'audit_logs', 'telegram_link_codes', 'invitations'];
+  -- catalogue_requests holds strangers' phone numbers and text typed
+  -- into a public form, which the assistant must never take in.
+  no_ai_read text[] := ARRAY['api_keys', 'idempotency_keys', 'audit_logs', 'telegram_link_codes', 'invitations',
+                             'catalogue_requests'];
   policy_expr text;
 BEGIN
   FOR t IN

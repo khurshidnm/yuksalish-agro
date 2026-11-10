@@ -1,9 +1,10 @@
 import { sql } from 'drizzle-orm';
-import { doublePrecision, index, integer, jsonb, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { boolean, doublePrecision, index, integer, jsonb, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { day, dec, pk, ts } from './_helpers';
 import { tenantColumns } from './_tenant';
 import { devices } from './devices';
-import { animals } from './livestock';
+import { fields, type GeoJsonGeometry } from './land';
+import { animals, herds } from './livestock';
 
 /**
  * Live tracking of animals (docs/tracking.md): collars and boluses report through a LoRaWAN network
@@ -114,7 +115,7 @@ export const animalTracking = pgTable(
   (t) => [uniqueIndex('animal_tracking_animal').on(t.animalId), index().on(t.farmId)],
 );
 
-export type TrackingFlag = 'isolated' | 'inactive' | 'fever';
+export type TrackingFlag = 'isolated' | 'inactive' | 'fever' | 'out_of_zone';
 
 /** One animal's day, kept after the raw readings expire. The baseline of the health rules. */
 export const animalTrackDays = pgTable(
@@ -134,4 +135,69 @@ export const animalTrackDays = pgTable(
     temperatureMaxC: dec(4, 2),
   },
   (t) => [uniqueIndex('animal_track_days_animal_date').on(t.animalId, t.date), index().on(t.farmId, t.date)],
+);
+
+/**
+ * A zone on the map that a herd must stay in (`allowed`) or keep out of (`forbidden`). Its outline
+ * is a field's boundary, read from the field each time so a redrawn field moves the zone with it,
+ * or its own polygon in `geometry`: exactly one of the two. Positions are plain latitude and
+ * longitude here, so the outline is GeoJSON and the rule is a pure function
+ * (packages/shared/src/formulas/tracking.ts), not a PostGIS column.
+ */
+export const geofences = pgTable(
+  'geofences',
+  {
+    id: pk(),
+    ...tenantColumns(),
+    name: text().notNull(),
+    /** GEOFENCE_KINDS */
+    kind: text().notNull().default('allowed'),
+    fieldId: uuid().references(() => fields.id, { onDelete: 'cascade' }),
+    /** GeoJSON Polygon or MultiPolygon, [lng, lat]; null when the zone follows a field. */
+    geometry: jsonb().$type<GeoJsonGeometry>(),
+    /** The herd the zone binds; null binds every herd. */
+    herdId: uuid().references(() => herds.id, { onDelete: 'cascade' }),
+    active: boolean().notNull().default(true),
+  },
+  (t) => [index().on(t.farmId)],
+);
+
+/**
+ * Fixes per grid cell per day (cells of GRAZING_RULES.cellE7, counted from the equator and the
+ * prime meridian). Written nightly from the raw readings and kept after they expire, so a 90-day
+ * map reads a few thousand rows a day at most instead of tens of thousands of readings.
+ */
+export const grazingCellDays = pgTable(
+  'grazing_cell_days',
+  {
+    id: pk(),
+    ...tenantColumns(),
+    date: day().notNull(),
+    /** The herd the animals were in when the day was summarised; null for animals without one. */
+    herdId: uuid().references(() => herds.id, { onDelete: 'cascade' }),
+    cellX: integer().notNull(),
+    cellY: integer().notNull(),
+    fixes: integer().notNull(),
+  },
+  (t) => [index().on(t.farmId, t.date)],
+);
+
+/** One field's use by one herd on one day: fixes inside it, animal-days and hours. */
+export const grazingFieldDays = pgTable(
+  'grazing_field_days',
+  {
+    id: pk(),
+    ...tenantColumns(),
+    date: day().notNull(),
+    herdId: uuid().references(() => herds.id, { onDelete: 'cascade' }),
+    fieldId: uuid()
+      .notNull()
+      .references(() => fields.id, { onDelete: 'cascade' }),
+    fixes: integer().notNull(),
+    /** Animals that spent at least GRAZING_RULES.minAnimalDayHours in the field that day. */
+    animals: integer().notNull(),
+    /** Hours in the field, summed over every animal. */
+    animalHours: dec(10, 2).notNull(),
+  },
+  (t) => [index().on(t.farmId, t.date)],
 );

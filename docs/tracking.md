@@ -87,6 +87,42 @@ Two alerts cover the whole farm, so one gateway outage is one alert and not 700:
 
 The per-device offline check of the devices module leaves trackers alone.
 
+## Zones, night movement, last seen
+
+A **zone** (`geofences`) is where a herd may graze (`allowed`) or must not go (`forbidden`). It follows a
+field's boundary as that is drawn today, or has an outline of its own, drawn on the **Zones** tab. It binds one
+herd, or every herd. The outline is GeoJSON and the test is a pure function (`outOfZone` in
+`formulas/tracking.ts`): no PostGIS is involved.
+
+- A sheep is **out of zone** when her last 2 fixes are both more than 30 m outside every allowed zone of her
+  herd, or more than 30 m inside a closed one (`ZONE_RULES`). The 30 m is GPS jitter. A closed zone narrower
+  than 60 m therefore never fires, and the Zones tab says so. A herd with no zone is
+  free, and an animal in no herd is never judged. One alert per herd, `geofence_exit`, says how many sheep and
+  which zone; it closes when they are back or the zone is switched off.
+- **Night movement** (`night_movement`, urgent): between 22:00 and 05:00 farm time, the herd's median point
+  moved more than 400 m within two hours, or faster than 1 km/h between two looks at least 10 minutes apart
+  (`NIGHT_RULES`). A flock asleep does not walk: it is being driven or chased. A farm that grazes its flock
+  at night switches the watch off on the Zones tab (`settings.tracking.nightWatch`, on by default): nothing
+  is raised then, and an alert left open is closed by the next run.
+- **Last seen** (`GET /tracking/lost`) lists the sheep whose trackers are all silent or who are apart from the
+  flock: last position, time since, distance from the herd's centre, battery, and a link to directions. It
+  raises no alert of its own, because `tracking_silent` and `animal_isolated` already say so.
+
+All three sets of thresholds are starting values, like the health rules. Zones are changed with
+`livestock.update` and removed with `livestock.delete`; each change is a journal event.
+
+## Grazing map
+
+`GET /tracking/grazing?days=7|30|90` answers where the flock spent its time: a grid of about 50 m cells with each
+cell's share of all fixes, and for each field with a boundary the animal-hours, animal-days (a sheep that spent
+at least 1 hour there that day) and animal-days per hectare. Every fix counts, day and night, so it shows
+presence, not only eating. The period ends yesterday. With no stored position the lists are `null`.
+
+The request never reads raw readings. The nightly job counts each finished day into `grazing_cell_days` and
+`grazing_field_days` (one read of that day's fixes, about 67,000 rows for 700 collars), and the request sums
+those through their `(farm_id, date)` index: at most one row per used cell, herd and day, about 80,000 rows for
+90 days of the pilot farm, and the answer is capped at the 4,000 most used cells (`GRAZING_RULES`).
+
 ## Storage
 
 | Table | What | Kept |
@@ -96,6 +132,9 @@ The per-device offline check of the devices module leaves trackers alone.
 | `tracker_state` | Each tracker's last reading, battery and signal | Current only |
 | `animal_tracking` | Each animal's last position, temperature, activity and flags | Current only |
 | `animal_track_days` | Each animal's day: fixes, distance, activity, median and maximum temperature | For ever |
+| `geofences` | Zones: name, kind, a field or an own outline, a herd or every herd, on or off | For ever (audited) |
+| `grazing_cell_days` | Fixes per grid cell, herd and day, for the grazing map | 100 days |
+| `grazing_field_days` | Fixes, animals and animal-hours per field, herd and day | For ever |
 
 The nightly `tracking.daily` job (00:20) fills `animal_track_days`, redoing yesterday for readings that arrived
 late, and looking back a week for any day it missed. It also takes trackers off animals that left the farm, on the

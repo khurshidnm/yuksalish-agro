@@ -12,9 +12,11 @@ import { formatDate, formatNumber, formatQty } from '@/lib/format';
 import { zDate, zOptionalNumber, zOptionalRef, zOptionalText } from '@/lib/forms';
 import { useApiMutation, useDetail } from '@/lib/query';
 import { DocumentsPanel } from './DocumentsPanel';
+import { FertiliserCard } from './FertiliserCard';
 import { FieldFormDialog } from './FieldFormDialog';
 import { FieldPhoto } from './FieldPhoto';
 import { FileAttachField } from './FileAttachField';
+import { GroundwaterTab } from './GroundwaterTab';
 import { SatelliteTab } from './satellite/SatelliteTab';
 import type { FieldCard, RotationRow, SoilAnalysis } from './types';
 import { CROP_STATUS_VARIANT, fieldTitle, formatHa, useLocalName } from './utils';
@@ -95,7 +97,7 @@ function OverviewTab({ field }: { field: FieldCard }) {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label={t('fields.area')} value={formatHa(field.areaHa, 4)} hint={field.boundary ? t('fields.measuredOnMap') : t('fields.enteredByHand')} />
         <StatCard label={t('fields.currentCrop')} value={crop ? localName(crop.cropName) : '—'} hint={crop?.seasonName} icon={Sprout} tone="success" />
-        <StatCard label={t('fields.soilType')} value={field.soilType ?? '—'} hint={field.salinityLevel ? t(`salinity.${field.salinityLevel}`, { defaultValue: field.salinityLevel }) : undefined} />
+        <StatCard label={t('fields.soilType')} value={field.soilType ?? '—'} hint={field.salinityLevel ? t(`enums:salinityLevel.${field.salinityLevel}`, { defaultValue: field.salinityLevel }) : undefined} />
         <StatCard label={t('fields.irrigationSource')} value={field.irrigationSource ?? '—'} />
       </div>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -240,6 +242,7 @@ function SoilTab({ field, path }: { field: FieldCard; path: string }) {
 
   return (
     <div className="flex flex-col gap-4">
+      <FertiliserCard field={field} />
       {history.length > 0 && (
         <ChartCard
           title={t('soil.trend')}
@@ -385,6 +388,7 @@ export default function FieldCardPage() {
             : []),
           ...(arable || field.rotation.length > 0 ? [{ value: 'rotation', label: t('fields.tabRotation'), content: <RotationTab field={field} /> }] : []),
           { value: 'soil', label: t('fields.tabSoil'), content: <SoilTab field={field} path={path} /> },
+          { value: 'groundwater', label: t('fields.tabGroundwater'), content: <GroundwaterTab field={field} path={path} /> },
           { value: 'documents', label: t('fields.tabDocuments'), content: <DocumentsPanel entity={{ type: 'field', id: field.id }} urlPrefix="doc" /> },
         ]}
       />

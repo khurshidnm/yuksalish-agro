@@ -54,6 +54,13 @@ export default async function cropsModule(app: FastifyInstance) {
       return seasons.createCrop(req.body);
     },
   });
+  r.patch('/crops/:id', {
+    access: 'crops.update',
+    summary: "A crop's rotation family and nutrient removal",
+    params: idParam,
+    body: seasons.cropPatch,
+    handler: (req) => seasons.updateCrop(req.params.id, req.body),
+  });
 
   // ─── Tech cards ──────────────────────────────────────────────────────────
   r.get('/tech-cards', {
@@ -102,6 +109,12 @@ export default async function cropsModule(app: FastifyInstance) {
       techCardId: z.uuid().optional(),
     }),
     handler: (req) => plans.estimate(req.query),
+  });
+  r.get('/plans/rotation-check', {
+    access: 'crops.view',
+    summary: 'Rotation notes for a crop on a field in a season. They warn and never block.',
+    query: plans.rotationQuery,
+    handler: (req) => plans.rotationCheck(req.query),
   });
   r.get('/plans/:id', {
     access: 'crops.view',

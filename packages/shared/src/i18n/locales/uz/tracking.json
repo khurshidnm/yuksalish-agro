@@ -4,7 +4,9 @@
   "map": "Poda xaritasi",
   "tabs": {
     "map": "Xarita",
-    "trackers": "Trekerlar"
+    "trackers": "Trekerlar",
+    "lost": "Yo'qolganlar",
+    "zones": "Hududlar"
   },
   "kind": {
     "collar": "Bo'yinbog'",
@@ -14,7 +16,8 @@
   "flag": {
     "fever": "Isitma",
     "isolated": "Podadan ajralgan",
-    "inactive": "Harakatsiz"
+    "inactive": "Harakatsiz",
+    "out_of_zone": "Hududdan tashqarida"
   },
   "legend": {
     "title": "Belgilar",
@@ -125,6 +128,112 @@
     "fitted": "Treker taqildi",
     "removed": "Treker yechildi"
   },
+  "zones": {
+    "intro": "Hudud poda qayerda o'tlashi mumkinligini yoki qayerga kirmasligi kerakligini bildiradi. Qo'ylar chegaradan o'tsa, poda bo'yicha bitta ogohlantirish keladi.",
+    "rule": "Ketma-ket {{fixes}} ta joylashuv chegaradan {{buffer}} m dan uzoqroqda bo'lsa, qo'y hududdan chiqqan hisoblanadi. Shuning uchun eni {{twice}} m dan tor yopiq hudud hech qachon ogohlantirmaydi: uni kengroq chizing.",
+    "add": "Hudud qo'shish",
+    "addTitle": "Yangi hudud",
+    "emptyTitle": "Hali hudud yo'q",
+    "emptyDescription": "Poda qayerda o'tlashi mumkinligini yoki qayerga kirmasligi kerakligini belgilang, qo'ylar chegaradan o'tganda xabar olasiz.",
+    "everyHerd": "Barcha podalar",
+    "ofField": "{{field}} dalasining chegarasi",
+    "drawn": "Xaritada chizilgan",
+    "noOutline": "Bu dalaning xaritada hali chegarasi yo'q, shuning uchun hudud hech narsani tekshirmaydi.",
+    "switch": "{{name}} hududi yoqilgan",
+    "on": "Yoqilgan",
+    "off": "O'chirilgan",
+    "edit": "O'zgartirish",
+    "editTitle": "Hududni o'zgartirish",
+    "deleteTitle": "{{name}} hududi o'chirilsinmi?",
+    "deleteBody": "Qo'ylar endi bu hudud bo'yicha tekshirilmaydi. U haqidagi ochiq ogohlantirish keyingi tekshiruvda yopiladi.",
+    "fields": {
+      "name": "Nomi",
+      "kind": "Turi",
+      "herd": "Poda",
+      "source": "Chegara",
+      "field": "Dala"
+    },
+    "source": {
+      "field": "Dala chegarasi bo'yicha",
+      "draw": "Xaritada chizish"
+    },
+    "draw": {
+      "hint": "Har bir burchakni qo'yish uchun xaritaga bosing. Kamida uchta burchak qo'ying, so'ng Tugatish tugmasini bosing.",
+      "start": "Chizishni boshlash",
+      "undo": "Burchakni olib tashlash",
+      "finish": "Tugatish",
+      "again": "Qayta chizish",
+      "done": "Chegara chizildi.",
+      "needed": "Avval chegarani chizing.",
+      "unavailable": "Chizish vositalari yuklanmadi. Dala chegarasini tanlang yoki sahifani qayta yuklang."
+    },
+    "legend": {
+      "title": "Hudud belgilari",
+      "allowed": "Ruxsat etilgan hudud",
+      "forbidden": "Yopiq hudud",
+      "off": "O'chirilgan"
+    },
+    "toast": {
+      "created": "Hudud qo'shildi",
+      "updated": "Hudud o'zgartirildi",
+      "removed": "Hudud o'chirildi",
+      "on": "Hudud yoqildi",
+      "off": "Hudud o'chirildi"
+    },
+    "night": {
+      "title": "Tungi nazorat",
+      "rule": "Soat {{from}}:00 dan {{to}}:00 gacha podaning markazi {{hours}} soatda {{move}} m dan ko'p siljisa yoki {{speed}} km/soat dan tez harakatlansa, shoshilinch ogohlantirish beriladi: uxlayotgan poda yurmaydi.",
+      "hint": "Poda tunda boqiladigan oylarda o'chirib qo'ying, aks holda ogohlantirish har kecha keladi.",
+      "switch": "Tungi nazorat yoqilgan",
+      "toast": {
+        "on": "Tungi nazorat yoqildi",
+        "off": "Tungi nazorat o'chirildi: podaning tungi harakati ogohlantirish bermaydi"
+      }
+    }
+  },
+  "lost": {
+    "intro": "Trekeri jim bo'lib qolgan yoki podadan ajralgan qo'ylar: har biri oxirgi marta qayerda bo'lgani va u yerga yo'l.",
+    "count": "Qidirish kerak: {{count}}",
+    "more": "{{total}} tadan dastlabki {{shown}} tasi ko'rsatilgan.",
+    "emptyTitle": "Hech kim yo'qolmagan",
+    "emptyDescription": "Kuzatilayotgan barcha qo'ylar o'z vaqtida aloqaga chiqqan va podasi bilan birga.",
+    "allSilent": "Hech bir treker aloqaga chiqmayapti. Qo'ylarni qidirishdan oldin shlyuz va uning quvvatini tekshiring.",
+    "reason": {
+      "silent": "Treker jim",
+      "isolated": "Podadan ajralgan",
+      "both": "Jim va ajralgan"
+    },
+    "lastHeard": "Oxirgi aloqa",
+    "lastPosition": "Oxirgi joylashuv",
+    "noPosition": "Joylashuv hech qachon kelmagan",
+    "fromHerd": "Podadan",
+    "metres": "{{value}} m",
+    "directions": "Yo'nalish"
+  },
+  "grazing": {
+    "toggle": "Poda qayerda o'tlagan",
+    "off": "O'chiq",
+    "days": "{{count}} kun",
+    "title": "Poda vaqtini qayerda o'tkazgan",
+    "period": "{{from}} dan {{to}} gacha. Bugungi kun tunda hisoblanadi.",
+    "presence": "Har bir joylashuv hisobga olinadi, kunduzi ham, tunda ham: bu faqat o'tlash emas, o'sha joyda o'tgan vaqt.",
+    "noData": "Bu davr uchun hali joylashuvlar yo'q. Birinchi kun ertasi kuni ertalab paydo bo'ladi.",
+    "legend": "Vaqt ulushi",
+    "less": "Kamroq",
+    "more": "Ko'proq",
+    "truncated": "Faqat eng ko'p foydalanilgan kataklar chizilgan.",
+    "byField": "Har bir dalada o'tgan vaqt",
+    "noFields": "Xaritada chegarasi bor dalalarga birorta joylashuv to'g'ri kelmadi.",
+    "animalDaysHint": "Bosh-kun: bitta qo'y bir kunda dalada kamida {{hours}} soat bo'lgan.",
+    "fields": {
+      "field": "Dala",
+      "animalDays": "Bosh-kun",
+      "hours": "Bosh-soat",
+      "daysUsed": "Foydalanilgan kunlar",
+      "share": "Vaqt ulushi",
+      "perHa": "Gektariga bosh-kun"
+    }
+  },
   "errors": {
     "INVALID_EXTERNAL_ID": "Bu DevEUI (16 ta o'n oltilik raqam) ham, seriya raqami ham emas.",
     "DUPLICATE_IN_IMPORT": "Bu treker ikki marta yozilgan.",
@@ -141,6 +250,8 @@
     "INVALID_READING_TIME": "Ko'rsatkich vaqti kelajakda.",
     "INVALID_RANGE": "Boshlanish oxiridan oldin bo'lishi kerak.",
     "RANGE_TOO_LONG": "Bir martada ko'pi bilan 31 kun.",
-    "DATE_IN_FUTURE": "Sana kelajakda."
+    "DATE_IN_FUTURE": "Sana kelajakda.",
+    "ZONE_OUTLINE_REQUIRED": "Hududga bitta chegara kerak: dala chegarasini tanlang yoki shakl chizing, ikkalasini emas.",
+    "ZONE_FIELD_NO_BOUNDARY": "Bu dalaning xaritada hali chegarasi yo'q. Uni xo'jalik xaritasida chizing yoki hududning o'zini chizing."
   }
 }

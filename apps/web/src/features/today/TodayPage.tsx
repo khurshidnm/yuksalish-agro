@@ -8,6 +8,7 @@ import {
   CloudOff,
   HeartPulse,
   Map as MapIcon,
+  Moon,
   PawPrint,
   Scale,
   Skull,
@@ -30,7 +31,7 @@ import { useSession } from '@/lib/auth';
 import { formatDateLong, formatDateTime } from '@/lib/format';
 import { outbox, useOutbox, type OutboxRecord, type SentRecord } from '@/lib/outbox';
 import { cn } from '@/lib/utils';
-import { useAnimalDirectory, useTodayData, type TodayData, type TodayHerd, type TodayTask } from './data';
+import { useAnimalDirectory, useNightWatch, useTodayData, type TodayData, type TodayHerd, type TodayTask } from './data';
 import { FieldSkeleton } from './field-ui';
 import { herdDayStatus, type HerdDayStatus } from './logic';
 
@@ -47,6 +48,7 @@ const ACTIONS: Record<string, ActionDef> = {
   record_death: { to: '/today/death', icon: Skull, offline: true },
   weight: { to: '/today/weight', icon: Scale, offline: true },
   lambing: { to: '/today/lambing', icon: Baby, offline: true },
+  night_watch: { to: '/today/night-watch', icon: Moon, offline: true },
   animals: { to: '/livestock/animals', icon: PawPrint },
   health: { to: '/livestock/health', icon: Syringe },
   field_operation: { to: '/crops/operations', icon: ClipboardCheck },
@@ -222,6 +224,7 @@ export default function TodayPage() {
   const date = todayIso();
   // Loaded here, not on the forms: the connection may be gone by the time a form is opened.
   useAnimalDirectory();
+  useNightWatch();
 
   if (loading) return <FieldSkeleton />;
 

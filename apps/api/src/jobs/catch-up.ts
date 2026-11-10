@@ -30,6 +30,8 @@ export const CATCH_UP_MS: Record<string, number> = {
   'settings.retention': ANY_TIME,
   // It fills each animal's missing days and frees trackers of animals that left: late loses nothing.
   'tracking.daily': ANY_TIME,
+  // It ends every hold whose last day has passed, whenever it runs.
+  'sales.expire-reservations': ANY_TIME,
   'ai-statistics': ANY_TIME,
   'assets.monthly-depreciation': ANY_TIME,
   'reports.investor-monthly': ANY_TIME,

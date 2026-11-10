@@ -7,7 +7,7 @@ import { useDetail } from '@/lib/query';
 import { AssistantTab } from './AssistantTab';
 import { DocumentsTab } from './DocumentsTab';
 import { InsightsTab } from './InsightsTab';
-import { usePendingProposals } from './pending';
+import { usePendingCount } from './pending';
 import { PendingPanel } from './PendingPanel';
 import { PhrasesPanel } from './PhrasesPanel';
 import type { AiStatus } from './types';
@@ -18,7 +18,7 @@ export default function AiPage() {
   const { data: status, error, isLoading, refetch } = useDetail<AiStatus>('/ai/status');
   const configured = status?.assistant.configured ?? false;
   const session = useSession();
-  const pending = usePendingProposals().data?.length ?? 0;
+  const pending = usePendingCount();
 
   return (
     <div className="flex flex-col gap-4">

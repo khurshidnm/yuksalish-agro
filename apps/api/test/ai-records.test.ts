@@ -8,6 +8,7 @@ import { receiveStock, stockOnHand } from '../src/core/inventory';
 import { approveTransaction, postTransaction, rejectTransaction } from '../src/core/ledger';
 import { cashPosition, costCenterCosts } from '../src/modules/finance/summary';
 import { setProvider } from '../src/modules/ai/provider';
+import { FARM_DRAFT_TOOLS } from '../src/modules/ai/records/farm-tools';
 import { RECORD_TOOLS } from '../src/modules/ai/records/tools';
 import {
   confirmProposal, getProposal, listAliases, listPending, rejectProposal, saveDraft, undoProposal, updateProposal,
@@ -562,7 +563,8 @@ describe('through the assistant', () => {
     await shepherd.post('/ai/chat', { message: "Elektrga 3 mln to'ladim" });
     const offered = (provider.requests[0].tools ?? []).map((t) => t.name);
     expect(offered).toContain('farm_status');
-    expect(offered.filter((n) => n.startsWith('draft_'))).toEqual([]);
+    // A farm record is not money: its draft tool follows the owning module's right, not finance.create.
+    expect(offered.filter((n) => n.startsWith('draft_') && !FARM_DRAFT_TOOLS.has(n))).toEqual([]);
   });
 
   it('farm_status gives a shepherd no cash, and an owner the whole picture', async () => {

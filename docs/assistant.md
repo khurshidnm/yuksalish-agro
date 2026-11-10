@@ -51,6 +51,10 @@ category; the table says what that category needs.
 | Money received | `income` | same | none |
 | Paying off an existing debt to a supplier, or a buyer paying what they owed | `debt_payment` | the finance debts settlement service | none |
 | Moving money between cash and bank | `transfer` | `finance/transactions.service create` | none |
+| An animal was weighed: "1234-qo'y 46 kilo chiqdi" | farm record `weight` | `livestock/weights.service createWeight` | no money |
+| An animal died: "0567 raqamli qo'y o'ldi, ichi ketgan" | farm record `death` | `livestock/exits.service createExit` | no money |
+| A treatment, vaccination or deworming was given: "0567 ga 5 ml ivermektin qildim" | farm record `treatment` | `livestock/health.service createRecord` | the drug leaves the warehouse as a stock issue |
+| A herd was fed: "bugun 1-otarga 300 kilo beda berdim" | farm record `herd_log` | `livestock/daily-logs.service createDailyLog` | the feed leaves the warehouse as a stock issue |
 
 Refused with an explanation, because another module owns them and recording them here would double count:
 salaries and advances (HR payroll), loan instalments (finance loans), depreciation (monthly job), selling
@@ -174,6 +178,75 @@ correction goes on waiting until the form has set what it changed. Only `update_
 id, on a card of the same conversation, or that form changes a card. A card's result status follows
 the books, so a second person's approval or refusal shows on it.
 
+## Farm records
+
+Field staff dictate what was done, by text or voice, on the web and in Telegram. It works as money
+records do: the model only drafts, a pending row in `ai_proposals` becomes a card, the person confirms,
+and the owning service writes it under that person's name. The kinds offered are `FARM_RECORD_KINDS` in
+`routing.ts`: `weight`, `death`, `treatment`, `herd_log`. Lambing and field operations are not built.
+The code is `modules/ai/records/farm-*.ts`; the cards are attachments of type `farm_proposal`, served by
+`/ai/farm-proposals` (`/:id`, `/:id/confirm` with `{ stamp }`, `/:id/reject`, `/:id/undo`).
+
+A farm card holds no money for anyone (rule 7): no unit cost, no ration cost, no value of the animal.
+
+**Rights.** `FARM_RULES` gives each kind the rights its own page asks. A draft tool is offered, and a
+draft, a confirm and an undo are allowed, only with them, and only while the owning module is switched on.
+
+| Kind | Draft and confirm | Undo | Undo calls |
+| --- | --- | --- | --- |
+| `weight` | `livestock.update` | `livestock.update` | `deleteWeight` |
+| `death` | `livestock.create` | `livestock.delete` | `undoExit`: the animal returns to the flock |
+| `treatment` | `health.update` | `health.delete` | `deleteRecord`: the drug returns to the warehouse |
+| `herd_log` | `livestock.create` | `livestock.delete` | `deleteDailyLog`: the feed returns to the warehouse |
+
+Someone who may confirm but not undo gets no Undo button, and the card says to change it on its own
+page. So a shepherd feeds a herd by voice and corrects it on the daily log page; a zootechnician records
+a treatment and cannot take it back from the chat.
+
+**Readiness: every fact is in the person's words** (`formulas/record-words.ts`, tested in Uzbek Latin,
+Uzbek Cyrillic, Russian and English). Whatever the model passes, a card is made only when code finds:
+
+- the tag, said as a tag: "1234-qo'y", "0567 raqamli", "номер 567", "#567". "46 kilo" is never tag 46,
+  and "46 qo'y" may be a head count, so it asks. A tag no animal has, or several animals answer to, asks.
+  An animal that has left the farm asks
+- the quantity with its unit, beside the thing it measures. A bare number is not a quantity. After a
+  number said as a tag ("YA-0567 46 kilo", "0567 5 ml") the quantity is read. After a bare number
+  ("567 5 ml") it is not, because two numbers side by side may be a range: it asks
+- the herd, the drug or the feed by name. The only herd, when none was named, is taken and shown on the
+  card as chosen by rule. A drug the warehouse does not keep stays as they named it, with a warning that
+  nothing leaves the warehouse. A feed must be a stock item
+- the day, through the same date evidence as money: a day the model sets against the words asks
+- for a death, a word that says it died. The cause is quoted from their words or left empty
+
+Quantities never cross kinds of unit. Millilitres of a drug kept in vials or doses ask how many vials
+left; kilograms of straw kept in bales ask how many bales. An amount that does not fit the warehouse's
+three decimals asks. A quantity said once backs one card: the second animal or herd needs its own.
+
+A herd's feeding takes several feeds in one sentence. Each amount is tied to the one stock item beside
+it, amount first or feed first, read one way through the whole message ("300 kilo beda va 50 kilo arpa",
+"beda 300 kilo, arpa 50 kilo"). One amount for two feeds, or a message that reads two ways, asks. An
+amount said alone answers for one waiting feed only. The card names the ration feeds it does not hold,
+because the daily log writes them as not given. A herd has one record a day.
+
+Two animals in one sentence are two drafts and two cards. A second draft about the same thing in the
+same conversation (the same animal and kind, the same herd and day) corrects the first card and does not
+make another. A correction that raises a question leaves the card visible and not confirmable.
+
+**Confirm** (`confirmFarmProposal`) takes the row lock and the per-farm lock `ai-confirm:<farmId>`, then:
+
+1. refuses `PROPOSAL_NEEDS_ANSWER`, `PROPOSAL_EXPIRED` and `PROPOSAL_CHANGED` as for money
+2. checks the kind's right for the person confirming (`FARM_RULES`), since the weight, health and daily
+   log services leave that check to their routes
+3. looks at the books again: `FARM_RECORD_EXISTS` when the same record is already there (the animal
+   weighed that day, its death, that treatment with that drug that day, that herd's day);
+   `PROPOSAL_STALE` when the animal left the farm or changed its tag, the herd was archived, the item
+   was switched off or changed its unit, or the named warehouse was closed
+4. calls the owning service, whose validation, journal event, stock issue and withdrawal date run as on
+   its own page. A shortage is the warehouse's refusal (`INSUFFICIENT_STOCK`): nothing is written and the
+   card stays pending
+
+The model has no confirm tool, and `yap_ai` cannot write any of these tables.
+
 ## Tools given to the model
 
 Read-only tools stay as they are. New ones, offered only to people holding the matching permissions:
@@ -184,6 +257,8 @@ Read-only tools stay as they are. New ones, offered only to people holding the m
 | `find_records(kind, query)`: categories, cost centers, items, herds, fields, machines | any AI user, no money. Accounts and counterparties need `finance.view` |
 | `draft_expense`, `draft_stock_purchase`, `draft_income`, `draft_debt_payment`, `draft_transfer` | `finance.create` and `finance.view`; stock purchase also `inventory.create` |
 | `update_draft(proposalId, changes)`, `cancel_draft(proposalId)` | the proposal's owner, on a card of this conversation. `cancel_draft` also needs the person's own last message to ask for it |
+| `draft_weight`, `draft_death`, `draft_treatment`, `draft_herd_log` | the kind's create right in `FARM_RULES` and its module switched on. No `finance` right is needed. Passing `proposalId` corrects that card |
+| `cancel_farm_draft(proposalId)` | the card's owner, on a farm card of this conversation, when their own last message asks for it |
 
 There is deliberately no confirm tool, and no way for the model to clear a duplicate warning.
 

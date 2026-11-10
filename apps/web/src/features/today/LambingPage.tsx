@@ -1,12 +1,13 @@
 import { todayIso } from '@yap/shared';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 import { Alert, Textarea } from '@/components/ui';
 import { outbox, uuidv7 } from '@/lib/outbox';
 import { useAnimalDirectory } from './data';
 import { AnimalPicker, ChoiceButtons, FieldLabel, FieldScreen, SaveBar, Stepper } from './field-ui';
+import { LambCareStep } from './LambCareStep';
 import type { DirectoryAnimal } from './logic';
 
 interface Lamb {
@@ -27,8 +28,24 @@ export default function LambingPage() {
   const [lambs, setLambs] = useState<Lamb[]>([newLamb()]);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  /** Set once the lambing is in the queue: the screen then asks about the newborn. */
+  const [savedId, setSavedId] = useState<string | null>(null);
 
   const ewes = useMemo(() => animals.filter((a) => a.sex === 'female' && !a.category.startsWith('lamb')), [animals]);
+
+  // Opened from the night-watch list: that ewe is already chosen.
+  const [params] = useSearchParams();
+  const preset = params.get('ewe');
+  const backTo = preset ? '/today/night-watch' : '/today';
+  const presetUsed = useRef(false);
+  useEffect(() => {
+    if (!preset || presetUsed.current) return;
+    const found = ewes.find((a) => a.id === preset);
+    if (found) {
+      presetUsed.current = true;
+      setEwe(found);
+    }
+  }, [preset, ewes]);
 
   const setCount = (value: '1' | '2' | '3') => {
     const count = Number(value);
@@ -54,20 +71,38 @@ export default function LambingPage() {
           date: todayIso(),
           lambs: lambs.map((lamb) => ({ id: lamb.id, sex: lamb.sex, birthWeightKg: lamb.birthWeightKg, alive: lamb.alive === 'alive' })),
           notes: notes.trim() || null,
+          // The nearest thing to the hour of birth: the lamb's first hours are counted from it.
+          bornAt: new Date().toISOString(),
         },
         title: t('lambing.recordTitle', { tag: ewe.tag, n: lambs.length }),
-        meta: { tag: ewe.tag },
+        meta: { tag: ewe.tag, eweId: ewe.id },
       });
       toast.success(t(navigator.onLine ? 'saved.sending' : 'saved.queued'));
-      void navigate('/today');
+      if (lambs.some((lamb) => lamb.alive === 'alive')) {
+        setSaving(false);
+        setSavedId(id);
+      } else void navigate(backTo);
     } catch {
       toast.error(t('saved.failed'));
       setSaving(false);
     }
   };
 
+  if (savedId && ewe) {
+    return (
+      <LambCareStep
+        ewe={ewe}
+        lambingId={savedId}
+        lambs={lambs.flatMap((lamb, index) => (lamb.alive === 'alive' ? [{ id: lamb.id, n: index + 1 }] : []))}
+        ewes={ewes.filter((a) => a.id !== ewe.id)}
+        backTo={backTo}
+        onDone={() => void navigate(backTo)}
+      />
+    );
+  }
+
   return (
-    <FieldScreen title={t('actions.lambing')}>
+    <FieldScreen title={t('actions.lambing')} backTo={backTo}>
       {!known && <Alert tone="warning">{t('animal.noList')}</Alert>}
       <AnimalPicker animals={ewes} value={ewe} onChange={setEwe} label={t('lambing.ewe')} />
       <div className="flex flex-col gap-2">

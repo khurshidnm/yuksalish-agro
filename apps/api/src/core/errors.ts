@@ -28,6 +28,19 @@ export const notFound = (what = 'Record') => new AppError(404, 'NOT_FOUND', `${w
 export const conflict = (code: string, message: string, details?: unknown) =>
   new AppError(409, code, message, details);
 
+/**
+ * The name of the unique index a failed write ran into, or null for any other error. Drizzle wraps
+ * the driver's error, so the cause is looked at too. Catch it around a savepoint: the statement
+ * that failed has already spoiled the transaction it ran in.
+ */
+export function uniqueViolation(error: unknown): string | null {
+  for (const candidate of [error, (error as { cause?: unknown })?.cause]) {
+    const pg = candidate as { code?: unknown; constraint?: unknown } | null | undefined;
+    if (pg?.code === '23505') return typeof pg.constraint === 'string' ? pg.constraint : '';
+  }
+  return null;
+}
+
 function redact(text: string): string {
   const secrets = [process.env.TELEGRAM_BOT_TOKEN, config.TELEGRAM_BOT_TOKEN, config.GEMINI_API_KEY, config.ANTHROPIC_API_KEY];
   return secrets.reduce<string>((clean, secret) => (secret ? clean.replaceAll(secret, '[redacted]') : clean), text);

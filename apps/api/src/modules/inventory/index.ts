@@ -8,6 +8,7 @@ import { routes } from '../../core/http';
 import { idParam } from '../../core/query';
 import * as counts from './counts.service';
 import { countPdf, documentPdf } from './documents.service';
+import { itemByCodeQuery, itemsByCode } from './item-codes.service';
 import * as itemsService from './items.service';
 import * as stock from './stock.service';
 import { lowStock } from './summary';
@@ -83,6 +84,12 @@ export default async function inventoryModule(app: FastifyInstance) {
     summary: 'For dropdowns in other modules. `category` may be a comma-separated list',
     query: itemsService.itemLookupQuery,
     handler: (req) => itemsService.lookup(req.query),
+  });
+  r.get('/items/by-code', {
+    access: 'inventory.view',
+    summary: 'Items that carry exactly this barcode, code or label. Empty when none. Never a near match.',
+    query: itemByCodeQuery,
+    handler: (req) => itemsByCode(req.query.code),
   });
   r.get('/items/:id', {
     access: 'inventory.view',

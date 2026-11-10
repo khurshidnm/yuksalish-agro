@@ -8,7 +8,7 @@ import { type Column, DataTable, DataTableView, DateField, FormDialog, FormGrid,
 import { Badge, type BadgeVariant, Button, Select, apiOptions } from '@/components/ui';
 import { api } from '@/lib/api';
 import { usePermission } from '@/lib/auth';
-import { formatDate, formatNumber, formatQty } from '@/lib/format';
+import { formatDate, formatNumber, formatPercent, formatQty } from '@/lib/format';
 import { zDate, zOptionalDate, zOptionalRef, zOptionalText, zRef, zText } from '@/lib/forms';
 import { enumOptions } from '@/lib/i18n';
 import { useApiMutation, useDetail } from '@/lib/query';
@@ -234,6 +234,10 @@ interface WorkRow {
   operations: number;
   treatments: number;
   dailyLogs: number;
+  tasksOnTime: number;
+  tasksDue: number;
+  /** Null when no task of theirs fell due in the period. */
+  tasksOnTimePercent: number | null;
 }
 
 function WorkDoneTab() {
@@ -252,6 +256,14 @@ function WorkDoneTab() {
     // Irrigation or a field check has no area, so without a count such work would read as nothing done.
     { key: 'operations', header: t('workDone.fields.operations'), cell: (row) => num(row.operations), align: 'right' },
     { key: 'records', header: t('workDone.fields.records'), cell: (row) => num(row.treatments + row.dailyLogs), align: 'right' },
+    {
+      key: 'tasksOnTime',
+      header: t('workDone.fields.tasksOnTime'),
+      // "3 of 4 (75 %)": a share alone hides whether it was one task or twenty.
+      cell: (row) =>
+        row.tasksDue ? `${t('workDone.fields.tasksValue', { onTime: row.tasksOnTime, due: row.tasksDue })} (${formatPercent(row.tasksOnTimePercent)})` : '—',
+      align: 'right',
+    },
   ];
 
   return (

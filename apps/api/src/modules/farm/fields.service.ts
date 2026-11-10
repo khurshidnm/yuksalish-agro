@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, inArray, ne, sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
-import { LAND_USES, SOIL_TEXTURE_CLASSES, round, yieldPerHectare } from '@yap/shared';
+import { LAND_USES, SALINITY_LEVELS, SOIL_TEXTURE_CLASSES, round, yieldPerHectare } from '@yap/shared';
+import { groundwaterRisk } from '@yap/shared/formulas/salinity';
 import { ctx, today, tx } from '../../core/context';
 import { deactivateCostCenter, ensureCostCenter, renameCostCenter } from '../../core/costCenters';
 import { badRequest, conflict, notFound } from '../../core/errors';
@@ -9,7 +10,7 @@ import { clientId, listQuery, paged, searchAny, sortBy, sumOf } from '../../core
 import { schema } from '../../db/client';
 import { areaGeometry, measureBoundary } from './geometry';
 
-const { costCenters, cropPlans, crops, fields: t, harvests, seasons } = schema;
+const { costCenters, cropPlans, crops, fields: t, groundwaterObservations, harvests, seasons } = schema;
 
 const textField = (max: number) => z.string().trim().max(max).nullish();
 
@@ -23,7 +24,7 @@ export const fieldInput = z.object({
   boundary: areaGeometry.nullish(),
   soilType: textField(80),
   soilTexture: z.enum(SOIL_TEXTURE_CLASSES).nullish(),
-  salinityLevel: textField(40),
+  salinityLevel: z.enum(SALINITY_LEVELS).nullish(),
   irrigationSource: textField(120),
   notes: textField(1000),
 });
@@ -169,14 +170,33 @@ export async function listFields(q: z.infer<typeof fieldListQuery>) {
       .limit(limit)
       .offset(offset),
   );
-  const plans = await currentPlans(page.data.map((f) => f.id));
-  return { ...page, data: page.data.map((f) => ({ ...f, currentCrop: plans.get(f.id) ?? null })) };
+  const ids = page.data.map((f) => f.id);
+  const plans = await currentPlans(ids);
+  const water = await latestGroundwater(ids);
+  return {
+    ...page,
+    data: page.data.map((f) => ({ ...f, currentCrop: plans.get(f.id) ?? null, groundwater: water.get(f.id) ?? null })),
+  };
+}
+
+/** The newest groundwater observation of each field, with its depth judged against the published range. */
+async function latestGroundwater(fieldIds: string[]) {
+  const g = groundwaterObservations;
+  const result = new Map<string, { date: string; depthM: number; mineralisationGl: number | null; risk: ReturnType<typeof groundwaterRisk> }>();
+  if (fieldIds.length === 0) return result;
+  const rows = await tx()
+    .selectDistinctOn([g.fieldId], { fieldId: g.fieldId, date: g.date, depthM: g.depthM, mineralisationGl: g.mineralisationGl })
+    .from(g)
+    .where(and(eq(g.farmId, ctx().farmId), inArray(g.fieldId, fieldIds)))
+    .orderBy(g.fieldId, desc(g.date), desc(g.id));
+  for (const { fieldId, ...row } of rows) result.set(fieldId, { ...row, risk: groundwaterRisk(row.depthM) });
+  return result;
 }
 
 /** Number and area only, for dropdowns in other modules. */
 export async function lookupFields(q: { search?: string; landUse?: (typeof LAND_USES)[number] }) {
   const rows = await tx()
-    .select({ id: t.id, number: t.number, label: t.name, areaHa: t.areaHa, landUse: t.landUse })
+    .select({ id: t.id, number: t.number, label: t.name, areaHa: t.areaHa, landUse: t.landUse, soilTexture: t.soilTexture, salinityLevel: t.salinityLevel })
     .from(t)
     .where(
       and(

@@ -14,6 +14,7 @@ import { zOptionalText, zText } from '@/lib/forms';
 import { formatMoney } from '@/lib/format';
 import { enumOptions } from '@/lib/i18n';
 import { useApiMutation, useDetail } from '@/lib/query';
+import { ScanItemButton, useScannedItemNames } from './ScanItem';
 import { METHODS, type ReceiptFormIn, type ReceiptFormOut, SOURCES, needsCategory, receiptSchema, supplierRequired, toPayload } from './receiptForm';
 import { LineCard, LinesSection, STOCK_PATHS, downloadDocument, itemOptions, useWarehouseOptions } from './shared';
 import type { DocumentResult, ItemOption } from './types';
@@ -101,6 +102,7 @@ function Fields({
   const isPurchase = source === 'purchase';
   const categoryRequired = needsCategory(lines) || categoryAsked;
   const total = lines.reduce((sum, line) => sum + (line?.qty ?? 0) * (line?.unitCost ?? 0), 0);
+  const [scannedNames, rememberScanned] = useScannedItemNames();
 
   const { setValue } = form;
   useEffect(() => {
@@ -151,13 +153,33 @@ function Fields({
         rows={fields.map((field, index) => {
           const unit = lines[index]?.unit;
           return (
-            <LineCard key={field.id} index={index} canRemove={fields.length > 1} onRemove={() => remove(index)}>
+            <LineCard
+              key={field.id}
+              index={index}
+              canRemove={fields.length > 1}
+              onRemove={() => remove(index)}
+              action={
+                <ScanItemButton
+                  size="icon-sm"
+                  variant="ghost"
+                  onPick={(item) => {
+                    // The same three things choosing the item from the list does.
+                    rememberScanned(item);
+                    form.setValue(`lines.${index}.itemId`, item.id, { shouldDirty: true, shouldValidate: true });
+                    form.setValue(`lines.${index}.unit`, item.unit);
+                    form.setValue(`lines.${index}.itemCategory`, item.category);
+                    if (item.defaultWarehouseId && !form.getValues('warehouseId')) form.setValue('warehouseId', item.defaultWarehouseId);
+                  }}
+                />
+              }
+            >
               <ComboboxField
                 form={form}
                 name={`lines.${index}.itemId`}
                 label={t('document.item')}
                 required
                 clearable={false}
+                selectedLabel={scannedNames[lines[index]?.itemId ?? '']}
                 loadOptions={itemOptions()}
                 onSelect={(_value, option) => {
                   const item = option?.raw as ItemOption | undefined;

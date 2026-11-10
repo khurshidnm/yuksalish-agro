@@ -8,6 +8,7 @@ import { api } from '@/lib/api';
 import { formatDate, formatQty } from '@/lib/format';
 import i18n from '@/lib/i18n';
 import { useDetail } from '@/lib/query';
+import { ScanItemButton, useScannedItemNames } from './ScanItem';
 import type { ItemOption, WarehouseOption } from './types';
 
 /** Everything that shows stock: each posting refreshes all of it. */
@@ -57,19 +58,37 @@ export function QtyLines({ form, warehouseId }: { form: UseFormReturn<any, any, 
   const { t } = useTranslation('inventory');
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'lines' });
   const units = form.watch('lines') as (LineValues | undefined)[];
+  const [scannedNames, rememberScanned] = useScannedItemNames();
 
   return (
     <LinesSection
       addLabel={t('document.addLine')}
       onAdd={() => append(EMPTY_LINE)}
       rows={fields.map((field, index) => (
-        <LineCard key={field.id} index={index} canRemove={fields.length > 1} onRemove={() => remove(index)}>
+        <LineCard
+          key={field.id}
+          index={index}
+          canRemove={fields.length > 1}
+          onRemove={() => remove(index)}
+          action={
+            <ScanItemButton
+              size="icon-sm"
+              variant="ghost"
+              onPick={(item) => {
+                rememberScanned(item);
+                form.setValue(`lines.${index}.itemId`, item.id, { shouldDirty: true, shouldValidate: true });
+                form.setValue(`lines.${index}.unit`, item.unit);
+              }}
+            />
+          }
+        >
           <ComboboxField
             form={form}
             name={`lines.${index}.itemId`}
             label={t('document.item')}
             required
             clearable={false}
+            selectedLabel={scannedNames[units[index]?.itemId ?? '']}
             loadOptions={itemOptions(warehouseId ? { warehouseId } : undefined)}
             onSelect={(_value, option) => form.setValue(`lines.${index}.unit`, (option?.raw as ItemOption | undefined)?.unit ?? null)}
           />
@@ -98,12 +117,26 @@ export function LinesSection({ rows, onAdd, addLabel }: { rows: ReactNode; onAdd
   );
 }
 
-export function LineCard({ index, canRemove, onRemove, children }: { index: number; canRemove: boolean; onRemove: () => void; children: ReactNode }) {
+export function LineCard({
+  index,
+  canRemove,
+  onRemove,
+  action,
+  children,
+}: {
+  index: number;
+  canRemove: boolean;
+  onRemove: () => void;
+  /** A further button in the line's heading, e.g. "scan the item". */
+  action?: ReactNode;
+  children: ReactNode;
+}) {
   const { t } = useTranslation('inventory');
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
       <div className="flex min-h-9 items-center justify-between gap-2">
-        <span className="text-sm font-medium text-muted-foreground">{t('document.line', { number: index + 1 })}</span>
+        <span className="me-auto text-sm font-medium text-muted-foreground">{t('document.line', { number: index + 1 })}</span>
+        {action}
         {canRemove && (
           <Button variant="ghost" size="icon-sm" aria-label={t('document.removeLine')} onClick={onRemove}>
             <Trash2 aria-hidden />

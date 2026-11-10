@@ -24,6 +24,7 @@ import type { TrackingFlag } from '../../db/schema/tracking';
 import { ctx, today, tx } from '../../core/context';
 import { recordEvent } from '../../core/journal';
 import { raiseAlert, resolveByDedupKey } from '../alerts/alerts.service';
+import { judgeZones, nightWatch, zoneAlerts } from './zones.watch';
 
 const { animals, animalTrackDays, animalTracking, devices, herds, trackerAssignments: a, trackerReadings: r, trackerState } = schema;
 
@@ -41,16 +42,19 @@ interface Tracked {
   flags: Partial<Record<TrackingFlag, string>>;
 }
 
-/** What each rule said about one animal: true, false, or null when it could not tell. */
-type Verdict = { flag: TrackingFlag; raised: boolean | null; data?: Record<string, unknown> };
+/** The flags that raise an alert for the animal itself. Out of zone is told once per herd (zones.watch.ts). */
+type HealthFlag = Exclude<TrackingFlag, 'out_of_zone'>;
 
-const FLAG_RULE: Record<TrackingFlag, string> = {
+/** What each rule said about one animal: true, false, or null when it could not tell. */
+type Verdict = { flag: HealthFlag; raised: boolean | null; data?: Record<string, unknown> };
+
+const FLAG_RULE: Record<HealthFlag, string> = {
   isolated: 'animal_isolated',
   inactive: 'animal_inactive',
   fever: 'animal_fever',
 };
 
-const UZ_TITLE: Record<TrackingFlag, (tag: string) => string> = {
+const UZ_TITLE: Record<HealthFlag, (tag: string) => string> = {
   isolated: (tag) => `${tag} podadan ajralib qoldi`,
   inactive: (tag) => `${tag} deyarli harakatlanmayapti`,
   fever: (tag) => `${tag} isitmasi bo'lishi mumkin`,
@@ -63,6 +67,10 @@ export interface HealthRun {
   splitHerds: number;
   silent: number | null;
   lowBattery: number;
+  /** Animals out of their zone after this run. */
+  outOfZone: number;
+  /** Herds on the move at night in this run. */
+  nightMoves: number;
 }
 
 /**
@@ -116,14 +124,20 @@ export async function evaluateHealth(now: Date = new Date(), checkSilence = true
   const verdicts = new Map<string, Verdict[]>();
   const say = (animalId: string, v: Verdict) => verdicts.set(animalId, [...(verdicts.get(animalId) ?? []), v]);
   let splitHerds = 0;
+  let nightMoves = 0;
+  const own = (id: string) => readingsOf.get(id) ?? [];
+  const fixesOf = (id: string): Fix[] =>
+    own(id).flatMap((x) => (x.lat !== null && x.lng !== null ? [{ lat: x.lat, lng: x.lng, at: x.at.getTime() }] : []));
 
   for (const [herdId, members] of groupBy(tracked, (t) => t.herdId)) {
     if (!herdId) continue; // sheep without a herd have no flock to be compared with
-    const own = (id: string) => readingsOf.get(id) ?? [];
+
+    // On the move at night
+    if (await nightWatch(herdId, members[0]!.herdName, members.map((m): AnimalFixes => ({ animalId: m.animalId, fixes: fixesOf(m.animalId) })), now)) {
+      nightMoves += 1;
+    }
 
     // Apart from the flock
-    const fixesOf = (id: string): Fix[] =>
-      own(id).flatMap((x) => (x.lat !== null && x.lng !== null ? [{ lat: x.lat, lng: x.lng, at: x.at.getTime() }] : []));
     const isolation = herdIsolation(
       members.map((m): AnimalFixes => ({ animalId: m.animalId, fixes: fixesOf(m.animalId) })),
       now.getTime(),
@@ -185,10 +199,22 @@ export async function evaluateHealth(now: Date = new Date(), checkSilence = true
     }
   }
 
+  const zoneVerdicts = await judgeZones(tracked, fixesOf, now);
+  const outOfZone = new Set<string>();
+
   let raised = 0;
   let cleared = 0;
   for (const m of tracked) {
     const flags = { ...m.flags };
+    const zone = zoneVerdicts.get(m.animalId);
+    if (zone?.out === true && !flags.out_of_zone) {
+      flags.out_of_zone = now.toISOString();
+      raised += 1;
+    } else if (zone?.out === false && flags.out_of_zone) {
+      delete flags.out_of_zone;
+      cleared += 1;
+    }
+    if (flags.out_of_zone) outOfZone.add(m.animalId);
     for (const v of verdicts.get(m.animalId) ?? []) {
       const dedupKey = `${FLAG_RULE[v.flag]}:${m.animalId}`;
       if (v.raised === true) {
@@ -209,9 +235,11 @@ export async function evaluateHealth(now: Date = new Date(), checkSilence = true
     }
   }
 
+  await zoneAlerts(tracked, outOfZone, zoneVerdicts);
+
   const silent = checkSilence ? await silenceAlert(now) : null;
   const lowBattery = await batteryAlert();
-  return { evaluated: tracked.length, raised, cleared, splitHerds, silent, lowBattery };
+  return { evaluated: tracked.length, raised, cleared, splitHerds, silent, lowBattery, outOfZone: outOfZone.size, nightMoves };
 }
 
 function groupBy<T, K>(rows: T[], key: (row: T) => K): Map<K, T[]> {
