@@ -5,6 +5,7 @@ import { routes } from '../../core/http';
 import { idParam } from '../../core/query';
 import { getFieldCard } from './field-card.service';
 import * as fields from './fields.service';
+import * as groundwater from './groundwater.service';
 import * as soil from './soil.service';
 
 export function registerFields(app: FastifyInstance) {
@@ -88,5 +89,35 @@ export function registerFields(app: FastifyInstance) {
     access: 'farm.delete',
     params: idParam,
     handler: (req) => soil.removeSoil(req.params.id),
+  });
+
+  r.get('/fields/:id/groundwater', {
+    access: 'farm.view',
+    summary: 'Groundwater observations, oldest first',
+    params: idParam,
+    handler: (req) => groundwater.listGroundwater(req.params.id),
+  });
+
+  r.post('/fields/:id/groundwater', {
+    access: 'farm.create',
+    params: idParam,
+    body: groundwater.groundwaterInput,
+    handler: async (req, reply) => {
+      reply.code(201);
+      return groundwater.createGroundwater(req.params.id, req.body);
+    },
+  });
+
+  r.patch('/groundwater/:id', {
+    access: 'farm.update',
+    params: idParam,
+    body: groundwater.groundwaterInput.partial(),
+    handler: (req) => groundwater.updateGroundwater(req.params.id, req.body),
+  });
+
+  r.delete('/groundwater/:id', {
+    access: 'farm.delete',
+    params: idParam,
+    handler: (req) => groundwater.removeGroundwater(req.params.id),
   });
 }

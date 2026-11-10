@@ -8,6 +8,8 @@ export const HARVESTS = '/crops/harvests';
 export const TECH_CARDS = '/crops/tech-cards';
 export const SEASONS = '/crops/seasons';
 export const SUMMARY = '/crops/summary';
+export const CROPS = '/crops/crops';
+export const FIELD_LOOKUP = '/farm/fields/lookup';
 
 /** Everything that changes when field work changes. Stock moves too, so it refreshes as well. */
 export const AFFECTED_BY_WORK = [OPERATIONS, HARVESTS, PLANS, SUMMARY, '/crops/plan-fact', '/inventory'];
@@ -18,6 +20,8 @@ export interface FieldOption {
   /** Already formatted by the API, number included. */
   name: string;
   areaHa: number;
+  soilTexture?: string | null;
+  salinityLevel?: string | null;
 }
 
 export interface ItemOption {
@@ -30,7 +34,7 @@ export interface ItemOption {
 }
 
 export const fieldOptions = apiOptions<FieldOption>(
-  '/farm/fields/lookup',
+  FIELD_LOOKUP,
   (f) => ({ value: f.id, label: f.name, hint: formatHa(f.areaHa) }),
   { landUse: 'arable' },
 );
@@ -71,6 +75,7 @@ export const WORK_FIELDS: Record<string, { machine?: boolean; area?: boolean; ma
   tillage: { machine: true, area: true },
   sowing: { machine: true, area: true, materials: true },
   irrigation: { water: true },
+  leaching: { water: true },
   fertilizing: { machine: true, area: true, materials: true },
   protection: { machine: true, area: true, materials: true },
   observation: {},

@@ -87,6 +87,21 @@ export default function FieldsPage() {
           '—'
         ),
     },
+    {
+      key: 'groundwater',
+      header: t('fields.groundwater'),
+      align: 'right',
+      cell: (row) =>
+        row.groundwater ? (
+          <span className="inline-flex flex-wrap items-center justify-end gap-1.5">
+            {t('fields.groundwaterDepth', { value: formatNumber(row.groundwater.depthM, 2) })}
+            {row.groundwater.risk === 'shallow' && <Badge variant="warning">{t('groundwater.risk.shallow')}</Badge>}
+          </span>
+        ) : (
+          '—'
+        ),
+      mobile: 'hidden',
+    },
     // With the side panel open these two live there, and the table keeps its width.
     ...(wide
       ? []

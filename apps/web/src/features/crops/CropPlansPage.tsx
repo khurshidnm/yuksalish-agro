@@ -9,6 +9,7 @@ import { api } from '@/lib/api';
 import { usePermission, useSeesCost } from '@/lib/auth';
 import { formatDate, formatNumber, formatQty } from '@/lib/format';
 import { useApiMutation, useDetail } from '@/lib/query';
+import { CropsTab } from './CropsTab';
 import { OPERATIONS, PLANS, SEASONS, SUMMARY } from './options';
 import { PlanFactTab } from './PlanFactTab';
 import { PlanFormDialog } from './PlanFormDialog';
@@ -193,6 +194,7 @@ export default function CropPlansPage() {
           { value: 'fact', label: t('plans.tabs.fact'), content: <PlanFactTab seasonId={season} /> },
           { value: 'cards', label: t('plans.tabs.cards'), content: <TechCardsTab /> },
           { value: 'seasons', label: t('plans.tabs.seasons'), content: <SeasonsTab /> },
+          { value: 'crops', label: t('plans.tabs.crops'), content: <CropsTab /> },
         ]}
       />
 

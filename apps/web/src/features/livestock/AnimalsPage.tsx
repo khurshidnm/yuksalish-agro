@@ -1,8 +1,8 @@
 import { ANIMAL_CATEGORIES, ANIMAL_STATUSES, todayIso } from '@yap/shared';
-import { ArrowRightLeft, Baby, MapPin, PawPrint, Plus, ShieldAlert, Thermometer, X } from 'lucide-react';
-import { useState } from 'react';
+import { ArrowRightLeft, Baby, MapPin, PawPrint, Plus, QrCode, ShieldAlert, Thermometer, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { type Column, DataTable, MoneyText, PageHeader, StatCard, useUrlParam } from '@/components';
 import { Button, Checkbox, Select } from '@/components/ui';
 import { usePermission } from '@/lib/auth';
@@ -10,6 +10,7 @@ import { formatDate, formatNumber, formatQty } from '@/lib/format';
 import { enumOptions } from '@/lib/i18n';
 import { useDetail, useList } from '@/lib/query';
 import { AnimalForm } from './AnimalForm';
+import { ScanAnimalButton } from './ScanAnimal';
 import { type Animal, type HerdRow, type HerdSummary, StatusBadge, useAgeText, useLocalName } from './shared';
 import { TransferDialog } from './TransferDialog';
 
@@ -34,6 +35,32 @@ export default function AnimalsPage() {
 
   const { data: summary, isLoading } = useDetail<HerdSummary>('/livestock/summary');
   const { data: herds } = useList<HerdRow>('/livestock/herds', { pageSize: 100 });
+
+  // A scan that finds no animal can be handed to the list's own search. The table reads its search
+  // from the address once, when it appears, so it is shown anew once the address holds the code.
+  const navigate = useNavigate();
+  const [urlParams, setUrlParams] = useSearchParams();
+  const urlSearch = urlParams.get('q') ?? '';
+  const scanSearch = useRef<string | null>(null);
+  const [tableKey, setTableKey] = useState(0);
+  useEffect(() => {
+    if (scanSearch.current === null || scanSearch.current !== urlSearch) return;
+    scanSearch.current = null;
+    setTableKey((key) => key + 1);
+  }, [urlSearch]);
+  const searchFor = (code: string) => {
+    if (code === urlSearch) return;
+    scanSearch.current = code;
+    setUrlParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('q', code);
+        next.delete('page');
+        return next;
+      },
+      { replace: true },
+    );
+  };
 
   const toggle = (id: string) =>
     setSelected((current) => {
@@ -81,10 +108,17 @@ export default function AnimalsPage() {
         description={t('animals.description')}
         actions={
           <>
+            <ScanAnimalButton label={t('scan:button')} onPick={(animal) => void navigate(`/livestock/animals/${animal.id}`)} onSearch={searchFor} />
             <Button variant="outline" asChild>
               <Link to="/livestock/tracking">
                 <MapPin aria-hidden />
                 {t('tracking:map')}
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link to={herdId ? `/livestock/tags?herd=${herdId}` : '/livestock/tags'}>
+                <QrCode aria-hidden />
+                {t('scan:tags.print')}
               </Link>
             </Button>
             {canManage && (
@@ -115,10 +149,14 @@ export default function AnimalsPage() {
       {selected.size > 0 && (
         <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-3">
           <p className="font-medium">{t('animals.selected', { count: selected.size })}</p>
-          <div className="ms-auto flex gap-2">
+          <div className="ms-auto flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => setSelected(new Set())}>
               <X aria-hidden />
               {t('common:actions.clear')}
+            </Button>
+            <Button variant="outline" onClick={() => void navigate('/livestock/tags', { state: { ids: [...selected] } })}>
+              <QrCode aria-hidden />
+              {t('scan:tags.print')}
             </Button>
             <Button onClick={() => setMoving(true)}>
               <ArrowRightLeft aria-hidden />
@@ -129,6 +167,7 @@ export default function AnimalsPage() {
       )}
 
       <DataTable<Animal>
+        key={tableKey}
         path={PATH}
         params={{ scope, herdId: herdId || undefined, status: status || undefined, category: category || undefined }}
         columns={columns}

@@ -14,6 +14,7 @@ import {
   Sprout,
   Tractor,
   Trash2,
+  Waves,
   Wheat,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -54,6 +55,7 @@ const TYPE_ICON: Record<string, LucideIcon> = {
   tillage: Tractor,
   sowing: Sprout,
   irrigation: Droplets,
+  leaching: Waves,
   fertilizing: FlaskConical,
   protection: Shield,
   observation: Eye,

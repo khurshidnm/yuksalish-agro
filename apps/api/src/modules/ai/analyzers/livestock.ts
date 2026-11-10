@@ -1,6 +1,7 @@
 import { and, asc, count, eq, gte, min, sql } from 'drizzle-orm';
 import { countSpike, gainSlowdown, lambingWorkload, weekStartOf, type LambingWeek } from '@yap/shared/formulas/ai';
-import { OUTLOOK_ASSUMPTIONS, expectedLambs } from '@yap/shared/formulas/outlook';
+import { expectedLambCrop } from '@yap/shared/formulas/lambing';
+import { OUTLOOK_ASSUMPTIONS } from '@yap/shared/formulas/outlook';
 import { ANIMAL_ON_FARM_STATUSES, addDays, diffDays, monthOf, round } from '@yap/shared';
 import { ctx, today, tx } from '../../../core/context';
 import { schema } from '../../../db/client';
@@ -205,7 +206,12 @@ async function rationTotals(): Promise<Record<string, number>> {
 export async function lambingForecast(): Promise<AnalyzerResult> {
   const farmId = ctx().farmId;
   const rows = await tx()
-    .select({ date: breedingRecords.expectedDate, ewes: count() })
+    .select({
+      date: breedingRecords.expectedDate,
+      ewes: count(),
+      scannedEwes: sql<number>`count(${breedingRecords.fetusCount})`.mapWith(Number),
+      scannedFetuses: sql<number>`coalesce(sum(${breedingRecords.fetusCount}), 0)`.mapWith(Number),
+    })
     .from(breedingRecords)
     .where(
       and(
@@ -222,16 +228,22 @@ export async function lambingForecast(): Promise<AnalyzerResult> {
   if (!cover.enough) return { coverage: cover, findings: [] };
 
   const perWeek = new Map<string, number>();
+  // Ewes a pregnancy scan has counted, and the foetuses it found, by week.
+  const scannedPerWeek = new Map<string, { scannedEwes: number; scannedFetuses: number }>();
   for (const row of rows) {
     const week = weekStartOf(row.date);
     perWeek.set(week, (perWeek.get(week) ?? 0) + row.ewes);
+    if (row.scannedEwes > 0) {
+      const scanned = scannedPerWeek.get(week) ?? { scannedEwes: 0, scannedFetuses: 0 };
+      scannedPerWeek.set(week, { scannedEwes: scanned.scannedEwes + row.scannedEwes, scannedFetuses: scanned.scannedFetuses + row.scannedFetuses });
+    }
   }
   // Consecutive weeks, gaps included, so the lactation window counts real weeks.
   const first = weekStartOf(rows[0].date);
   const last = weekStartOf(rows[rows.length - 1].date);
   const weeks: LambingWeek[] = [];
   for (let week = first; week <= last; week = addDays(week, 7)) {
-    weeks.push({ weekStart: week, ewes: perWeek.get(week) ?? 0 });
+    weeks.push({ weekStart: week, ewes: perWeek.get(week) ?? 0, ...scannedPerWeek.get(week) });
   }
 
   const [history] = await tx()
@@ -255,8 +267,10 @@ export async function lambingForecast(): Promise<AnalyzerResult> {
     shiftHours: SHIFT_HOURS,
   });
   const peak = workload.reduce((a, b) => (b.ewes > a.ewes ? b : a));
-  // The same count the dashboard and the outlook show for these ewes.
-  const lambs = expectedLambs(pregnant, lambsPerEwe);
+  // The same count the dashboard and the outlook show for these ewes: scanned ewes by their scan.
+  const scannedEwes = rows.reduce((sum, r) => sum + r.scannedEwes, 0);
+  const scannedFetuses = rows.reduce((sum, r) => sum + r.scannedFetuses, 0);
+  const lambs = expectedLambCrop({ ewes: pregnant, scannedEwes, scannedFetuses }, lambsPerEwe) ?? 0;
   const extraFeedKg =
     extraKgPerEweDay === null ? null : workload.reduce((sum, w) => sum + (w.extraFeedKg ?? 0), 0);
 

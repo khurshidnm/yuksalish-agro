@@ -102,26 +102,44 @@ export async function cashPosition() {
  * it or a count finds it short. Sold, it brings its income and no second cost.
  */
 async function stockCost(from: string, to: string): Promise<number> {
+  const [row] = await tx()
+    .select({ amount: usedStockAmount() })
+    .from(m)
+    .innerJoin(stockBatches, eq(stockBatches.id, m.batchId))
+    .where(usedStockWhere(from, to));
+  return row?.amount ?? 0;
+}
+
+/** Cost of stock used less stock found: the one sum stockCost and operatingCostByMonth both take. */
+function usedStockAmount() {
   const credits = sql.join(
     COST_CREDIT_MOVEMENT_TYPES.map((type) => sql`${type}`),
     sql`, `,
   );
-  const [row] = await tx()
-    .select({
-      amount: sql`coalesce(sum(case when ${m.type} in (${credits}) then -${m.totalCost} else ${m.totalCost} end), 0)`.mapWith(Number),
-    })
-    .from(m)
-    .innerJoin(stockBatches, eq(stockBatches.id, m.batchId))
-    .where(
-      and(
-        eq(m.farmId, ctx().farmId),
-        inArray(m.type, [...COST_MOVEMENT_TYPES, ...COST_CREDIT_MOVEMENT_TYPES]),
-        ne(stockBatches.source, 'own_harvest'),
-        gte(m.date, from),
-        lte(m.date, to),
-      ),
-    );
-  return row?.amount ?? 0;
+  return sql`coalesce(sum(case when ${m.type} in (${credits}) then -${m.totalCost} else ${m.totalCost} end), 0)`.mapWith(Number);
+}
+
+/** The movements that are the farm's stock cost in a period. Needs the join to stockBatches. */
+function usedStockWhere(from: string, to: string) {
+  return and(
+    eq(m.farmId, ctx().farmId),
+    inArray(m.type, [...COST_MOVEMENT_TYPES, ...COST_CREDIT_MOVEMENT_TYPES]),
+    ne(stockBatches.source, 'own_harvest'),
+    gte(m.date, from),
+    lte(m.date, to),
+  );
+}
+
+/** A running cost paid directly: approved, and neither stock, an asset nor an animal (rule 3). */
+function directExpenseWhere(from: string, to: string) {
+  return and(
+    eq(t.farmId, ctx().farmId),
+    eq(t.status, 'approved'),
+    eq(t.type, 'expense'),
+    eq(t.costTreatment, 'expense'),
+    gte(t.date, from),
+    lte(t.date, to),
+  );
 }
 
 /** Entries that move no money: owed (paid later by a settlement) or booked without cash (depreciation). */
@@ -340,6 +358,41 @@ function materialBucket(itemCategory: string): Bucket {
     default:
       return 'other';
   }
+}
+
+/**
+ * The farm's operating cost per month, split by what it was spent on: the same money
+ * monthToDate() calls `operatingExpense` (direct expenses plus stock used, own produce left out),
+ * so the months of a period add up to that figure. A test holds the two equal.
+ */
+export async function operatingCostByMonth(from: string, to: string): Promise<{ month: string; buckets: Record<Bucket, number>; total: number }[]> {
+  const directMonth = sql<string>`to_char(${t.date}, 'YYYY-MM')`;
+  const direct = await tx()
+    .select({ month: directMonth, key: cat.key, group: cat.group, amount: sumOf(t.amountBase) })
+    .from(t)
+    .leftJoin(cat, eq(cat.id, t.categoryId))
+    .where(directExpenseWhere(from, to))
+    .groupBy(directMonth, cat.key, cat.group);
+  const stockMonth = sql<string>`to_char(${m.date}, 'YYYY-MM')`;
+  const used = await tx()
+    .select({ month: stockMonth, category: items.category, amount: usedStockAmount() })
+    .from(m)
+    .innerJoin(stockBatches, eq(stockBatches.id, m.batchId))
+    .innerJoin(items, eq(items.id, m.itemId))
+    .where(usedStockWhere(from, to))
+    .groupBy(stockMonth, items.category);
+
+  const byMonth = new Map<string, Buckets>();
+  const add = (month: string, bucket: Bucket, amount: number) => {
+    const buckets = byMonth.get(month) ?? emptyBuckets();
+    buckets[bucket] += amount;
+    byMonth.set(month, buckets);
+  };
+  for (const row of direct) add(row.month, directBucket(row.key, row.group), row.amount);
+  for (const row of used) add(row.month, materialBucket(row.category), row.amount);
+  return [...byMonth.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, buckets]) => ({ month, buckets, total: round(Object.values(buckets).reduce((sum, v) => sum + v, 0), 2) }));
 }
 
 type CenterRow = typeof costCenters.$inferSelect;

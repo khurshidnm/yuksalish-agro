@@ -9,6 +9,7 @@ export * from './FormField';
 export * from './MoneyText';
 export * from './PageHeader';
 export * from './PermissionGate';
+export * from './scan';
 export * from './StatCard';
 export * from './StubPage';
 export * from './UrlTabs';

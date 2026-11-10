@@ -33,6 +33,17 @@ export const items = pgTable(
     barcode: text(),
     /** Dry matter percent, for feed conversion. */
     dryMatterPct: dec(5, 2),
+    /** Feed nutrients, all per kg of dry matter and all optional: unknown stays null (ration balance). */
+    meMjPerKgDm: dec(5, 2),
+    crudeProteinPctDm: dec(5, 2),
+    calciumGPerKgDm: dec(6, 2),
+    phosphorusGPerKgDm: dec(6, 2),
+    /** True for hay, straw, silage and other roughage; false for grain, bran and cake. Null: not said. */
+    isRoughage: boolean(),
+    /** Fertiliser nutrients, percent of the product as sold. Null: not said, and the product is left out of rates. */
+    nPct: dec(5, 2),
+    p2o5Pct: dec(5, 2),
+    k2oPct: dec(5, 2),
     minQty: qty(),
     /** Alert when stock covers fewer days than this (spec 9.2). */
     minDays: dec(8, 2),

@@ -444,7 +444,8 @@
     "PROPOSAL_NEEDS_ANSWER": "A correction to this card is waiting for your answer.",
     "PROPOSAL_STALE": "Something on this card has changed, for example an account was closed. Please check it.",
     "NOT_ACKNOWLEDGED": "This record needs your explicit yes.",
-    "UNDO_IMPOSSIBLE": "This record cannot be undone here."
+    "UNDO_IMPOSSIBLE": "This record cannot be undone here.",
+    "FARM_RECORD_EXISTS": "This is already in the books. Nothing was recorded again."
   },
   "sourceValues": {
     "actual": "actual use",
@@ -577,7 +578,9 @@
       "OLD_DATE": "The date, {{date}}, is more than 30 days ago.",
       "STALE_RATE": "The stored exchange rate, {{rate}}, is from {{date}}: more than a week old. Check it.",
       "PHRASE_USED": "\"{{phrase}}\" was taken to mean {{name}}, as you taught earlier.",
-      "CURRENCY_CONVERTED": "{{account}} is kept in so'm, so this is recorded at its so'm value. Please check."
+      "CURRENCY_CONVERTED": "{{account}} is kept in so'm, so this is recorded at its so'm value. Please check.",
+      "DRUG_NOT_STOCKED": "This drug is not a warehouse item: nothing leaves the warehouse.",
+      "RATION_REST_NOT_GIVEN": "The other feeds of the ration are written as not given: {{items}}."
     },
     "pending": {
       "tab": "Pending",
@@ -679,7 +682,29 @@
         "CURRENCY_NOT_SUPPORTED": "This is recorded here in one currency only. An exchange between currencies is entered in Finance.",
         "CURRENCY_UNSUPPORTED": "This currency is not kept here. Give the amount in the farm's currency, {{base}}.",
         "CURRENCY_UNCLEAR": "Which currency was it?",
-        "FX_RATE_REQUIRED": "What was the exchange rate?"
+        "FX_RATE_REQUIRED": "What was the exchange rate?",
+        "ANIMAL_REQUIRED": "Which animal was it? Say its tag number.",
+        "ANIMAL_NOT_STATED": "I did not find a tag number in your words. Which animal was it? Say its tag number.",
+        "ANIMAL_COUNT_OR_TAG": "Is that number the animal's tag, or a head count? If it is a tag, say it like this: \"tag 46\".",
+        "ANIMAL_UNKNOWN": "No animal on this farm has that tag. Please check the tag number.",
+        "ANIMAL_AMBIGUOUS": "Several animals answer to that number. Which one? Say the tag in full.",
+        "ANIMAL_LEFT": "In the books this animal is no longer on the farm. Please check the tag number.",
+        "ALREADY_RECORDED": "This is already in the books. Nothing was recorded again.",
+        "WEIGHT_REQUIRED": "How many kilograms did it weigh? Say it with the unit, for example \"46 kg\".",
+        "WEIGHT_NOT_PLAUSIBLE": "That weight is not possible for this animal. Please check it.",
+        "WEIGHT_BEFORE_BIRTH": "This animal was born after that day. Which day was it weighed?",
+        "DEATH_NOT_STATED": "What happened to this animal? A death is recorded only when you say it died.",
+        "CARE_TARGET_REQUIRED": "Which animal or which herd was it? Say the tag number or the herd.",
+        "DRUG_AMBIGUOUS": "Several items in the warehouse answer to that name. Which one was used?",
+        "DRUG_REQUIRED": "Which drug or vaccine was used?",
+        "DOSE_REQUIRED": "How much was used? Say it with the unit: it is taken from the warehouse.",
+        "DOSE_UNIT_MISMATCH": "The warehouse keeps this item in another unit. How much was used in the warehouse's unit?",
+        "HERD_REQUIRED": "Which herd was it?",
+        "FEED_AMBIGUOUS": "Several items in the warehouse answer to that name. Which feed was given?",
+        "FEED_REQUIRED": "Which feed was given? It has to be an item the warehouse keeps.",
+        "FEED_QTY_REQUIRED": "How much was given? Say it with the unit.",
+        "FEED_UNIT_MISMATCH": "The warehouse keeps this feed in another unit. How much was given in the warehouse's unit?",
+        "WAREHOUSE_REQUIRED": "Which warehouse was it taken from?"
       }
     },
     "tools": {
@@ -751,7 +776,9 @@
       "STALE_RATE": "The exchange rate is old. Please check it.",
       "UNUSUAL_PRICE": "This price is far from the usual one.",
       "PHRASE_USED": "This was chosen from a word taught earlier.",
-      "CURRENCY_CONVERTED": "This account is kept in so'm, so this is recorded at its so'm value. Please check."
+      "CURRENCY_CONVERTED": "This account is kept in so'm, so this is recorded at its so'm value. Please check.",
+      "DRUG_NOT_STOCKED": "This drug is not a warehouse item: nothing leaves the warehouse.",
+      "RATION_REST_NOT_GIVEN": "The other feeds of the ration are written as not given: {{items}}."
     },
     "direction": {
       "payable": "We paid off a debt",
@@ -791,5 +818,44 @@
   "insightStrip": {
     "title": "AI insight",
     "open": "Open all insights"
+  },
+  "farmRecords": {
+    "kind": {
+      "weight": "Weighing",
+      "death": "Death of an animal",
+      "treatment": "Animal care",
+      "herd_log": "Feeding of a herd"
+    },
+    "fields": {
+      "animal": "Animal",
+      "age": "Age",
+      "herd": "Herd",
+      "weight": "Weight",
+      "date": "Date",
+      "cause": "In your words",
+      "care": "Care",
+      "drug": "Drug",
+      "dose": "Dose",
+      "stockOut": "Leaves the warehouse",
+      "headCount": "Head",
+      "said": "You said"
+    },
+    "ageMonths": "{{months}} months",
+    "ageUnknown": "age not known",
+    "noHerd": "no herd",
+    "herdDefaulted": "the only herd, you did not say",
+    "warehouseByRule": "the warehouse is chosen when it is recorded",
+    "noPermission": "You do not have permission to record this.",
+    "deathNote": "Once you confirm, this animal leaves the flock in the books.",
+    "herdLogNote": "Once you confirm, this is the herd's record for that day. A herd has one record a day.",
+    "expires": "Valid until {{time}}",
+    "confirmedBody": "It is in the books, entered under your name.",
+    "undoneBody": "The record was taken back, the books are as they were.",
+    "noUndo": "It cannot be taken back here. Change it on its own page.",
+    "staleBody": "The animal on this card has left the farm or changed in the books. Cancel the card and say it again.",
+    "existsTitle": "Already in the books",
+    "existsBody": "This record is already there. Nothing was written again. Cancel the card.",
+    "needsAnswer": "Answer the question in the chat. Until then this card cannot be confirmed.",
+    "pendingTitle": "Farm records"
   }
 }

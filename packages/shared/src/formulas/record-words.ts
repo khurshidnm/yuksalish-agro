@@ -13,7 +13,7 @@ import {
   APPROX_BEFORE, blankNonAmounts, closesRange, HEDGES, isAmountWord, isApproximate, isCountWord, isPercent, isPriceBasis, isStockUnit, linkBetween, monthOf,
   numberAfter, parseMoneyMentions, readFigure, Scan, takenBack, type Figure, type Piece,
 } from './money-text';
-import { fold, unitOf, wordList, wordSet, type Phrase } from './units';
+import { fold, unitOf, wordList, wordSet, type Phrase, type UnitWord } from './units';
 
 const wordsOf = (text: string) => new Scan(text).pieces.filter((piece) => piece.kind === 'word');
 
@@ -125,7 +125,14 @@ export function parseQuantities(text: string): StatedQuantity[] {
   return implied === text ? stated : quantitiesIn(implied);
 }
 
-function quantitiesIn(text: string): StatedQuantity[] {
+const quantitiesIn = (text: string): StatedQuantity[] => standingQuantities(text).map(({ qty, unit, raw }) => ({ qty, unit, raw }));
+
+/** A quantity and where it was said, so that it can be tied to what stands beside it. */
+export interface PlacedQuantity extends StatedQuantity {
+  start: number;
+}
+
+function standingQuantities(text: string): PlacedQuantity[] {
   const s = new Scan(blankNonAmounts(text));
   const found = allQuantities(s);
   found.forEach((quantity, k) => {
@@ -135,12 +142,12 @@ function quantitiesIn(text: string): StatedQuantity[] {
     if (link === 'range') quantity.uncertain = true;
     if (link === 'range' && found[k + 1]?.first === number) found[k + 1].uncertain = true;
   });
-  const kept: StatedQuantity[] = [];
+  const kept: PlacedQuantity[] = [];
   const dropped = new Set<string>();
-  for (const { qty, unit, raw, negated, uncertain } of found.reverse()) {
+  for (const { qty, unit, raw, first, negated, uncertain } of found.reverse()) {
     const same = `${qty} ${unitOf(unit) ?? fold(unit)}`;
     if (negated) dropped.add(same);
-    else if (!uncertain && !dropped.has(same)) kept.push({ qty, unit, raw });
+    else if (!uncertain && !dropped.has(same)) kept.push({ qty, unit, raw, start: s.pieces[first].start });
   }
   return kept.reverse();
 }
@@ -987,3 +994,280 @@ export function claimsDone(text: string): boolean {
 
 /** The model says a card is waiting. True only when one is. */
 export const claimsCard = (text: string) => matches(wordsOf(text), CARD_READY).length > 0;
+
+// ─── Farm records: which animal, how much, what happened ────────────────────
+
+/** An animal's number as the person said it. */
+export interface StatedTag {
+  /** With its letters when they are attached, "YA-0567"; otherwise the digits as written, "0567". */
+  tag: string;
+  digits: string;
+  start: number;
+  end: number;
+  /** Something besides the number says it names an animal: №, "raqamli", letters, a leading zero, "1234-qo'y". */
+  marked: boolean;
+  /** "5 qo'y": just as well a head count, so it is asked about. */
+  countLike: boolean;
+}
+
+const ANIMAL_NOUNS = wordSet(`
+  qo'y*, sovliq*, qo'chqor*, qo'zi*, qo'zichoq*, to'qli*, echki*, uloq*, sigir*, buzoq*, mol*, hayvon*, jonivor*,
+  овца, овцы, овцу, овце, овцой, овец, баран, барана, барану, бараном, ягнёнок, ягненок, ягнёнка, ягненка, матка, матку, матки,
+  коза, козу, козы, корова, корову, коровы, животное, животного, sheep, ewe, ewes, ram, rams, lamb, lambs, goat, goats, cow, cows, calf, animal, animals`);
+const TAG_WORDS = wordSet(`
+  raqam*, nomer*, birka*, sirg'a*, sonli, tag, tags, number, no, id,
+  номер, номера, номером, номеру, номере, бирка, бирки, бирку, биркой, бирке, бирок`);
+/** Things that carry a number of their own, so "1-otar" and "dala 3" are names and no animal. */
+const NUMBERED_THINGS = wordSet(`
+  otar*, poda*, suruv*, guruh*, dala*, kontur*, paykal*, uchastka*, pivot*, qo'ra*, ombor*, brigada*, bino*, qator*, katak*,
+  отара, отары, отару, отаре, отарой, стадо, стада, стаду, стаде, группа, группы, группу, группе, поле, поля, полю, полем,
+  участок, участка, участке, загон, загона, загоне, склад, склада, складе, field, fields, herd, flock, group, plot, pen, block, barn`);
+const NOT_A_TAG_AFTER = wordSet(`
+  kun*, hafta*, oy*, yil*, soat*, daqiqa*, minut*, yosh*, marta, gektar*, sotix*,
+  день, дня, дней, час, часа, часов, минут, минуты, неделя, недели, недель, месяц, месяца, месяцев, год, года, лет, раз, раза,
+  гектар, гектара, гектаров, day, days, hour, hours, week, weeks, month, months, year, years, times, hectare, hectares, am, pm`);
+const CLOCK_BEFORE = wordSet('soat*');
+const TAG_ENDINGS = wordSet('ga, ka, ni, ning, da, dan, niki');
+/** Only an animal is spoken of like this, where "ga" and "da" also follow a field's number or an hour. */
+const SAYS_WHICH_ONE = wordSet('ni, ning, dan, niki');
+const ORDINAL_ENDINGS = new Set([...ORDINAL_MARKS, ...wordSet('й, я, е, ый, ой, ая, ое')]);
+const NUMBER_SIGN = /[№#]\s*$/u;
+const MAX_TAG_DIGITS = 12;
+
+/**
+ * Numbers that may name an animal: whole, and not a quantity, money, a day, an hour, or the number of a
+ * herd or a field. "46 kilo" is a weight and no tag; "5 qo'y" may be five sheep, and is marked so.
+ */
+export function statedTags(text: string): StatedTag[] {
+  const s = new Scan(text);
+  const blanked = blankNonAmounts(text);
+  const amounts = new Scan(blanked);
+  const quantities = new Set(allQuantities(amounts).map((quantity) => amounts.pieces[quantity.first].start));
+  const found: StatedTag[] = [];
+  s.pieces.forEach((piece, i) => {
+    if (piece.kind !== 'number' || !/^\d+$/.test(piece.raw) || piece.raw.length > MAX_TAG_DIGITS) return;
+    const signed = NUMBER_SIGN.test(text.slice(0, piece.start));
+    let marked = signed || (piece.raw.length > 1 && piece.raw.startsWith('0'));
+    let other = !signed && blanked.slice(piece.start, piece.end).trim() === '';
+    let countLike = false;
+    if (quantities.has(piece.start)) other = true;
+
+    // What follows: "1234-qo'y", "0567 raqamli", "0567 ga", "1-otar", "5-chi dala", "3 mln".
+    const hyphen = s.mark(i + 1) === '-' && s.touching(i + 1) && s.touching(i + 2);
+    let at = hyphen ? i + 2 : i + 1;
+    let attached = hyphen || s.touching(at);
+    const ordinal = attached && ORDINAL_ENDINGS.has(s.key(at));
+    if (ordinal) at += 1;
+    const near = s.pieces[at]?.kind === 'word' && s.joined(at);
+    const after = near ? s.key(at) : '';
+    if (ordinal) attached = true;
+    if (after !== '') {
+      if (ANIMAL_NOUNS.has(after)) {
+        if (attached) marked = true;
+        else countLike = true;
+      } else if (TAG_WORDS.has(after)) marked = true;
+      else if (TAG_ENDINGS.has(after)) marked ||= SAYS_WHICH_ONE.has(after);
+      else if (attached || NUMBERED_THINGS.has(after) || NOT_A_TAG_AFTER.has(after) || monthOf(s.pieces[at]) !== undefined || isAmountWord(after) || unitOf(after) !== null) other = true;
+    }
+    if (isPercent(s, i + 1) || (ordinal && after === '')) other = true;
+
+    // What stands before: "raqami 0567", "YA-0567", "dala 3", "soat 5", "$5".
+    const before = s.pieces[i - 1];
+    const joinedOn = before?.raw === '-' && s.touching(i) && s.touching(i - 1) ? s.pieces[i - 2] : s.touching(i) ? before : undefined;
+    let prefix: string | null = null;
+    if (joinedOn?.kind === 'word') {
+      if (NUMBERED_THINGS.has(joinedOn.key) || joinedOn.raw.length > 4) other = true;
+      else {
+        prefix = joinedOn.raw.toUpperCase();
+        marked = true;
+      }
+    } else if (before?.kind === 'word' && s.joined(i)) {
+      if (TAG_WORDS.has(before.key)) marked = true;
+      else if (NUMBERED_THINGS.has(before.key) || CLOCK_BEFORE.has(before.key)) other = true;
+    } else if (before?.kind === 'mark' && before.raw !== '-' && before.raw !== '\n' && s.joined(i)) other = true;
+
+    if (other && !signed) return;
+    found.push({
+      tag: prefix ? `${prefix}-${piece.raw}` : piece.raw,
+      digits: piece.raw,
+      start: joinedOn?.kind === 'word' && prefix ? joinedOn.start : piece.start,
+      end: piece.end,
+      marked,
+      countLike: countLike && !marked,
+    });
+  });
+  return found;
+}
+
+/**
+ * The text with every number that was said as a tag blanked, each place kept. Two numbers side by side
+ * read as a range ("40 50 kilo"), which "YA-0567 46 kilo" is not: the first one names the animal.
+ * A bare number ("1234 46 kilo") is left in, so that one still asks.
+ */
+function withoutSaidTags(text: string): string {
+  let rest = text;
+  for (const tag of statedTags(text)) {
+    if (!tag.marked) continue;
+    // "№567": the sign goes with its number, or it would sign the weight that follows.
+    const start = tag.start - (NUMBER_SIGN.exec(text.slice(0, tag.start))?.[0].length ?? 0);
+    rest = rest.slice(0, start) + ' '.repeat(tag.end - start) + rest.slice(tag.end);
+  }
+  return rest;
+}
+
+/** Quantities the person stands by, with their place in the text. */
+export const placedQuantities = (text: string): PlacedQuantity[] => standingQuantities(withoutSaidTags(text));
+
+/**
+ * The quantities that belong to one animal of a sentence. With one animal, all of them. With several, each
+ * takes its own when there are as many quantities as animals, and otherwise only what stands between it and
+ * the next one: "1234 va 1235 46 kilo" gives 46 to the second and leaves the first to be asked about.
+ */
+export function quantitiesOfTag(text: string, tag: StatedTag, units: readonly UnitWord[]): PlacedQuantity[] {
+  const tags = statedTags(text);
+  const said = placedQuantities(text).filter((quantity) => units.includes(unitOf(quantity.unit) as UnitWord));
+  const at = tags.findIndex((other) => other.start === tag.start);
+  if (at < 0) return [];
+  if (tags.length === 1) return said;
+  if (said.length === tags.length) return [said[at]];
+  const until = tags[at + 1]?.start ?? Infinity;
+  return said.filter((quantity) => quantity.start > tag.start && quantity.start < until);
+}
+
+const DIED = wordList(`
+  o'ldi, o'lib, o'lgan, o'libdi, o'ldilar, o'lik*, nobud*, halok*,
+  сдох, сдохла, сдохло, сдохли, издох, издохла, пал, пала, пало, пали, умер, умерла, умерли, погиб, погибла, погибли, падёж, падеж,
+  died, dead, perished, death`);
+
+/** The words speak of a death. "Не сдохла" does not. */
+export const deathWords = (text: string) => says(wordsOf(text), DIED);
+
+/**
+ * The person's own wording of something a model named, or null when they never said it: a cause of death
+ * or a drug's name reaches a card only as it stands in their words.
+ */
+export function quoteFromWords(texts: string[], phrase: string): string | null {
+  const wanted = wordsOf(phrase).map((word) => word.key);
+  if (wanted.length === 0) return null;
+  for (const text of [...texts].reverse()) {
+    const words = wordsOf(text);
+    for (let at = 0; at + wanted.length <= words.length; at++) {
+      if (wanted.every((key, i) => words[at + i].key === key)) return text.slice(words[at].start, words[at + wanted.length - 1].end);
+    }
+  }
+  return null;
+}
+
+export type CareWord = 'vaccination' | 'deworming' | 'treatment';
+
+const stems = (source: string) => source.split(',').map((stem) => fold(stem.trim())).filter(Boolean);
+const VACCINE_STEMS = stems('emla, vaksin, privivk, вакцин, привив, привит, vaccin');
+const DEWORM_STEMS = stems('gijja, gelmint, глист, гельминт, deworm, drench');
+
+/** What kind of care the words name. Anything that is not a vaccination or a deworming is a treatment. */
+export function careWords(text: string): CareWord {
+  const keys = wordsOf(text).map((word) => word.key);
+  const has = (list: string[]) => keys.some((key) => list.some((stem) => key.startsWith(stem)));
+  return has(VACCINE_STEMS) ? 'vaccination' : has(DEWORM_STEMS) ? 'deworming' : 'treatment';
+}
+
+/** Lambs as the person said them. What was not said is null or 0, never guessed. */
+export interface BirthWords {
+  born: boolean;
+  /** "egiz", "тройня", "2 ta qo'zi": how many in all, when said. */
+  total: number | null;
+  male: number;
+  female: number;
+  /** Born dead. */
+  dead: number;
+}
+
+const BORN = wordList(`
+  tug'di, tug'ib, tug'gan, tug'ibdi, tug'ildi, tug'ilgan, tug'ilibdi, tug'dilar, tug'dirdi, tuqqan, tuqdi, tug'ruq*,
+  окотилась, окотились, объягнилась, объягнились, родила, родили, родился, родилась, родилось, родились, окот, окота,
+  lambed, lambing, kidded, calved, born, gave birth, given birth`);
+const BORN_STEMS = [...wordSet("qo'zila, uloqla, buzoqla, bolala")];
+const LAMB_NOUNS = wordSet(`
+  qo'zi*, qo'zichoq*, uloq*, buzoq*, bola*,
+  ягнёнок, ягненок, ягнёнка, ягненка, ягнят, ягнята, козлёнок, козленок, козлят, телёнок, теленок, телят, lamb, lambs, kid, kids, calf, calves`);
+const MALE_WORDS = wordSet(`
+  erkak*, qo'chqorcha*, баранчик, баранчика, баранчиков, самец, самца, самцов, мальчик, мальчика, мальчиков, male, males, boy, boys`);
+const FEMALE_WORDS = wordSet(`
+  urg'ochi*, ярочка, ярочки, ярочку, ярочек, самка, самки, самку, самок, девочка, девочки, девочку, девочек, female, females, girl, girls`);
+/** "ram lamb", "ewe lamb": the first word says the sex only with the second beside it. */
+const MALE_BEFORE_LAMB = wordSet('ram, buck, bull');
+const FEMALE_BEFORE_LAMB = wordSet('ewe, doe, heifer');
+const DEAD_STEMS = [...wordSet("o'lik, мёртв, мертв, stillborn, dead")];
+const LITTERS: [Set<string>, number][] = [
+  [wordSet('egiz*, egizak*, twins, twin'), 2],
+  [wordSet('uchem*, uchegiz*, triplets, triplet'), 3],
+  [wordSet('yakka, single, singleton'), 1],
+];
+const LITTER_STEMS: [string[], number][] = [
+  [[fold('двойн'), fold('двойняш')], 2],
+  [[fold('тройн')], 3],
+];
+const SMALL_NUMBERS: [Set<string>, number][] = [
+  [wordSet('bir, bitta, bittasi, один, одна, одно, одного, одну, one, a'), 1],
+  [wordSet('ikki, ikkita, ikkitasi, ikkalasi, ikkovi, два, две, двое, двух, оба, обе, two, both'), 2],
+  [wordSet('uch, uchta, uchtasi, uchalasi, три, трое, трёх, трех, three'), 3],
+];
+const COUNT_WORD = wordSet('ta, dona, bosh, штук, штуки, голов, головы');
+
+/**
+ * What the words say about a birth. A sex or a dead lamb counts by the number said right before it, and as
+ * one without a number. "Ewe 567 lambed" names the mother, not a female lamb.
+ */
+export function birthWords(text: string): BirthWords {
+  const s = new Scan(text);
+  const words = wordsOf(text);
+  const born = says(words, BORN)
+    || words.some((word) => BORN_STEMS.some((stem) => word.key.startsWith(stem) && !word.key.slice(stem.length).startsWith('ma')));
+  const result: BirthWords = { born, total: null, male: 0, female: 0, dead: 0 };
+  /** The number said right before piece i: "2 ta erkak", "bitta erkak", "2 ewe lambs". */
+  const countBefore = (i: number): number | null => {
+    let at = i - 1;
+    if (s.pieces[at]?.kind === 'word' && COUNT_WORD.has(s.key(at))) at -= 1;
+    const piece = s.pieces[at];
+    if (!piece) return null;
+    if (piece.kind === 'number') return /^\d$/.test(piece.raw) ? Number(piece.raw) : null;
+    return SMALL_NUMBERS.find(([keys]) => keys.has(piece.key))?.[1] ?? null;
+  };
+  s.pieces.forEach((piece, i) => {
+    if (piece.kind !== 'word') return;
+    const key = piece.key;
+    const nextIsLamb = s.pieces[i + 1]?.kind === 'word' && LAMB_NOUNS.has(s.key(i + 1));
+    const litter = LITTERS.find(([keys]) => keys.has(key))?.[1] ?? LITTER_STEMS.find(([list]) => list.some((stem) => key.startsWith(stem)))?.[1];
+    if (litter !== undefined) result.total = litter;
+    else if (MALE_WORDS.has(key) || (MALE_BEFORE_LAMB.has(key) && nextIsLamb)) result.male += countBefore(i) ?? 1;
+    else if (FEMALE_WORDS.has(key) || (FEMALE_BEFORE_LAMB.has(key) && nextIsLamb)) result.female += countBefore(i) ?? 1;
+    else if (DEAD_STEMS.some((stem) => key.startsWith(stem))) result.dead += countBefore(i) ?? 1;
+    else if (LAMB_NOUNS.has(key) && result.total === null) {
+      const before = s.pieces[i - 1];
+      const sexed = before?.kind === 'word' && (MALE_BEFORE_LAMB.has(before.key) || FEMALE_BEFORE_LAMB.has(before.key) || MALE_WORDS.has(before.key) || FEMALE_WORDS.has(before.key));
+      if (!sexed) result.total = countBefore(i);
+    }
+  });
+  return result;
+}
+
+export type FieldWork = 'tillage' | 'sowing' | 'irrigation' | 'leaching' | 'fertilizing' | 'protection';
+
+const FIELD_WORK: [FieldWork, string[]][] = [
+  ['irrigation', [...wordSet("sug'or, suv, полил, полив, поливал, оросил, irrigat, watered")]],
+  ['leaching', [...wordSet("sho'r, yaxob, промыв, промыл, leach")]],
+  ['tillage', [...wordSet('hayda, shudgor, chizel, borona, molala, вспах, пахал, пахота, боронов, культивир, plough, plow, tilled, harrow, cultivat')]],
+  ['sowing', [...wordSet("ekdi, ekdim, ekdik, ekib, ekildi, ekilgan, urug', посеял, посеяли, посев, сеял, сеяли, sowed, sown, sowing, seeded, planted")]],
+  ['fertilizing', [...wordSet("o'g'it, selitra, karbamid, ammofos, mochevina, go'ng, удобр, селитр, карбамид, аммофос, мочевин, навоз, внёс, внес, внесли, fertili, nitrate, urea, manure, spread")]],
+  ['protection', [...wordSet("dorila, purka, zaharla, gerbitsid, insektitsid, fungitsid, опрыск, гербицид, инсектицид, фунгицид, обработал, обработали, spray, sprayed, herbicide, insecticide, fungicide")]],
+];
+/** "sepdim" alone says something was spread, and what it was decides the work. */
+const SPREAD_STEMS = [...wordSet('sepdi, sepib, sepil, soldi, solib')];
+
+/** The kinds of field work the words name, by the stem of each word. None named is an empty list. */
+export function fieldWorkWords(text: string): FieldWork[] {
+  const keys = wordsOf(text).map((word) => word.key);
+  const found = FIELD_WORK.filter(([, stems]) => keys.some((key) => stems.some((stem) => key.startsWith(stem)))).map(([work]) => work);
+  if (found.length === 0 && keys.some((key) => SPREAD_STEMS.some((stem) => key.startsWith(stem)))) return ['fertilizing'];
+  return found;
+}

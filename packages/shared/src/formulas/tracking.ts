@@ -334,3 +334,334 @@ export function daySummary(readings: readonly DayReading[]): DaySummary {
     temperatureMaxC: temps.length ? Math.max(...temps) : null,
   };
 }
+
+// ─── Zones ──────────────────────────────────────────────────────────────────
+
+/**
+ * A GeoJSON Polygon or MultiPolygon, positions as [longitude, latitude]. The same shape a field's
+ * boundary is stored in, so a zone can borrow a field's outline or carry its own.
+ */
+export interface AreaGeometry {
+  type: string;
+  coordinates: unknown;
+}
+
+type Position = readonly number[];
+type Ring = readonly Position[];
+
+/** Every polygon of a geometry as its rings: the outer ring first, then holes. */
+function polygonsOf(geometry: AreaGeometry | null | undefined): Ring[][] {
+  if (!geometry || !Array.isArray(geometry.coordinates)) return [];
+  const polygons = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.type === 'MultiPolygon' ? geometry.coordinates : [];
+  return (polygons as unknown[]).flatMap((rings) =>
+    Array.isArray(rings) && rings.every((ring) => Array.isArray(ring) && ring.every(isPosition)) ? [rings as Ring[]] : [],
+  );
+}
+
+const isPosition = (p: unknown): p is Position =>
+  Array.isArray(p) && p.length >= 2 && Number.isFinite(p[0]) && Number.isFinite(p[1]) && Math.abs(p[0]) <= 180 && Math.abs(p[1]) <= 90;
+
+/** What is wrong with a drawn outline, in the order a person would fix it. */
+export type AreaProblem = 'shape' | 'points' | 'open' | 'crossing' | 'flat';
+
+const orient = (a: Position, b: Position, c: Position) => Math.sign((b[0]! - a[0]!) * (c[1]! - a[1]!) - (b[1]! - a[1]!) * (c[0]! - a[0]!));
+const between = (a: Position, b: Position, p: Position) =>
+  Math.min(a[0]!, b[0]!) <= p[0]! && p[0]! <= Math.max(a[0]!, b[0]!) && Math.min(a[1]!, b[1]!) <= p[1]! && p[1]! <= Math.max(a[1]!, b[1]!);
+
+/** Whether two segments share any point. */
+function segmentsMeet(a: Position, b: Position, c: Position, d: Position): boolean {
+  const o1 = orient(a, b, c);
+  const o2 = orient(a, b, d);
+  const o3 = orient(c, d, a);
+  const o4 = orient(c, d, b);
+  if (o1 !== o2 && o3 !== o4) return true;
+  return (o1 === 0 && between(a, b, c)) || (o2 === 0 && between(a, b, d)) || (o3 === 0 && between(c, d, a)) || (o4 === 0 && between(c, d, b));
+}
+
+/**
+ * Why an outline cannot be a zone, or `null` when it can: it must be a Polygon or MultiPolygon
+ * ('shape'), each ring needs at least three corners with coordinates on the globe ('points') and
+ * must end where it began ('open'), no two of its sides may cross or touch ('crossing'), and it
+ * must enclose some area ('flat'). A figure of eight has no inside to be in or out of.
+ */
+export function areaProblem(geometry: AreaGeometry | null | undefined): AreaProblem | null {
+  if (!geometry || (geometry.type !== 'Polygon' && geometry.type !== 'MultiPolygon') || !Array.isArray(geometry.coordinates)) return 'shape';
+  const polygons = polygonsOf(geometry);
+  const expected = geometry.type === 'Polygon' ? 1 : geometry.coordinates.length;
+  if (expected === 0) return 'shape';
+  if (polygons.length !== expected) return 'points';
+  for (const rings of polygons) {
+    if (rings.length === 0) return 'shape';
+    for (const ring of rings) {
+      if (ring.length < 4) return 'points';
+      const first = ring[0]!;
+      const last = ring[ring.length - 1]!;
+      if (first[0] !== last[0] || first[1] !== last[1]) return 'open';
+      const sides = ring.length - 1;
+      for (let i = 0; i < sides; i += 1) {
+        for (let j = i + 1; j < sides; j += 1) {
+          const neighbours = j === i + 1 || (i === 0 && j === sides - 1);
+          if (!neighbours && segmentsMeet(ring[i]!, ring[i + 1]!, ring[j]!, ring[j + 1]!)) return 'crossing';
+        }
+      }
+      // Shoelace formula, in squared degrees, from the first corner. Only whether it is nothing
+      // matters here, and nothing is measured against the outline's own length, because corners
+      // on one line still leave a rounding error behind.
+      let twiceArea = 0;
+      let around = 0;
+      for (let i = 0; i < sides; i += 1) {
+        around += Math.hypot(ring[i + 1]![0]! - ring[i]![0]!, ring[i + 1]![1]! - ring[i]![1]!);
+        twiceArea += (ring[i]![0]! - first[0]!) * (ring[i + 1]![1]! - first[1]!) - (ring[i + 1]![0]! - first[0]!) * (ring[i]![1]! - first[1]!);
+      }
+      if (Math.abs(twiceArea) <= 1e-9 * around * around) return 'flat';
+    }
+  }
+  return null;
+}
+
+/**
+ * How far a point is from the edge of an area, metres: negative inside, positive outside. Holes
+ * are outside. The outline is laid flat around the point (one degree of longitude is cos φ of a
+ * degree of latitude), which is exact to centimetres over a farm. `null` when the geometry has no
+ * outline to measure against.
+ */
+export function signedDistanceM(point: LatLng, geometry: AreaGeometry | null | undefined): number | null {
+  const kx = RAD * EARTH_RADIUS_M * Math.cos(point.lat * RAD);
+  const ky = RAD * EARTH_RADIUS_M;
+  let inside = false;
+  let nearest = Infinity;
+  for (const rings of polygonsOf(geometry)) {
+    let within = false;
+    for (const ring of rings) {
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i, i += 1) {
+        const ax = (ring[j]![0]! - point.lng) * kx;
+        const ay = (ring[j]![1]! - point.lat) * ky;
+        const bx = (ring[i]![0]! - point.lng) * kx;
+        const by = (ring[i]![1]! - point.lat) * ky;
+        // A ray east from the point crosses this side: an odd number of crossings is inside.
+        if (ay > 0 !== by > 0 && ax + ((bx - ax) * -ay) / (by - ay) > 0) within = !within;
+        const dx = bx - ax;
+        const dy = by - ay;
+        const length2 = dx * dx + dy * dy;
+        const t = length2 === 0 ? 0 : Math.min(1, Math.max(0, -(ax * dx + ay * dy) / length2));
+        nearest = Math.min(nearest, Math.hypot(ax + t * dx, ay + t * dy));
+      }
+    }
+    if (within) inside = true;
+  }
+  if (nearest === Infinity) return null;
+  return inside ? -nearest : nearest;
+}
+
+/** Whether a point is inside an area. `null` when the geometry has no outline. */
+export function insideArea(point: LatLng, geometry: AreaGeometry | null | undefined): boolean | null {
+  const d = signedDistanceM(point, geometry);
+  return d === null ? null : d < 0;
+}
+
+/**
+ * Starting values for the zone rule, to be tuned on the pilot flock. A collar's fix is good to
+ * about 5 to 10 m under open sky and worse beside a wall, so the line is crossed only well past it.
+ */
+export const ZONE_RULES = {
+  /** A fix counts as over the line only this far past it, metres: GPS jitter must not raise anything. */
+  bufferM: 30,
+  /** This many fixes in a row over the line before a sheep is out of its zone. */
+  exitFixes: 2,
+} as const;
+
+export type ZoneKind = 'allowed' | 'forbidden';
+
+export interface Zone {
+  id: string;
+  name: string;
+  kind: ZoneKind;
+  /** The herd the zone is for; `null` is every herd. */
+  herdId: string | null;
+  geometry: AreaGeometry | null;
+}
+
+export interface ZoneBreach {
+  /** `outside`: beyond every allowed zone. `inside`: within a forbidden one. */
+  kind: 'outside' | 'inside';
+  /** The allowed zone it is nearest to, or the forbidden zone it is in. */
+  zoneId: string;
+  zoneName: string;
+  /** How far past the line, metres. */
+  distanceM: number;
+}
+
+/** The zones that bind a herd: its own and those for every herd. A sheep without a herd has only the latter. */
+export function zonesFor<Z extends { herdId: string | null }>(zones: readonly Z[], herdId: string | null): Z[] {
+  return zones.filter((z) => z.herdId === null || z.herdId === herdId);
+}
+
+/**
+ * Whether one position breaks the zones given: inside a forbidden zone by more than the buffer, or,
+ * when there is at least one allowed zone, outside all of them by more than the buffer. A forbidden
+ * zone wins over an allowed one that contains it. Zones without an outline are left out. `null`
+ * when nothing is broken.
+ */
+export function zoneBreach(point: LatLng, zones: readonly Zone[]): ZoneBreach | null {
+  let nearestAllowed: ZoneBreach | null = null;
+  let deepest: ZoneBreach | null = null;
+  let insideAllowed = false;
+  for (const zone of zones) {
+    const d = signedDistanceM(point, zone.geometry);
+    if (d === null) continue;
+    if (zone.kind === 'forbidden') {
+      if (d < -ZONE_RULES.bufferM && (!deepest || -d > deepest.distanceM)) deepest = { kind: 'inside', zoneId: zone.id, zoneName: zone.name, distanceM: -d };
+    } else if (d <= ZONE_RULES.bufferM) {
+      insideAllowed = true;
+    } else if (!nearestAllowed || d < nearestAllowed.distanceM) {
+      nearestAllowed = { kind: 'outside', zoneId: zone.id, zoneName: zone.name, distanceM: d };
+    }
+  }
+  if (deepest) return deepest;
+  return insideAllowed ? null : nearestAllowed;
+}
+
+export interface ZoneVerdict {
+  out: boolean;
+  /** The breach at the latest fix when `out`. */
+  breach: ZoneBreach | null;
+}
+
+/**
+ * Whether a sheep is out of its zone now: its last `exitFixes` fixes all break the zones, so one
+ * bad fix raises nothing, and one good fix clears it. With no zone that has an outline nothing can
+ * be broken and the answer is "no". `null` when the latest fix is stale, or when it is over the
+ * line and there are not yet enough fixes to be sure.
+ */
+export function outOfZone(fixes: readonly Fix[], zones: readonly Zone[], now: number): ZoneVerdict | null {
+  const bounded = zones.filter((z) => signedDistanceM({ lat: 0, lng: 0 }, z.geometry) !== null);
+  if (bounded.length === 0) return { out: false, breach: null };
+  const latest = [...fixes].sort((a, b) => b.at - a.at).slice(0, ZONE_RULES.exitFixes);
+  if (latest.length === 0 || now - latest[0]!.at > TRACKING_RULES.fixFreshMs) return null;
+  const breaches = latest.map((fix) => zoneBreach(fix, bounded));
+  if (breaches.some((b) => b === null)) return { out: false, breach: null };
+  if (latest.length < ZONE_RULES.exitFixes) return null;
+  return { out: true, breach: breaches[0]! };
+}
+
+// ─── Movement at night ──────────────────────────────────────────────────────
+
+/**
+ * Starting values for the night rule, to be tuned on the pilot flock. A flock penned for the night
+ * shuffles a few metres; its centre does not travel. A centre that does is a gate left open, a
+ * predator, or theft.
+ */
+export const NIGHT_RULES = {
+  /** Night begins at this local hour... */
+  fromHour: 22,
+  /** ...and ends at this one. */
+  toHour: 5,
+  /** Movement is judged over this long, or since night began when that is shorter. */
+  windowMs: 2 * HOUR,
+  /** The herd's centre moved farther than this over the window, metres... */
+  maxMoveM: 400,
+  /** ...or faster than this between its last two fixes, km/h. */
+  maxSpeedKmh: 1,
+  /** Two fixes closer in time than this give no speed: metres of jitter over seconds look like a gallop. */
+  minStepMs: 10 * MINUTE,
+} as const;
+
+/** Whether a local hour (0-23) is night for the movement rule. The hours may wrap past midnight. */
+export function isNight(localHour: number): boolean {
+  const { fromHour, toHour } = NIGHT_RULES;
+  return fromHour <= toHour ? localHour >= fromHour && localHour < toHour : localHour >= fromHour || localHour < toHour;
+}
+
+/** How long ago this night began, from the local clock; `null` by day. */
+export function nightElapsedMs(localHour: number, localMinute: number): number | null {
+  if (!isNight(localHour)) return null;
+  const hours = (localHour - NIGHT_RULES.fromHour + 24) % 24;
+  return hours * HOUR + localMinute * MINUTE;
+}
+
+export interface NightMovement {
+  /** Sheep with a fresh fix and at least two fixes in the window. */
+  tracked: number;
+  /** How far the herd's centre is from where it was at the start of the window, metres. */
+  movedM: number;
+  /** The centre's speed between the last two fixes, km/h; `null` when they are too close in time. */
+  speedKmh: number | null;
+  moved: boolean;
+  /** Which threshold was passed. */
+  reason: 'far' | 'fast' | 'both' | null;
+  from: LatLng;
+  to: LatLng;
+}
+
+/**
+ * Whether a herd is on the move at night. Only fixes since `nightStart` count, so the walk home at
+ * dusk is not held against it. The centre is the median sheep, so a few strays do not move it.
+ * `null` when fewer than `minHerdTracked` sheep have a fresh fix and an earlier one tonight.
+ */
+export function nightMovement(animals: readonly AnimalFixes[], now: number, nightStart: number): NightMovement | null {
+  const n = NIGHT_RULES;
+  const since = Math.max(nightStart, now - n.windowMs);
+  const tracks = animals
+    .map((a) => a.fixes.filter((f) => f.at >= since && f.at <= now).sort((x, y) => x.at - y.at))
+    .filter((fixes) => fixes.length >= 2 && now - fixes[fixes.length - 1]!.at <= TRACKING_RULES.fixFreshMs);
+  if (tracks.length < TRACKING_RULES.minHerdTracked) return null;
+
+  const from = medianPoint(tracks.map((t) => t[0]!))!;
+  const before = medianPoint(tracks.map((t) => t[t.length - 2]!))!;
+  const to = medianPoint(tracks.map((t) => t[t.length - 1]!))!;
+  const movedM = haversineM(from, to);
+  const stepMs = median(tracks.map((t) => t[t.length - 1]!.at - t[t.length - 2]!.at))!;
+  const speedKmh = stepMs >= n.minStepMs ? haversineM(before, to) / 1000 / (stepMs / HOUR) : null;
+  const far = movedM > n.maxMoveM;
+  const fast = speedKmh !== null && speedKmh > n.maxSpeedKmh;
+  return { tracked: tracks.length, movedM, speedKmh, moved: far || fast, reason: far && fast ? 'both' : far ? 'far' : fast ? 'fast' : null, from, to };
+}
+
+// ─── Last seen ──────────────────────────────────────────────────────────────
+
+export interface TrackedNow {
+  animalId: string;
+  herdId: string | null;
+  lat: number | null;
+  lng: number | null;
+  /** When the position was taken, ms; `null` when it never had one. */
+  positionAt: number | null;
+  /** When any of its trackers last spoke, ms; `null` when none ever did. */
+  lastReadingAt: number | null;
+  /** Every tracker on it is silent past its threshold (`silentAfterMsFor`). */
+  silent: boolean;
+  /** Flagged apart from its herd. */
+  isolated: boolean;
+}
+
+export interface LastSeen {
+  animalId: string;
+  reason: 'silent' | 'isolated' | 'both';
+  /** Time since any tracker on it spoke, ms. */
+  sinceContactMs: number | null;
+  /** Age of the position, ms; `null` when it never had one. */
+  sincePositionMs: number | null;
+  /** From its last position to its herd's centre now, metres; `null` when either is unknown. */
+  distanceFromHerdM: number | null;
+}
+
+/**
+ * The animals to go and look for: silent past the threshold, or apart from the herd. A tracker
+ * that never spoke is not here, because there is no last place to look. Those apart from the herd
+ * come first (they can be walked to now), then the longest silent.
+ */
+export function lastSeenList(animals: readonly TrackedNow[], herdCentres: ReadonlyMap<string, LatLng>, now: number): LastSeen[] {
+  return animals
+    .filter((a) => a.isolated || (a.silent && a.lastReadingAt !== null))
+    .map((a): LastSeen => {
+      const centre = a.herdId ? herdCentres.get(a.herdId) : undefined;
+      return {
+        animalId: a.animalId,
+        reason: a.isolated && a.silent ? 'both' : a.isolated ? 'isolated' : 'silent',
+        sinceContactMs: a.lastReadingAt === null ? null : now - a.lastReadingAt,
+        sincePositionMs: a.positionAt === null ? null : now - a.positionAt,
+        distanceFromHerdM: centre && a.lat !== null && a.lng !== null ? haversineM(centre, { lat: a.lat, lng: a.lng }) : null,
+      };
+    })
+    .sort((x, y) => Number(y.reason !== 'silent') - Number(x.reason !== 'silent') || (y.sinceContactMs ?? 0) - (x.sinceContactMs ?? 0));
+}

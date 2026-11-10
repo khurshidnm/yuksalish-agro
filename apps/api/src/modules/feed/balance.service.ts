@@ -90,10 +90,20 @@ async function rationLinesFor(rationIds: string[]) {
 
 /** Planned daily feeding per herd: ration × head count (spec 9.3). */
 export async function feedingPlan() {
+  const plan = await feedingPlanWithCosts();
+  return { herds: hideMoney(plan.herds, ['costPerDay'], 'feed.approve'), withoutRation: plan.withoutRation };
+}
+
+/**
+ * The same plan with every herd's cost, whoever asks. Only for a caller that gives out an average
+ * over the flock and never a herd's own figure (the scenario baseline, read with finance.summary).
+ * `ownProduce: 'left_out'` prices bought feed only (rations.service unitCostsPerKg).
+ */
+export async function feedingPlanWithCosts(opts: { ownProduce?: 'left_out' } = {}) {
   const [herdRows, head] = [await activeHerds(), await headByHerd()];
   const rationIds = [...new Set(herdRows.flatMap((h) => (h.rationId ? [h.rationId] : [])))];
   const lines = await rationLinesFor(rationIds);
-  const costs = await unitCostsPerKg([...new Set(lines.map((l) => l.itemId))]);
+  const costs = await unitCostsPerKg([...new Set(lines.map((l) => l.itemId))], opts);
 
   const plan = herdRows
     .filter((h) => h.rationId)
@@ -112,6 +122,8 @@ export async function feedingPlan() {
         lambs: lambsLeftOut,
         rationId: herd.rationId!,
         rationName: herd.rationName,
+        /** What the ration is for: 'lamb' and 'fattening' feed young stock, the rest grown sheep. */
+        rationState: herd.rationState,
         lines: own,
         dailyKg: round(own.reduce((sum, l) => sum + l.dailyKg, 0), 3),
         costPerDay: priced ? round(own.reduce((sum, l) => sum + l.dailyKg * costs.get(l.itemId)!, 0), 2) : null,
@@ -119,7 +131,7 @@ export async function feedingPlan() {
     });
 
   return {
-    herds: hideMoney(plan, ['costPerDay'], 'feed.approve'),
+    herds: plan,
     // Without a ration a herd is invisible to every "days left" figure, so name it.
     withoutRation: herdRows
       .filter((h) => !h.rationId && (head.get(h.herdId)?.all ?? 0) > 0)

@@ -23,6 +23,7 @@ import uzImport from './locales/uz/import.json';
 import uzToday from './locales/uz/today.json';
 import uzTracking from './locales/uz/tracking.json';
 import uzPlatform from './locales/uz/platform.json';
+import uzScan from './locales/uz/scan.json';
 import ruCommon from './locales/ru/common.json';
 import ruNav from './locales/ru/nav.json';
 import ruAuth from './locales/ru/auth.json';
@@ -48,6 +49,7 @@ import ruImport from './locales/ru/import.json';
 import ruToday from './locales/ru/today.json';
 import ruTracking from './locales/ru/tracking.json';
 import ruPlatform from './locales/ru/platform.json';
+import ruScan from './locales/ru/scan.json';
 import enCommon from './locales/en/common.json';
 import enNav from './locales/en/nav.json';
 import enAuth from './locales/en/auth.json';
@@ -73,6 +75,7 @@ import enImport from './locales/en/import.json';
 import enToday from './locales/en/today.json';
 import enTracking from './locales/en/tracking.json';
 import enPlatform from './locales/en/platform.json';
+import enScan from './locales/en/scan.json';
 import { latinToCyrillic, mapStrings } from './translit';
 
 export { latinToCyrillic, mapStrings } from './translit';
@@ -113,6 +116,7 @@ export const NAMESPACES = [
   'today',
   'tracking',
   'platform',
+  'scan',
 ] as const;
 
 export type Namespace = (typeof NAMESPACES)[number];
@@ -145,6 +149,7 @@ const uz: Bundle = {
   today: uzToday,
   tracking: uzTracking,
   platform: uzPlatform,
+  scan: uzScan,
 };
 
 const ru: Bundle = {
@@ -173,6 +178,7 @@ const ru: Bundle = {
   today: ruToday,
   tracking: ruTracking,
   platform: ruPlatform,
+  scan: ruScan,
 };
 
 const en: Bundle = {
@@ -201,6 +207,7 @@ const en: Bundle = {
   today: enToday,
   tracking: enTracking,
   platform: enPlatform,
+  scan: enScan,
 };
 
 export const resources: Record<LanguageCode, Bundle> = {

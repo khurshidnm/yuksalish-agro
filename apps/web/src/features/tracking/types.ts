@@ -1,4 +1,6 @@
 /** Live tracking of animals: collars and boluses (docs/tracking.md). */
+import type { GEOFENCE_KINDS } from '@yap/shared';
+import type { Geometry } from 'geojson';
 
 export const TRACKING = '/tracking';
 export const TRACKERS = '/tracking/trackers';
@@ -7,9 +9,14 @@ export const LIVE = '/tracking/live';
 export type TrackerKind = 'collar' | 'bolus' | 'ear_tag';
 export const TRACKER_KINDS: TrackerKind[] = ['collar', 'bolus', 'ear_tag'];
 
-export type TrackingFlag = 'isolated' | 'inactive' | 'fever';
+export const ZONES = '/tracking/zones';
+export const NIGHT_WATCH = '/tracking/night-watch';
+export const LOST = '/tracking/lost';
+export const GRAZING = '/tracking/grazing';
+
+export type TrackingFlag = 'isolated' | 'inactive' | 'fever' | 'out_of_zone';
 /** Most urgent first: that is the order they are listed and drawn. */
-export const FLAGS: TrackingFlag[] = ['fever', 'isolated', 'inactive'];
+export const FLAGS: TrackingFlag[] = ['fever', 'isolated', 'out_of_zone', 'inactive'];
 
 /** Since when each flag has been raised, ISO time. */
 export type Flags = Partial<Record<TrackingFlag, string>>;
@@ -126,3 +133,88 @@ export interface ImportResult {
 
 /** Two hours without a reading: the tracker needs someone to look. */
 export const isStale = (iso: string | null, now: number, minutes: number) => !iso || now - Date.parse(iso) > minutes * 60_000;
+
+export type ZoneKind = (typeof GEOFENCE_KINDS)[number];
+
+/** A zone a herd must stay in or keep out of. */
+export interface ZoneRow {
+  id: string;
+  name: string;
+  kind: ZoneKind;
+  /** The zone follows this field's boundary, or has its own outline when `null`. */
+  fieldId: string | null;
+  fieldNumber: string | null;
+  fieldName: string | null;
+  /** `null`: every herd. */
+  herdId: string | null;
+  herdName: string | null;
+  active: boolean;
+  /** The outline the rule reads; `null` when its field has none yet. */
+  geometry: Geometry | null;
+}
+
+export type LostReason = 'silent' | 'isolated' | 'both';
+
+export interface LostAnimal {
+  animalId: string;
+  tag: string;
+  herdId: string | null;
+  herdName: string | null;
+  reason: LostReason;
+  lat: number | null;
+  lng: number | null;
+  positionAt: string | null;
+  lastReadingAt: string | null;
+  minutesSinceContact: number | null;
+  minutesSincePosition: number | null;
+  distanceFromHerdM: number | null;
+  batteryPct: number | null;
+}
+
+export interface LostData {
+  now: string;
+  silentAfterMinutes: number;
+  tracked: number;
+  /** Nothing reports at all: the gateway, not the sheep. */
+  allSilent: boolean;
+  total: number;
+  animals: LostAnimal[];
+}
+
+export interface HeatCell {
+  south: number;
+  west: number;
+  north: number;
+  east: number;
+  fixes: number;
+  share: number;
+  /** 1 (least used) to 5 (most used). */
+  level: number;
+}
+
+export interface GrazingField {
+  fieldId: string;
+  number: string;
+  name: string | null;
+  landUse: string;
+  areaHa: number | null;
+  fixes: number;
+  animalDays: number;
+  animalHours: number;
+  daysUsed: number;
+  share: number;
+  animalDaysPerHa: number | null;
+}
+
+/** Where the flock spent a period. Every list is `null` when no position is stored for it. */
+export interface GrazingData {
+  days: number;
+  from: string;
+  to: string;
+  minAnimalDayHours: number;
+  daysWithData: number;
+  totalFixes: number | null;
+  cells: HeatCell[] | null;
+  truncated: boolean;
+  fields: GrazingField[] | null;
+}

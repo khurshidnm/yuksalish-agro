@@ -129,5 +129,109 @@
       "enterYield": "Hosildorlikni kiriting",
       "noCrop": "Yetishmagan ozuqalar ekinga bog'lanmagan. Nomenklaturada \"Qaysi ekindan olinadi\"ni belgilang."
     }
-  }
+  },
+    "nutrients": {
+      "title": "Oziq moddalar balansi",
+      "perHeadDay": "Ratsion bir boshga kuniga nima berishi va unga qancha kerakligi.",
+      "name": {
+        "dryMatter": "Quruq modda",
+        "energy": "Almashinuv energiyasi",
+        "protein": "Xom protein",
+        "calcium": "Kalsiy",
+        "phosphorus": "Fosfor"
+      },
+      "unit": {
+        "dryMatter": "kg",
+        "energy": "MJ",
+        "protein": "g",
+        "calcium": "g",
+        "phosphorus": "g"
+      },
+      "flag": {
+        "short": "Yetmaydi",
+        "enough": "Yetarli",
+        "over": "Ortiqcha"
+      },
+      "ofRequirement": "Beradi: {{supply}} {{unit}}, kerak: {{requirement}} {{unit}}",
+      "amount": "{{value}} {{unit}}",
+      "needs": "Kerak: {{requirement}} {{unit}}",
+      "covered": "{{name}}: me'yorning qoplangan ulushi",
+      "roughage": "Quruq moddada dag'al ozuqa",
+      "stage": {
+        "label": "Bo'g'ozlik davri",
+        "early": "Dastlabki 15 hafta",
+        "late": "Oxirgi 4 hafta"
+      },
+      "litter": {
+        "label": "Qo'zilar soni",
+        "1": "Bitta qo'zi",
+        "2": "Egizak"
+      },
+      "herd": "{{name}}: {{head}} bosh",
+      "weight": "O'rtacha vazn {{weight}} kg, {{head}} boshdan {{weighed}} tasi tortilgan",
+      "clamped": "Jadvalda bu vazn uchun qator yo'q: {{used}} kg qatori olindi.",
+      "noHerd": "Bu ratsionda hech bir poda yo'q, shuning uchun solishtiradigan me'yor ham yo'q. Quyida ratsion nima berishi ko'rsatilgan.",
+      "draftEmpty": "Balansni ko'rish uchun ozuqani tanlab, miqdorini kiriting.",
+      "reasons": {
+        "no_animals": "Podada hayvon yo'q.",
+        "no_weight": "Bu poda uchun vazn yozilmagan. Me'yorni bilish uchun bir nechta hayvonni torting.",
+        "mixed_species": "Podada bir necha tur bor, shuning uchun bitta me'yor to'g'ri kelmaydi.",
+        "species_not_covered": "Me'yor jadvali faqat qo'ylar uchun.",
+        "state_not_covered": "Me'yor jadvalida bu fiziologik holat uchun qator yo'q."
+      },
+      "missingTitle": "Ba'zi ozuqalarning oziq ko'rsatkichlari kiritilmagan",
+      "missingLine": "{{name}}: {{fields}}",
+      "missingHint": "Ularni nomenklatura kartasida kiriting. Ungacha shu ko'rsatkichlarga bog'liq qatorlar bo'sh qoladi.",
+      "field": {
+        "dryMatterPct": "quruq modda",
+        "meMjPerKgDm": "energiya",
+        "crudeProteinPctDm": "xom protein",
+        "calciumGPerKgDm": "kalsiy",
+        "phosphorusGPerKgDm": "fosfor",
+        "isRoughage": "dag'al yoki konsentrat ekani",
+        "price": "ombordagi narxi"
+      },
+      "source": "Me'yor: NRC 1985, qo'ylar, 1-jadval."
+    },
+    "mix": {
+      "title": "Eng arzon aralashma",
+      "description": "Tanlangan ozuqalardan bir boshning kunlik ehtiyojini qoplaydigan eng arzon aralashma. Narxlar: ombordagi bir kilogrammning hozirgi qiymati.",
+      "open": "Eng arzon aralashma",
+      "back": "Ozuqa ratsionlari",
+      "forTitle": "Kim uchun",
+      "herd": "Poda",
+      "herdHint": "Ixtiyoriy. Podaning yozilgan o'rtacha vazni olinadi",
+      "state": "Fiziologik holat",
+      "weight": "Tirik vazn",
+      "weightHint": "Bo'sh qolsa: podaning o'rtacha vazni",
+      "weightRequired": "Vaznni kiriting yoki podani tanlang",
+      "weightUnit": "kg",
+      "gain": "Kunlik o'sish",
+      "gainUnit": "g/kun",
+      "gainHint": "Bo'sh qolsa: jadvaldagi odatiy o'sish",
+      "minRoughage": "Dag'al ozuqa, kamida",
+      "minRoughageHint": "Quruq moddadagi ulushi",
+      "feedsTitle": "Tanlov uchun ozuqalar",
+      "feed": "Ozuqa",
+      "max": "Ko'pi bilan",
+      "addFeed": "Ozuqa qo'shish",
+      "calculate": "Hisoblash",
+      "resultTitle": "Eng arzon aralashma",
+      "resultFor": "{{state}}, {{weight}} kg",
+      "pricePerKg": "1 kg: {{price}}",
+      "costPerDay": "1 boshga kunlik",
+      "costPerSeason": "1 boshga {{days}} kunlik",
+      "save": "Ratsion sifatida saqlash",
+      "saveHint": "Aralashma yangi ratsion bo'lib saqlanadi, keyin uni o'zgartirish mumkin.",
+      "defaultName": "Eng arzon aralashma: {{state}}",
+      "infeasibleTitle": "Bu ozuqalardan me'yorni qoplaydigan aralashma chiqmaydi",
+      "shortAlone": "{{name}}: bu ozuqalar cheklovlar ichida ko'pi bilan {{best}} {{unit}} beradi, {{required}} {{unit}} kerak.",
+      "shortTogether": "{{name}}: {{required}} {{unit}} kerak. Qolgan me'yorlar bajarilganda bunga yetib bo'lmaydi.",
+      "infeasibleTip": "To'yimliroq ozuqa qo'shing, eng ko'p miqdorni oshiring yoki dag'al ozuqa ulushini kamaytiring.",
+      "missingTitle": "Ba'zi ozuqalarda aralashma uchun kerakli ma'lumot yo'q",
+      "missingBody": "Tarkibi va ozuqa turini nomenklatura kartasida kiriting. Narx ozuqa omborga kirim qilingach paydo bo'ladi.",
+      "openItems": "Nomenklaturani ochish",
+      "noRequirementTitle": "Bu tanlov uchun me'yor yo'q",
+      "enterWeight": "Yoki yuqorida vaznni kiriting."
+    }
 }

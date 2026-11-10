@@ -20,6 +20,18 @@
       "title": "{{count}} ewes are past their lambing date",
       "body": "Check them and enter the record."
     },
+    "lambing_no_colostrum": {
+      "title": "{{count}} newborn lambs have no colostrum on record",
+      "body": "More than {{hours}} hours since birth. Check them and enter the care record."
+    },
+    "lambing_bottle_lambs": {
+      "title": "Lambs on the bottle: {{count}}",
+      "body": "They are fed by hand until weaning or until a ewe takes them."
+    },
+    "herd_thin": {
+      "title": "{{herd}}: {{thin}} of {{scored}} scored animals are thin",
+      "body": "{{percent}}% of the animals scored recently have a body condition score of {{score}} or lower. Check their feed, teeth and parasites."
+    },
     "vaccination_overdue": {
       "title": "{{plan}}: not done for {{count}} animals",
       "body": "Overdue, or not done yet."
@@ -178,6 +190,18 @@
       "title": "Trackers with low battery: {{count}}",
       "body": "Below {{percent}}%. Plan replacements."
     },
+    "geofence_exit": {
+      "title": "{{herd}}: {{count}} outside the allowed zone",
+      "body": "{{count}} of {{tracked}} tracked animals are past the edge of {{zone}} on {{fixes}} positions in a row. Open the map to see where they are."
+    },
+    "geofence_exit_forbidden": {
+      "title": "{{herd}}: {{count}} in a closed zone",
+      "body": "{{count}} of {{tracked}} tracked animals are inside {{zone}} on {{fixes}} positions in a row. Open the map to see where they are."
+    },
+    "night_movement": {
+      "title": "{{herd}} is on the move at night",
+      "body": "The centre of the herd moved {{distance}} m in {{minutes}} minutes, going by {{tracked}} animals. Check the pen and the gate."
+    },
     "crop_weak_zone": {
       "title": "Weak spots in field {{field}}: {{areaHa}} ha",
       "body": "The satellite image of {{date}} shows weak zones: {{count}}. Walk to them and check for pests, water and nutrients."
@@ -331,6 +355,7 @@
     "sentLate": "Delivered late. Original time: {{time}}."
   },
   "errors": {
+    "ALERT_TASK_EXISTS": "This alert already has another open task",
     "ALERT_NOT_OPEN": "This alert has already been handled",
     "ALERT_ALREADY_RESOLVED": "This alert is already closed",
     "ALERT_NOT_YOURS": "Only the people responsible, the owner or the director can stop this urgent alert",
@@ -340,27 +365,91 @@
     "ACTION_NOT_AVAILABLE": "This has already been decided, or it is not yours to decide.",
     "REASON_REQUIRED": "Say why in a few words."
   },
+  "ruleNames": {
+    "feed_low": "Feed running low",
+    "stock_low": "Stock below minimum",
+    "ration_deviation": "Feed use off the ration",
+    "lambing_soon": "Lambing in the next 7 days",
+    "lambing_overdue": "Lambing date passed",
+    "lambing_no_colostrum": "Newborn lambs with no colostrum on record",
+    "lambing_bottle_lambs": "Lambs on the bottle",
+    "herd_thin": "Thin animals in a herd",
+    "vaccination_overdue": "Vaccination not done on time",
+    "sick_animals": "Sick animals",
+    "quarantine_animals": "Animals in quarantine",
+    "quarantine_ended": "Quarantine period over",
+    "mortality_spike": "Mortality is up",
+    "budget_overrun": "Over budget",
+    "tasks_overdue": "Overdue tasks",
+    "operations_overdue": "Overdue field operations",
+    "disk_low": "The server's disk is nearly full",
+    "document_expiring": "Document expiring",
+    "contract_expiring": "Contract expiring",
+    "batch_expiring": "Batch expiring",
+    "approvals_pending": "Payments awaiting approval",
+    "receipt_unpaid": "Goods received, no payment or debt recorded",
+    "loan_payment_due": "Loan payment coming up",
+    "maintenance_due": "Maintenance due",
+    "crop_weak_zone": "Weak spots in a field",
+    "satellite_check": "Satellite and records disagree",
+    "frost_risk": "Frost forecast",
+    "spray_window": "Unsuitable day for spraying",
+    "heat_stress": "Heat for the flock",
+    "irrigation_due": "Watering due",
+    "camera_offline": "Camera offline"
+  },
+  "task": {
+    "restrictedTitle": "Check: {{rule}}",
+    "restrictedTitleUnnamed": "Check an alert",
+    "restrictedDescription": "The details are on the alert, for those who may see it.",
+    "unassigned": "Nobody assigned",
+    "open": "Open the task"
+  },
+  "taskDialog": {
+    "title": "Task for this alert",
+    "description": "The task takes its words from the alert. Both fields can stay empty.",
+    "assignee": "Who does it",
+    "assigneePlaceholder": "Nobody yet",
+    "dueDate": "Due",
+    "dueDateHint": "Left empty: today for an urgent alert, a few days for the others.",
+    "submit": "Create task"
+  },
+  "autoTask": {
+    "title": "Tasks from alerts",
+    "description": "For a rule that is switched on, a new alert gets its task straight away. Everything is off until you switch it on.",
+    "role": "Give it to",
+    "noRole": "Nobody: leave it unassigned",
+    "roleHint": "The task goes to that person only when exactly one active person on the farm has this role. Otherwise it waits unassigned.",
+    "switchLabel": "Create a task: {{rule}}",
+    "saved": "Saved",
+    "emptyTitle": "No rules"
+  },
   "title": "Alerts",
   "description": "Problems found by rules and AI, in one list, by severity.",
   "evaluate": "Check now",
   "emptyTitle": "All clear",
   "emptyBody": "There are no open alerts.",
   "fields": {
+    "task": "Task",
     "severity": "Severity",
     "alert": "Alert",
     "lastSeen": "Last checked",
     "status": "Status"
   },
   "filters": {
+    "oneAlert": "One alert is shown",
+    "showAll": "Show all",
     "active": "Unresolved",
     "allSeverities": "All severities"
   },
   "actions": {
+    "createTask": "Create task",
     "open": "Open source",
     "acknowledge": "Acknowledge",
     "resolve": "Mark as resolved"
   },
   "toast": {
+    "taskCreated": "Task created",
     "acknowledged": "Acknowledged, repeat messages stopped",
     "resolved": "Alert closed",
     "evaluated": "Checked: {{raised}} new, {{resolved}} closed",

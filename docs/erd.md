@@ -1,7 +1,7 @@
 # Data model
 
 Generated from `apps/api/src/db/schema` by `apps/api/src/db/erd.ts`. Do not edit by hand; run
-`pnpm --filter @yap/api exec tsx src/db/erd.ts` after a schema change. 111 tables.
+`pnpm --filter @yap/api exec tsx src/db/erd.ts` after a schema change. 126 tables.
 
 Links to `tenants`, `farms` and `users` (`tenant_id`, `farm_id`, `created_by`) are on almost every
 table and are left out of the lines to keep the diagrams readable. A table from another domain appears
@@ -230,6 +230,10 @@ erDiagram
     jsonb name
     boolean is_feed
     text default_yield_t_ha
+    text family
+    numeric removal_n_kg_t
+    numeric removal_p2o5_kg_t
+    numeric removal_k2o_kg_t
     boolean active
   }
   divisions {
@@ -348,6 +352,7 @@ erDiagram
     numeric area_ha
     text status
     text notes
+    boolean lambing_pen
   }
   field_operation_materials {
     uuid id PK
@@ -405,6 +410,7 @@ erDiagram
     numeric ndvi_p10
     numeric ndvi_p50
     numeric ndvi_p90
+    numeric ndmi_mean
     jsonb grid
     jsonb weak_zones
   }
@@ -426,6 +432,19 @@ erDiagram
     text irrigation_source
     uuid cost_center_id
     text status
+    text notes
+  }
+  groundwater_observations {
+    uuid id PK
+    uuid tenant_id FK
+    uuid farm_id FK
+    uuid created_by FK
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+    uuid field_id FK
+    date date
+    numeric depth_m
+    numeric mineralisation_gl
     text notes
   }
   harvests {
@@ -579,6 +598,7 @@ erDiagram
   fields ||--o{ crop_plans : "field_id"
   fields ||--o{ field_operations : "field_id"
   fields ||--o{ field_vegetation : "field_id"
+  fields ||--o{ groundwater_observations : "field_id"
   fields ||--o{ harvests : "field_id"
   fields ||--o{ pasture_samples : "field_id"
   fields ||--o{ soil_analyses : "field_id"
@@ -617,6 +637,19 @@ erDiagram
     uuid transaction_id FK
     uuid batch_id FK
     jsonb photo_file_ids
+    text notes
+  }
+  animal_gradings {
+    uuid id PK
+    uuid tenant_id FK
+    uuid farm_id FK
+    uuid created_by FK
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+    uuid animal_id FK
+    date date
+    text class_key
+    text graded_by
     text notes
   }
   animal_identifiers {
@@ -662,6 +695,18 @@ erDiagram
     date exit_date
     text notes
   }
+  body_condition_scores {
+    uuid id PK
+    uuid tenant_id FK
+    uuid farm_id FK
+    uuid created_by FK
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+    uuid animal_id FK
+    date date
+    numeric score
+    text notes
+  }
   breeding_records {
     uuid id PK
     uuid tenant_id FK
@@ -678,6 +723,21 @@ erDiagram
     date expected_latest
     text status
     text notes
+    integer fetus_count
+    date scan_date
+  }
+  cull_marks {
+    uuid id PK
+    uuid tenant_id FK
+    uuid farm_id FK
+    uuid created_by FK
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+    uuid animal_id FK
+    text reason
+    text note
+    date marked_on
+    date cleared_on
   }
   daily_log_lines {
     uuid id PK
@@ -706,6 +766,20 @@ erDiagram
     numeric water_l
     text condition
     jsonb photo_file_ids
+    text notes
+  }
+  fat_tail_measurements {
+    uuid id PK
+    uuid tenant_id FK
+    uuid farm_id FK
+    uuid created_by FK
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+    uuid animal_id FK
+    date date
+    numeric width_cm
+    numeric length_cm
+    numeric circumference_cm
     text notes
   }
   health_records {
@@ -767,6 +841,20 @@ erDiagram
     text status
     text notes
   }
+  lamb_care {
+    uuid id PK
+    uuid tenant_id FK
+    uuid farm_id FK
+    uuid created_by FK
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+    uuid lamb_id FK
+    timestamp_with_time_zone colostrum_at
+    boolean navel_treated
+    text mothering
+    uuid foster_ewe_id FK
+    text notes
+  }
   lambing_records {
     uuid id PK
     uuid tenant_id FK
@@ -782,6 +870,7 @@ erDiagram
     jsonb lambs
     text complications
     text notes
+    timestamp_with_time_zone born_at
   }
   pasture_moves {
     uuid id PK
@@ -794,6 +883,36 @@ erDiagram
     uuid field_id FK
     date out_date
     date return_date
+    text notes
+  }
+  pen_stays {
+    uuid id PK
+    uuid tenant_id FK
+    uuid farm_id FK
+    uuid created_by FK
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+    uuid facility_id FK
+    uuid ewe_id FK
+    uuid lambing_id FK
+    date since_date
+    date planned_release_date
+    date released_date
+    uuid previous_facility_id FK
+    text notes
+  }
+  pregnancy_scans {
+    uuid id PK
+    uuid tenant_id FK
+    uuid farm_id FK
+    uuid created_by FK
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+    uuid breeding_id FK
+    uuid ewe_id FK
+    date date
+    integer fetus_count
+    text scanned_by
     text notes
   }
   shearing_records {
@@ -855,17 +974,26 @@ erDiagram
     text notes
   }
   animals ||--o{ animal_exits : "animal_id"
+  animals ||--o{ animal_gradings : "animal_id"
   animals ||--o{ animal_identifiers : "animal_id"
   animals ||--o{ animals : "dam_id"
   animals ||--o{ animals : "sire_id"
+  animals ||--o{ body_condition_scores : "animal_id"
   animals ||--o{ breeding_records : "ewe_id"
   animals ||--o{ breeding_records : "ram_id"
+  animals ||--o{ cull_marks : "animal_id"
+  animals ||--o{ fat_tail_measurements : "animal_id"
   animals ||--o{ health_records : "animal_id"
   animals ||--o{ herd_transfers : "animal_id"
+  animals ||--o{ lamb_care : "foster_ewe_id"
+  animals ||--o{ lamb_care : "lamb_id"
   animals ||--o{ lambing_records : "ewe_id"
+  animals ||--o{ pen_stays : "ewe_id"
+  animals ||--o{ pregnancy_scans : "ewe_id"
   animals ||--o{ shearing_records : "animal_id"
   animals ||--o{ weight_records : "animal_id"
   breeding_records ||--o{ lambing_records : "breeding_id"
+  breeding_records ||--o{ pregnancy_scans : "breeding_id"
   breeds ||--o{ animals : "breed_id"
   counterparties ||--o{ animal_exits : "counterparty_id"
   counterparties ||--o{ animals : "seller_id"
@@ -873,6 +1001,8 @@ erDiagram
   employees ||--o{ health_records : "vet_employee_id"
   facilities ||--o{ animals : "facility_id"
   facilities ||--o{ herds : "facility_id"
+  facilities ||--o{ pen_stays : "facility_id"
+  facilities ||--o{ pen_stays : "previous_facility_id"
   fields ||--o{ pasture_moves : "field_id"
   files ||--o{ animals : "photo_file_id"
   herds ||--o{ animals : "herd_id"
@@ -886,6 +1016,7 @@ erDiagram
   items ||--o{ daily_log_lines : "item_id"
   items ||--o{ health_records : "item_id"
   items ||--o{ vaccination_plans : "item_id"
+  lambing_records ||--o{ pen_stays : "lambing_id"
   rations ||--o{ herds : "ration_id"
   species ||--o{ animals : "species_id"
   species ||--o{ vaccination_plans : "species_id"
@@ -914,6 +1045,14 @@ erDiagram
     text sku
     text barcode
     numeric dry_matter_pct
+    numeric me_mj_per_kg_dm
+    numeric crude_protein_pct_dm
+    numeric calcium_g_per_kg_dm
+    numeric phosphorus_g_per_kg_dm
+    boolean is_roughage
+    numeric n_pct
+    numeric p2o5_pct
+    numeric k2o_pct
     numeric min_qty
     numeric min_days
     uuid default_warehouse_id FK
@@ -1197,6 +1336,17 @@ erDiagram
     boolean preferential
     text terms
     text status
+  }
+  scenarios {
+    uuid id PK
+    uuid tenant_id FK
+    uuid farm_id FK
+    uuid created_by FK
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+    text name
+    jsonb assumptions
+    text notes
   }
   transactions {
     uuid id PK
@@ -1538,6 +1688,55 @@ erDiagram
 
 ```mermaid
 erDiagram
+  animal_reservations {
+    uuid id PK
+    uuid tenant_id FK
+    uuid farm_id FK
+    uuid created_by FK
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+    uuid animal_id FK
+    uuid counterparty_id FK
+    text customer_name
+    text customer_phone
+    numeric agreed_price
+    date reserved_until
+    text status
+    text note
+    uuid sale_id FK
+    uuid request_id FK
+    uuid closed_by FK
+    timestamp_with_time_zone closed_at
+    text close_reason
+  }
+  catalogue_listings {
+    uuid id PK
+    uuid tenant_id FK
+    uuid farm_id FK
+    uuid created_by FK
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+    uuid animal_id FK
+    numeric price
+  }
+  catalogue_requests {
+    uuid id PK
+    uuid tenant_id FK
+    uuid farm_id FK
+    uuid created_by FK
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+    text name
+    text phone
+    jsonb animal_ids
+    text wanted
+    text note
+    text language
+    text status
+    integer submissions
+    uuid closed_by FK
+    timestamp_with_time_zone closed_at
+  }
   prices {
     uuid id PK
     uuid tenant_id FK
@@ -1645,8 +1844,12 @@ erDiagram
     text notes
   }
   accounts ||--o{ sales : "account_id"
+  animals ||--o{ animal_reservations : "animal_id"
+  animals ||--o{ catalogue_listings : "animal_id"
   animals ||--o{ sale_lines : "animal_id"
+  catalogue_requests ||--o{ animal_reservations : "request_id"
   cost_centers ||--o{ sale_lines : "cost_center_id"
+  counterparties ||--o{ animal_reservations : "counterparty_id"
   counterparties ||--o{ purchase_requests : "counterparty_id"
   counterparties ||--o{ sales : "counterparty_id"
   files ||--o{ state_reports : "file_id"
@@ -1654,6 +1857,7 @@ erDiagram
   items ||--o{ prices : "item_id"
   items ||--o{ purchase_requests : "item_id"
   items ||--o{ sale_lines : "item_id"
+  sales ||--o{ animal_reservations : "sale_id"
   sales ||--o{ sale_lines : "sale_id"
   stock_batches ||--o{ purchase_requests : "batch_id"
   transactions ||--o{ purchase_requests : "transaction_id"
@@ -1772,6 +1976,9 @@ erDiagram
     text completion_note
     uuid completion_photo_file_id FK
     uuid completion_record_id
+    uuid alert_id FK
+    text link
+    text completion_source
   }
   telegram_link_codes {
     text code PK
@@ -1779,6 +1986,7 @@ erDiagram
     timestamp_with_time_zone expires_at
     timestamp_with_time_zone used_at
   }
+  alerts ||--o{ tasks : "alert_id"
   files ||--o{ tasks : "completion_photo_file_id"
 ```
 
@@ -1883,6 +2091,47 @@ erDiagram
     timestamp_with_time_zone last_reading_at
     jsonb flags
   }
+  geofences {
+    uuid id PK
+    uuid tenant_id FK
+    uuid farm_id FK
+    uuid created_by FK
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+    text name
+    text kind
+    uuid field_id FK
+    jsonb geometry
+    uuid herd_id FK
+    boolean active
+  }
+  grazing_cell_days {
+    uuid id PK
+    uuid tenant_id FK
+    uuid farm_id FK
+    uuid created_by FK
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+    date date
+    uuid herd_id FK
+    integer cell_x
+    integer cell_y
+    integer fixes
+  }
+  grazing_field_days {
+    uuid id PK
+    uuid tenant_id FK
+    uuid farm_id FK
+    uuid created_by FK
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+    date date
+    uuid herd_id FK
+    uuid field_id FK
+    integer fixes
+    integer animals
+    numeric animal_hours
+  }
   tracker_assignments {
     uuid id PK
     uuid tenant_id FK
@@ -1938,6 +2187,11 @@ erDiagram
   devices ||--o{ tracker_assignments : "device_id"
   devices ||--o{ tracker_readings : "device_id"
   devices ||--o{ tracker_state : "device_id"
+  fields ||--o{ geofences : "field_id"
+  fields ||--o{ grazing_field_days : "field_id"
+  herds ||--o{ geofences : "herd_id"
+  herds ||--o{ grazing_cell_days : "herd_id"
+  herds ||--o{ grazing_field_days : "herd_id"
 ```
 
 ## AI

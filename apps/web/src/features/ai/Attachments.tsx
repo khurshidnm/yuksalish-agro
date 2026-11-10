@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { ChartCard } from '@/components/ChartCard';
 import { TBody, THead, Table, Td, Th, Tr } from '@/components/ui';
 import { formatDate, formatNumber } from '@/lib/format';
+import { FarmProposalCard } from './FarmProposalCard';
 import { ProposalCard } from './ProposalCard';
 import { cellText, fieldLabel } from './text';
 import type { Attachment } from './types';
@@ -69,6 +70,8 @@ function AttachmentView({ attachment }: { attachment: Attachment }) {
       return <ChartAttachment attachment={attachment} />;
     case 'proposal':
       return <ProposalCard proposal={attachment.proposal} />;
+    case 'farm_proposal':
+      return <FarmProposalCard proposal={attachment.proposal} />;
     default:
       // Questions are shown by the message, as answers only make sense on the latest one.
       return null;

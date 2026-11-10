@@ -8,6 +8,7 @@ import {
   diffDays,
   expectedLambingDate,
   lambingWindow,
+  todayIso,
 } from '@yap/shared';
 import { earliestLiveBirth } from '@yap/shared/formulas/livestock';
 import { canBreed, commonAncestors, type ParentLinks } from '@yap/shared/formulas/reproduction';
@@ -411,6 +412,8 @@ export const lambingInput = z.object({
   lambs: z.array(lambInput).min(1).max(3),
   complications: z.string().trim().max(500).nullish(),
   notes,
+  /** The moment the form was saved on the device: the newborn-care clock starts here. */
+  bornAt: z.iso.datetime({ offset: true }).nullish(),
 });
 export type LambingInput = z.infer<typeof lambingInput>;
 
@@ -448,6 +451,16 @@ async function assertNotJustLambed(eweId: string, date: string): Promise<void> {
   if (recent) {
     throw conflict('LAMBED_RECENTLY', `This ewe already has a lambing on ${recent.date}`, { date: recent.date });
   }
+}
+
+/**
+ * The moment the form was saved, kept only when it can stand for the hour of birth: on the lambing
+ * date itself and not still to come. A backdated entry, or a device with a wrong clock, has none.
+ */
+function savedAt(i: LambingInput): Date | null {
+  if (!i.bornAt) return null;
+  const at = new Date(i.bornAt);
+  return at.getTime() <= Date.now() && todayIso(ctx().timezone, at) === i.date ? at : null;
 }
 
 /**
@@ -528,6 +541,8 @@ export async function recordLambing(i: LambingInput) {
       lambs,
       complications: i.complications,
       notes: i.notes,
+      // A device clock can be wrong: a moment still to come is dropped, and the arrival time counts.
+      bornAt: savedAt(i),
     })
     .returning();
 

@@ -15,13 +15,18 @@ import { useCan, useModuleEnabled } from '@/lib/auth';
 import { formatAgo, formatNumber, intlLocale } from '@/lib/format';
 import { useDetail } from '@/lib/query';
 import { cn } from '@/lib/utils';
+import { GrazingPanel } from './GrazingPanel';
+import { LostTab } from './LostTab';
 import { TrackersTab, BatteryCell } from './TrackersTab';
 import { TrackingMap, type MapAnimal } from './TrackingMap';
-import { FLAGS, LIVE, isStale, type LiveAnimal, type LiveData, type TrackingFlag } from './types';
+import { ZonesTab } from './ZonesTab';
+import { FLAGS, GRAZING, LIVE, ZONES, isStale, type GrazingData, type LiveAnimal, type LiveData, type TrackingFlag, type ZoneRow } from './types';
 
 const REFRESH_MS = 60_000;
+/** The periods the grazing map is counted over, in days. */
+const GRAZING_DAYS = ['7', '30', '90'];
 
-export const FLAG_TONE: Record<TrackingFlag, BadgeVariant> = { fever: 'danger', isolated: 'warning', inactive: 'info' };
+export const FLAG_TONE: Record<TrackingFlag, BadgeVariant> = { fever: 'danger', isolated: 'warning', out_of_zone: 'warning', inactive: 'info' };
 
 export const firstFlag = (flags: LiveAnimal['flags']): TrackingFlag | null => FLAGS.find((f) => flags[f]) ?? null;
 
@@ -91,8 +96,13 @@ function FlockTab() {
   const can = useCan();
   const moduleEnabled = useModuleEnabled();
   const [herd, setHerd] = useUrlParam('herd');
+  const [grazingParam, setGrazingDays] = useUrlParam('grazing', '', { keepScroll: true });
+  const grazingDays = GRAZING_DAYS.includes(grazingParam) ? grazingParam : '';
   const [selected, setSelected] = useState<string | null>(null);
   const live = useDetail<LiveData>(LIVE, undefined, { refetchInterval: REFRESH_MS });
+  const zones = useDetail<ZoneRow[]>(ZONES);
+  const activeZones = useMemo(() => zones.data?.filter((z) => z.active && (!herd || !z.herdId || z.herdId === herd)), [zones.data, herd]);
+  const grazing = useDetail<GrazingData>(grazingDays ? GRAZING : null, { days: grazingDays, herdId: herd || undefined });
   // Shepherds and vets have no farm.view: they get the imagery without field outlines.
   const farm = useDetail<FarmMapData>(can('farm.view') && moduleEnabled('farm') ? '/farm/map' : null);
   const outlines = useMemo(() => farm.data?.features.map((f) => f.geometry), [farm.data]);
@@ -169,6 +179,8 @@ function FlockTab() {
       <div className="relative isolate">
         <TrackingMap
           animals={mapAnimals}
+          zones={activeZones}
+          heat={grazingDays ? grazing.data?.cells : null}
           outlines={outlines}
           selectedId={selected}
           onSelect={pick}
@@ -182,6 +194,21 @@ function FlockTab() {
         )}
       </div>
       <Legend />
+
+      <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1" role="group" aria-label={t('grazing.toggle')}>
+        <span className="shrink-0 text-sm text-muted-foreground" aria-hidden>
+          {t('grazing.toggle')}
+        </span>
+        <Button size="sm" variant={!grazingDays ? 'primary' : 'outline'} aria-pressed={!grazingDays} onClick={() => setGrazingDays('')} className="shrink-0">
+          {t('grazing.off')}
+        </Button>
+        {GRAZING_DAYS.map((days) => (
+          <Button key={days} size="sm" variant={grazingDays === days ? 'primary' : 'outline'} aria-pressed={grazingDays === days} onClick={() => setGrazingDays(days)} className="shrink-0">
+            {t('grazing.days', { count: Number(days) })}
+          </Button>
+        ))}
+      </div>
+      {grazingDays && <GrazingPanel data={grazing.data} error={grazing.isError ? grazing.error : null} onRetry={() => void grazing.refetch()} />}
 
       {chosen && <AnimalCard animal={chosen} now={now} silentMinutes={silentMinutes} selected onSelect={() => setSelected(null)} />}
 
@@ -225,6 +252,7 @@ function Legend() {
       {item('bg-primary', t('legend.ok'))}
       {item('bg-destructive', t('flag.fever'))}
       {item('bg-warning-fill', t('flag.isolated'))}
+      {item('bg-chart-8', t('flag.out_of_zone'))}
       {item('bg-info', t('flag.inactive'))}
       {item('bg-muted-foreground', t('legend.stale'))}
     </ul>
@@ -239,6 +267,8 @@ export default function TrackingPage() {
       <UrlTabs
         tabs={[
           { value: 'map', label: t('tabs.map'), content: <FlockTab /> },
+          { value: 'lost', label: t('tabs.lost'), content: <LostTab /> },
+          { value: 'zones', label: t('tabs.zones'), content: <ZonesTab /> },
           { value: 'trackers', label: t('tabs.trackers'), content: <TrackersTab /> },
         ]}
       />

@@ -22,7 +22,7 @@
 import { useSyncExternalStore } from 'react';
 import { ApiError, api } from './api';
 
-export type OutboxKind = 'daily_log' | 'sick_report' | 'death' | 'weight' | 'lambing' | 'task_complete';
+export type OutboxKind = 'daily_log' | 'sick_report' | 'death' | 'weight' | 'lambing' | 'lamb_care' | 'pen_stay' | 'task_complete';
 
 export interface OutboxPhoto {
   id: string;

@@ -26,6 +26,10 @@
   background: var(--info);
 }
 
+.farm-map .tracking-pin-out_of_zone span {
+  background: var(--chart-8);
+}
+
 .farm-map .tracking-pin-stale span {
   opacity: 0.55;
 }

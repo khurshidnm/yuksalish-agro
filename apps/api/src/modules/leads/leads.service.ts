@@ -76,6 +76,16 @@ function formTokenAge(token: string | undefined): number | null {
   return age >= 0 && age <= FORM_TOKEN_TTL_MS ? age : null;
 }
 
+/**
+ * The same check for another public form (the farm catalogue's pre-order): `expired` must be told to
+ * the form so it fetches a new token, `too_fast` is a bot and is answered like a real submission.
+ */
+export function formTokenVerdict(token: string | undefined): 'ok' | 'expired' | 'too_fast' {
+  const age = formTokenAge(token);
+  if (age === null) return 'expired';
+  return age < MIN_HUMAN_MS ? 'too_fast' : 'ok';
+}
+
 const alertBudget = { hour: 0, sent: 0 };
 
 /** Lives in this process, so a restart forgets it. That can only mean a few extra messages. */

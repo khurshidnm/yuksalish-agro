@@ -221,12 +221,15 @@ describe('forecasts', () => {
   });
 
   it('rankCropOptions orders by margin and applies rotation and feed adjustments', () => {
-    const base = { isFeed: false, grownLastSeason: false, feedShortage: false };
-    const ranked = ai.rankCropOptions([
-      { ...base, key: 'wheat', yieldTHa: 5, pricePerT: 3_000_000, costPerHa: 9_000_000, grownLastSeason: true },
-      { ...base, key: 'barley', yieldTHa: 4, pricePerT: 2_500_000, costPerHa: 5_000_000, isFeed: true, feedShortage: true },
-      { ...base, key: 'rice', yieldTHa: null, pricePerT: 1, costPerHa: 1 },
-    ]);
+    const base = { isFeed: false, feedShortage: false };
+    const ranked = ai.rankCropOptions(
+      [
+        { ...base, key: 'wheat', yieldTHa: 5, pricePerT: 3_000_000, costPerHa: 9_000_000 },
+        { ...base, key: 'barley', yieldTHa: 4, pricePerT: 2_500_000, costPerHa: 5_000_000, isFeed: true, feedShortage: true },
+        { ...base, key: 'rice', yieldTHa: null, pricePerT: 1, costPerHa: 1 },
+      ],
+      [{ key: 'wheat', family: null }],
+    );
     // wheat margin 6 mln, less 25% = 4.5 mln. barley margin 5 mln, plus 15% = 5.75 mln.
     expect(ranked).toEqual([
       { key: 'barley', marginPerHa: 5_000_000, score: 5_750_000, reasons: ['feed_shortage_bonus'] },
@@ -235,10 +238,31 @@ describe('forecasts', () => {
   });
 
   it('a perennial crop carries no rotation penalty', () => {
-    const [ranked] = ai.rankCropOptions([
-      { key: 'alfalfa', yieldTHa: 8, pricePerT: 1, costPerHa: 1, isFeed: true, perennial: true, grownLastSeason: true, feedShortage: false },
-    ]);
+    const [ranked] = ai.rankCropOptions(
+      [{ key: 'alfalfa', yieldTHa: 8, pricePerT: 1, costPerHa: 1, isFeed: true, family: 'perennial_grass', feedShortage: false }],
+      [{ key: 'alfalfa', family: 'perennial_grass' }],
+    );
     expect(ranked.reasons).toEqual([]);
+  });
+
+  it('the penalty follows the rotation rules: a cereal after another cereal is penalised too', () => {
+    const wheat = { key: 'wheat', yieldTHa: 5, pricePerT: 2, costPerHa: 2, isFeed: false, family: 'cereal' as const, feedShortage: false };
+    expect(ai.rankCropOptions([wheat], [{ key: 'barley', family: 'cereal' }])[0].reasons).toEqual(['rotation_penalty']);
+    expect(ai.rankCropOptions([wheat], [{ key: 'alfalfa', family: 'perennial_grass' }])[0].reasons).toEqual([]);
+  });
+
+  it('two cereals on two equal fields swap places, though every choice carries the penalty', () => {
+    const crop = (key: string, pricePerT: number) => ({ key, yieldTHa: 4, pricePerT, costPerHa: 0, isFeed: false, family: 'cereal' as const, feedShortage: false });
+    const { assignments } = ai.allocateCrops(
+      [
+        { id: 'a', areaHa: 10, lastCropKey: 'wheat' },
+        { id: 'b', areaHa: 10, lastCropKey: 'barley' },
+      ],
+      [crop('wheat', 3), crop('barley', 2)],
+    );
+    // Wheat scores 12 less 25 % = 9 on both fields. Field b takes it, because on field a it would follow itself.
+    expect(assignments.map((x) => [x.fieldId, x.key])).toEqual([['a', 'barley'], ['b', 'wheat']]);
+    expect(assignments.every((x) => x.reasons.includes('rotation_penalty'))).toBe(true);
   });
 });
 
@@ -357,7 +381,6 @@ describe('allocateCrops', () => {
     pricePerT,
     costPerHa,
     isFeed: false,
-    grownLastSeason: false,
     feedShortage: false,
     ...extra,
   });
@@ -383,7 +406,7 @@ describe('allocateCrops', () => {
 
   it('plans the pilot farm within each crop share and keeps the winter feed (control numbers)', () => {
     const crops = [
-      option('alfalfa', 10, 2_100_000, 2_500_000, { isFeed: true, perennial: true }), // 18.5 mln/ha
+      option('alfalfa', 10, 2_100_000, 2_500_000, { isFeed: true, family: 'perennial_grass' }), // 18.5 mln/ha
       option('corn', 35, 650_000, 5_400_000, { isFeed: true }), // 17.35 mln/ha
       option('barley', 4.2, 3_500_000, 62_000_000 / 15, { isFeed: true }), // 10.57 mln/ha
       option('wheat', 5.5, 800_000, 4_200_000), // 0.2 mln/ha

@@ -129,5 +129,109 @@
       "enterYield": "Enter the yield",
       "noCrop": "The short feeds are not linked to a crop. Set \"Grown from\" on the item."
     }
-  }
+  },
+    "nutrients": {
+      "title": "Nutrient balance",
+      "perHeadDay": "What the ration gives one head a day, against what it needs.",
+      "name": {
+        "dryMatter": "Dry matter",
+        "energy": "Energy (ME)",
+        "protein": "Crude protein",
+        "calcium": "Calcium",
+        "phosphorus": "Phosphorus"
+      },
+      "unit": {
+        "dryMatter": "kg",
+        "energy": "MJ",
+        "protein": "g",
+        "calcium": "g",
+        "phosphorus": "g"
+      },
+      "flag": {
+        "short": "Short",
+        "enough": "Enough",
+        "over": "Over"
+      },
+      "ofRequirement": "{{supply}} of {{requirement}} {{unit}}",
+      "amount": "{{value}} {{unit}}",
+      "needs": "Needs {{requirement}} {{unit}}",
+      "covered": "{{name}}: share of the requirement covered",
+      "roughage": "Roughage in dry matter",
+      "stage": {
+        "label": "Stage of pregnancy",
+        "early": "First 15 weeks",
+        "late": "Last 4 weeks"
+      },
+      "litter": {
+        "label": "Lambs per ewe",
+        "1": "One lamb",
+        "2": "Twins"
+      },
+      "herd": "{{name}}: {{head}} head",
+      "weight": "Average weight {{weight}} kg, {{weighed}} of {{head}} weighed",
+      "clamped": "The table has no row for this weight: the {{used}} kg row was read.",
+      "noHerd": "No herd is on this ration, so there is no requirement to compare with. This is what the ration gives.",
+      "draftEmpty": "Choose a feed and enter an amount to see the balance.",
+      "reasons": {
+        "no_animals": "The herd has no animals.",
+        "no_weight": "No weights are recorded for this herd. Weigh a few animals to get the requirement.",
+        "mixed_species": "The herd holds more than one species, so one requirement does not fit it.",
+        "species_not_covered": "The requirement table covers sheep only.",
+        "state_not_covered": "The requirement table has no rows for this physiological state."
+      },
+      "missingTitle": "Some feeds have no nutrient figures",
+      "missingLine": "{{name}}: {{fields}}",
+      "missingHint": "Enter them on the item card. Until then the lines that depend on them stay empty.",
+      "field": {
+        "dryMatterPct": "dry matter",
+        "meMjPerKgDm": "energy",
+        "crudeProteinPctDm": "crude protein",
+        "calciumGPerKgDm": "calcium",
+        "phosphorusGPerKgDm": "phosphorus",
+        "isRoughage": "roughage or concentrate",
+        "price": "stock price"
+      },
+      "source": "Requirement: NRC 1985, sheep, Table 1."
+    },
+    "mix": {
+      "title": "Least-cost mix",
+      "description": "The cheapest mix of the feeds you choose that covers what one head needs in a day. Prices are what a kilogram costs in stock now.",
+      "open": "Least-cost mix",
+      "back": "Feed rations",
+      "forTitle": "Who it is for",
+      "herd": "Herd",
+      "herdHint": "Optional. Its average recorded weight is used",
+      "state": "Physiological state",
+      "weight": "Body weight",
+      "weightHint": "Empty: the herd's average",
+      "weightRequired": "Enter a weight or choose a herd",
+      "weightUnit": "kg",
+      "gain": "Daily gain",
+      "gainUnit": "g/day",
+      "gainHint": "Empty: the usual gain in the table",
+      "minRoughage": "Roughage, at least",
+      "minRoughageHint": "Share of the dry matter",
+      "feedsTitle": "Feeds to choose from",
+      "feed": "Feed",
+      "max": "At most",
+      "addFeed": "Add feed",
+      "calculate": "Calculate",
+      "resultTitle": "Cheapest mix",
+      "resultFor": "{{state}}, {{weight}} kg",
+      "pricePerKg": "{{price}} per kg",
+      "costPerDay": "Per head per day",
+      "costPerSeason": "Per head for {{days}} days",
+      "save": "Save as ration",
+      "saveHint": "The mix becomes a new ration that you can change afterwards.",
+      "defaultName": "Least-cost mix: {{state}}",
+      "infeasibleTitle": "No mix of these feeds covers the requirement",
+      "shortAlone": "{{name}}: within the limits these feeds give at most {{best}} {{unit}}, {{required}} {{unit}} are needed.",
+      "shortTogether": "{{name}}: {{required}} {{unit}} are needed. That cannot be reached while the other requirements are met.",
+      "infeasibleTip": "Add a richer feed, raise a maximum, or lower the roughage share.",
+      "missingTitle": "Some feeds lack figures the mix needs",
+      "missingBody": "Enter the composition and the feed type on the item card. A price appears once the feed is received into stock.",
+      "openItems": "Open items",
+      "noRequirementTitle": "No requirement for this choice",
+      "enterWeight": "Or enter a weight above."
+    }
 }

@@ -171,6 +171,43 @@
       "barcode": "Barcode",
       "barcodeHint": "Type the number by hand",
       "notes": "Notes"
+    },
+    "fertiliser": {
+      "title": "Fertiliser content",
+      "hint": "Percent of the active nutrient, as printed on the bag. Leave a field empty if you do not know it: the fertiliser rate on the field card then leaves this product out.",
+      "content": "{{formula}}, %"
+    },
+    "nutrients": {
+      "title": "Nutrient content",
+      "hint": "All figures are for 1 kg of dry matter. Leave a field empty if you do not know it: the ration balance then names it as missing and does not guess.",
+      "typical": "Fill in typical values",
+      "typicalPlaceholder": "Choose a feed",
+      "typicalHint": "Typical values, not measured: table averages from Feedipedia (INRAE, CIRAD, AFZ, FAO). Your feed may differ.",
+      "typicalApplied": "Typical values for \"{{feed}}\" are filled in. They are table averages, not an analysis of your feed: correct them when you have a laboratory result.",
+      "energy": "Metabolisable energy",
+      "energyUnit": "MJ/kg DM",
+      "protein": "Crude protein",
+      "proteinUnit": "% DM",
+      "calcium": "Calcium",
+      "phosphorus": "Phosphorus",
+      "mineralUnit": "g/kg DM",
+      "feedClass": "Kind of feed",
+      "feedClassHint": "The least-cost mix keeps a share of roughage",
+      "classUnknown": "Not set",
+      "class": {
+        "roughage": "Roughage: hay, straw, silage",
+        "concentrate": "Concentrate: grain, bran, cake"
+      },
+      "feeds": {
+        "lucerne_hay": "Lucerne hay",
+        "cereal_straw": "Cereal straw (wheat)",
+        "barley_grain": "Barley grain",
+        "wheat_grain": "Wheat grain",
+        "wheat_bran": "Wheat bran",
+        "cottonseed_cake": "Cottonseed cake",
+        "maize_silage": "Maize silage",
+        "maize_grain": "Maize grain"
+      }
     }
   },
   "warehouses": {

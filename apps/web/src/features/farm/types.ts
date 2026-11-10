@@ -38,6 +38,8 @@ export interface FieldRow {
   notes: string | null;
   hasBoundary: boolean;
   currentCrop: CurrentCrop | null;
+  /** The newest groundwater observation. Only on list rows. */
+  groundwater?: Omit<GroundwaterObservation, 'id' | 'notes'> | null;
 }
 
 export interface RotationRow {
@@ -70,14 +72,60 @@ export interface SoilAnalysis {
   notes: string | null;
 }
 
-export interface FieldCard extends Omit<FieldRow, 'hasBoundary'> {
+export type GroundwaterRisk = 'shallow' | 'within_critical_range';
+
+export interface GroundwaterObservation {
+  id: string;
+  date: string;
+  depthM: number;
+  mineralisationGl: number | null;
+  notes: string | null;
+  /** The depth against the published critical range. Mineralisation is never judged. */
+  risk: GroundwaterRisk | null;
+}
+
+export type FertiliserNutrient = 'n' | 'p2o5' | 'k2o';
+
+export interface NutrientAdvice {
+  removalPerT: number | null;
+  uptakeKgHa: number | null;
+  soilMgKg: number | null;
+  soilStockKgHa: number | null;
+  soilUse: number | null;
+  soilSupplyKgHa: number | null;
+  fertiliserUse: number | null;
+  rateKgHa: number | null;
+  reason: 'no_yield' | 'no_removal' | 'no_soil_value' | 'nitrate_not_supported' | 'fixes_nitrogen' | 'no_soil_coefficient' | null;
+}
+
+export interface FieldFertiliser {
+  planId: string;
+  cropId: string;
+  cropKey: string;
+  family: string | null;
+  targetYieldTHa: number | null;
+  removalSource: 'farm' | 'typical' | null;
+  analysis: { id: string; date: string; stale: boolean } | null;
+  nutrients: Record<FertiliserNutrient, NutrientAdvice>;
+  products: {
+    products: { id: string; name: string; kgHa: number; gives: Record<FertiliserNutrient, number> }[];
+    uncovered: FertiliserNutrient[];
+  } | null;
+  productsWithoutContent: { id: string; name: string }[];
+}
+
+export interface FieldCard extends Omit<FieldRow, 'hasBoundary' | 'groundwater'> {
   boundary: Geometry | null;
   rotation: RotationRow[];
   soilAnalyses: SoilAnalysis[];
+  /** Null when the field has no current plan. */
+  fertiliser: FieldFertiliser | null;
+  /** Oldest first. */
+  groundwater: GroundwaterObservation[];
 }
 
 /** What the field form needs, from a list row or a card. */
-export type EditableField = Omit<FieldRow, 'hasBoundary' | 'currentCrop'> & { hasBoundary: boolean };
+export type EditableField = Omit<FieldRow, 'hasBoundary' | 'currentCrop' | 'groundwater'> & { hasBoundary: boolean };
 
 export interface Facility {
   id: string;

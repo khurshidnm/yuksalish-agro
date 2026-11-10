@@ -1,8 +1,12 @@
 import { and, asc, desc, eq, ne, sql } from 'drizzle-orm';
 import { z } from 'zod';
+import { CROP_FAMILIES } from '@yap/shared';
+import { TYPICAL_REMOVAL_KG_T } from '@yap/shared/formulas/fertiliser';
+import { TYPICAL_CROP_FAMILY } from '@yap/shared/formulas/rotation';
 import { schema } from '../../db/client';
 import { ctx, today, tx } from '../../core/context';
 import { badRequest, notFound } from '../../core/errors';
+import { recordEvent } from '../../core/journal';
 import { clientId, isoDate } from '../../core/query';
 
 const { cropPlans, crops, harvests, seasons: t } = schema;
@@ -126,7 +130,16 @@ export const cropInput = z.object({
   name: nameSchema,
   isFeed: z.boolean().optional(),
   defaultYieldTHa: z.number().min(0).nullish(),
+  /** Place in the rotation. Null falls back to the typical family for the key. */
+  family: z.enum(CROP_FAMILIES).nullish(),
+  /** Nutrients one tonne of produce takes from the field, kg/t. Null falls back to the typical figure. */
+  removalNKgT: z.number().min(0).max(500).nullish(),
+  removalP2o5KgT: z.number().min(0).max(500).nullish(),
+  removalK2oKgT: z.number().min(0).max(500).nullish(),
 });
+
+/** What can be changed on a crop later. The key stays: plans, feeds and rules are filed under it. */
+export const cropPatch = cropInput.omit({ key: true }).partial();
 
 function cropRow(row: typeof crops.$inferSelect) {
   return {
@@ -135,6 +148,12 @@ function cropRow(row: typeof crops.$inferSelect) {
     name: row.name,
     isFeed: row.isFeed,
     defaultYieldTHa: row.defaultYieldTHa === null ? null : Number(row.defaultYieldTHa),
+    family: row.family,
+    removalNKgT: row.removalNKgT,
+    removalP2o5KgT: row.removalP2o5KgT,
+    removalK2oKgT: row.removalK2oKgT,
+    /** Reference values used while the farm's own are empty, so the form can show them as typical. */
+    typical: { family: TYPICAL_CROP_FAMILY[row.key] ?? null, removal: TYPICAL_REMOVAL_KG_T[row.key] ?? null },
   };
 }
 
@@ -156,8 +175,27 @@ export async function createCrop(input: z.infer<typeof cropInput>) {
       name: input.name,
       isFeed: input.isFeed ?? false,
       defaultYieldTHa: input.defaultYieldTHa === null || input.defaultYieldTHa === undefined ? null : String(input.defaultYieldTHa),
+      family: input.family ?? null,
+      removalNKgT: input.removalNKgT ?? null,
+      removalP2o5KgT: input.removalP2o5KgT ?? null,
+      removalK2oKgT: input.removalK2oKgT ?? null,
     })
     .returning();
+  return cropRow(row);
+}
+
+export async function updateCrop(id: string, input: z.infer<typeof cropPatch>) {
+  await getCrop(id);
+  const { defaultYieldTHa, ...rest } = input;
+  const [row] = await tx()
+    .update(crops)
+    .set({
+      ...rest,
+      ...(defaultYieldTHa === undefined ? {} : { defaultYieldTHa: defaultYieldTHa === null ? null : String(defaultYieldTHa) }),
+    })
+    .where(and(eq(crops.id, id), eq(crops.tenantId, ctx().tenantId)))
+    .returning();
+  await recordEvent({ type: 'crop.updated', entityType: 'crop', entityId: id, data: { key: row.key, changed: Object.keys(input) } });
   return cropRow(row);
 }
 

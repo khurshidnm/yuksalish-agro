@@ -99,6 +99,65 @@ export interface ProposalView {
   result: ProposalResult | null;
 }
 
+export type FarmRecordKind = 'weight' | 'death' | 'treatment' | 'herd_log';
+
+/** The animal as the card names it. The age is counted to the record's day. */
+export interface FarmAnimal {
+  id: string;
+  tag: string;
+  sex: string | null;
+  species: string | null;
+  category: string | null;
+  birthDate: string | null;
+  ageMonths: number | null;
+  herd: Ref | null;
+}
+
+/** What leaves the warehouse on confirm. The warehouse is null when the owning service picks it. */
+export interface FarmStockLine {
+  itemId: string;
+  name: string;
+  unit: string;
+  qty: number;
+  warehouse: Ref | null;
+}
+
+/** A farm card holds no money, so it reads the same for everyone. */
+export interface FarmFields {
+  date: string;
+  animal: FarmAnimal | null;
+  herd: (Ref & { defaulted: boolean }) | null;
+  weightKg: number | null;
+  /** The person's own words. */
+  cause: string | null;
+  healthType: string | null;
+  drug: { itemId: string | null; name: string } | null;
+  dose: number | null;
+  doseUnit: string | null;
+  headCount: number | null;
+  stockOut: FarmStockLine[];
+}
+
+/** A farm record the assistant prepared: a weight, a death, a treatment, a day's feeding. */
+export interface FarmProposalView {
+  id: string;
+  kind: FarmRecordKind;
+  status: ProposalStatus;
+  channel: string;
+  createdAt: string;
+  expiresAt: string;
+  undoUntil: string | null;
+  sourceText: string | null;
+  stamp: string;
+  fields: FarmFields;
+  warnings: ProposalWarning[];
+  needsAnswer: boolean;
+  /** Cards stored before this was sent lack it; the live card always has it. */
+  canConfirm?: boolean;
+  canUndo: boolean;
+  result: { type: string; id: string } | null;
+}
+
 export interface QuestionOption {
   id: string;
   label: string;
@@ -124,6 +183,7 @@ export type Attachment =
   | { type: 'table'; title: string; columns: string[]; rows: Record<string, unknown>[]; total: number }
   | { type: 'chart'; chart: 'bar' | 'line'; title: string; xKey: string; yKeys: string[]; rows: Record<string, unknown>[] }
   | { type: 'proposal'; proposal: ProposalView }
+  | { type: 'farm_proposal'; proposal: FarmProposalView }
   | { type: 'question'; question: Question };
 
 export interface AnswerConfidence {

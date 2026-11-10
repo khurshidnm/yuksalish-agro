@@ -11,6 +11,13 @@ export function todayIso(timeZone: string = DEFAULT_TIMEZONE, now: Date = new Da
   }).format(now);
 }
 
+/** The wall clock in a time zone: hour 0 to 23 and minute. */
+export function localClock(timeZone: string = DEFAULT_TIMEZONE, now: Date = new Date()): { hour: number; minute: number } {
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now);
+  const part = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0);
+  return { hour: part('hour'), minute: part('minute') };
+}
+
 export function addDays(isoDate: string, days: number): string {
   const d = new Date(`${isoDate}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + days);

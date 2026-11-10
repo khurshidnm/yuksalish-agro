@@ -9,7 +9,7 @@
  */
 import { createHash } from 'node:crypto';
 import { cancelWords } from '@yap/shared/formulas/record-words';
-import { and, asc, desc, eq, gt, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, sql } from 'drizzle-orm';
 import { schema } from '../../../db/client';
 import { assertPermission, ctx, hasPermission, tx } from '../../../core/context';
 import { conflict, forbidden, notFound } from '../../../core/errors';
@@ -22,7 +22,7 @@ import { tr } from '../../notifications/i18n';
 import { notifyUser } from '../../notifications/notify.service';
 import { findDuplicate, type Duplicate } from './duplicates';
 import { normalize } from './resolve';
-import { ACKNOWLEDGE_WARNINGS, PROPOSAL_TTL_MS, UNDO_WINDOW_MS, type RecordKind } from './routing';
+import { ACKNOWLEDGE_WARNINGS, PROPOSAL_TTL_MS, RECORD_KINDS, UNDO_WINDOW_MS, type RecordKind } from './routing';
 import type { DraftEnv, DraftRecord, Learned, ProposalFields, ProposalView, Question, Warning } from './types';
 import { mergeDraft, validateDraft, type DraftInput } from './validate';
 
@@ -42,6 +42,9 @@ type StoredFields = ProposalFields & {
 
 const stored = (row: Row) => row.fields as unknown as StoredFields;
 
+/** Money cards only. A farm record's card has its own shape and its own service (farm-service.ts). */
+const isMoney = inArray(t.kind, [...RECORD_KINDS]);
+
 /**
  * A correction goes on waiting until the form has set everything it would have changed, so a note typed
  * beside it cannot make the card confirmable with the value the person just took back.
@@ -58,7 +61,7 @@ function visible(row: Row): ProposalFields {
 }
 
 /** The same bytes for the same content, whatever order the keys came back from the database in. */
-function canonical(value: unknown): string {
+export function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
   if (typeof value !== 'object' || value === null) return JSON.stringify(value) ?? 'null';
   const entries = Object.entries(value).sort(([a], [b]) => a.localeCompare(b));
@@ -162,7 +165,7 @@ async function openDraft(id: string, conversationId: string | null): Promise<Row
   const [row] = await tx()
     .select()
     .from(t)
-    .where(and(eq(t.id, id), eq(t.farmId, c.farmId), eq(t.userId, c.userId!), eq(t.status, 'pending'), gt(t.expiresAt, new Date())))
+    .where(and(eq(t.id, id), eq(t.farmId, c.farmId), eq(t.userId, c.userId!), eq(t.status, 'pending'), gt(t.expiresAt, new Date()), isMoney))
     .for('update');
   // Only cards of this conversation: a correction must not land on another conversation's card.
   if (!row || row.conversationId !== conversationId) throw notFound('Draft');
@@ -249,7 +252,7 @@ export async function listPending(): Promise<ProposalView[]> {
   const rows = await tx()
     .select()
     .from(t)
-    .where(and(eq(t.farmId, c.farmId), eq(t.userId, c.userId!), eq(t.status, 'pending'), gt(t.expiresAt, new Date())))
+    .where(and(eq(t.farmId, c.farmId), eq(t.userId, c.userId!), eq(t.status, 'pending'), gt(t.expiresAt, new Date()), isMoney))
     .orderBy(asc(t.createdAt));
   const views: ProposalView[] = [];
   for (const row of rows) views.push(await toView(row));
@@ -262,7 +265,7 @@ export async function conversationCards(conversationId: string) {
   const rows = await tx()
     .select()
     .from(t)
-    .where(and(eq(t.farmId, c.farmId), eq(t.userId, c.userId!), eq(t.conversationId, conversationId), gt(t.expiresAt, new Date(Date.now() - PROPOSAL_TTL_MS))))
+    .where(and(eq(t.farmId, c.farmId), eq(t.userId, c.userId!), eq(t.conversationId, conversationId), gt(t.expiresAt, new Date(Date.now() - PROPOSAL_TTL_MS)), isMoney))
     .orderBy(asc(t.createdAt));
   const now = new Date();
   const views: ProposalView[] = [];
@@ -275,7 +278,7 @@ export async function conversationCards(conversationId: string) {
 }
 
 async function own(id: string, lock = false): Promise<Row> {
-  const query = tx().select().from(t).where(and(eq(t.id, id), eq(t.farmId, ctx().farmId)));
+  const query = tx().select().from(t).where(and(eq(t.id, id), eq(t.farmId, ctx().farmId), isMoney));
   const [row] = await (lock ? query.for('update') : query);
   if (!row) throw notFound('Proposal');
   if (row.userId !== ctx().userId) throw forbidden('This belongs to someone else', 'NOT_YOUR_PROPOSAL');

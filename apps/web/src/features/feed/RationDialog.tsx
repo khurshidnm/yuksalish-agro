@@ -9,6 +9,7 @@ import { zEnum, zOptionalText, zPositive, zRef, zText } from '@/lib/forms';
 import { enumOptions } from '@/lib/i18n';
 import { useApiMutation } from '@/lib/query';
 import { LineCard, LinesSection, itemOptions } from '../inventory/shared';
+import { RationDraftBalance } from './NutrientBalance';
 import type { Ration } from './types';
 
 const schema = z.object({
@@ -24,7 +25,7 @@ type FormOut = z.output<typeof schema>;
 /** The amount stays blank until typed, and zod reports it as required on submit. */
 const EMPTY_LINE = { itemId: '' } as FormIn['lines'][number];
 
-function Fields({ form }: { form: UseFormReturn<FormIn, unknown, FormOut> }) {
+function Fields({ form, rationId }: { form: UseFormReturn<FormIn, unknown, FormOut>; rationId?: string }) {
   const { t } = useTranslation('feed');
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'lines' });
   const lines = form.watch('lines');
@@ -60,6 +61,7 @@ function Fields({ form }: { form: UseFormReturn<FormIn, unknown, FormOut> }) {
         ))}
       />
       <p className="text-right font-medium">{t('rations.total', { kg: formatNumber(total, 3) })}</p>
+      <RationDraftBalance rationId={rationId} state={form.watch('state')} lines={lines} />
       <TextareaField form={form} name="notes" label={t('rations.fields.notes')} rows={2} />
     </>
   );
@@ -97,7 +99,7 @@ export function RationDialog({ open, ration, onOpenChange }: { open: boolean; ra
       successMessage={ration ? 'common:toast.updated' : 'common:toast.created'}
       size="lg"
     >
-      {(form) => <Fields form={form} />}
+      {(form) => <Fields form={form} rationId={ration?.id} />}
     </FormDialog>
   );
 }

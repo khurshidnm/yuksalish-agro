@@ -78,6 +78,8 @@
     "emptyTitle": "No work recorded this month",
     "emptyBody": "Field operations, veterinary and daily records show up here.",
     "fields": {
+      "tasksOnTime": "Tasks on time",
+      "tasksValue": "{{onTime}} of {{due}}",
       "hectares": "Area worked",
       "tons": "Harvest",
       "headTreated": "Head treated",
@@ -258,7 +260,7 @@
       "rewardType": "Bonus type",
       "active": "Status"
     },
-    "metric": { "survival_percent": "Lamb survival (%)", "hectares": "Area worked (ha)" },
+    "metric": { "survival_percent": "Lamb survival (%)", "hectares": "Area worked (ha)", "tasks_on_time": "Tasks done on time (%)" },
     "reward": { "fixed": "Once, on reaching the threshold", "per_unit": "For each unit above the threshold" },
     "rewardShort": { "fixed": "once", "per_unit": "per unit" }
   },

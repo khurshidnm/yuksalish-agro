@@ -139,6 +139,53 @@ export function useAnimalDirectory() {
   return { ...result, animals, known: result.data !== null };
 }
 
+export interface WatchEwe {
+  breedingId: string;
+  eweId: string;
+  tag: string;
+  expectedDate: string;
+  expectedEarliest: string;
+  expectedLatest: string;
+  fetusCount: number | null;
+  herdId: string | null;
+  herdName: string | null;
+  facilityId: string | null;
+  facilityName: string | null;
+  barnName: string | null;
+  daysLeft: number;
+  overdue: boolean;
+  firstLambing: boolean;
+  complications: { date: string; text: string }[];
+  stillborn: number;
+  inPen: boolean;
+}
+
+export interface WatchData {
+  today: string;
+  days: number;
+  ewes: WatchEwe[];
+  freePens: { id: string; name: string; parentName: string | null }[];
+}
+
+/** The night-watch list and the free pens, kept on the phone for the barn at night. */
+export function useNightWatch() {
+  const can = useCan();
+  const key = `today:watch:${useOwnerKey()}`;
+  const result = useStoredQuery<WatchData>('/livestock/lambing-desk/watch', key, {
+    enabled: can('livestock.view') && can('livestock.create'),
+    staleTime: 60_000,
+  });
+
+  // A delivered lambing takes the ewe off the list, and a delivered pen stay takes the pen.
+  const { delivered } = useOutbox();
+  const client = useQueryClient();
+  useEffect(() => {
+    if (delivered > 0) void client.invalidateQueries({ queryKey: ['today', '/livestock/lambing-desk/watch'] });
+  }, [delivered, client]);
+
+  return result;
+}
+
 /** Called on sign-out. The outbox stays: unsent work is not reference data. */
 export async function clearReferenceData(): Promise<void> {
   await clearMeta('today:');

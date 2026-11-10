@@ -8,6 +8,8 @@ import { PageSkeleton, RouteErrorPage } from './pages';
 import { appRoutes } from './routes';
 
 const LandingRoute = lazyPage(() => import('@/features/landing/LandingRoute'));
+// A farm's public page of animals for sale: open to anyone, outside the signed-in shell.
+const CataloguePage = lazyPage(() => import('@/features/catalogue/CataloguePage'));
 
 const landingRoutes: RouteObject[] = (
   [
@@ -27,6 +29,15 @@ const landingRoutes: RouteObject[] = (
 export const router = createBrowserRouter([
   ...landingRoutes,
   ...authRoutes,
+  {
+    path: 'catalogue/:slug',
+    errorElement: <RouteErrorPage />,
+    element: (
+      <Suspense fallback={<PageSkeleton />}>
+        <CataloguePage />
+      </Suspense>
+    ),
+  },
   {
     errorElement: <RouteErrorPage />,
     element: (

@@ -16,6 +16,7 @@ import { and, eq, gte, like, sql } from 'drizzle-orm';
 import { schema } from '../../../db/client';
 import { tx, withTenant } from '../../../core/context';
 import { evaluateHealth, summarizeDays } from '../health.service';
+import { summarizeGrazing } from '../grazing.service';
 import { SIM_PREFIX, loadFarm, pickFarm, removeSimulation, setupSimulation, simulatedSpan } from './farm';
 import { backfill, httpTransport, live } from './runner';
 import { World } from './world';
@@ -86,6 +87,7 @@ async function main() {
     log(`History done: ${sent} readings.`);
     await inFarm(async () => {
       const summaries = await summarizeDays();
+      await summarizeGrazing();
       const health = await evaluateHealth(new Date(), true);
       log(`Daily summaries written: ${summaries}. Health rules: ${JSON.stringify(health)}.`);
     });

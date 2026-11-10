@@ -206,6 +206,15 @@ export async function removeSimulation(): Promise<{ trackers: number; animals: n
     await tx().delete(animalTrackDays).where(and(inArray(animalTrackDays.animalId, touched), notExists(fittedEver(animalTrackDays.animalId))));
   }
 
+  // The grazing map was counted from readings; with no real tracker ever fitted, all of it was simulated.
+  if (simIds.length) {
+    const [real] = await tx().select({ one: sql`1` }).from(trackerAssignments).where(eq(trackerAssignments.farmId, farm)).limit(1);
+    if (!real) {
+      await tx().delete(schema.grazingCellDays).where(eq(schema.grazingCellDays.farmId, farm));
+      await tx().delete(schema.grazingFieldDays).where(eq(schema.grazingFieldDays.farmId, farm));
+    }
+  }
+
   // The sheep's own alerts, and the farm-wide ones: the next health run raises those again if still true.
   const open = await tx()
     .select({ dedupKey: alerts.dedupKey })
@@ -216,7 +225,7 @@ export async function removeSimulation(): Promise<{ trackers: number; animals: n
         sql`${alerts.status} <> 'resolved'`,
         or(
           touched.length ? and(inArray(alerts.ruleKey, ['animal_isolated', 'animal_inactive', 'animal_fever']), inArray(alerts.entityId, touched)) : undefined,
-          inArray(alerts.ruleKey, ['tracking_herd_split', 'tracking_silent', 'tracking_battery']),
+          inArray(alerts.ruleKey, ['tracking_herd_split', 'tracking_silent', 'tracking_battery', 'geofence_exit', 'night_movement']),
         ),
       ),
     )

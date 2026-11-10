@@ -78,6 +78,8 @@
     "emptyTitle": "Bu oyda ish qayd etilmagan",
     "emptyBody": "Dala tadbirlari, veterinariya va kunlik qaydlar kiritilganda shu yerda ko'rinadi.",
     "fields": {
+      "tasksOnTime": "Muddatida bajarilgan vazifalar",
+      "tasksValue": "{{due}} tadan {{onTime}} tasi",
       "hectares": "Bajarilgan maydon",
       "tons": "Hosil",
       "headTreated": "Ishlov berilgan bosh",
@@ -257,7 +259,7 @@
       "rewardType": "Mukofot turi",
       "active": "Holati"
     },
-    "metric": { "survival_percent": "Qo'zilar saqlanishi (%)", "hectares": "Bajarilgan maydon (ga)" },
+    "metric": { "survival_percent": "Qo'zilar saqlanishi (%)", "hectares": "Bajarilgan maydon (ga)", "tasks_on_time": "Muddatida bajarilgan vazifalar (%)" },
     "reward": { "fixed": "Chegaraga yetganda bir martalik", "per_unit": "Chegaradan oshgan har birlik uchun" },
     "rewardShort": { "fixed": "bir martalik", "per_unit": "har birlikka" }
   },

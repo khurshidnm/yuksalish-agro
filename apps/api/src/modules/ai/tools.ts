@@ -30,6 +30,8 @@ import { herdMovement, herdSummary, reproductionKpis } from '../livestock/summar
 import * as facts from './facts';
 import type { EventInput } from '../../core/journal';
 import type { LlmTool } from './provider';
+import { FARM_TOOLS } from './records/farm-tools';
+import type { FarmProposalView } from './records/farm-types';
 import { RECORD_TOOLS } from './records/tools';
 import type { DraftEnv, DraftRecord, ProposalView, Question } from './records/types';
 
@@ -52,6 +54,8 @@ export interface ToolOutcome {
 
 export type ToolAttachment =
   | { type: 'proposal'; proposal: ProposalView }
+  /** A farm record's card. A type of its own: it holds no money, so nothing that hides money touches it. */
+  | { type: 'farm_proposal'; proposal: FarmProposalView }
   | { type: 'question'; question: Question };
 
 /** What a tool may know about the conversation it runs in. */
@@ -437,7 +441,7 @@ export const TOOLS: AiTool[] = [
 
 /** The tools this caller may use. This list is both what the model sees and what can run. */
 export function toolsFor(permissions: ReadonlySet<string>): AiTool[] {
-  return [...TOOLS, ...RECORD_TOOLS].filter(
+  return [...TOOLS, ...RECORD_TOOLS, ...FARM_TOOLS].filter(
     (t) =>
       (t.anyOf.length === 0 || t.anyOf.some((p) => permissions.has(p))) &&
       (t.allOf ?? []).every((p) => permissions.has(p)) &&

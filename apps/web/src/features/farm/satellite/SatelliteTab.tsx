@@ -16,8 +16,12 @@ import { fieldTitle, formatHa, useLocalName } from '../utils';
 import { HealthMap, type Position } from './HealthMap';
 import { HealthLegend } from './HealthLegend';
 import { compassPoint, distanceAndBearing, ndviBand } from './ndvi';
+import { OutlookCard } from './OutlookCard';
 import { PastureCard } from './PastureCard';
 import type { FieldHealth, SatelliteRefresh, VegetationReading, WeakZone } from './types';
+
+/** The data provider's name, kept out of the dictionaries so it reads the same in every script. */
+const SENTINEL_CREDIT = 'Copernicus Sentinel';
 
 function useWatchPosition(active: boolean): { position: Position | null; error: string | null } {
   const [position, setPosition] = useState<Position | null>(null);
@@ -179,6 +183,8 @@ export function SatelliteTab({ field }: { field: FieldCard }) {
   const [selected, setSelected] = useState<number | null>(null);
   const [walking, setWalking] = useState(false);
   const { position, error: positionError } = useWatchPosition(walking);
+  // One curve at a time: greenness runs 0 to 1, moisture can go below zero, and a chart has one axis.
+  const [index, setIndex] = useState<'ndvi' | 'ndmi'>('ndvi');
 
   const refresh = useApiMutation<void, SatelliteRefresh>({
     mutationFn: () => api.post('/farm/satellite/refresh'),
@@ -235,6 +241,8 @@ export function SatelliteTab({ field }: { field: FieldCard }) {
   const band = ndviBand(shown?.ndviMean);
   const dates = [...health.series].reverse().map((p) => p.date);
   const zonesHa = zones.reduce((sum, z) => sum + z.areaHa, 0);
+  // Images read before the moisture index was stored have none, and are left out rather than drawn as zero.
+  const moisture = health.series.filter((point) => point.ndmi !== null);
   const onWalk = (index: number) => {
     if (walking && selected === index) {
       setWalking(false);
@@ -318,33 +326,45 @@ export function SatelliteTab({ field }: { field: FieldCard }) {
       )}
 
       {health.series.length > 1 && (
-        <ChartCard
-          title={t('satellite.curveTitle')}
-          description={t('satellite.curveHint')}
-          kind="line"
-          data={health.series}
-          xKey="date"
-          series={[{ key: 'mean', label: t('satellite.ndvi') }]}
-          yDomain={[0, 1]}
-          formatValue={(value) => formatNumber(value, 2)}
-          formatX={(value) => formatDate(value)}
-          height={220}
-          action={
-            health.events.length > 0 ? (
-              <ul className="flex flex-wrap gap-1.5" aria-label={t('satellite.events')}>
-                {health.events.slice(-4).map((event) => (
-                  <li key={`${event.type}:${event.date}`}>
-                    <Badge variant={event.type === 'green_up' ? 'success' : 'outline'}>
-                      <Sprout aria-hidden />
-                      {t(`satellite.event.${event.type}`, { date: formatDate(event.date) })}
-                    </Badge>
-                  </li>
-                ))}
-              </ul>
-            ) : undefined
-          }
-        />
+        <div className="flex flex-col gap-2">
+          <div role="group" aria-label={t('satellite.indexSwitch')} className="grid grid-cols-2 gap-2 sm:flex">
+            {(['ndvi', 'ndmi'] as const).map((value) => (
+              <Button key={value} variant={index === value ? 'primary' : 'outline'} aria-pressed={index === value} onClick={() => setIndex(value)}>
+                {t(value === 'ndvi' ? 'satellite.ndvi' : 'satellite.moistureShort')}
+              </Button>
+            ))}
+          </div>
+          <ChartCard
+            title={index === 'ndvi' ? t('satellite.curveTitle') : t('satellite.moistureCurveTitle')}
+            description={index === 'ndvi' ? t('satellite.curveHint') : t('satellite.moistureCurveHint', { year: latest.date.slice(0, 4), provider: SENTINEL_CREDIT })}
+            kind="line"
+            data={index === 'ndvi' ? health.series : moisture}
+            xKey="date"
+            series={index === 'ndvi' ? [{ key: 'mean', label: t('satellite.ndvi') }] : [{ key: 'ndmi', label: t('satellite.moistureShort'), slot: 2 }]}
+            yDomain={index === 'ndvi' ? [0, 1] : ['auto', 'auto']}
+            emptyText={t('satellite.moistureEmpty')}
+            formatValue={(value) => formatNumber(value, 2)}
+            formatX={(value) => formatDate(value)}
+            height={220}
+            action={
+              health.events.length > 0 ? (
+                <ul className="flex flex-wrap gap-1.5" aria-label={t('satellite.events')}>
+                  {health.events.slice(-4).map((event) => (
+                    <li key={`${event.type}:${event.date}`}>
+                      <Badge variant={event.type === 'green_up' ? 'success' : 'outline'}>
+                        <Sprout aria-hidden />
+                        {t(`satellite.event.${event.type}`, { date: formatDate(event.date) })}
+                      </Badge>
+                    </li>
+                  ))}
+                </ul>
+              ) : undefined
+            }
+          />
+        </div>
       )}
+
+      <OutlookCard health={health} />
 
       {health.pasture && <PastureCard fieldId={field.id} areaHa={health.areaHa} pasture={health.pasture} />}
     </div>

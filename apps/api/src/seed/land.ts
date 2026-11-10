@@ -1,4 +1,4 @@
-import { type SOIL_TEXTURE_CLASSES, addDays, todayIso } from '@yap/shared';
+import { type SALINITY_LEVELS, type SOIL_TEXTURE_CLASSES, addDays, todayIso } from '@yap/shared';
 import { and, eq } from 'drizzle-orm';
 import { ctx, tx } from '../core/context';
 import { computeAreaHa } from '../core/geo';
@@ -66,7 +66,7 @@ const CONTOURS: {
   areaHa: number;
   corners: Corner[];
   soilType?: string;
-  salinityLevel?: string;
+  salinityLevel?: (typeof SALINITY_LEVELS)[number];
   irrigationSource?: string;
   /** Simulated: the pilot's lab results give the soil name, not its texture class. */
   soilTexture?: (typeof SOIL_TEXTURE_CLASSES)[number];

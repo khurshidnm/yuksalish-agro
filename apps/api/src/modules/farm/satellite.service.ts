@@ -7,6 +7,9 @@
  * Each clear scene gives every field a 10 m NDVI grid, its spread, and the weak zones a person
  * should walk to. A field more than a fifth under cloud is left out of that scene rather than
  * reported from its clear part (spec 15.2: do not guess).
+ *
+ * The same scene also gives a moisture index, NDMI = (B8A − B11) / (B8A + B11), from the two 20 m
+ * bands: one mean per field, over the same clear cells. Scenes read before it was added keep null.
  */
 import { and, asc, desc, eq, gte, inArray, isNotNull, sql } from 'drizzle-orm';
 import { fromUrl } from 'geotiff';
@@ -16,6 +19,7 @@ import { addDays, round, todayIso } from '@yap/shared';
 import {
   cellsInsidePolygon,
   erodeMask,
+  ndmi,
   ndvi,
   ndviStats,
   reflectance,
@@ -66,7 +70,8 @@ const itemSchema = z.object({
     'proj:epsg': z.number().optional(),
     'proj:code': z.string().optional(),
   }),
-  assets: z.object({ red: bandSchema, nir: bandSchema, scl: bandSchema }),
+  // nir08 (B8A) and swir16 (B11) are the 20 m bands of the moisture index; a scene without them still gives NDVI.
+  assets: z.object({ red: bandSchema, nir: bandSchema, scl: bandSchema, nir08: bandSchema.optional(), swir16: bandSchema.optional() }),
 });
 const searchSchema = z.object({ features: z.array(z.unknown()) });
 
@@ -79,6 +84,9 @@ export interface SceneRef {
   red: { href: string; scale: number; offset: number };
   nir: { href: string; scale: number; offset: number };
   scl: { href: string };
+  /** B8A and B11, 20 m. Missing on a scene whose catalogue entry lacks them. */
+  nir08?: { href: string; scale: number; offset: number };
+  swir16?: { href: string; scale: number; offset: number };
 }
 
 type Bbox = [west: number, south: number, east: number, north: number];
@@ -124,6 +132,9 @@ export function pickScenes(features: unknown[], farm: Bbox, timeZone: string): S
       red: bandRef(item.assets.red),
       nir: bandRef(item.assets.nir),
       scl: { href: item.assets.scl.href },
+      ...(item.assets.nir08 && item.assets.swir16
+        ? { nir08: bandRef(item.assets.nir08), swir16: bandRef(item.assets.swir16) }
+        : {}),
     };
     const known = best.get(key);
     if (!known || version > known.version) best.set(key, { ref, version });
@@ -272,6 +283,8 @@ export interface FieldReading {
   clearPct: number;
   cellCount: number;
   stats: { mean: number; p10: number; p50: number; p90: number } | null;
+  /** Mean moisture index over the counted clear cells; null when the scene has no 20 m bands. */
+  ndmiMean: number | null;
   grid: VegetationGrid;
   weakZones: WeakZoneRecord[];
 }
@@ -282,8 +295,8 @@ export interface FieldReading {
  */
 export function readField(
   field: FieldShape,
-  bands: { red: BandWindow; nir: BandWindow; scl: BandWindow },
-  scene: Pick<SceneRef, 'epsg' | 'red' | 'nir'>,
+  bands: { red: BandWindow; nir: BandWindow; scl: BandWindow; nir08?: BandWindow; swir16?: BandWindow },
+  scene: Pick<SceneRef, 'epsg' | 'red' | 'nir' | 'nir08' | 'swir16'>,
 ): FieldReading | null {
   if (field.rings.length === 0) return null;
   const [west, south, east, north] = bboxOf(field.rings);
@@ -300,6 +313,11 @@ export function readField(
 
   const toUtm = proj4('EPSG:4326', utmProjection(scene.epsg));
   const values: (number | null)[] = new Array(width * height).fill(null);
+  const moistureBands =
+    bands.nir08 && bands.swir16 && scene.nir08 && scene.swir16
+      ? { nir08: bands.nir08, swir16: bands.swir16, nirRef: scene.nir08, swirRef: scene.swir16 }
+      : null;
+  const moisture: (number | null)[] | null = moistureBands ? new Array(width * height).fill(null) : null;
   let insideCells = 0;
   let clearCells = 0;
   for (let row = 0; row < height; row++) {
@@ -321,6 +339,14 @@ export function readField(
       if (value === null) continue;
       clearCells++;
       values[i] = value;
+      if (moistureBands && moisture) {
+        const nir8aDn = sample(moistureBands.nir08, x, y);
+        const swirDn = sample(moistureBands.swir16, x, y);
+        moisture[i] = ndmi(
+          nir8aDn === null ? null : reflectance(nir8aDn, moistureBands.nirRef.scale, moistureBands.nirRef.offset),
+          swirDn === null ? null : reflectance(swirDn, moistureBands.swirRef.scale, moistureBands.swirRef.offset),
+        );
+      }
     }
   }
   if (insideCells === 0) return null;
@@ -330,6 +356,17 @@ export function readField(
   const coreValues = values.map((v, i) => (core[i] ? v : null));
   const counted = coreValues.some((v) => v !== null) ? coreValues : values;
   const stats = ndviStats(counted);
+  // The moisture mean is taken over the cells NDVI counted, so the two lines describe the same ground.
+  let moistureSum = 0;
+  let moistureCells = 0;
+  if (moisture) {
+    counted.forEach((v, i) => {
+      const wet = moisture[i];
+      if (v === null || wet === null || wet === undefined) return;
+      moistureSum += wet;
+      moistureCells++;
+    });
+  }
   const threshold = stats ? weakZoneThreshold(stats) : null;
   const zones =
     threshold === null
@@ -351,6 +388,7 @@ export function readField(
     clearPct,
     cellCount: insideCells,
     stats: stats && { mean: round(stats.mean, 3), p10: round(stats.p10, 3), p50: round(stats.p50, 3), p90: round(stats.p90, 3) },
+    ndmiMean: moistureCells > 0 ? round(moistureSum / moistureCells, 3) : null,
     grid: { west, south: gridSouth, east: gridEast, north, width, height, data: bytes.toString('base64') },
     weakZones: zones,
   };
@@ -373,12 +411,15 @@ function utmBounds(rings: Ring[], epsg: number): UtmBounds {
 
 async function readBands(scene: SceneRef, rings: Ring[]) {
   const bounds = utmBounds(rings, scene.epsg);
-  const [red, nir, scl] = await Promise.all([
+  // The two 20 m windows hold a quarter of the pixels of a 10 m one, so the scene stays a few megabytes.
+  const [red, nir, scl, nir08, swir16] = await Promise.all([
     satelliteSources.read(scene.red.href, bounds),
     satelliteSources.read(scene.nir.href, bounds),
     satelliteSources.read(scene.scl.href, bounds),
+    scene.nir08 && scene.swir16 ? satelliteSources.read(scene.nir08.href, bounds) : undefined,
+    scene.nir08 && scene.swir16 ? satelliteSources.read(scene.swir16.href, bounds) : undefined,
   ]);
-  return { red, nir, scl };
+  return { red, nir, scl, nir08, swir16 };
 }
 
 /** Every field of the scene, reading one window for the farm or, for a spread-out farm, one per field. */
@@ -446,6 +487,7 @@ async function storeScene(scene: SceneRef, readings: FieldReading[]): Promise<nu
         ndviP10: r.stats!.p10,
         ndviP50: r.stats!.p50,
         ndviP90: r.stats!.p90,
+        ndmiMean: r.ndmiMean,
         grid: r.grid,
         weakZones: r.weakZones,
       })),
@@ -513,6 +555,8 @@ export interface VegetationView {
   ndviP10: number | null;
   ndviP50: number | null;
   ndviP90: number | null;
+  /** Moisture index; null on scenes read before it was added. */
+  ndmiMean: number | null;
   grid: VegetationGrid | null;
   weakZones: WeakZoneRecord[];
 }
@@ -522,6 +566,8 @@ export interface VegetationPoint {
   mean: number;
   p10: number | null;
   p90: number | null;
+  /** Moisture index (NDMI); null on scenes read before it was added. */
+  ndmi: number | null;
 }
 
 function toView(row: typeof veg.$inferSelect): VegetationView {
@@ -533,6 +579,7 @@ function toView(row: typeof veg.$inferSelect): VegetationView {
     ndviP10: row.ndviP10,
     ndviP50: row.ndviP50,
     ndviP90: row.ndviP90,
+    ndmiMean: row.ndmiMean,
     grid: row.grid,
     weakZones: row.weakZones,
   };
@@ -541,11 +588,11 @@ function toView(row: typeof veg.$inferSelect): VegetationView {
 /** A field's clear observations, oldest first, without the grids. */
 export async function vegetationSeries(fieldId: string, from?: string): Promise<VegetationPoint[]> {
   const rows = await tx()
-    .select({ date: veg.date, mean: veg.ndviMean, p10: veg.ndviP10, p90: veg.ndviP90 })
+    .select({ date: veg.date, mean: veg.ndviMean, p10: veg.ndviP10, p90: veg.ndviP90, ndmi: veg.ndmiMean })
     .from(veg)
     .where(and(eq(veg.farmId, ctx().farmId), eq(veg.fieldId, fieldId), from ? gte(veg.date, from) : undefined, isNotNull(veg.ndviMean)))
     .orderBy(asc(veg.date));
-  return rows.map((r) => ({ date: r.date, mean: r.mean!, p10: r.p10, p90: r.p90 }));
+  return rows.map((r) => ({ date: r.date, mean: r.mean!, p10: r.p10, p90: r.p90, ndmi: r.ndmi }));
 }
 
 /** One field on one date, or its latest clear reading when no date is given. */

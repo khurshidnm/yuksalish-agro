@@ -63,7 +63,9 @@ export function CalendarTab() {
           hint={
             data && data.expectedLambs === null && data.assumedLambs != null
               ? t('calendar.expectedLambsHint', { perEwe: formatNumber(data.assumedLambsPerEwe ?? null, 1) })
-              : undefined
+              : data?.scannedEwes
+                ? t('calendar.scannedHint', { ewes: data.scannedEwes, fetuses: data.scannedFetuses ?? 0 })
+                : undefined
           }
           icon={Sprout}
           loading={calendar.isLoading}

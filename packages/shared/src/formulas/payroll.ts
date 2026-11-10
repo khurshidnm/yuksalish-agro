@@ -10,7 +10,8 @@ import { allocateOverhead, round, survivalPercent, type AllocationTarget } from 
 export const PIECE_UNITS = ['ha', 'head', 'headDay', 't'] as const;
 export type PieceUnit = (typeof PIECE_UNITS)[number];
 
-export const KPI_METRICS = ['survival_percent', 'hectares'] as const;
+/** `tasks_on_time` is the percent from tasksOnTime() in formulas/kpi.ts. */
+export const KPI_METRICS = ['survival_percent', 'hectares', 'tasks_on_time'] as const;
 export type KpiMetric = (typeof KPI_METRICS)[number];
 
 export const KPI_REWARD_TYPES = ['fixed', 'per_unit'] as const;

@@ -4,7 +4,7 @@ import { WEIGHT_METHODS, averageDailyGain, diffDays, round } from '@yap/shared';
 import { maxLiveWeightKg } from '@yap/shared/formulas/livestock';
 import { schema } from '../../db/client';
 import { ctx, today, tx } from '../../core/context';
-import { badRequest, conflict, notFound } from '../../core/errors';
+import { AppError, badRequest, conflict, notFound } from '../../core/errors';
 import { recordEvent } from '../../core/journal';
 import { clientId, isoDate, listQuery, paged, sortBy } from '../../core/query';
 import { assertInFarm, assertNotFuture, assertOnFarm, getAnimalOrThrow, herdHeadCount, isOnFarm, type Animal } from './refs';
@@ -262,6 +262,11 @@ export async function getCampaign(id: string) {
 export const entryInput = z.object({
   /** Ear tag, RFID or QR value: whatever the scanner or the keyboard produced. */
   code: z.string().trim().min(1).max(60),
+  /**
+   * The animal the person was shown after a camera scan or in the preview of a scale file. When
+   * given it names the animal, and `code` is only what is reported back for a row that fails.
+   */
+  animalId: z.uuid().optional(),
   weightKg,
   method: z.enum(WEIGHT_METHODS).optional(),
 });
@@ -270,12 +275,24 @@ export const bulkEntryInput = z.object({ entries: z.array(entryInput).min(1).max
 
 export type AnimalFinder = (code: string) => Promise<Animal | null>;
 
+async function animalOf(entry: z.infer<typeof entryInput>, find: AnimalFinder): Promise<Animal | null> {
+  if (!entry.animalId) return find(entry.code);
+  const [row] = await tx()
+    .select()
+    .from(animals)
+    .where(and(eq(animals.id, entry.animalId), eq(animals.farmId, ctx().farmId)));
+  return row ?? null;
+}
+
+/** A weight no animal of this kind can have, or one dated before its birth: in a file, a row to report. */
+const ROW_REFUSALS = new Set(['WEIGHT_NOT_PLAUSIBLE', 'WEIGHT_BEFORE_BIRTH']);
+
 async function applyEntry(
   campaign: typeof campaigns.$inferSelect,
   entry: z.infer<typeof entryInput>,
   find: AnimalFinder,
 ) {
-  const animal = await find(entry.code);
+  const animal = await animalOf(entry, find);
   if (!animal) throw conflict('ANIMAL_NOT_FOUND', `No animal with the code ${entry.code}`, { code: entry.code });
   assertOnFarm(animal);
   await assertPlausible(animal, entry.weightKg, campaign.date);
@@ -332,7 +349,7 @@ export async function addEntries(id: string, entries: z.infer<typeof entryInput>
   const applied = [];
   const failed: { code: string; error: string }[] = [];
   for (const entry of entries) {
-    const animal = await find(entry.code);
+    const animal = await animalOf(entry, find);
     if (!animal) {
       failed.push({ code: entry.code, error: 'ANIMAL_NOT_FOUND' });
       continue;
@@ -341,7 +358,13 @@ export async function addEntries(id: string, entries: z.infer<typeof entryInput>
       failed.push({ code: entry.code, error: 'ANIMAL_NOT_ON_FARM' });
       continue;
     }
-    applied.push(await applyEntry(campaign, entry, async () => animal));
+    try {
+      applied.push(await applyEntry(campaign, { ...entry, animalId: undefined }, async () => animal));
+    } catch (error) {
+      // The check comes before anything is written, so the rows already applied stand.
+      if (!(error instanceof AppError) || !ROW_REFUSALS.has(error.code)) throw error;
+      failed.push({ code: entry.code, error: error.code });
+    }
   }
   return { applied: applied.length, failed, progress: await campaignProgress(campaign) };
 }

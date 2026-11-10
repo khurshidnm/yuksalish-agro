@@ -1,0 +1,168 @@
+{
+  "title": "Kodni skanerlash",
+  "description": "Kamerani QR-kod yoki shtrix-kodga qarating yoki raqamni yozing.",
+  "button": "Kodni skanerlash",
+  "again": "Yana skanerlash",
+  "retry": "Kamerani qayta yoqish",
+  "torchOn": "Chiroqni yoqish",
+  "torchOff": "Chiroqni o'chirish",
+  "state": {
+    "idle": {
+      "title": "Kamera o'chiq",
+      "body": "Kodni pastda yozishingiz mumkin."
+    },
+    "insecure": {
+      "title": "Kamera uchun himoyalangan ulanish kerak",
+      "body": "Saytni https:// bilan boshlanadigan manzilda oching, shunda kamera ishlaydi. Hozircha kodni pastda yozing."
+    },
+    "no_camera": {
+      "title": "Kamera topilmadi",
+      "body": "Bu qurilmada brauzer ishlata oladigan kamera yo'q. Kodni pastda yozing."
+    },
+    "asking": {
+      "title": "Kameraga ruxsat bering",
+      "body": "Brauzer kameradan foydalanishga ruxsat so'ramoqda. \"Ruxsat berish\" tugmasini bosing."
+    },
+    "denied": {
+      "title": "Kameraga ruxsat berilmagan",
+      "body": "Manzil satridagi qulf yoki sozlamalar belgisini bosing, shu sayt uchun kameraga ruxsat bering va qayta urinib ko'ring. Kodni pastda yozish ham mumkin."
+    },
+    "busy": {
+      "title": "Kamera band",
+      "body": "Kamerani boshqa ilova yoki oyna ishlatmoqda. Uni yoping va qayta urinib ko'ring yoki kodni pastda yozing."
+    },
+    "failed": {
+      "title": "Kamera yoqilmadi",
+      "body": "Qayta urinib ko'ring yoki kodni pastda yozing."
+    },
+    "searching": {
+      "title": "Kod qidirilmoqda",
+      "body": "Kodni ramka ichida ushlab turing. Yorug'lik kam bo'lsa, chiroqni yoqing."
+    },
+    "found": {
+      "title": "Kod o'qildi",
+      "body": "Yozuv qidirilmoqda."
+    }
+  },
+  "manual": {
+    "label": "Qo'lda yozish",
+    "placeholder": "Birka yoki qadoqdagi raqam",
+    "submit": "Topish",
+    "invalid": "Uzunligi {{max}} belgidan oshmaydigan kod yozing."
+  },
+  "animal": {
+    "title": "Hayvon birkasini skanerlash",
+    "hint": "Birkadagi QR-kod yoki shtrix-kodni ramka ichida ushlab turing.",
+    "noneTitle": "Hayvon topilmadi",
+    "noneBody": "Fermada bu kodli hayvon yo'q. Birkani tekshiring yoki hayvonni raqami bo'yicha qidiring.",
+    "severalTitle": "Qaysi hayvon?",
+    "severalBody": "Bu kod bir nechta hayvonda bor. Oldingizda turganini tanlang.",
+    "search": "Ro'yxatdan qidirish",
+    "offFarm": "{{tag}} endi fermada yo'q."
+  },
+  "item": {
+    "title": "Mahsulotni skanerlash",
+    "hint": "Qadoqdagi shtrix-kodni yoki chop etilgan yorliqni ramka ichida ushlab turing.",
+    "noneTitle": "Mahsulot topilmadi",
+    "noneBody": "Ombor ro'yxatida bu kodli mahsulot yo'q. Mahsulotni ro'yxatdan tanlang va shtrix-kodni mahsulot kartasiga saqlang, shunda keyingi safar topiladi.",
+    "severalTitle": "Qaysi mahsulot?",
+    "severalBody": "Bu kod bir nechta mahsulotda bor. Keraklisini tanlang.",
+    "inactive": "{{name}} mahsulotlar ro'yxatida o'chirilgan.",
+    "switchedOff": "o'chirilgan",
+    "barcodeHint": "Qadoqni skanerlang yoki raqamni yozing",
+    "barcodeTitle": "Qadoqdagi shtrix-kodni skanerlash"
+  },
+  "labels": {
+    "size": "Yorliq o'lchami",
+    "sizes": {
+      "small": "Kichik: A4 varaqda 24 ta",
+      "large": "Katta: A4 varaqda 10 ta"
+    },
+    "count": "Yorliqlar: {{labels}} · A4 varaqlar: {{pages}}",
+    "print": "Chop etish"
+  },
+  "tags": {
+    "print": "Birkalarni chop etish",
+    "title": "QR-kodli birkalar",
+    "description": "Podani tanlang va undagi har bir hayvon uchun birka chop eting. Kodda faqat hayvon raqami bor, boshqa hech narsa yo'q.",
+    "chosen": "Ro'yxatda belgilangan hayvonlar uchun birkalar: {{n}}.",
+    "back": "Hayvonlar",
+    "herd": "Podani tanlang",
+    "pickTitle": "Podani tanlang",
+    "pickBody": "Hozir podada turgan barcha hayvonlarning birkalari chop etishga tayyorlanadi. Faqat bir qismini chop etish uchun hayvonlarni ro'yxatda belgilang.",
+    "emptyTitle": "Chop etiladigan hayvon yo'q",
+    "emptyBody": "Bu podada hozir hayvon yo'q."
+  },
+  "itemLabels": {
+    "print": "Yorliqlarni chop etish",
+    "printOne": "Yorliqni chop etish",
+    "title": "QR-kodli mahsulot yorliqlari",
+    "description": "Yorliqni tokcha yoki qopga yopishtiring va qabul qilish hamda berishda skanerlang. Kodda mahsulotning shtrix-kodi yoki o'z kodi bor, narx yo'q.",
+    "back": "Mahsulotlar",
+    "category": "Toifa",
+    "allCategories": "Barcha toifalar",
+    "emptyTitle": "Chop etiladigan mahsulot yo'q",
+    "emptyBody": "Bu toifada mahsulot yo'q.",
+    "more": "{{total}} ta mahsulotdan {{shown}} tasi ko'rsatilgan. Qolganini chop etish uchun toifani tanlang."
+  },
+  "scale": {
+    "open": "Tarozi faylini yuklash",
+    "title": "Tarozi faylidan vaznlar",
+    "description": "Elektron tarozi saqlagan faylni tanlang. Yozishdan oldin har bir qator qaysi hayvonga tegishli ekanini ko'rasiz.",
+    "choose": "Faylni tanlash",
+    "another": "Boshqa faylni tanlash",
+    "formats": "CSV yoki matn fayli: har bir hayvonga bir qator, birka yoki elektron raqam va kilogrammdagi vazn bilan.",
+    "file": {
+      "tooBig": "Fayl 2 MB dan katta. Tarozi fayli ancha kichik bo'ladi: to'g'ri faylni tanlaganingizni tekshiring.",
+      "notText": "Bu elektron jadval fayli. Jadvalda \"Boshqacha saqlash\", so'ng CSV ni tanlang va o'sha faylni yuklang.",
+      "unreadable": "Faylni o'qib bo'lmadi. Uni qayta tanlab ko'ring.",
+      "empty": "Faylda ma'lumotli qator yo'q."
+    },
+    "column": "{{n}}-ustun",
+    "codeColumn": "Birka yoki elektron raqam",
+    "weightColumn": "Vazn",
+    "pick": "Ustunni tanlang",
+    "headerRow": "Birinchi qatorda ustun nomlari bor",
+    "pickColumns": "Qaysi ustunda birka, qaysi ustunda vazn borligini tanlang.",
+    "tooMany": "Faylda {{rows}} qator bor. Bir martada ko'pi bilan {{max}} qator yoziladi: faylni ikkiga bo'ling.",
+    "unit": {
+      "lb": "Bu fayldagi vaznlar funtda. Tarozini kilogrammga o'tkazing va faylni qayta saqlang.",
+      "g": "Bu fayldagi vaznlar grammda. Tarozini kilogrammga o'tkazing va faylni qayta saqlang."
+    },
+    "ready": "Yoziladi: {{of}} tadan {{n}} tasi",
+    "none": "Bu faylning hech bir qatorini yozib bo'lmaydi.",
+    "include": "{{tag}} vaznini yozish",
+    "byRfid": "elektron raqam bo'yicha",
+    "otherHerd": "boshqa poda",
+    "left": "Yozilmaydi: {{n}}",
+    "line": "{{line}}-qator",
+    "status": {
+      "unmatched": "Fermada bu raqamli hayvon yo'q.",
+      "several": "Bu raqam bir nechta hayvonda bor: {{tags}}. Bu hayvonni qo'lda torting.",
+      "not_on_farm": "{{tag}} endi fermada yo'q.",
+      "implausible": "Bu tur uchun juda og'ir: ko'pi bilan {{max}} kg.",
+      "before_birth": "Tortish sanasi hayvon tug'ilgan sanadan oldin.",
+      "duplicate": "Shu hayvon {{line}}-qatorda yana bor: keyingi vazn olinadi."
+    },
+    "problem": {
+      "no_code": "Qatorda birka yoki elektron raqam yo'q.",
+      "code_damaged": "Jadval dasturi elektron raqamni yaxlitlangan songa aylantirgan, raqamlari yo'qolgan. Faylni tarozidan qayta saqlang va jadvalda ochmang.",
+      "no_weight": "Qatorda vazn yo'q.",
+      "not_a_number": "Vazn son emas.",
+      "ambiguous": "Vaznni ikki xil o'qish mumkin: bir kilogramm atrofida yoki bir tonnadan ortiq. Uni qo'lda kiriting.",
+      "unit": "Vazn kilogrammda emas.",
+      "not_positive": "Vazn nol yoki undan kam: tarozida hayvon bo'lmagan.",
+      "too_heavy": "Har qanday hayvondan og'ir."
+    },
+    "send": "Vaznlarni yozish: {{n}}",
+    "done": {
+      "applied": "Yozilgan vaznlar: {{n}}",
+      "failed": "Yozilmadi: {{n}}",
+      "close": "Tayyor"
+    }
+  },
+  "errors": {
+    "SCAN_UNREADABLE": "Bu kodni birka yoki mahsulot raqami sifatida o'qib bo'lmadi. Qayta skanerlang yoki raqamni yozing.",
+    "WEIGHT_NOT_PLAUSIBLE": "Vaznni tekshiring: bu tur buncha og'ir bo'lmaydi"
+  }
+}

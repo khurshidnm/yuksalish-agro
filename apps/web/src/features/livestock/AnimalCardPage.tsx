@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { lazyPart } from '@/app/lazyPage';
 import { DateField, ErrorCard, FormDialog, FormGrid, MoneyText, NumberField, PageHeader, SelectField, StatCard, TextField, UrlTabs, useConfirm } from '@/components';
 import { Alert, Button, Card, CardContent, CardHeader, CardTitle, Skeleton, TBody, THead, Table, Td, Th, Tr } from '@/components/ui';
+import { AnimalSaleCard } from '@/features/sales/reservations/AnimalSaleCard';
 import { api } from '@/lib/api';
 import { usePermission } from '@/lib/auth';
 import { formatDate, formatNumber, formatQty } from '@/lib/format';
@@ -22,6 +23,9 @@ import { ExitForm } from './ExitForm';
 import { type Animal, type I18nName, StatusBadge, compressImage, isOnFarm, useAgeText, useLocalName } from './shared';
 import { MoreActions } from './MoreActions';
 import { TransferDialog } from './TransferDialog';
+import { CullBadge } from './vet/appraisal-parts';
+import { AppraisalTab, useCullMark } from './vet/AppraisalTab';
+import { LambCareCard } from './vet/LambCare';
 
 const WeightChart = lazyPart(() => import('./WeightChart'));
 // Leaflet and the charts load only when the tab is opened.
@@ -72,6 +76,7 @@ export default function AnimalCardPage() {
   const ageText = useAgeText();
   const confirm = useConfirm();
   const today = todayIso();
+  const cullMark = useCullMark(id || undefined);
 
   const [editing, setEditing] = useState(false);
   const [moving, setMoving] = useState(false);
@@ -177,6 +182,9 @@ export default function AnimalCardPage() {
 
       {hasBirths && <BreedingCard animalId={animal.id} speciesKey={animal.speciesKey} />}
       {canSeeHealth && <HealthCard animalId={animal.id} />}
+      <AnimalSaleCard animalId={animal.id} tag={animal.tag} onFarm={active} />
+      {/* Kept for young born here: nobody saw a bought animal's first hours. */}
+      {animal.origin === 'born' && animal.speciesKey !== 'poultry' && <LambCareCard animalId={animal.id} tag={animal.tag} young={animal.category.startsWith('lamb')} />}
 
       <Card>
         <CardHeader>
@@ -396,6 +404,7 @@ export default function AnimalCardPage() {
           <span className="flex flex-wrap items-center gap-2">
             {animal.tag}
             <StatusBadge status={animal.status} />
+            {cullMark && <CullBadge />}
           </span>
         }
         description={`${localName(animal.breedName)} · ${categoryLabel(animal.category, animal.speciesKey)}`}
@@ -519,6 +528,11 @@ export default function AnimalCardPage() {
                 <AnimalTrackingTab animalId={animal.id} />
               </Suspense>
             ),
+          },
+          {
+            value: 'appraisal',
+            label: t('vet:appraisal.tab'),
+            content: <AppraisalTab animalId={animal.id} tag={animal.tag} female={hasBirths} onFarm={active} />,
           },
           { value: 'weights', label: t('card.tabs.weights'), content: weights },
           { value: 'identifiers', label: t('card.tabs.identifiers'), content: identifiers },

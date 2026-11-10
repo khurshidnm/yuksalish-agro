@@ -39,7 +39,8 @@ import { create as createCounterparty } from '../finance/counterparties.service'
 import { tr } from '../notifications/i18n';
 import { notifyRole, notifyUser } from '../notifications/notify.service';
 import { employedDuring, getRow, type Employee } from './employees.service';
-import { herdCostCenterId, noWork, workByEmployee, workDaysByCostCenter, type WorkDone } from './workdone.service';
+import type { TasksOnTime } from '@yap/shared/formulas/kpi';
+import { herdCostCenterId, noWork, tasksByEmployee, workByEmployee, workDaysByCostCenter, type WorkDone } from './workdone.service';
 
 const {
   accounts,
@@ -175,8 +176,11 @@ async function advancesByEmployee(month: string): Promise<Map<string, number>> {
   return new Map(rows.map((r) => [r.employeeId, r.total]));
 }
 
-function kpiValue(metric: KpiMetric, work: WorkDone, survival: number | null): number | null {
-  return metric === 'hectares' ? work.hectares : survival;
+function kpiValue(metric: KpiMetric, work: WorkDone, survival: number | null, tasksOnTimePercent: number | null): number | null {
+  if (metric === 'hectares') return work.hectares;
+  // Null when no task of theirs fell due in the month, and a null earns what the rule gives a null.
+  if (metric === 'tasks_on_time') return tasksOnTimePercent;
+  return survival;
 }
 
 function employmentDays(e: Employee, from: string, to: string) {
@@ -204,6 +208,7 @@ async function computeLines(month: string): Promise<Map<string, LineValues>> {
     .from(kpiRules)
     .where(and(eq(kpiRules.farmId, farmId), eq(kpiRules.active, true)));
   const usesSurvival = rules.some((r) => r.metric === 'survival_percent');
+  const tasksDone = rules.some((r) => r.metric === 'tasks_on_time') ? await tasksByEmployee(from, to) : new Map<string, TasksOnTime>();
   const general = await generalCostCenterId();
 
   const survivalByHerd = new Map<string | null, number | null>();
@@ -239,7 +244,7 @@ async function computeLines(month: string): Promise<Map<string, LineValues>> {
     const kpi = rules
       .filter((rule) => rule.position === null || rule.position === e.position)
       .map((rule) => {
-        const value = kpiValue(rule.metric as KpiMetric, done, survival);
+        const value = kpiValue(rule.metric as KpiMetric, done, survival, tasksDone.get(e.id)?.percent ?? null);
         return {
           ruleId: rule.id,
           name: rule.name,

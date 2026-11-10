@@ -12,6 +12,14 @@
     "ASSIGNEE_NOT_MEMBER": "Bu xodim shu fermada ishlamaydi",
     "INVALID_DATE_RANGE": "Tugash sanasi boshlanish sanasidan oldin bo'lishi mumkin emas"
   },
+  "alertResolvedNote": "Muammo o'zi bartaraf bo'ldi, shuning uchun vazifa avtomatik yopildi.",
+  "fromAlert": "Ogohlantirishdan",
+  "workLink": "Ish joyini ochish",
+  "onTime": {
+    "title": "Bu oyda muddatida",
+    "value": "{{due}} tadan {{onTime}} tasi",
+    "none": "Bu oyda hali birorta vazifangizning muddati kelmadi."
+  },
   "title": "Vazifalar",
   "description": "Fermadagi ishlar: kim, nima va qachongacha bajaradi.",
   "myTitle": "Mening vazifalarim",
@@ -59,6 +67,8 @@
     "notes": "Izoh"
   },
   "filters": {
+    "ofAlert": "Bitta ogohlantirish vazifalari ko'rsatilmoqda",
+    "showAll": "Hammasini ko'rsatish",
     "allStatuses": "Barcha holatlar",
     "allDivisions": "Barcha bo'linmalar",
     "allPriorities": "Barcha muhimliklar",

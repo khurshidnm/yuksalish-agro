@@ -23,7 +23,7 @@ import type { AssistantRequest } from './assistant-launch';
 import { ChatView } from './ChatView';
 import { useLastConversation } from './conversation-store';
 import { HelpPanel } from './HelpPanel';
-import { usePendingProposals } from './pending';
+import { usePendingCount } from './pending';
 import { PendingPanel } from './PendingPanel';
 import type { AiStatus } from './types';
 import { useAssistantChat } from './useAssistantChat';
@@ -48,7 +48,7 @@ export default function AssistantSheet({
   const [tab, setTab] = useState('chat');
   const status = useDetail<AiStatus>(open ? '/ai/status' : null);
   const session = useSession();
-  const pending = usePendingProposals(open).data?.length ?? 0;
+  const pending = usePendingCount(open);
   const configured = status.data?.assistant.configured ?? false;
   const online = useOnline();
 

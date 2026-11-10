@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { boolean, index, integer, jsonb, pgTable, text, unique, uniqueIndex, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
-import { dec, day, money, pk, qty } from './_helpers';
+import { dec, day, money, pk, qty, ts } from './_helpers';
 import { tenantColumns } from './_tenant';
 import { breeds, files, species } from './core';
 import { counterparties, transactions } from './finance';
@@ -115,6 +115,9 @@ export const breedingRecords = pgTable(
     expectedLatest: day().notNull(),
     status: text().notNull().default('pregnant'),
     notes: text(),
+    /** Foetuses counted at the latest pregnancy scan; null until she is scanned. History is in pregnancy_scans. */
+    fetusCount: integer(),
+    scanDate: day(),
   },
   (t) => [
     index().on(t.eweId),
@@ -141,8 +144,68 @@ export const lambingRecords = pgTable(
       .default([]),
     complications: text(),
     notes: text(),
+    /** When the person saved the form on their device: the closest thing to the hour of birth. */
+    bornAt: ts(),
   },
   (t) => [index().on(t.eweId), index().on(t.farmId, t.date)],
+);
+
+/** Every pregnancy scan, newest wins: the count on the pregnancy is the latest one here. */
+export const pregnancyScans = pgTable(
+  'pregnancy_scans',
+  {
+    id: pk(),
+    ...tenantColumns(),
+    breedingId: uuid().notNull().references(() => breedingRecords.id),
+    eweId: uuid().notNull().references(() => animals.id),
+    date: day().notNull(),
+    /** 0 means she is empty. */
+    fetusCount: integer().notNull(),
+    /** Who held the scanner: often a visiting specialist, so a name, not an employee. */
+    scannedBy: text(),
+    notes: text(),
+  },
+  (t) => [index().on(t.breedingId), index().on(t.farmId, t.date)],
+);
+
+/** Care of a newborn, one row per lamb. The genetic dam stays in animals.dam_id. */
+export const lambCare = pgTable(
+  'lamb_care',
+  {
+    id: pk(),
+    ...tenantColumns(),
+    lambId: uuid().notNull().references(() => animals.id),
+    colostrumAt: ts(),
+    navelTreated: boolean().notNull().default(false),
+    mothering: text().notNull().default('with_dam'),
+    /** The ewe raising the lamb when it is fostered. Never used for productivity figures. */
+    fosterEweId: uuid().references(() => animals.id),
+    notes: text(),
+  },
+  (t) => [uniqueIndex('lamb_care_one_per_lamb').on(t.lambId), index().on(t.farmId, t.mothering)],
+);
+
+/** A ewe and her lambs kept in a lambing pen (a facility section marked as one). */
+export const penStays = pgTable(
+  'pen_stays',
+  {
+    id: pk(),
+    ...tenantColumns(),
+    facilityId: uuid().notNull().references(() => facilities.id),
+    eweId: uuid().notNull().references(() => animals.id),
+    lambingId: uuid().references(() => lambingRecords.id),
+    sinceDate: day().notNull(),
+    plannedReleaseDate: day().notNull(),
+    releasedDate: day(),
+    /** Where she was kept before, to put her and her lambs back on release. */
+    previousFacilityId: uuid().references(() => facilities.id),
+    notes: text(),
+  },
+  (t) => [
+    index().on(t.farmId, t.facilityId),
+    // A ewe is in one pen at a time, whatever order requests arrive in.
+    uniqueIndex('pen_stays_one_open_per_ewe').on(t.eweId).where(sql`released_date is null`),
+  ],
 );
 
 export const healthRecords = pgTable(
@@ -295,4 +358,75 @@ export const animalExits = pgTable(
     notes: text(),
   },
   (t) => [unique().on(t.animalId), index().on(t.farmId, t.date), index().on(t.farmId, t.type)],
+);
+
+/**
+ * Body condition score: how much fat and muscle a hand finds over the loin, 1 (emaciated) to 5
+ * (very fat) in half steps. The scale is Russel, Doney and Gunn (1969), "Subjective assessment of
+ * body fat in live sheep", Journal of Agricultural Science 72:451-454.
+ */
+export const bodyConditionScores = pgTable(
+  'body_condition_scores',
+  {
+    id: pk(),
+    ...tenantColumns(),
+    animalId: uuid().notNull().references(() => animals.id),
+    date: day().notNull(),
+    score: dec(2, 1).notNull(),
+    notes: text(),
+  },
+  // One score per animal per day: scoring her again the same day corrects the first entry.
+  (t) => [unique('body_condition_one_per_day').on(t.animalId, t.date), index().on(t.farmId, t.date)],
+);
+
+/** The fat tail (dumba) of a fat-tailed sheep, measured by tape. Any one of the three may be missing. */
+export const fatTailMeasurements = pgTable(
+  'fat_tail_measurements',
+  {
+    id: pk(),
+    ...tenantColumns(),
+    animalId: uuid().notNull().references(() => animals.id),
+    date: day().notNull(),
+    widthCm: dec(5, 1),
+    lengthCm: dec(5, 1),
+    circumferenceCm: dec(5, 1),
+    notes: text(),
+  },
+  (t) => [index().on(t.animalId, t.date)],
+);
+
+/** Grading (bonitirovka): the class a person gave the animal on inspection. The class list is a tenant setting. */
+export const animalGradings = pgTable(
+  'animal_gradings',
+  {
+    id: pk(),
+    ...tenantColumns(),
+    animalId: uuid().notNull().references(() => animals.id),
+    date: day().notNull(),
+    classKey: text().notNull(),
+    /** Free text, often a visiting specialist: personal data (rule 8). */
+    gradedBy: text(),
+    notes: text(),
+  },
+  (t) => [index().on(t.animalId, t.date), index().on(t.farmId, t.classKey)],
+);
+
+/** A person's own decision to cull an animal. Suggestions are computed and never stored. */
+export const cullMarks = pgTable(
+  'cull_marks',
+  {
+    id: pk(),
+    ...tenantColumns(),
+    animalId: uuid().notNull().references(() => animals.id),
+    reason: text().notNull(),
+    note: text(),
+    markedOn: day().notNull(),
+    clearedOn: day(),
+  },
+  (t) => [
+    index().on(t.farmId, t.clearedOn),
+    index().on(t.animalId),
+    // An animal is marked or it is not: one open mark at a time.
+    uniqueIndex('cull_marks_one_open_per_animal').on(t.animalId).where(sql`cleared_on is null`),
+  ],
 );

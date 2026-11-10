@@ -5,8 +5,14 @@ import i18n from '@/lib/i18n';
 export const BREEDING_PATH = '/livestock/breeding';
 export const LAMBINGS_PATH = '/livestock/lambings';
 export const HEALTH_PATH = '/livestock/health';
+export const DESK_PATH = '/livestock/lambing-desk';
+export const SCANS_PATH = '/livestock/scans';
+export const LAMBS_PATH = '/livestock/lambs';
+export const PENS_PATH = '/livestock/pens';
 /** Records change animal statuses and herd counts, so these lists go stale together. */
 export const ANIMALS_PATH = '/livestock/animals';
+/** What a scan, a care record or a pen stay makes stale. */
+export const DESK_STALE = [DESK_PATH, SCANS_PATH, LAMBS_PATH, PENS_PATH, BREEDING_PATH, ANIMALS_PATH];
 
 interface AnimalLookup {
   id: string;
@@ -58,3 +64,11 @@ export async function drugOptions(search: string): Promise<ComboboxOption[]> {
   );
   return [...drugs.data, ...vaccines.data].map(toItem);
 }
+
+export const CONDITION_PATH = '/livestock/condition-scores';
+export const FAT_TAIL_PATH = '/livestock/fat-tail';
+export const GRADINGS_PATH = '/livestock/gradings';
+export const EWES_PATH = '/livestock/ewes';
+export const CULLING_PATH = '/livestock/culling';
+/** What a condition score, a grading or a cull mark makes stale: the score, the lists and the animal's card. */
+export const APPRAISAL_STALE = [CONDITION_PATH, FAT_TAIL_PATH, GRADINGS_PATH, EWES_PATH, CULLING_PATH, ANIMALS_PATH];

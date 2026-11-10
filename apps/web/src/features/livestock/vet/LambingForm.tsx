@@ -8,6 +8,7 @@ import { api } from '@/lib/api';
 import { formatDate } from '@/lib/format';
 import { errorMessage, useApiMutation, useList } from '@/lib/query';
 import { cn } from '@/lib/utils';
+import { ScanAnimalButton, type ScannedAnimal } from '../ScanAnimal';
 import { ANIMALS_PATH, BREEDING_PATH, LAMBINGS_PATH } from './options';
 import type { Lambing, Pregnancy } from './types';
 
@@ -55,18 +56,34 @@ function EwePicker({ onPick }: { onPick: (ewe: PickedEwe) => void }) {
   const results = useList<Pregnancy>(BREEDING_PATH, { status: 'pregnant', search: search || undefined, sort: 'expectedDate', pageSize: 6 });
   const rows = results.data?.data ?? [];
 
+  // A scanned tag picks the ewe at once when she is among the pregnant ones; when she is not, the
+  // list below is searched for her tag and says so.
+  const pickScanned = async (animal: ScannedAnimal) => {
+    setSearch(animal.tag);
+    try {
+      const found = await api.list<Pregnancy>(BREEDING_PATH, { status: 'pregnant', search: animal.tag, sort: 'expectedDate', pageSize: 6 });
+      const row = found.data.find((pregnancy) => pregnancy.eweId === animal.id);
+      if (row) onPick({ id: row.eweId, tag: row.eweTag, breedingId: row.id, expectedDate: row.expectedDate, expectedEarliest: row.expectedEarliest });
+    } catch {
+      // The list below runs the same search and shows its own state.
+    }
+  };
+
   return (
     <div className="space-y-2">
-      <div className="relative">
-        <Search className="pointer-events-none absolute top-1/2 left-3 size-5 -translate-y-1/2 text-muted-foreground" aria-hidden />
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          aria-label={t('lambing.findEwe')}
-          placeholder={t('lambing.findEwe')}
-          className="h-14 pl-11 text-lg"
-          autoComplete="off"
-        />
+      <div className="flex gap-2">
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute top-1/2 left-3 size-5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label={t('lambing.findEwe')}
+            placeholder={t('lambing.findEwe')}
+            className="h-14 pl-11 text-lg"
+            autoComplete="off"
+          />
+        </div>
+        <ScanAnimalButton onFarmOnly className="size-14 shrink-0" onPick={(animal) => void pickScanned(animal)} />
       </div>
       {rows.length === 0 && !results.isLoading && <p className="py-2 text-center text-muted-foreground">{t('lambing.noEwe')}</p>}
       <ul className="space-y-2">
@@ -92,7 +109,16 @@ function EwePicker({ onPick }: { onPick: (ewe: PickedEwe) => void }) {
  * phone does not light up the shed. Controls are large and inline: nothing depends on a popover,
  * which would open outside this dark panel, and nothing defaults to a sex or a weight.
  */
-export function LambingForm({ presetEwe, onDone }: { presetEwe?: PickedEwe | null; onDone?: () => void }) {
+export function LambingForm({
+  presetEwe,
+  onDone,
+  onSaved,
+}: {
+  presetEwe?: PickedEwe | null;
+  onDone?: () => void;
+  /** With the saved record: the lambs now have ids, so their care can be entered. */
+  onSaved?: (ewe: { id: string; tag: string }, record: Lambing) => void;
+}) {
   const { t } = useTranslation('vet');
   const [ewe, setEwe] = useState<PickedEwe | null>(presetEwe ?? null);
   const [date, setDate] = useState(todayIso());
@@ -115,6 +141,8 @@ export function LambingForm({ presetEwe, onDone }: { presetEwe?: PickedEwe | nul
         eweId: ewe!.id,
         breedingId: ewe!.breedingId,
         date,
+        // The hour colostrum is counted from. The server keeps it only for a lambing entered on its own day.
+        bornAt: new Date().toISOString(),
         lambs: lambs.map((lamb) => ({ sex: lamb.sex, birthWeightKg: lamb.birthWeightKg, alive: lamb.alive })),
         complications: complicationText || null,
       });
@@ -123,6 +151,7 @@ export function LambingForm({ presetEwe, onDone }: { presetEwe?: PickedEwe | nul
     silentError: true,
     onSuccess: (record) => {
       toast.success(t('lambing.saved', { tag: ewe!.tag, count: record.lambsAlive }));
+      onSaved?.({ id: ewe!.id, tag: ewe!.tag }, record);
       setEwe(null);
       setLambs([emptyLamb()]);
       setComplications([]);

@@ -1,4 +1,4 @@
-import type { PRIORITIES, RECURRENCES, TASK_STATUSES } from '@yap/shared';
+import type { PRIORITIES, RECURRENCES, TASK_COMPLETION_SOURCES, TASK_STATUSES } from '@yap/shared';
 import type { TFunction } from 'i18next';
 
 export const ENTITY_TYPES = ['field', 'herd', 'animal', 'asset'] as const;
@@ -30,6 +30,12 @@ export interface Task {
   completedAt: string | null;
   completionNote: string | null;
   completionRecordId: string | null;
+  /** 'alert_resolved' when the system closed it because the problem went away. */
+  completionSource: (typeof TASK_COMPLETION_SOURCES)[number] | null;
+  /** The alert this task answers. */
+  alertId: string | null;
+  /** Where the work is, copied from the alert. */
+  link: string | null;
   createdAt: string;
 }
 

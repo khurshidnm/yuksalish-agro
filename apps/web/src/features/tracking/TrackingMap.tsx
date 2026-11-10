@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { BASE_LAYERS } from '@/features/farm/map/FarmMapCanvas';
 import '@/features/farm/map/farm-map.css';
 import './tracking-map.css';
-import type { TrackingFlag } from './types';
+import type { HeatCell, TrackingFlag, ZoneKind } from './types';
 
 export interface MapAnimal {
   id: string;
@@ -18,8 +18,25 @@ export interface MapAnimal {
   label: string;
 }
 
+/** A zone's outline: where a herd may graze, or where it must not go. */
+export interface MapZone {
+  id: string;
+  kind: ZoneKind;
+  active: boolean;
+  geometry: Geometry | null;
+  name: string;
+}
+
+/** Opacity of each grazing shade, least used to most used. The colour is one theme token. */
+export const HEAT_OPACITY = [0.14, 0.28, 0.42, 0.58, 0.74] as const;
+export const HEAT_TOKEN = '--chart-5';
+
 export interface TrackingMapProps {
   animals: MapAnimal[];
+  /** Zones, drawn under the animals. */
+  zones?: MapZone[];
+  /** Where the flock spent its time: grid cells, drawn under everything else. */
+  heat?: HeatCell[] | null;
   /** A day's walk, oldest first. */
   track?: { lat: number; lng: number }[];
   /** Field and yard outlines, for orientation. */
@@ -35,12 +52,31 @@ export interface TrackingMapProps {
 const FALLBACK_CENTER: [number, number] = [41.3, 64.6];
 const FALLBACK_ZOOM = 6;
 
-function token(name: string): string {
+export function token(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
+/** Allowed zones in the brand green, closed ones in red, switched-off ones dashed and faint. */
+export function zoneStyle(zone: Pick<MapZone, 'kind' | 'active'>): L.PathOptions {
+  const color = token(zone.kind === 'forbidden' ? '--destructive' : '--accent');
+  return zone.active
+    ? { color, weight: 2.5, opacity: 0.95, fillColor: color, fillOpacity: zone.kind === 'forbidden' ? 0.25 : 0.08 }
+    : { color, weight: 1.5, opacity: 0.6, dashArray: '6 6', fill: false };
+}
+
+/** The zones as one layer; a zone whose field has no boundary yet has nothing to draw. */
+export function zoneLayer(zones: readonly MapZone[], options: L.GeoJSONOptions = {}): L.GeoJSON {
+  const features = zones.flatMap((z) => (z.geometry ? [{ type: 'Feature', geometry: z.geometry, properties: { id: z.id } }] : []));
+  const byId = new Map(zones.map((z) => [z.id, z]));
+  return L.geoJSON({ type: 'FeatureCollection', features } as never, {
+    style: (feature) => zoneStyle(byId.get((feature?.properties as { id: string }).id)!),
+    interactive: false,
+    ...options,
+  });
+}
+
 /** Repaint when the theme changes: canvas and SVG colours are resolved when drawn. */
-function useThemeTick(): number {
+export function useThemeTick(): number {
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const observer = new MutationObserver(() => setTick((n) => n + 1));
@@ -55,10 +91,13 @@ function useThemeTick(): number {
  * passport the day's track. Leaflet is driven imperatively, as on the farm map, and draws on canvas
  * so 700 dots stay smooth on a phone.
  */
-export function TrackingMap({ animals, track, outlines, selectedId, onSelect, fitKey, className }: TrackingMapProps) {
+export function TrackingMap({ animals, zones, heat, track, outlines, selectedId, onSelect, fitKey, className }: TrackingMapProps) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const outlineLayer = useRef<L.GeoJSON | null>(null);
+  const zonesLayer = useRef<L.GeoJSON | null>(null);
+  const heatLayer = useRef<L.LayerGroup | null>(null);
+  const renderers = useRef<{ heat: L.Canvas; zones: L.SVG } | null>(null);
   const dots = useRef<L.LayerGroup | null>(null);
   const trackLayer = useRef<L.LayerGroup | null>(null);
   const fitted = useRef<string | null>(null);
@@ -74,11 +113,19 @@ export function TrackingMap({ animals, track, outlines, selectedId, onSelect, fi
     const { url, ...options } = BASE_LAYERS.satellite;
     L.tileLayer(url, options).addTo(instance);
     instance.setView(FALLBACK_CENTER, FALLBACK_ZOOM);
+    // Below the animals, whatever order the layers are redrawn in: the grazing grid, then the zones.
+    instance.createPane('heat').style.zIndex = '350';
+    instance.createPane('zones').style.zIndex = '360';
+    for (const pane of ['heat', 'zones']) instance.getPane(pane)!.style.pointerEvents = 'none';
+    renderers.current = { heat: L.canvas({ pane: 'heat' }), zones: L.svg({ pane: 'zones' }) };
     map.current = instance;
     return () => {
       instance.remove();
       map.current = null;
       outlineLayer.current = null;
+      zonesLayer.current = null;
+      heatLayer.current = null;
+      renderers.current = null;
       dots.current = null;
       trackLayer.current = null;
       fitted.current = null;
@@ -99,6 +146,36 @@ export function TrackingMap({ animals, track, outlines, selectedId, onSelect, fi
       interactive: false,
     }).addTo(instance);
   }, [outlines, theme]);
+
+  useEffect(() => {
+    const instance = map.current;
+    if (!instance) return;
+    heatLayer.current?.remove();
+    heatLayer.current = null;
+    if (!heat?.length || !renderers.current) return;
+    const color = token(HEAT_TOKEN);
+    const renderer = renderers.current.heat;
+    heatLayer.current = L.layerGroup(
+      heat.map((cell) =>
+        L.rectangle(
+          [
+            [cell.south, cell.west],
+            [cell.north, cell.east],
+          ],
+          { renderer, pane: 'heat', stroke: false, fillColor: color, fillOpacity: HEAT_OPACITY[cell.level - 1] ?? HEAT_OPACITY[0], interactive: false },
+        ),
+      ),
+    ).addTo(instance);
+  }, [heat, theme]);
+
+  useEffect(() => {
+    const instance = map.current;
+    if (!instance) return;
+    zonesLayer.current?.remove();
+    zonesLayer.current = null;
+    if (!zones?.length || !renderers.current) return;
+    zonesLayer.current = zoneLayer(zones, { pane: 'zones', renderer: renderers.current.zones } as L.GeoJSONOptions).addTo(instance);
+  }, [zones, theme]);
 
   useEffect(() => {
     const instance = map.current;

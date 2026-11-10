@@ -22,6 +22,8 @@ export const facilityInput = z.object({
   lat: z.number().min(-90).max(90).nullish(),
   lng: z.number().min(-180).max(180).nullish(),
   notes: z.string().trim().max(1000).nullish(),
+  /** A barn section kept as a lambing pen (the lambing desk in modules/livestock). */
+  lambingPen: z.boolean().optional(),
 });
 export type FacilityInput = z.infer<typeof facilityInput>;
 

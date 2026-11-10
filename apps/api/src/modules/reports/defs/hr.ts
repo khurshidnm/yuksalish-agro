@@ -95,6 +95,9 @@ export const hrReports: ReportDefinition[] = [
       col.int('operations', { sum: true }),
       col.int('treatments', { sum: true }),
       col.int('dailyLogs', { sum: true }),
+      col.int('tasksOnTime', { sum: true }),
+      col.int('tasksDue', { sum: true }),
+      col.pct('tasksOnTimePercent'),
     ],
     async run({ from, to }) {
       const rows = await workDone(from, to);

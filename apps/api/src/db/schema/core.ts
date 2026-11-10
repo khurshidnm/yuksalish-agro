@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { bigint, boolean, index, integer, jsonb, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
-import { day, pk, ts, type I18nName } from './_helpers';
+import { day, dec, pk, ts, type I18nName } from './_helpers';
 import { tenantColumns, tenantOnlyColumns } from './_tenant';
 import { farms, tenants, users } from './platform';
 
@@ -126,5 +126,11 @@ export const crops = pgTable('crops', {
   /** Usable as feed for own livestock (spec 7.1). */
   isFeed: boolean().notNull().default(false),
   defaultYieldTHa: text(),
+  /** Place in the rotation (CROP_FAMILIES). Null: the typical family for the key, where there is one. */
+  family: text(),
+  /** Nutrients one tonne of produce takes from the field, kg/t. Null: the typical figure (formulas/fertiliser.ts). */
+  removalNKgT: dec(6, 2),
+  removalP2o5KgT: dec(6, 2),
+  removalK2oKgT: dec(6, 2),
   active: boolean().notNull().default(true),
 });

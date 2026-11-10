@@ -12,6 +12,7 @@ import { postTransaction } from '../../core/ledger';
 import { hideMoney } from '../../core/privacy';
 import { clientId, isoDate, listQuery, paged, searchAny, sortBy } from '../../core/query';
 import { signedFileUrl } from '../files';
+import { assertNotReservedForOthers, settleReservations } from '../sales/reserved.service';
 import { markExited } from './animals.service';
 import { restingStatus } from './breeding.shared';
 import { animalsUnderWithdrawal } from './health.service';
@@ -104,6 +105,9 @@ async function postSale(exitId: string, animal: Animal, i: ExitInput, date: stri
   await assertNoWithdrawal(animal, date);
   if (!i.counterpartyId) throw badRequest('COUNTERPARTY_REQUIRED', 'Choose the buyer');
   await assertInFarm(counterparties, i.counterpartyId, 'Buyer');
+  // An animal held for one buyer is not sold to another, whichever screen the sale is entered on.
+  await assertNotReservedForOthers([animal.id], i.counterpartyId);
+  await settleReservations([animal.id], i.counterpartyId, null);
 
   const amount = i.amount ?? (i.pricePerKg && liveWeightKg ? round(i.pricePerKg * liveWeightKg, 2) : null);
   if (!amount) throw badRequest('AMOUNT_REQUIRED', 'Enter the price and the weight, or the total amount');

@@ -2,7 +2,7 @@
  * Where each kind of money belongs. A code table, not a model decision: the model picks a category,
  * and this says what that category needs (docs/assistant.md, "What goes where").
  */
-import type { CostCenterType, CostTreatment } from '@yap/shared';
+import type { CostCenterType, CostTreatment, Permission } from '@yap/shared';
 
 export interface CategoryRule {
   /** Goods. Bought for stock they go through a receipt, so the cost reaches a center on issue. */
@@ -110,3 +110,20 @@ export const BARE_PRICE_FLOOR = 100;
 export const POSSIBLE_RATES: Record<string, [number, number]> = { USD: [1_000, 40_000], EUR: [1_000, 40_000], RUB: [10, 1_000] };
 /** A card with one of these needs an explicit yes from the person, not just Confirm. */
 export const ACKNOWLEDGE_WARNINGS = new Set(['POSSIBLE_DUPLICATE', 'OTHER_AMOUNT', 'AMOUNT_FROM_DOCUMENT', 'CURRENCY_CONVERTED']);
+
+/**
+ * Farm records the assistant prepares beside money (docs/assistant.md, "Farm records"). A code table:
+ * `create` is what the manual screen of the owning module asks for, and `undo` what its delete asks
+ * for. Null means the owning service has no safe way back, so no undo is offered.
+ */
+export const FARM_RECORD_KINDS = ['weight', 'death', 'treatment', 'herd_log'] as const;
+export type FarmRecordKind = (typeof FARM_RECORD_KINDS)[number];
+
+export const FARM_RULES: Record<FarmRecordKind, { create: Permission[]; undo: Permission | null }> = {
+  weight: { create: ['livestock.update'], undo: 'livestock.update' },
+  death: { create: ['livestock.create'], undo: 'livestock.delete' },
+  // Clinical records take `health.update`: they consume drugs and set withdrawal dates (health.routes.ts).
+  treatment: { create: ['health.update'], undo: 'health.delete' },
+  // The rights the daily log routes ask (daily-logs.routes.ts).
+  herd_log: { create: ['livestock.create'], undo: 'livestock.delete' },
+};

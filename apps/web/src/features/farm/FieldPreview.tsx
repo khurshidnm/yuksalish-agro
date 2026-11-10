@@ -44,7 +44,7 @@ export function FieldPreview({ id }: { id: string }) {
         <dl className="divide-y divide-border">
           <Figure label={t('fields.currentCrop')} value={crop ? localName(crop.cropName) : '—'} />
           <Figure label={t('fields.soilType')} value={field.soilType ?? '—'} />
-          <Figure label={t('fields.salinityLevel')} value={field.salinityLevel ? t(`salinity.${field.salinityLevel}`, { defaultValue: field.salinityLevel }) : '—'} />
+          <Figure label={t('fields.salinityLevel')} value={field.salinityLevel ? t(`enums:salinityLevel.${field.salinityLevel}`, { defaultValue: field.salinityLevel }) : '—'} />
           <Figure label={t('fields.irrigationSource')} value={field.irrigationSource ?? '—'} />
         </dl>
         <div className="flex flex-wrap gap-2">

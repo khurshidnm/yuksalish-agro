@@ -1,4 +1,5 @@
 import { todayIso } from '@yap/shared';
+import { LEACHING_SOURCE, leachingNorm } from '@yap/shared/formulas/salinity';
 import { Plus, Trash2 } from 'lucide-react';
 import { useMemo } from 'react';
 import { type UseFormReturn, useFieldArray, useWatch } from 'react-hook-form';
@@ -16,14 +17,15 @@ import {
   TextField,
   TextareaField,
 } from '@/components';
-import { Button, Separator } from '@/components/ui';
+import { Alert, Button, Separator } from '@/components/ui';
 import { api } from '@/lib/api';
 import { formatNumber } from '@/lib/format';
 import { zDate, zOptionalEnum, zOptionalNumber, zOptionalRef, zOptionalText, zPositive, zRef } from '@/lib/forms';
-import { useApiMutation } from '@/lib/query';
+import { useApiMutation, useDetail } from '@/lib/query';
 import { GpsCapture, PhotoCapture } from './FieldCapture';
 import {
   AFFECTED_BY_WORK,
+  FIELD_LOOKUP,
   type FieldOption,
   type ItemOption,
   MATERIAL_CATEGORY,
@@ -45,6 +47,7 @@ const DETAIL_KEYS: Record<string, string[]> = {
   tillage: ['method'],
   sowing: ['variety', 'seedRateKgHa'],
   irrigation: ['waterSource'],
+  leaching: ['waterSource'],
   fertilizing: [],
   protection: ['target', 'dose', 'doseUnit', 'withdrawalDays'],
   observation: ['condition', 'pests', 'diseases'],
@@ -255,7 +258,7 @@ function TypeDetails({ form, type }: { form: Form; type: string }) {
       </FormGrid>
     );
   }
-  if (type === 'irrigation') {
+  if (type === 'irrigation' || type === 'leaching') {
     return <TextField form={form} name="details.waterSource" label={t('operations.fields.waterSource')} />;
   }
   if (type === 'protection') {
@@ -293,6 +296,41 @@ function TypeDetails({ form, type }: { form: Form; type: string }) {
     );
   }
   return null;
+}
+
+/**
+ * A suggested leaching norm for the chosen field, from its salinity level and soil texture. It is
+ * a published range, named beside it; what the farm actually gave is what gets recorded.
+ */
+function LeachingAdvice({ form }: { form: Form }) {
+  const { t } = useTranslation('crops');
+  const fieldId = useWatch({ control: form.control, name: 'fieldId' });
+  const { data } = useDetail<FieldOption[]>(FIELD_LOOKUP, { landUse: 'arable' });
+  const field = data?.find((f) => f.id === fieldId);
+  if (!field) return null;
+  const advice = leachingNorm(field.salinityLevel, field.soilTexture);
+  if (!advice.norm) {
+    return <Alert tone={advice.reason === 'capital_leaching' ? 'warning' : 'info'}>{t(`leaching.${advice.reason}`, { source: LEACHING_SOURCE })}</Alert>;
+  }
+  const { minM3Ha, maxM3Ha, group } = advice.norm;
+  return (
+    <Alert tone="info" title={t('leaching.norm', { min: formatNumber(minM3Ha, 0), max: formatNumber(maxM3Ha, 0) })}>
+      <p>
+        {t('leaching.forField', {
+          min: formatNumber(minM3Ha * field.areaHa, 0),
+          max: formatNumber(maxM3Ha * field.areaHa, 0),
+          area: formatNumber(field.areaHa, 2),
+        })}
+      </p>
+      <p>
+        {t('leaching.basis', {
+          salinity: t(`enums:salinityLevel.${field.salinityLevel}`),
+          soil: group ? t(`leaching.group.${group}`) : t('leaching.noTexture'),
+          source: LEACHING_SOURCE,
+        })}
+      </p>
+    </Alert>
+  );
 }
 
 function WorkFields({ form, type, operation }: { form: Form; type: string; operation?: Operation | null }) {
@@ -402,6 +440,7 @@ export function OperationFormDialog({ open, onOpenChange, type, mode = 'create',
               hint={WORK_FIELDS[type]?.materials ? t('operations.fields.plannedHint') : undefined}
             />
           )}
+          {type === 'leaching' && <LeachingAdvice form={form} />}
           <WorkFields form={form} type={type} operation={operation} />
           <TypeDetails form={form} type={type} />
           {WORK_FIELDS[type]?.materials && <MaterialsEditor form={form} type={type} />}

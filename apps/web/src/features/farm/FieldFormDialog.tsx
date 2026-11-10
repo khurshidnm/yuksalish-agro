@@ -1,4 +1,4 @@
-import { LAND_USES, SOIL_TEXTURE_CLASSES } from '@yap/shared';
+import { LAND_USES, SALINITY_LEVELS, SOIL_TEXTURE_CLASSES } from '@yap/shared';
 import type { Geometry } from 'geojson';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -13,8 +13,6 @@ import type { EditableField, LandUse } from './types';
 import { formatHa } from './utils';
 
 export const FIELD_PATHS = ['/farm/fields', '/farm/map', '/farm/passport'];
-
-const SALINITY = ['none', 'low', 'medium', 'high'] as const;
 
 function makeSchema(areaFromMap: boolean) {
   return z.object({
@@ -129,7 +127,8 @@ export function FieldFormDialog({ open, onOpenChange, field, boundary, previewAr
               form={form}
               name="salinityLevel"
               label={t('fields.salinityLevel')}
-              options={SALINITY.map((value) => ({ value, label: t(`salinity.${value}`) }))}
+              hint={t('fields.salinityLevelHint')}
+              options={enumOptions('salinityLevel', SALINITY_LEVELS)}
             />
           </FormGrid>
           <TextField form={form} name="irrigationSource" label={t('fields.irrigationSource')} />

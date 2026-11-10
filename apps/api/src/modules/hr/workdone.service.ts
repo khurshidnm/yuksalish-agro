@@ -4,6 +4,8 @@ import { schema } from '../../db/client';
 import { ctx, tx } from '../../core/context';
 import { badRequest } from '../../core/errors';
 import { isoDate, sumOf } from '../../core/query';
+import type { TasksOnTime } from '@yap/shared/formulas/kpi';
+import { onTimeByUser } from '../tasks/tasks.service';
 
 const { animals, costCenters, dailyLogs, employees, fieldOperations, fields, healthRecords, herds } = schema;
 
@@ -125,15 +127,50 @@ export async function workByEmployee(from: string, to: string, employeeId?: stri
   return result;
 }
 
+/**
+ * Tasks each employee closed on time, of those that fell due in the period. A task belongs to a
+ * user, so only an employee with a login can have any. Counting is `tasksOnTime()` in shared.
+ */
+export async function tasksByEmployee(from: string, to: string, employeeId?: string): Promise<Map<string, TasksOnTime>> {
+  const byUser = await onTimeByUser(from, to);
+  if (byUser.size === 0) return new Map();
+  const people = await tx()
+    .select({ id: employees.id, userId: employees.userId })
+    .from(employees)
+    .where(
+      and(
+        eq(employees.farmId, ctx().farmId),
+        inArray(employees.userId, [...byUser.keys()]),
+        employeeId ? eq(employees.id, employeeId) : undefined,
+      ),
+    );
+  return new Map(people.map((p) => [p.id, byUser.get(p.userId!)!]));
+}
+
 export async function workDone(from: string, to: string, employeeId?: string) {
   if (to < from) throw badRequest('INVALID_RANGE', 'The end date is before the start date');
   const work = await workByEmployee(from, to, employeeId);
-  if (work.size === 0) return [];
+  const tasks = await tasksByEmployee(from, to, employeeId);
+  // Someone whose only work in the period was tasks that fell due is listed too.
+  const ids = new Set([...work.keys(), ...[...tasks].filter(([, t]) => t.due > 0).map(([id]) => id)]);
+  if (ids.size === 0) return [];
   const people = await tx()
     .select({ id: employees.id, fullName: employees.fullName, position: employees.position })
     .from(employees)
-    .where(and(eq(employees.farmId, ctx().farmId), inArray(employees.id, [...work.keys()])));
-  return people.map((p) => ({ employeeId: p.id, fullName: p.fullName, position: p.position, ...work.get(p.id)! }));
+    .where(and(eq(employees.farmId, ctx().farmId), inArray(employees.id, [...ids])));
+  return people.map((p) => {
+    const onTime = tasks.get(p.id);
+    return {
+      employeeId: p.id,
+      fullName: p.fullName,
+      position: p.position,
+      ...(work.get(p.id) ?? noWork()),
+      tasksOnTime: onTime?.onTime ?? 0,
+      tasksDue: onTime?.due ?? 0,
+      // Null when no task fell due: there is nothing to take a share of.
+      tasksOnTimePercent: onTime?.percent ?? null,
+    };
+  });
 }
 
 /**

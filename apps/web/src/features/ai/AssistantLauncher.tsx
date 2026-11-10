@@ -6,7 +6,7 @@ import { lazyPart } from '@/app/lazyPage';
 import { useAuth, useModuleEnabled, usePermission } from '@/lib/auth';
 import { useDetail } from '@/lib/query';
 import { type AssistantRequest, onAssistantRequest } from './assistant-launch';
-import { usePendingProposals } from './pending';
+import { usePendingCount } from './pending';
 import type { AiStatus } from './types';
 
 // Loaded on first use: the chat brings charts along, which the shell must not pay for.
@@ -20,7 +20,7 @@ const FIELD_ENTRY_PAGES = /^\/today\/(daily-log|report-sick|death|weight|lambing
 
 function LauncherButton({ onOpen }: { onOpen: () => void }) {
   const { t } = useTranslation('ai');
-  const count = usePendingProposals().data?.length ?? 0;
+  const count = usePendingCount();
   const label = count > 0 ? t('records.launcher.pending', { count }) : t('records.launcher.open');
 
   return (

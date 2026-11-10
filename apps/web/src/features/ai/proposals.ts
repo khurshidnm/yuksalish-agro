@@ -168,12 +168,12 @@ export function withoutRepeatedCards(messages: ChatMessage[]): ChatMessage[] {
   const latest = new Map<string, string>();
   for (const message of messages) {
     for (const attachment of message.attachments ?? []) {
-      if (attachment.type === 'proposal') latest.set(attachment.proposal.id, message.id);
+      if (attachment.type === 'proposal' || attachment.type === 'farm_proposal') latest.set(attachment.proposal.id, message.id);
     }
   }
   return messages.map((message) => {
     const attachments = message.attachments?.filter(
-      (attachment) => attachment.type !== 'proposal' || latest.get(attachment.proposal.id) === message.id,
+      (attachment) => (attachment.type !== 'proposal' && attachment.type !== 'farm_proposal') || latest.get(attachment.proposal.id) === message.id,
     );
     return attachments?.length === message.attachments?.length ? message : { ...message, attachments };
   });

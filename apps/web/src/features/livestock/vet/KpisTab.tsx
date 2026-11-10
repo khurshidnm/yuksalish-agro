@@ -1,11 +1,11 @@
-import { Baby, HeartHandshake, Percent, Scale, Trophy } from 'lucide-react';
+import { Baby, HeartHandshake, Percent, Scale } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
-import { type Column, DataTable, ErrorCard, StatCard } from '@/components';
+import { ErrorCard, StatCard } from '@/components';
 import { formatNumber, formatPercent, formatQty } from '@/lib/format';
 import { useDetail } from '@/lib/query';
+import { EweScores } from './EweScores';
 import { BREEDING_PATH } from './options';
-import type { EwePerformance, ReproductionKpis } from './types';
+import type { ReproductionKpis } from './types';
 
 export function KpisTab() {
   const { t } = useTranslation('vet');
@@ -13,24 +13,6 @@ export function KpisTab() {
 
   if (kpis.error) return <ErrorCard error={kpis.error} onRetry={() => void kpis.refetch()} />;
   const data = kpis.data;
-
-  const columns: Column<EwePerformance>[] = [
-    {
-      key: 'tag',
-      header: t('common.ewe'),
-      sortable: true,
-      mobile: 'title',
-      cell: (row) => (
-        <Link className="relative font-medium text-primary after:absolute after:inset-x-0 after:-inset-y-3 hover:underline" to={`/livestock/animals/${row.id}`}>
-          {row.tag}
-        </Link>
-      ),
-    },
-    { key: 'lambings', header: t('kpis.lambings'), align: 'right', cell: (row) => row.lambings },
-    { key: 'lambsBorn', header: t('kpis.lambsBorn'), align: 'right', mobile: 'subtitle', cell: (row) => row.lambsBorn },
-    { key: 'survival', header: t('kpis.survival'), align: 'right', cell: (row) => formatPercent(row.survivalPercent) },
-    { key: 'weight', header: t('kpis.weight100'), align: 'right', cell: (row) => formatQty(row.avgWeight100Kg, 'kg') },
-  ];
 
   return (
     <div className="space-y-4">
@@ -53,14 +35,8 @@ export function KpisTab() {
         <StatCard label={t('kpis.weight100')} value={formatQty(data?.avgWeight100Kg ?? null, 'kg')} hint={t('kpis.weight100Hint')} icon={Scale} loading={kpis.isLoading} />
       </div>
       <h2 className="text-lg font-semibold">{t('kpis.byEwe')}</h2>
-      <DataTable<EwePerformance>
-        path={`${BREEDING_PATH}/ewes`}
-        urlPrefix="k"
-        columns={columns}
-        defaultSort="tag"
-        searchPlaceholder={t('common.searchTag')}
-        empty={{ icon: Trophy, title: t('kpis.emptyTitle'), description: t('kpis.emptyBody') }}
-      />
+      <p className="text-sm text-muted-foreground">{t('score.listHint')}</p>
+      <EweScores />
     </div>
   );
 }
