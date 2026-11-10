@@ -176,7 +176,7 @@ export function LambingForm({
   };
 
   return (
-    <section data-theme="dark" style={{ colorScheme: 'dark' }} aria-label={t('lambing.formTitle')} className="space-y-5 rounded-xl border border-border bg-background p-4 text-foreground">
+    <section aria-label={t('lambing.formTitle')} className="space-y-5 rounded-xl border border-border bg-card p-4 text-foreground">
       <h2 className="text-xl font-semibold">{t('lambing.formTitle')}</h2>
 
       <div className="space-y-2">
