@@ -332,11 +332,16 @@ export async function refresh(refreshToken: string | undefined, meta: ClientMeta
   const issued = await issueTokens(await getUser(claimed.userId), claimed.membershipId, meta, claimed.familyId);
 
   // Another claim may have ended the family while this token was being made, and the end covers it too.
-  const [source] = await db.select({ revokedAt: refreshTokens.revokedAt }).from(refreshTokens).where(eq(refreshTokens.id, claimed.id));
-  if (source.revokedAt) {
-    await revokeFamily(db, claimed.familyId);
-    throw unauthorized('SESSION_REVOKED', 'Please sign in again');
-  }
+  // Looked at under the family's lock: a claim that is ending the family right now did not see the new
+  // token, and has not committed yet, so without the wait this would read "still alive" and leave it live.
+  const ended = await db.transaction(async (trx) => {
+    await trx.execute(sql`select pg_advisory_xact_lock(hashtextextended('refresh:' || family_id, 0)) from refresh_tokens where id = ${claimed.id}`);
+    const [source] = await trx.select({ revokedAt: refreshTokens.revokedAt }).from(refreshTokens).where(eq(refreshTokens.id, claimed.id));
+    if (!source?.revokedAt) return false;
+    await revokeFamily(trx, claimed.familyId);
+    return true;
+  });
+  if (ended) throw unauthorized('SESSION_REVOKED', 'Please sign in again');
   return issued;
 }
 
